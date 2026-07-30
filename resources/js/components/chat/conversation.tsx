@@ -3,6 +3,7 @@ import { Hash, Lock, MessageSquare, Users } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { ChannelMembersDialog } from '@/components/chat/channel-members-dialog';
 import { Composer } from '@/components/chat/composer';
 import { JoinChannelNotice } from '@/components/chat/join-channel-notice';
 import { MessageList } from '@/components/chat/message-list';
@@ -86,6 +87,7 @@ export function Conversation({
     userMenu,
 }: ConversationProps) {
     const [pending, setPending] = useState<ChatMessage[]>([]);
+    const [membersOpen, setMembersOpen] = useState(false);
     const {
         live,
         liveReplies,
@@ -182,7 +184,12 @@ export function Conversation({
 
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <button
+                                type="button"
+                                onClick={() => setMembersOpen(true)}
+                                aria-label="Leden van dit kanaal"
+                                className="ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
                                 <span
                                     className={cn(
                                         'size-1.5 rounded-full transition-colors',
@@ -192,14 +199,12 @@ export function Conversation({
                                     )}
                                 />
                                 <Users className="size-3.5" />
-                                {connected
-                                    ? members.length
-                                    : channel.memberCount}
-                            </span>
+                                {channel.memberCount}
+                            </button>
                         </TooltipTrigger>
                         <TooltipContent>
                             {connected
-                                ? `${members.length} nu aanwezig van ${channel.memberCount} leden`
+                                ? `${members.length} nu aanwezig van ${channel.memberCount} leden — klik om te beheren`
                                 : 'Realtime verbinding wordt opgezet…'}
                         </TooltipContent>
                     </Tooltip>
@@ -229,6 +234,14 @@ export function Conversation({
                     />
                 )}
             </main>
+
+            <ChannelMembersDialog
+                workspace={workspace}
+                channel={channel}
+                currentUserId={currentUser.id}
+                open={membersOpen}
+                onOpenChange={setMembersOpen}
+            />
 
             {thread && (
                 <ThreadPanel

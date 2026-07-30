@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Actions\Chat\AddChannelMembers;
+use App\Models\Channel;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+
+class ChannelMemberController extends Controller
+{
+    /**
+     * Workspace members who could still be added, for the invite picker.
+     */
+    public function index(Request $request, Workspace $workspace, Channel $channel): JsonResponse
+    {
+        $this->authorizeChannel($request, $workspace, $channel, 'addMembers');
+
+        $terms = $request->string('q')->trim()->value();
+
+        $candidates = $workspace->members()
+            ->whereNotIn('users.id', $channel->members()->pluck('users.id'))
+            ->when($terms !== '', fn ($query) => $query->where(
+                fn ($search) => $search
+                    ->where('users.name', 'ilike', "%{$terms}%")
+                    ->orWhere('users.username', 'ilike', "%{$terms}%")
+            ))
+            ->orderBy('users.name')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'candidates' => $candidates->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+            ])->values(),
+        ]);
+    }
+
+    public function store(
+        Request $request,
+        Workspace $workspace,
+        Channel $channel,
+        AddChannelMembers $addChannelMembers,
+    ): RedirectResponse {
+        $this->authorizeChannel($request, $workspace, $channel, 'addMembers');
+
+        $validated = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1', 'max:50'],
+            'user_ids.*' => ['integer'],
+        ]);
+
+        $added = $addChannelMembers->handle($channel, $validated['user_ids']);
+
+        return back()->with('status', $added->isEmpty()
+            ? 'Niemand toegevoegd.'
+            : $added->count().' '.($added->count() === 1 ? 'lid' : 'leden').' toegevoegd.');
+    }
+
+    /**
+     * Leave the channel yourself.
+     */
+    public function destroy(Request $request, Workspace $workspace, Channel $channel): RedirectResponse
+    {
+        $this->authorizeChannel($request, $workspace, $channel, 'leave');
+
+        $channel->members()->detach($request->user()->id);
+
+        return redirect()->route('chat.index', $workspace);
+    }
+
+    /**
+     * Remove somebody else from the channel.
+     */
+    public function remove(
+        Request $request,
+        Workspace $workspace,
+        Channel $channel,
+        User $user,
+    ): RedirectResponse {
+        abort_unless($channel->workspace_id === $workspace->id, 404);
+        abort_unless($workspace->hasMember($request->user()), 403);
+        $this->authorize('removeMember', [$channel, $user]);
+
+        $channel->members()->detach($user->id);
+
+        return back()->with('status', $user->name.' is uit het kanaal verwijderd.');
+    }
+
+    private function authorizeChannel(
+        Request $request,
+        Workspace $workspace,
+        Channel $channel,
+        string $ability,
+    ): void {
+        abort_unless($channel->workspace_id === $workspace->id, 404);
+        abort_unless($workspace->hasMember($request->user()), 403);
+        $this->authorize($ability, $channel);
+    }
+}

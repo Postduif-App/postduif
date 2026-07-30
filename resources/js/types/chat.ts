@@ -26,6 +26,10 @@ export interface ActiveChannel extends ChannelSummary {
     topic: string | null;
     memberCount: number;
     members: ChannelMember[];
+    canAddMembers: boolean;
+    canLeave: boolean;
+    /** The creator; they cannot be removed and cannot leave. */
+    createdBy: number | null;
 }
 
 export interface MessageAuthor {

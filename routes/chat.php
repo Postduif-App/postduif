@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ChannelController;
+use App\Http\Controllers\ChannelMemberController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\SearchController;
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
             Route::post('channels', [ChannelController::class, 'store'])->name('channels.store');
             Route::get('c/{channel}', [ChatController::class, 'show'])->name('show');
             Route::post('c/{channel}/join', [ChannelController::class, 'join'])->name('channels.join');
+            Route::get('c/{channel}/members', [ChannelMemberController::class, 'index'])->name('channels.members.index');
+            Route::post('c/{channel}/members', [ChannelMemberController::class, 'store'])->name('channels.members.store');
+            Route::delete('c/{channel}/members', [ChannelMemberController::class, 'destroy'])->name('channels.members.destroy');
+            Route::delete('c/{channel}/members/{user}', [ChannelMemberController::class, 'remove'])->name('channels.members.remove');
             Route::post('c/{channel}/messages', [MessageController::class, 'store'])->name('messages.store');
         });
 });

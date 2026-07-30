@@ -76,7 +76,8 @@ export function CreateChannelDialog({
                 <DialogHeader>
                     <DialogTitle>Kanaal aanmaken</DialogTitle>
                     <DialogDescription>
-                        Kanalen gaan meestal over één onderwerp, project of team.
+                        Kanalen gaan meestal over één onderwerp, project of
+                        team.
                     </DialogDescription>
                 </DialogHeader>
 

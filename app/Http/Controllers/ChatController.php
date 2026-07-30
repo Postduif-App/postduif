@@ -87,6 +87,9 @@ class ChatController extends Controller
                 'topic' => $channel->topic,
                 'memberCount' => $channel->members()->count(),
                 'isMember' => $channel->members()->whereKey($user->id)->exists(),
+                'canAddMembers' => $user->can('addMembers', $channel),
+                'canLeave' => $user->can('leave', $channel),
+                'createdBy' => $channel->created_by,
                 // Feeds the composer's @-autocomplete and lets the renderer
                 // tell a real mention apart from an email address.
                 'members' => $channel->members
