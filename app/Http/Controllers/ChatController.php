@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Chat\CountUnread;
+use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
 use App\Models\Channel;
 use App\Models\User;
@@ -13,7 +15,11 @@ use Inertia\Response;
 
 class ChatController extends Controller
 {
-    public function __construct(private readonly PresentMessage $presentMessage) {}
+    public function __construct(
+        private readonly PresentMessage $presentMessage,
+        private readonly CountUnread $countUnread,
+        private readonly MarkChannelRead $markChannelRead,
+    ) {}
 
     /**
      * The landing page after signing in. Sends the member to their workspace;
@@ -61,6 +67,11 @@ class ChatController extends Controller
             ->reverse()
             ->values();
 
+        // Clear this channel before building the sidebar: the member is looking
+        // at the messages right now, so leaving its own badge on screen would
+        // read as a bug rather than as information.
+        $this->markChannelRead->handle($channel, $user);
+
         return Inertia::render('chat/show', [
             'workspace' => [
                 'id' => $workspace->id,
@@ -76,6 +87,14 @@ class ChatController extends Controller
                 'topic' => $channel->topic,
                 'memberCount' => $channel->members()->count(),
                 'isMember' => $channel->members()->whereKey($user->id)->exists(),
+                // Feeds the composer's @-autocomplete and lets the renderer
+                // tell a real mention apart from an email address.
+                'members' => $channel->members
+                    ->map(fn (User $member): array => [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'username' => $member->username,
+                    ])->values()->all(),
             ],
             'messages' => $this->presentMessage->collection($messages, $user),
             'thread' => $this->thread($channel, $user, $request->query('thread')),
@@ -131,12 +150,17 @@ class ChatController extends Controller
             ->orderBy('name')
             ->get();
 
+        ['unread' => $unread, 'mentions' => $mentions] = $this->countUnread
+            ->handle($user, $channels->pluck('id'));
+
         $present = fn (Channel $channel): array => [
             'id' => $channel->id,
             'type' => $channel->type->value,
             'name' => $channel->name,
             'label' => $channel->displayNameFor($user),
             'isMember' => $channel->members->contains($user),
+            'unreadCount' => $unread[$channel->id] ?? 0,
+            'mentionCount' => $mentions[$channel->id] ?? 0,
         ];
 
         return [

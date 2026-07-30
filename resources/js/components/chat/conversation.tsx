@@ -33,6 +33,7 @@ interface ConversationProps {
     /** The thread named by ?thread= in the URL, or null. */
     thread: OpenThread | null;
     currentUser: MessageAuthor;
+    currentUsername?: string;
     userMenu: ReactNode;
 }
 
@@ -80,6 +81,7 @@ export function Conversation({
     messages,
     thread,
     currentUser,
+    currentUsername,
     userMenu,
 }: ConversationProps) {
     const [pending, setPending] = useState<ChatMessage[]>([]);
@@ -206,6 +208,8 @@ export function Conversation({
 
                 <MessageList
                     messages={rootMessages}
+                    members={channel.members}
+                    currentUsername={currentUsername}
                     onOpenThread={openThread}
                 />
                 <TypingIndicator typing={typing} />
@@ -217,6 +221,7 @@ export function Conversation({
                             : 'Word lid van dit kanaal om te reageren'
                     }
                     disabled={!channel.isMember}
+                    members={channel.members}
                     onSend={(body) => post(body, null)}
                     onTyping={notifyTyping}
                 />
@@ -225,6 +230,7 @@ export function Conversation({
             {thread && (
                 <ThreadPanel
                     channel={channel}
+                    currentUsername={currentUsername}
                     parent={thread.parent}
                     replies={mergeById(
                         thread.replies,

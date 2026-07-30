@@ -7,6 +7,7 @@ import type { ActiveChannel, ChatMessage } from '@/types/chat';
 
 interface ThreadPanelProps {
     channel: ActiveChannel;
+    currentUsername?: string;
     parent: ChatMessage;
     replies: ChatMessage[];
     onClose: () => void;
@@ -16,6 +17,7 @@ interface ThreadPanelProps {
 
 export function ThreadPanel({
     channel,
+    currentUsername,
     parent,
     replies,
     onClose,
@@ -49,7 +51,11 @@ export function ThreadPanel({
                 replies, so grouping, day dividers and reactions behave
                 identically in both panes rather than drifting apart.
             */}
-            <MessageList messages={[parent, ...replies]} />
+            <MessageList
+                messages={[parent, ...replies]}
+                members={channel.members}
+                currentUsername={currentUsername}
+            />
 
             <Composer
                 placeholder={
@@ -58,6 +64,7 @@ export function ThreadPanel({
                         : 'Word lid van dit kanaal om te reageren'
                 }
                 disabled={!channel.isMember}
+                members={channel.members}
                 onSend={onReply}
                 onTyping={onTyping}
             />

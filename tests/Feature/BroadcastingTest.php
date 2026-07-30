@@ -32,7 +32,7 @@ it('broadcasts a new message on the channel presence channel', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
     $channel = channelWithMember($workspace, $user);
-    $id = (string) Str::ulid();
+    $id = Str::lower((string) Str::ulid());
 
     actingAs($user)->post(route('chat.messages.store', [$workspace, $channel]), [
         'id' => $id,

@@ -46,7 +46,9 @@ function ChannelLink({
     return (
         <Link
             href={show({ workspace: workspaceSlug, channel: channel.id })}
-            prefetch
+            // No prefetch: opening a channel marks it read, and prefetching
+            // fires that same request on hover — so merely sweeping the mouse
+            // down the sidebar would clear every badge.
             className={cn(
                 'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
                 active
@@ -58,7 +60,29 @@ function ChannelLink({
                 type={channel.type}
                 className="size-4 shrink-0 opacity-70"
             />
-            <span className="truncate">{channel.label}</span>
+            <span
+                className={cn(
+                    'truncate',
+                    // Unread reads as weight, not as a second badge: the eye
+                    // finds a bold row faster than it counts numbers.
+                    channel.unreadCount > 0 &&
+                        !active &&
+                        'font-semibold text-sidebar-foreground',
+                )}
+            >
+                {channel.label}
+            </span>
+
+            {channel.mentionCount > 0 ? (
+                <span className="ml-auto shrink-0 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    {channel.mentionCount}
+                </span>
+            ) : (
+                channel.unreadCount > 0 &&
+                !active && (
+                    <span className="ml-auto size-1.5 shrink-0 rounded-full bg-sidebar-foreground/60" />
+                )
+            )}
         </Link>
     );
 }

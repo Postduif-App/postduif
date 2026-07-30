@@ -15,6 +15,21 @@ class StoreMessageRequest extends FormRequest
     }
 
     /**
+     * Ids are compared as strings to work out what a member has already read,
+     * and PHP compares them byte for byte — where every uppercase letter sorts
+     * before every lowercase one. Laravel stores lowercase ULIDs, so anything
+     * arriving in another case would compare as older than every existing
+     * message. Normalise on the way in rather than trusting the client.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(array_filter([
+            'id' => $this->string('id')->lower()->value(),
+            'parent_id' => $this->string('parent_id')->lower()->value() ?: null,
+        ], fn ($value) => $value !== null && $value !== ''));
+    }
+
+    /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array

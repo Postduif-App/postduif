@@ -118,7 +118,9 @@ it('stores a message with the client supplied ulid', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
     $channel = channelWithMember($workspace, $user);
-    $id = (string) Str::ulid();
+    // Lowercase on purpose: (string) Str::ulid() is uppercase, but HasUlids
+    // stores lowercase, and mixing the two breaks id comparisons.
+    $id = Str::lower((string) Str::ulid());
 
     actingAs($user)
         ->post(route('chat.messages.store', [$workspace, $channel]), [
@@ -200,4 +202,49 @@ it('keeps thread replies out of the channel message list', function () {
     actingAs($user)
         ->get(route('chat.show', [$workspace, $channel]))
         ->assertInertia(fn ($page) => $page->has('messages', 1));
+});
+
+/**
+ * Laravel stores lowercase ULIDs and read state is decided by comparing ids as
+ * strings. PHP compares byte for byte, where every uppercase letter sorts
+ * before every lowercase one — so an uppercase id would read as older than
+ * every existing message and freeze the member's read pointer.
+ */
+it('normalises a client supplied ulid to lower case', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+    $id = (string) Str::ulid();
+
+    actingAs($user)
+        ->post(route('chat.messages.store', [$workspace, $channel]), [
+            'id' => Str::upper($id),
+            'body' => 'Hoofdletters',
+        ])
+        ->assertRedirect();
+
+    expect(Message::find(Str::lower($id)))->not->toBeNull()
+        ->and(Message::pluck('id')->all())->toBe([Str::lower($id)]);
+});
+
+it('keeps a threads parent id in lower case too', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    $parent = Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+    ]);
+
+    actingAs($user)
+        ->post(route('chat.messages.store', [$workspace, $channel]), [
+            'id' => (string) Str::ulid(),
+            'body' => 'Antwoord',
+            'parent_id' => Str::upper($parent->id),
+        ])
+        ->assertRedirect();
+
+    expect($parent->fresh()->reply_count)->toBe(1);
 });

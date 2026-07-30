@@ -12,11 +12,20 @@ export interface ChannelSummary {
     name: string | null;
     label: string;
     isMember: boolean;
+    unreadCount: number;
+    mentionCount: number;
+}
+
+export interface ChannelMember {
+    id: number;
+    name: string;
+    username: string;
 }
 
 export interface ActiveChannel extends ChannelSummary {
     topic: string | null;
     memberCount: number;
+    members: ChannelMember[];
 }
 
 export interface MessageAuthor {

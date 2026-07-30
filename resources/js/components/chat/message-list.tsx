@@ -1,10 +1,11 @@
 import { MessageSquareText } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
+import { MessageBody } from '@/components/chat/message-body';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
-import type { ChatMessage } from '@/types/chat';
+import type { ChannelMember, ChatMessage } from '@/types/chat';
 
 const DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full' });
 const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', {
@@ -60,10 +61,14 @@ function DayDivider({ iso }: { iso: string | null }) {
 function MessageRow({
     message,
     grouped,
+    members,
+    currentUsername,
     onOpenThread,
 }: {
     message: ChatMessage;
     grouped: boolean;
+    members: ChannelMember[];
+    currentUsername?: string;
     onOpenThread?: (message: ChatMessage) => void;
 }) {
     const getInitials = useInitials();
@@ -107,7 +112,11 @@ function MessageRow({
                 )}
 
                 <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
-                    {message.body}
+                    <MessageBody
+                        body={message.body}
+                        members={members}
+                        currentUsername={currentUsername}
+                    />
                     {message.editedAt && (
                         <span className="ml-1 text-xs text-muted-foreground">
                             (bewerkt)
@@ -166,9 +175,13 @@ function MessageRow({
 
 export function MessageList({
     messages,
+    members,
+    currentUsername,
     onOpenThread,
 }: {
     messages: ChatMessage[];
+    members: ChannelMember[];
+    currentUsername?: string;
     onOpenThread?: (message: ChatMessage) => void;
 }) {
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -208,6 +221,8 @@ export function MessageList({
                                 grouped={
                                     !newDay && shouldGroup(message, previous)
                                 }
+                                members={members}
+                                currentUsername={currentUsername}
                                 onOpenThread={onOpenThread}
                             />
                         </div>

@@ -2,14 +2,21 @@
 
 namespace App\Actions\Chat;
 
+use App\Events\ChannelActivity;
 use App\Events\MessageSent;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class SendMessage
 {
+    public function __construct(
+        private readonly RecordMentions $recordMentions,
+        private readonly MarkChannelRead $markChannelRead,
+    ) {}
+
     /**
      * Persist a message and keep the denormalised counters in step.
      *
@@ -43,6 +50,15 @@ class SendMessage
                 ]);
             }
 
+            $mentioned = $this->recordMentions->handle($message)->pluck('id');
+
+            // Posting is reading: the author has obviously seen everything up
+            // to and including their own message, so never show them a badge
+            // for it.
+            $this->markChannelRead->handle($channel, $author, $message->id);
+
+            $this->notifyMembers($channel, $author, $parentId !== null, $mentioned);
+
             $message->load('author');
 
             // Broadcast to everyone on the channel, the sender included: the
@@ -52,5 +68,32 @@ class SendMessage
 
             return $message;
         });
+    }
+
+    /**
+     * Nudge everyone else's sidebar. The message itself goes out on the
+     * channel's presence socket, but only people with that channel open are
+     * listening there — this reaches the rest.
+     *
+     * @param  Collection<int, int>  $mentioned
+     */
+    private function notifyMembers(
+        Channel $channel,
+        User $author,
+        bool $isReply,
+        Collection $mentioned,
+    ): void {
+        $recipients = $channel->members()
+            ->whereKeyNot($author->id)
+            ->pluck('users.id');
+
+        foreach ($recipients as $userId) {
+            ChannelActivity::dispatch(
+                $userId,
+                $channel->id,
+                $isReply,
+                $mentioned->contains($userId),
+            );
+        }
     }
 }

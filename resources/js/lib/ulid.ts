@@ -49,6 +49,12 @@ function bumpRandom(previous: number[]): number[] {
  *
  * The client mints the message id so it can render the message immediately and
  * recognise its own broadcast echo, rather than showing a duplicate.
+ *
+ * Lowercased to match Laravel's HasUlids, and that is not cosmetic. Ids are
+ * compared as strings to decide what a member has already read, and in ASCII
+ * every uppercase letter sorts before every lowercase one — so a single
+ * uppercase id among lowercase ones compares as older than everything and
+ * quietly breaks the read pointer.
  */
 export function ulid(): string {
     const now = Date.now();
@@ -58,5 +64,5 @@ export function ulid(): string {
 
     return (
         encodeTime(now) + lastRandom.map((value) => ENCODING[value]).join('')
-    );
+    ).toLowerCase();
 }

@@ -20,15 +20,19 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // Handles are spelled out rather than left to the factory: the seeded
+        // conversations mention them by name, and a random handle would make
+        // those mentions silently render as plain text.
         $sebastiaan = User::factory()->create([
             'name' => 'Sebastiaan',
+            'username' => 'sebastiaan',
             'email' => 'test@example.com',
         ]);
 
         [$fenna, $joris, $amara] = User::factory()->createMany([
-            ['name' => 'Fenna de Vries', 'email' => 'fenna@example.com'],
-            ['name' => 'Joris Bakker', 'email' => 'joris@example.com'],
-            ['name' => 'Amara Okafor', 'email' => 'amara@example.com'],
+            ['name' => 'Fenna de Vries', 'username' => 'fenna', 'email' => 'fenna@example.com'],
+            ['name' => 'Joris Bakker', 'username' => 'joris', 'email' => 'joris@example.com'],
+            ['name' => 'Amara Okafor', 'username' => 'amara', 'email' => 'amara@example.com'],
         ])->all();
 
         $teammates = collect([$fenna, $joris, $amara]);
@@ -77,6 +81,7 @@ class DatabaseSeeder extends Seeder
             [$fenna, 'Ziet er strak uit. Zoeken werkt ook al?'],
             [$sebastiaan, 'Ja, full-text via Postgres. Probeer maar eens iets te zoeken.'],
             [$amara, 'Mooi. Ik zet de onboarding-notities er zo in.'],
+            [$joris, 'Kun jij daar even naar kijken @sebastiaan? Dan doe ik de rest.'],
         ]);
 
         $thread = $this->conversation($dev, [
@@ -97,7 +102,7 @@ class DatabaseSeeder extends Seeder
 
         $this->conversation($design, [
             [$sebastiaan, 'Eerste opzet voor de nieuwe sidebar staat in Figma.'],
-            [$fenna, 'Ik kijk er vanmiddag naar.'],
+            [$fenna, 'Ik kijk er vanmiddag naar, @sebastiaan.'],
         ]);
 
         $this->conversation($dm, [

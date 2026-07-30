@@ -46,7 +46,9 @@ export function useChannelRealtime(
     currentUser: MessageAuthor,
 ): ChannelRealtime {
     const [live, setLive] = useState<ChatMessage[]>([]);
-    const [liveReplies, setLiveReplies] = useState<Record<string, ChatMessage[]>>({});
+    const [liveReplies, setLiveReplies] = useState<
+        Record<string, ChatMessage[]>
+    >({});
     const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
     const [members, setMembers] = useState<MessageAuthor[]>([]);
     const [typing, setTyping] = useState<MessageAuthor[]>([]);
@@ -110,9 +112,14 @@ export function useChannelRealtime(
                     setLiveReplies((current) => {
                         const forParent = current[parentId] ?? [];
 
-                        return forParent.some((existing) => existing.id === message.id)
+                        return forParent.some(
+                            (existing) => existing.id === message.id,
+                        )
                             ? current
-                            : { ...current, [parentId]: [...forParent, message] };
+                            : {
+                                  ...current,
+                                  [parentId]: [...forParent, message],
+                              };
                     });
 
                     if (payload.parentReplyCount !== null) {
@@ -165,5 +172,13 @@ export function useChannelRealtime(
         channel()?.whisper('typing', { id: userId, name: userName });
     }, [channel, userId, userName]);
 
-    return { live, liveReplies, replyCounts, members, typing, connected, notifyTyping };
+    return {
+        live,
+        liveReplies,
+        replyCounts,
+        members,
+        typing,
+        connected,
+        notifyTyping,
+    };
 }

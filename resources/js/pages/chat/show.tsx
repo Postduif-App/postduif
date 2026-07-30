@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
+import { useSidebarActivity } from '@/hooks/use-sidebar-activity';
 import type { Auth } from '@/types';
 import type {
     ActiveChannel,
@@ -41,6 +42,22 @@ export default function ChatShow({
     const { auth } = usePage<{ auth: Auth }>().props;
     const getInitials = useInitials();
     const [searchOpen, setSearchOpen] = useState(false);
+
+    // Server counts, plus whatever arrived over the socket since they were
+    // rendered. Without this a badge only appears once you navigate.
+    const deltas = useSidebarActivity(auth.user.id, channel.id);
+    const withActivity = (rows: ChannelSummary[]): ChannelSummary[] =>
+        rows.map((row) => {
+            const delta = deltas[row.id];
+
+            return delta === undefined
+                ? row
+                : {
+                      ...row,
+                      unreadCount: row.unreadCount + delta.unread,
+                      mentionCount: row.mentionCount + delta.mentions,
+                  };
+        });
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -76,8 +93,8 @@ export default function ChatShow({
 
             <ChannelSidebar
                 workspace={workspace}
-                channels={channels}
-                directMessages={directMessages}
+                channels={withActivity(channels)}
+                directMessages={withActivity(directMessages)}
                 activeChannelId={channel.id}
                 onOpenSearch={() => setSearchOpen(true)}
             />
@@ -94,6 +111,7 @@ export default function ChatShow({
                 messages={messages}
                 thread={thread}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
+                currentUsername={auth.user.username as string | undefined}
                 userMenu={userMenu}
             />
 
