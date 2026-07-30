@@ -7,6 +7,8 @@ interface ComposerProps {
     placeholder: string;
     disabled?: boolean;
     onSend: (body: string) => void;
+    /** Called on every keystroke; the hook decides how often to actually emit. */
+    onTyping?: () => void;
 }
 
 const MAX_ROWS_HEIGHT = 200;
@@ -15,6 +17,7 @@ export function Composer({
     placeholder,
     disabled = false,
     onSend,
+    onTyping,
 }: ComposerProps) {
     const [body, setBody] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -52,6 +55,10 @@ export function Composer({
                     onChange={(event) => {
                         setBody(event.target.value);
                         resize();
+
+                        if (event.target.value !== '') {
+                            onTyping?.();
+                        }
                     }}
                     onKeyDown={(event) => {
                         // Enter sends, Shift+Enter starts a new line.

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Chat;
 
+use App\Events\MessageSent;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -42,7 +43,14 @@ class SendMessage
                 ]);
             }
 
-            return $message->load('author');
+            $message->load('author');
+
+            // Broadcast to everyone on the channel, the sender included: the
+            // browser recognises its own message by the ULID it minted, so a
+            // duplicate is impossible and no socket id needs threading through.
+            MessageSent::dispatch($message);
+
+            return $message;
         });
     }
 }

@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Chat\PresentMessage;
 use App\Models\Channel;
-use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ChatController extends Controller
 {
+    public function __construct(private readonly PresentMessage $presentMessage) {}
+
     /**
      * Drop the member into the most recently active channel they can see.
      */
@@ -63,7 +64,7 @@ class ChatController extends Controller
                 'memberCount' => $channel->members()->count(),
                 'isMember' => $channel->members()->whereKey($user->id)->exists(),
             ],
-            'messages' => $this->presentMessages($messages, $user),
+            'messages' => $this->presentMessage->collection($messages, $user),
         ]);
     }
 
@@ -98,32 +99,6 @@ class ChatController extends Controller
                 ->filter(fn (Channel $channel) => $channel->isDirect())
                 ->map($present)->values()->all(),
         ];
-    }
-
-    /**
-     * @param  Collection<int, Message>  $messages
-     * @return array<int, array<string, mixed>>
-     */
-    private function presentMessages(Collection $messages, User $user): array
-    {
-        return $messages->map(fn (Message $message): array => [
-            'id' => $message->id,
-            'body' => $message->body,
-            'createdAt' => $message->created_at?->toIso8601String(),
-            'editedAt' => $message->edited_at?->toIso8601String(),
-            'replyCount' => $message->reply_count,
-            'author' => [
-                'id' => $message->author->id,
-                'name' => $message->author->name,
-            ],
-            'reactions' => $message->reactions
-                ->groupBy('emoji')
-                ->map(fn (Collection $group, string $emoji): array => [
-                    'emoji' => $emoji,
-                    'count' => $group->count(),
-                    'reacted' => $group->contains('user_id', $user->id),
-                ])->values()->all(),
-        ])->all();
     }
 
     private function authorizeMembership(User $user, Workspace $workspace): void
