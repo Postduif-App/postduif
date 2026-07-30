@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { ChannelSidebar } from '@/components/chat/channel-sidebar';
 import { Conversation } from '@/components/chat/conversation';
+import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -42,6 +43,7 @@ export default function ChatShow({
     const { auth } = usePage<{ auth: Auth }>().props;
     const getInitials = useInitials();
     const [searchOpen, setSearchOpen] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
 
     // Server counts, plus whatever arrived over the socket since they were
     // rendered. Without this a badge only appears once you navigate.
@@ -97,6 +99,7 @@ export default function ChatShow({
                 directMessages={withActivity(directMessages)}
                 activeChannelId={channel.id}
                 onOpenSearch={() => setSearchOpen(true)}
+                onCreateChannel={() => setCreateOpen(true)}
             />
 
             {/*
@@ -119,6 +122,12 @@ export default function ChatShow({
                 workspace={workspace}
                 open={searchOpen}
                 onOpenChange={setSearchOpen}
+            />
+
+            <CreateChannelDialog
+                workspace={workspace}
+                open={createOpen}
+                onOpenChange={setCreateOpen}
             />
         </div>
     );

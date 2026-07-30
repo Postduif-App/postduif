@@ -14,6 +14,7 @@ interface ChannelSidebarProps {
     directMessages: ChannelSummary[];
     activeChannelId: number;
     onOpenSearch: () => void;
+    onCreateChannel: () => void;
 }
 
 function ChannelIcon({
@@ -101,6 +102,7 @@ export function ChannelSidebar({
     directMessages,
     activeChannelId,
     onOpenSearch,
+    onCreateChannel,
 }: ChannelSidebarProps) {
     const [filter, setFilter] = useState('');
 
@@ -178,6 +180,7 @@ export function ChannelSidebar({
 
                 <button
                     type="button"
+                    onClick={onCreateChannel}
                     className="mt-4 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 >
                     <Plus className="size-4" />

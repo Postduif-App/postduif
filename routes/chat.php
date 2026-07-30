@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\SearchController;
@@ -20,7 +21,9 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
         ->group(function () {
             Route::get('/', [ChatController::class, 'index'])->name('index');
             Route::get('search', SearchController::class)->name('search');
+            Route::post('channels', [ChannelController::class, 'store'])->name('channels.store');
             Route::get('c/{channel}', [ChatController::class, 'show'])->name('show');
+            Route::post('c/{channel}/join', [ChannelController::class, 'join'])->name('channels.join');
             Route::post('c/{channel}/messages', [MessageController::class, 'store'])->name('messages.store');
         });
 });

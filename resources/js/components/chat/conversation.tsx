@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { Composer } from '@/components/chat/composer';
+import { JoinChannelNotice } from '@/components/chat/join-channel-notice';
 import { MessageList } from '@/components/chat/message-list';
 import { ThreadPanel } from '@/components/chat/thread-panel';
 import { TypingIndicator } from '@/components/chat/typing-indicator';
@@ -214,17 +215,19 @@ export function Conversation({
                 />
                 <TypingIndicator typing={typing} />
 
-                <Composer
-                    placeholder={
-                        channel.isMember
-                            ? `Bericht aan ${channel.type === 'dm' ? channel.label : '#' + channel.label}`
-                            : 'Word lid van dit kanaal om te reageren'
-                    }
-                    disabled={!channel.isMember}
-                    members={channel.members}
-                    onSend={(body) => post(body, null)}
-                    onTyping={notifyTyping}
-                />
+                {channel.isMember ? (
+                    <Composer
+                        placeholder={`Bericht aan ${channel.type === 'dm' ? channel.label : '#' + channel.label}`}
+                        members={channel.members}
+                        onSend={(body) => post(body, null)}
+                        onTyping={notifyTyping}
+                    />
+                ) : (
+                    <JoinChannelNotice
+                        workspace={workspace}
+                        channel={channel}
+                    />
+                )}
             </main>
 
             {thread && (
