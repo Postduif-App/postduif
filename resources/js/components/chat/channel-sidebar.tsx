@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { show } from '@/routes/chat';
 import type { ChannelSummary, ChatWorkspace } from '@/types/chat';
 
 interface ChannelSidebarProps {
@@ -44,7 +45,7 @@ function ChannelLink({
 }) {
     return (
         <Link
-            href={`/w/${workspaceSlug}/c/${channel.id}`}
+            href={show({ workspace: workspaceSlug, channel: channel.id })}
             prefetch
             className={cn(
                 'group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',

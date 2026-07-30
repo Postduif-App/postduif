@@ -25,6 +25,52 @@ function channelWithMember(Workspace $workspace, User $user): Channel
     return $channel;
 }
 
+it('sends the landing page to the members workspace', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    actingAs($user)
+        ->get('/app')
+        ->assertRedirect(route('chat.index', $workspace, absolute: false));
+
+    actingAs($user)
+        ->get(route('chat.index', $workspace))
+        ->assertRedirect(route('chat.show', [$workspace, $channel], absolute: false));
+});
+
+it('sends a guest to the login page instead of the app', function () {
+    $this->get('/app')->assertRedirect(route('login'));
+});
+
+/**
+ * The workspace slug is a wildcard directly under /app, so "settings" must
+ * never be swallowed by it — otherwise the settings screens 404 the moment
+ * someone creates a workspace, or worse, become unreachable for everyone.
+ */
+it('keeps the settings routes out of the workspace wildcard', function () {
+    $user = User::factory()->create();
+    workspaceWithMember($user);
+
+    actingAs($user)
+        ->get('/app/settings/profile')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('settings/profile'));
+});
+
+it('refuses a workspace that tries to claim the settings slug', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['slug' => 'settings']);
+    $workspace->members()->attach($user->id, [
+        'role' => WorkspaceRole::Member->value,
+        'joined_at' => now(),
+    ]);
+    channelWithMember($workspace, $user);
+
+    // The route pattern excludes it, so this never reaches ChatController.
+    actingAs($user)->get('/app/settings')->assertRedirect('/app/settings/profile');
+});
+
 it('shows a channel to a workspace member', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);

@@ -14,6 +14,7 @@ import {
 import { useChannelRealtime } from '@/hooks/use-channel-realtime';
 import { ulid } from '@/lib/ulid';
 import { cn } from '@/lib/utils';
+import { store } from '@/routes/chat/messages';
 import type {
     ActiveChannel,
     ChatMessage,
@@ -86,7 +87,7 @@ export function Conversation({
             setPending((current) => [...current, draft]);
 
             router.post(
-                `/w/${workspace.slug}/c/${channel.id}/messages`,
+                store.url({ workspace: workspace.slug, channel: channel.id }),
                 { id: draft.id, body: draft.body },
                 {
                     preserveScroll: true,

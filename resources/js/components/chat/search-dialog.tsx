@@ -10,6 +10,7 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { search, show } from '@/routes/chat';
 import type { ChatWorkspace, SearchHit } from '@/types/chat';
 
 interface SearchDialogProps {
@@ -47,7 +48,7 @@ export function SearchDialog({
 
             try {
                 const response = await fetch(
-                    `/w/${workspace.slug}/search?q=${encodeURIComponent(trimmed)}`,
+                    search.url(workspace.slug, { query: { q: trimmed } }),
                     {
                         signal: controller.signal,
                         headers: { Accept: 'application/json' },
@@ -99,7 +100,10 @@ export function SearchDialog({
                                 onSelect={() => {
                                     onOpenChange(false);
                                     router.visit(
-                                        `/w/${workspace.slug}/c/${hit.channel.id}`,
+                                        show({
+                                            workspace: workspace.slug,
+                                            channel: hit.channel.id,
+                                        }),
                                     );
                                 }}
                                 className="flex flex-col items-start gap-0.5"

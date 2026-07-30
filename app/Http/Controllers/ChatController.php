@@ -16,6 +16,19 @@ class ChatController extends Controller
     public function __construct(private readonly PresentMessage $presentMessage) {}
 
     /**
+     * The landing page after signing in. Sends the member to their workspace;
+     * once a member can belong to several, this is where the picker goes.
+     */
+    public function home(Request $request): RedirectResponse
+    {
+        $workspace = $request->user()->workspaces()->oldest('workspace_user.joined_at')->first();
+
+        abort_if($workspace === null, 404, 'Je hoort nog bij geen enkele workspace.');
+
+        return redirect()->route('chat.index', $workspace);
+    }
+
+    /**
      * Drop the member into the most recently active channel they can see.
      */
     public function index(Request $request, Workspace $workspace): RedirectResponse

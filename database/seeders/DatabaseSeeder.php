@@ -34,8 +34,8 @@ class DatabaseSeeder extends Seeder
         $teammates = collect([$fenna, $joris, $amara]);
 
         $workspace = Workspace::factory()->create([
-            'name' => 'Pcom',
-            'slug' => 'pcom',
+            'name' => 'Acme',
+            'slug' => 'acme',
             'owner_id' => $sebastiaan->id,
         ]);
 
