@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
+import { useSessionGuard } from '@/hooks/use-session-guard';
 import { useSidebarActivity } from '@/hooks/use-sidebar-activity';
 import type { Auth } from '@/types';
 import type {
@@ -44,6 +45,10 @@ export default function ChatShow({
     const getInitials = useInitials();
     const [searchOpen, setSearchOpen] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
+
+    // Messages keep arriving over the socket long after a session ends, so the
+    // page has to notice on its own that nobody is signed in any more.
+    useSessionGuard();
 
     // Server counts, plus whatever arrived over the socket since they were
     // rendered. Without this a badge only appears once you navigate.
@@ -113,6 +118,7 @@ export default function ChatShow({
                 channel={channel}
                 messages={messages}
                 thread={thread}
+                channels={withActivity(channels)}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
                 currentUsername={auth.user.username as string | undefined}
                 userMenu={userMenu}

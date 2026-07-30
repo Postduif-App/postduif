@@ -10,11 +10,16 @@ use Illuminate\Support\Collection;
 class RecordMentions
 {
     /**
-     * A handle is the part after "@": lowercase letters, digits, dots, dashes
-     * and underscores. Trailing dots are excluded so "hoi @fenna." mentions
-     * Fenna rather than looking for a handle that ends in a full stop.
+     * A handle is the part after "@": letters, digits, dots, dashes and
+     * underscores. Trailing dots are excluded so "hoi @fenna." mentions Fenna
+     * rather than looking for a handle that ends in a full stop.
+     *
+     * The "@" must start a word, so "mail naar hallo@fenna.nl" is an address
+     * rather than a mention. MessageBody applies the same rule when it decides
+     * what to highlight; the two must stay in step, or the interface will
+     * promise a notification that never gets sent.
      */
-    private const PATTERN = '/@([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)/i';
+    private const PATTERN = '/(?:^|\s)@([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)/i';
 
     /**
      * Store a row per mentioned member and return the users that were tagged.

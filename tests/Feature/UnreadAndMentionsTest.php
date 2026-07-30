@@ -245,3 +245,38 @@ it('keeps a private channel out of the unread counts entirely', function () {
             )
         );
 });
+
+/**
+ * The "@" has to start a word. MessageBody applies the same rule when deciding
+ * what to highlight, so if these two drift apart the interface starts promising
+ * notifications that never get sent.
+ */
+it('only treats an at sign at the start of a word as a mention', function () {
+    [$reader, $writer, , $channel] = channelWithTwoMembers();
+
+    $mentions = fn (string $body) => Mention::where(
+        'message_id',
+        app(SendMessage::class)->handle($channel, $writer, $body)->id
+    )->count();
+
+    expect($mentions('Hoi @reader'))->toBe(1)
+        ->and($mentions("Op een nieuwe regel\n@reader kijk even"))->toBe(1)
+        ->and($mentions('Punt erachter @reader.'))->toBe(1)
+        ->and($mentions('Midden in een woord bla@reader'))->toBe(0)
+        ->and($mentions('Mailadres hallo@reader.nl'))->toBe(0);
+
+    expect($reader->exists)->toBeTrue();
+});
+
+it('does not treat a channel reference as a mention', function () {
+    [, $writer, , $channel] = channelWithTwoMembers();
+
+    $message = app(SendMessage::class)->handle(
+        $channel,
+        $writer,
+        'Zie ook #'.$channel->name.' voor de details',
+    );
+
+    // A channel reference notifies nobody, so there is nothing to record.
+    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+});

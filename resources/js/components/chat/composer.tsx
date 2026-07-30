@@ -1,15 +1,17 @@
-import { SendHorizonal } from 'lucide-react';
+import { Hash, Lock, SendHorizonal } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
-import type { ChannelMember } from '@/types/chat';
+import type { ChannelMember, ChannelSummary } from '@/types/chat';
 
 interface ComposerProps {
     placeholder: string;
     disabled?: boolean;
     members: ChannelMember[];
+    /** Channels the author may link to; the sidebar list is exactly this set. */
+    channels: ChannelSummary[];
     onSend: (body: string) => void;
     /** Called on every keystroke; the hook decides how often to actually emit. */
     onTyping?: () => void;
@@ -19,40 +21,110 @@ const MAX_ROWS_HEIGHT = 200;
 const MAX_SUGGESTIONS = 6;
 
 /**
- * The "@handle" fragment directly left of the caret, or null.
+ * "@" picks a person, "#" picks a channel. Both behave identically from the
+ * typist's side, so they share one picker rather than two that drift apart.
+ */
+const TRIGGERS = '@#';
+
+/** Characters that may follow a trigger; covers both handles and slugs. */
+const FRAGMENT = '[a-z0-9._-]*';
+
+interface Suggestion {
+    key: string;
+    /** What gets written into the message, without the trigger character. */
+    insert: string;
+    primary: string;
+    secondary?: string;
+    icon: 'member' | 'public' | 'private';
+}
+
+interface ActiveTrigger {
+    char: string;
+    query: string;
+}
+
+/**
+ * The trigger and fragment directly left of the caret, or null.
  *
  * Anchored to a word boundary so an email address does not open the picker
- * halfway through typing it.
+ * halfway through typing it, and neither does "issue#12".
  */
-function mentionQueryAt(value: string, caret: number): string | null {
-    const match = value.slice(0, caret).match(/(?:^|\s)@([a-z0-9._-]*)$/i);
+function triggerAt(value: string, caret: number): ActiveTrigger | null {
+    const match = value
+        .slice(0, caret)
+        .match(new RegExp(`(?:^|\\s)([${TRIGGERS}])(${FRAGMENT})$`, 'i'));
 
-    return match ? match[1].toLowerCase() : null;
+    return match ? { char: match[1], query: match[2].toLowerCase() } : null;
+}
+
+function SuggestionIcon({ icon, name }: { icon: Suggestion['icon']; name: string }) {
+    const getInitials = useInitials();
+
+    if (icon === 'member') {
+        return (
+            <span className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold">
+                {getInitials(name)}
+            </span>
+        );
+    }
+
+    return (
+        <span className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+            {icon === 'private' ? (
+                <Lock className="size-3" />
+            ) : (
+                <Hash className="size-3" />
+            )}
+        </span>
+    );
 }
 
 export function Composer({
     placeholder,
     disabled = false,
     members,
+    channels,
     onSend,
     onTyping,
 }: ComposerProps) {
     const [body, setBody] = useState('');
-    const [query, setQuery] = useState<string | null>(null);
+    const [active, setActive] = useState<ActiveTrigger | null>(null);
     const [highlighted, setHighlighted] = useState(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const getInitials = useInitials();
 
-    const suggestions =
-        query === null
-            ? []
-            : members
-                  .filter(
-                      (member) =>
-                          member.username.toLowerCase().includes(query) ||
-                          member.name.toLowerCase().includes(query),
-                  )
-                  .slice(0, MAX_SUGGESTIONS);
+    const suggestions: Suggestion[] = (() => {
+        if (active === null) {
+            return [];
+        }
+
+        if (active.char === '@') {
+            return members
+                .filter(
+                    (member) =>
+                        member.username.toLowerCase().includes(active.query) ||
+                        member.name.toLowerCase().includes(active.query),
+                )
+                .slice(0, MAX_SUGGESTIONS)
+                .map((member) => ({
+                    key: `member-${member.id}`,
+                    insert: member.username,
+                    primary: member.name,
+                    secondary: `@${member.username}`,
+                    icon: 'member' as const,
+                }));
+        }
+
+        return channels
+            .filter((channel) => (channel.name ?? '').includes(active.query))
+            .slice(0, MAX_SUGGESTIONS)
+            .map((channel) => ({
+                key: `channel-${channel.id}`,
+                insert: channel.name ?? '',
+                primary: `#${channel.name}`,
+                secondary: channel.isMember ? undefined : 'geen lid',
+                icon: channel.type === 'private' ? ('private' as const) : ('public' as const),
+            }));
+    })();
 
     const resize = () => {
         const textarea = textareaRef.current;
@@ -63,18 +135,21 @@ export function Composer({
         }
     };
 
-    const complete = (member: ChannelMember) => {
+    const complete = (suggestion: Suggestion) => {
         const textarea = textareaRef.current;
         const caret = textarea?.selectionStart ?? body.length;
-        const before = body.slice(0, caret).replace(/@[a-z0-9._-]*$/i, '');
-        const next = `${before}@${member.username} ${body.slice(caret)}`;
+        const trigger = active?.char ?? '@';
+        const before = body
+            .slice(0, caret)
+            .replace(new RegExp(`[${TRIGGERS}]${FRAGMENT}$`, 'i'), '');
+        const next = `${before}${trigger}${suggestion.insert} ${body.slice(caret)}`;
 
         setBody(next);
-        setQuery(null);
+        setActive(null);
 
         requestAnimationFrame(() => {
             resize();
-            const position = before.length + member.username.length + 2;
+            const position = before.length + suggestion.insert.length + 2;
             textarea?.focus();
             textarea?.setSelectionRange(position, position);
         });
@@ -89,7 +164,7 @@ export function Composer({
 
         onSend(trimmed);
         setBody('');
-        setQuery(null);
+        setActive(null);
         requestAnimationFrame(resize);
     };
 
@@ -98,11 +173,15 @@ export function Composer({
             {suggestions.length > 0 && (
                 <ul
                     role="listbox"
-                    aria-label="Vermeld een lid"
+                    aria-label={
+                        active?.char === '#'
+                            ? 'Verwijs naar een kanaal'
+                            : 'Vermeld een lid'
+                    }
                     className="absolute bottom-full left-4 z-10 mb-1 w-72 overflow-hidden rounded-lg border bg-popover shadow-md"
                 >
-                    {suggestions.map((member, index) => (
-                        <li key={member.id}>
+                    {suggestions.map((suggestion, index) => (
+                        <li key={suggestion.key}>
                             <button
                                 type="button"
                                 role="option"
@@ -111,22 +190,25 @@ export function Composer({
                                 // position we insert at is gone by the time the
                                 // click handler runs.
                                 onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => complete(member)}
+                                onClick={() => complete(suggestion)}
                                 onMouseEnter={() => setHighlighted(index)}
                                 className={cn(
                                     'flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
                                     index === highlighted && 'bg-accent',
                                 )}
                             >
-                                <span className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-semibold">
-                                    {getInitials(member.name)}
-                                </span>
+                                <SuggestionIcon
+                                    icon={suggestion.icon}
+                                    name={suggestion.primary}
+                                />
                                 <span className="truncate font-medium">
-                                    {member.name}
+                                    {suggestion.primary}
                                 </span>
-                                <span className="truncate text-xs text-muted-foreground">
-                                    @{member.username}
-                                </span>
+                                {suggestion.secondary && (
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {suggestion.secondary}
+                                    </span>
+                                )}
                             </button>
                         </li>
                     ))}
@@ -142,8 +224,8 @@ export function Composer({
                     placeholder={placeholder}
                     onChange={(event) => {
                         setBody(event.target.value);
-                        setQuery(
-                            mentionQueryAt(
+                        setActive(
+                            triggerAt(
                                 event.target.value,
                                 event.target.selectionStart,
                             ),
@@ -155,7 +237,7 @@ export function Composer({
                             onTyping?.();
                         }
                     }}
-                    onBlur={() => setQuery(null)}
+                    onBlur={() => setActive(null)}
                     onKeyDown={(event) => {
                         if (suggestions.length > 0) {
                             if (event.key === 'ArrowDown') {
@@ -188,7 +270,7 @@ export function Composer({
 
                             if (event.key === 'Escape') {
                                 event.preventDefault();
-                                setQuery(null);
+                                setActive(null);
 
                                 return;
                             }
@@ -218,8 +300,8 @@ export function Composer({
                     Shift+Enter
                 </kbd>{' '}
                 nieuwe regel ·{' '}
-                <kbd className="rounded bg-muted px-1 font-mono">@</kbd>{' '}
-                vermeldt iemand
+                <kbd className="rounded bg-muted px-1 font-mono">@</kbd> lid ·{' '}
+                <kbd className="rounded bg-muted px-1 font-mono">#</kbd> kanaal
             </p>
         </div>
     );

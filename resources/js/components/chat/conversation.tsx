@@ -21,6 +21,7 @@ import { show } from '@/routes/chat';
 import { store } from '@/routes/chat/messages';
 import type {
     ActiveChannel,
+    ChannelSummary,
     ChatMessage,
     ChatWorkspace,
     MessageAuthor,
@@ -34,6 +35,8 @@ interface ConversationProps {
     messages: ChatMessage[];
     /** The thread named by ?thread= in the URL, or null. */
     thread: OpenThread | null;
+    /** Channels this reader may open, for rendering and completing #links. */
+    channels: ChannelSummary[];
     currentUser: MessageAuthor;
     currentUsername?: string;
     userMenu: ReactNode;
@@ -82,6 +85,7 @@ export function Conversation({
     channel,
     messages,
     thread,
+    channels,
     currentUser,
     currentUsername,
     userMenu,
@@ -214,7 +218,9 @@ export function Conversation({
 
                 <MessageList
                     messages={rootMessages}
+                    workspace={workspace}
                     members={channel.members}
+                    channels={channels}
                     currentUsername={currentUsername}
                     onOpenThread={openThread}
                 />
@@ -224,6 +230,7 @@ export function Conversation({
                     <Composer
                         placeholder={`Bericht aan ${channel.type === 'dm' ? channel.label : '#' + channel.label}`}
                         members={channel.members}
+                        channels={channels}
                         onSend={(body) => post(body, null)}
                         onTyping={notifyTyping}
                     />
@@ -245,7 +252,9 @@ export function Conversation({
 
             {thread && (
                 <ThreadPanel
+                    workspace={workspace}
                     channel={channel}
+                    channels={channels}
                     currentUsername={currentUsername}
                     parent={thread.parent}
                     replies={mergeById(

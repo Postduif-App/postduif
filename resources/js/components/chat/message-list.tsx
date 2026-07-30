@@ -5,7 +5,12 @@ import { MessageBody } from '@/components/chat/message-body';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
-import type { ChannelMember, ChatMessage } from '@/types/chat';
+import type {
+    ChannelMember,
+    ChannelSummary,
+    ChatMessage,
+    ChatWorkspace,
+} from '@/types/chat';
 
 const DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full' });
 const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', {
@@ -61,13 +66,17 @@ function DayDivider({ iso }: { iso: string | null }) {
 function MessageRow({
     message,
     grouped,
+    workspace,
     members,
+    channels,
     currentUsername,
     onOpenThread,
 }: {
     message: ChatMessage;
     grouped: boolean;
+    workspace: ChatWorkspace;
     members: ChannelMember[];
+    channels: ChannelSummary[];
     currentUsername?: string;
     onOpenThread?: (message: ChatMessage) => void;
 }) {
@@ -114,7 +123,9 @@ function MessageRow({
                 <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
                     <MessageBody
                         body={message.body}
+                        workspace={workspace}
                         members={members}
+                        channels={channels}
                         currentUsername={currentUsername}
                     />
                     {message.editedAt && (
@@ -175,12 +186,16 @@ function MessageRow({
 
 export function MessageList({
     messages,
+    workspace,
     members,
+    channels,
     currentUsername,
     onOpenThread,
 }: {
     messages: ChatMessage[];
+    workspace: ChatWorkspace;
     members: ChannelMember[];
+    channels: ChannelSummary[];
     currentUsername?: string;
     onOpenThread?: (message: ChatMessage) => void;
 }) {
@@ -221,7 +236,9 @@ export function MessageList({
                                 grouped={
                                     !newDay && shouldGroup(message, previous)
                                 }
+                                workspace={workspace}
                                 members={members}
+                                channels={channels}
                                 currentUsername={currentUsername}
                                 onOpenThread={onOpenThread}
                             />

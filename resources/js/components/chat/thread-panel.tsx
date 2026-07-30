@@ -3,10 +3,17 @@ import { X } from 'lucide-react';
 import { Composer } from '@/components/chat/composer';
 import { MessageList } from '@/components/chat/message-list';
 import { Button } from '@/components/ui/button';
-import type { ActiveChannel, ChatMessage } from '@/types/chat';
+import type {
+    ActiveChannel,
+    ChannelSummary,
+    ChatMessage,
+    ChatWorkspace,
+} from '@/types/chat';
 
 interface ThreadPanelProps {
+    workspace: ChatWorkspace;
     channel: ActiveChannel;
+    channels: ChannelSummary[];
     currentUsername?: string;
     parent: ChatMessage;
     replies: ChatMessage[];
@@ -16,7 +23,9 @@ interface ThreadPanelProps {
 }
 
 export function ThreadPanel({
+    workspace,
     channel,
+    channels,
     currentUsername,
     parent,
     replies,
@@ -53,7 +62,9 @@ export function ThreadPanel({
             */}
             <MessageList
                 messages={[parent, ...replies]}
+                workspace={workspace}
                 members={channel.members}
+                channels={channels}
                 currentUsername={currentUsername}
             />
 
@@ -65,6 +76,7 @@ export function ThreadPanel({
                 }
                 disabled={!channel.isMember}
                 members={channel.members}
+                channels={channels}
                 onSend={onReply}
                 onTyping={onTyping}
             />
