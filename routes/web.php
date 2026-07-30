@@ -8,3 +8,7 @@ Route::inertia('/', 'welcome')->name('home');
 // /app/{workspace} wildcard that would otherwise match it.
 require __DIR__.'/settings.php';
 require __DIR__.'/chat.php';
+
+if (! app()->isProduction()) {
+    require __DIR__.'/dev.php';
+}

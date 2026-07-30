@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -51,6 +52,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
             'status' => $request->session()->get('status'),
+            'devAccounts' => $this->devAccounts(),
         ]));
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
@@ -74,6 +76,35 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
         Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+    }
+
+    /**
+     * Seeded accounts offered as one-click sign-in on the login screen.
+     *
+     * Empty outside a non-production environment, which is what hides the
+     * buttons: the frontend renders nothing for an empty list, so there is no
+     * separate flag for the UI to get wrong.
+     *
+     * @return array<int, array{id: int, name: string, email: string, role: string|null}>
+     */
+    private function devAccounts(): array
+    {
+        if (app()->isProduction()) {
+            return [];
+        }
+
+        return User::query()
+            ->with('workspaces')
+            ->orderBy('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->workspaces->first()?->pivot->role,
+            ])
+            ->all();
     }
 
     /**

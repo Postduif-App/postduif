@@ -1,4 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
+import { DevQuickLogin } from '@/components/dev-quick-login';
+import type { DevAccount } from '@/components/dev-quick-login';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
@@ -15,14 +17,22 @@ import { request } from '@/routes/password';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    /** Empty outside local development, which is what hides the buttons. */
+    devAccounts?: DevAccount[];
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    devAccounts = [],
+}: Props) {
     return (
         <>
             <Head title="Log in" />
 
             <PasskeyVerify />
+
+            <DevQuickLogin accounts={devAccounts} />
 
             <Form
                 {...store.form()}
