@@ -47,6 +47,12 @@ class MessageSent implements ShouldBroadcast
         return [
             'channelId' => $this->message->channel_id,
             'parentId' => $this->message->parent_id,
+            // The parent's new total, not a "+1" hint. An absolute number is
+            // idempotent: the browser can apply it twice, or apply it next to a
+            // fresh page load, and still land on the same count.
+            'parentReplyCount' => $this->message->parent_id === null
+                ? null
+                : Message::whereKey($this->message->parent_id)->value('reply_count'),
             'message' => app(PresentMessage::class)->handle($this->message),
         ];
     }

@@ -23,6 +23,7 @@ class PresentMessage
 
         return [
             'id' => $message->id,
+            'parentId' => $message->parent_id,
             'body' => $message->body,
             'createdAt' => $message->created_at?->toIso8601String(),
             'editedAt' => $message->edited_at?->toIso8601String(),

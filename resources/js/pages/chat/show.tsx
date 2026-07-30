@@ -18,6 +18,7 @@ import type {
     ChannelSummary,
     ChatMessage,
     ChatWorkspace,
+    OpenThread,
 } from '@/types/chat';
 
 interface ChatShowProps {
@@ -26,6 +27,7 @@ interface ChatShowProps {
     directMessages: ChannelSummary[];
     channel: ActiveChannel;
     messages: ChatMessage[];
+    thread: OpenThread | null;
 }
 
 export default function ChatShow({
@@ -34,6 +36,7 @@ export default function ChatShow({
     directMessages,
     channel,
     messages,
+    thread,
 }: ChatShowProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const getInitials = useInitials();
@@ -89,6 +92,7 @@ export default function ChatShow({
                 workspace={workspace}
                 channel={channel}
                 messages={messages}
+                thread={thread}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
                 userMenu={userMenu}
             />

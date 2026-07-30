@@ -60,9 +60,11 @@ function DayDivider({ iso }: { iso: string | null }) {
 function MessageRow({
     message,
     grouped,
+    onOpenThread,
 }: {
     message: ChatMessage;
     grouped: boolean;
+    onOpenThread?: (message: ChatMessage) => void;
 }) {
     const getInitials = useInitials();
 
@@ -134,9 +136,10 @@ function MessageRow({
                     </div>
                 )}
 
-                {message.replyCount > 0 && (
+                {onOpenThread && message.replyCount > 0 && (
                     <button
                         type="button"
+                        onClick={() => onOpenThread(message)}
                         className="mt-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-xs font-medium text-primary hover:underline"
                     >
                         <MessageSquareText className="size-3.5" />
@@ -145,11 +148,29 @@ function MessageRow({
                     </button>
                 )}
             </div>
+
+            {onOpenThread && !message.pending && (
+                <button
+                    type="button"
+                    onClick={() => onOpenThread(message)}
+                    title="Antwoord in thread"
+                    aria-label="Antwoord in thread"
+                    className="absolute top-1 right-2 hidden rounded border bg-background p-1.5 text-muted-foreground shadow-sm group-hover:block hover:text-foreground"
+                >
+                    <MessageSquareText className="size-3.5" />
+                </button>
+            )}
         </div>
     );
 }
 
-export function MessageList({ messages }: { messages: ChatMessage[] }) {
+export function MessageList({
+    messages,
+    onOpenThread,
+}: {
+    messages: ChatMessage[];
+    onOpenThread?: (message: ChatMessage) => void;
+}) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -187,6 +208,7 @@ export function MessageList({ messages }: { messages: ChatMessage[] }) {
                                 grouped={
                                     !newDay && shouldGroup(message, previous)
                                 }
+                                onOpenThread={onOpenThread}
                             />
                         </div>
                     );

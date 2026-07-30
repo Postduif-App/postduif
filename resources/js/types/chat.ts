@@ -32,6 +32,8 @@ export interface MessageReaction {
 
 export interface ChatMessage {
     id: string;
+    /** Null for a root message; the thread parent for a reply. */
+    parentId: string | null;
     body: string;
     createdAt: string | null;
     editedAt: string | null;
@@ -40,6 +42,11 @@ export interface ChatMessage {
     reactions: MessageReaction[];
     /** Set while the message is only in the browser, awaiting the server echo. */
     pending?: boolean;
+}
+
+export interface OpenThread {
+    parent: ChatMessage;
+    replies: ChatMessage[];
 }
 
 export interface SearchHit {

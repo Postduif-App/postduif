@@ -78,7 +78,42 @@ class ChatController extends Controller
                 'isMember' => $channel->members()->whereKey($user->id)->exists(),
             ],
             'messages' => $this->presentMessage->collection($messages, $user),
+            'thread' => $this->thread($channel, $user, $request->query('thread')),
         ]);
+    }
+
+    /**
+     * The open thread, or null when the query string names none.
+     *
+     * Putting the thread in the URL rather than in component state means a
+     * thread is linkable and survives a refresh — the same reason Slack does it.
+     *
+     * @return array{parent: array<string, mixed>, replies: array<int, array<string, mixed>>}|null
+     */
+    private function thread(Channel $channel, User $user, ?string $parentId): ?array
+    {
+        if ($parentId === null) {
+            return null;
+        }
+
+        $parent = $channel->rootMessages()
+            ->with(['author', 'reactions'])
+            ->whereKey($parentId)
+            ->first();
+
+        if ($parent === null) {
+            return null;
+        }
+
+        $replies = $parent->replies()
+            ->with(['author', 'reactions'])
+            ->orderBy('id')
+            ->get();
+
+        return [
+            'parent' => $this->presentMessage->handle($parent, $user),
+            'replies' => $this->presentMessage->collection($replies, $user),
+        ];
     }
 
     /**

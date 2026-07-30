@@ -6,6 +6,8 @@ import type { ChatMessage, MessageAuthor } from '@/types/chat';
 interface MessageSentPayload {
     channelId: number;
     parentId: string | null;
+    /** The parent's new total after this reply; absolute, not a delta. */
+    parentReplyCount: number | null;
     message: ChatMessage;
 }
 
@@ -15,8 +17,12 @@ const TYPING_TIMEOUT_MS = 4000;
 const TYPING_THROTTLE_MS = 2000;
 
 interface ChannelRealtime {
-    /** Messages that arrived over the socket since this channel was opened. */
+    /** Root messages that arrived over the socket since this channel opened. */
     live: ChatMessage[];
+    /** Thread replies that arrived since this channel opened, keyed by parent. */
+    liveReplies: Record<string, ChatMessage[]>;
+    /** Authoritative reply totals pushed by the server, keyed by parent id. */
+    replyCounts: Record<string, number>;
     members: MessageAuthor[];
     typing: MessageAuthor[];
     connected: boolean;
@@ -40,6 +46,8 @@ export function useChannelRealtime(
     currentUser: MessageAuthor,
 ): ChannelRealtime {
     const [live, setLive] = useState<ChatMessage[]>([]);
+    const [liveReplies, setLiveReplies] = useState<Record<string, ChatMessage[]>>({});
+    const [replyCounts, setReplyCounts] = useState<Record<string, number>>({});
     const [members, setMembers] = useState<MessageAuthor[]>([]);
     const [typing, setTyping] = useState<MessageAuthor[]>([]);
     const [connected, setConnected] = useState(false);
@@ -88,18 +96,34 @@ export function useChannelRealtime(
                 forgetTyping(user.id);
             })
             .listen('.message.sent', (payload: MessageSentPayload) => {
-                // Thread replies belong in the thread pane, not the channel log.
-                if (payload.parentId !== null) {
-                    return;
+                const { parentId, message } = payload;
+
+                if (parentId === null) {
+                    setLive((current) =>
+                        current.some((existing) => existing.id === message.id)
+                            ? current
+                            : [...current, message],
+                    );
+                } else {
+                    // A reply belongs to the thread pane, but the channel still
+                    // needs the parent's new count for its "N antwoorden" line.
+                    setLiveReplies((current) => {
+                        const forParent = current[parentId] ?? [];
+
+                        return forParent.some((existing) => existing.id === message.id)
+                            ? current
+                            : { ...current, [parentId]: [...forParent, message] };
+                    });
+
+                    if (payload.parentReplyCount !== null) {
+                        setReplyCounts((current) => ({
+                            ...current,
+                            [parentId]: payload.parentReplyCount as number,
+                        }));
+                    }
                 }
 
-                setLive((current) =>
-                    current.some((message) => message.id === payload.message.id)
-                        ? current
-                        : [...current, payload.message],
-                );
-
-                forgetTyping(payload.message.author.id);
+                forgetTyping(message.author.id);
             })
             .listenForWhisper('typing', (user: MessageAuthor) => {
                 if (user.id === userId) {
@@ -141,5 +165,5 @@ export function useChannelRealtime(
         channel()?.whisper('typing', { id: userId, name: userName });
     }, [channel, userId, userName]);
 
-    return { live, members, typing, connected, notifyTyping };
+    return { live, liveReplies, replyCounts, members, typing, connected, notifyTyping };
 }
