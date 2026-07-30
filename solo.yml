@@ -1,0 +1,41 @@
+# Visit https://soloterm.com to learn more
+name: Postduif
+icon: null
+processes:
+  Server:
+    command: php artisan serve --port=8000
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed: []
+    env: {}
+  Reverb:
+    command: php artisan reverb:start
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed:
+      - config/reverb.php
+      - config/broadcasting.php
+    env: {}
+  Queue:
+    command: php artisan queue:listen --tries=1 --timeout=0
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed: []
+    env: {}
+  Vite:
+    command: npm run dev
+    working_dir: null
+    auto_start: true
+    auto_restart: false
+    restart_when_changed: []
+    env: {}
+  Logs:
+    command: php artisan pail --timeout=0
+    working_dir: null
+    auto_start: false
+    auto_restart: false
+    restart_when_changed: []
+    env: {}

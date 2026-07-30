@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "pcom/pcom",
+    "name": "postduif/postduif",
     "type": "project",
     "description": "Team messaging for workspaces.",
     "keywords": [
