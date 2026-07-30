@@ -2,13 +2,7 @@
 name: Postduif
 icon: null
 processes:
-  Server:
-    command: php artisan serve --port=8000
-    working_dir: null
-    auto_start: true
-    auto_restart: true
-    restart_when_changed: []
-    env: {}
+  # No HTTP server here: Valet serves https://pcom.test.
   Reverb:
     command: php artisan reverb:start
     working_dir: null

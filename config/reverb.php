@@ -34,7 +34,16 @@ return [
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
             'options' => [
-                'tls' => [],
+                /**
+                 * The app is served over https by Valet, and a browser refuses
+                 * to open a plain ws:// socket from an https page. Point Reverb
+                 * at the same Valet certificate so the websocket is wss:// too.
+                 */
+                'tls' => array_filter([
+                    'local_cert' => env('REVERB_TLS_CERT'),
+                    'local_pk' => env('REVERB_TLS_KEY'),
+                    'verify_peer' => env('REVERB_TLS_VERIFY_PEER', false),
+                ], fn ($value) => $value !== null),
             ],
             'max_request_size' => env('REVERB_MAX_REQUEST_SIZE', 10_000),
             'scaling' => [
