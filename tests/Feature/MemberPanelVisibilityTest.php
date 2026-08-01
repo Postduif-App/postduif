@@ -50,3 +50,47 @@ it('shows it to only the people running the workspace when asked to', function (
 it('never shows it to a guest', function () {
     expect(seesMemberPanel(MemberPanelVisibility::Everyone, WorkspaceRole::Guest))->toBeFalse();
 });
+
+it('sends the people in the workspace along with the panel', function () {
+    $user = User::factory()->create(['name' => 'Anna Bakker']);
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace->update(['member_panel' => MemberPanelVisibility::Everyone]);
+
+    $colleague = User::factory()->create(['name' => 'Bram de Vries']);
+    $workspace->members()->attach($colleague->id, [
+        'role' => WorkspaceRole::Member->value,
+        'joined_at' => now(),
+    ]);
+
+    $guest = User::factory()->create(['name' => 'Carla Klant']);
+    $workspace->members()->attach($guest->id, [
+        'role' => WorkspaceRole::Guest->value,
+        'joined_at' => now(),
+    ]);
+
+    $channel = channelWithMember($workspace, $user);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page
+            ->has('workspaceMembers', 2)
+            ->where('workspaceMembers.0.name', 'Anna Bakker')
+            ->where('workspaceMembers.1.name', 'Bram de Vries')
+        );
+});
+
+/**
+ * Not merely hidden by the browser: a member who does not get the panel is not
+ * sent the list either.
+ */
+it('sends nobody to a member who does not get the panel', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace->update(['member_panel' => MemberPanelVisibility::Admins]);
+
+    $channel = channelWithMember($workspace, $user);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page->has('workspaceMembers', 0));
+});

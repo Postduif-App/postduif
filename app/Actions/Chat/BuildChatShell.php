@@ -3,6 +3,7 @@
 namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
+use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\ChannelSection;
 use App\Models\Message;
@@ -86,7 +87,48 @@ class BuildChatShell
              * otherwise a group somebody just made looks like it failed.
              */
             'sections' => $this->sections($workspace, $user),
+            /*
+             * Everybody in the workspace, for the panel beside the conversation.
+             * Empty when this member does not get the panel, so there is nothing
+             * to draw rather than a list held back by the browser.
+             */
+            'workspaceMembers' => $workspace->member_panel->allows($workspace->roleFor($user))
+                ? $this->workspaceMembers($workspace)
+                : [],
         ];
+    }
+
+    /**
+     * The people in the workspace, by name.
+     *
+     * Guests are left out. They are in the workspace for the channels they were
+     * invited to rather than for the workspace itself — the line
+     * canBrowseWorkspace draws everywhere else — and a directory of every
+     * customer in every channel is not what "wie zit hier" was asking for.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function workspaceMembers(Workspace $workspace): array
+    {
+        return $workspace->members()
+            ->wherePivot('role', '!=', WorkspaceRole::Guest->value)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $member): array => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'username' => $member->username,
+                'avatarUrl' => $member->avatarUrl(),
+                // Always false, and present anyway: this is the same shape the
+                // channel member list uses, and one list quietly missing a
+                // field is how a shared row component starts needing two.
+                'isGuest' => false,
+                'statusEmoji' => $member->status_emoji,
+                'statusText' => $member->status_text,
+                'availability' => $member->availability->value,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

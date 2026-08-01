@@ -6,6 +6,7 @@ import { ChannelSidebar } from '@/components/chat/channel-sidebar';
 import { Conversation } from '@/components/chat/conversation';
 import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
+import { MemberPanel } from '@/components/chat/member-panel';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +26,7 @@ import type {
     ActiveChannel,
     ActiveThread,
     ArchivedChannel,
+    ChannelMember,
     ChannelSection as ChannelSectionRow,
     ChannelSummary,
     ChannelView,
@@ -59,6 +61,8 @@ interface ChatShowProps {
     archivedChannels: ArchivedChannel[];
     /** The groups this member arranged for themselves. */
     sections: ChannelSectionRow[];
+    /** Everybody in the workspace, or empty when this member is not shown them. */
+    workspaceMembers: ChannelMember[];
     /** Which of the messages above this member set aside for later. */
     bookmarkedIds: string[];
     /** What this member still has waiting in this channel. */
@@ -80,6 +84,7 @@ export default function ChatShow({
     workspaceTags,
     archivedChannels,
     sections,
+    workspaceMembers,
     bookmarkedIds,
     scheduled,
 }: ChatShowProps) {
@@ -252,6 +257,13 @@ export default function ChatShow({
                 currentUserAvatarUrl={auth.avatarUrl}
                 currentUserIsGuest={auth.workspaceRole === 'guest'}
             />
+
+            {workspace.showsMemberPanel && (
+                <MemberPanel
+                    members={workspaceMembers}
+                    currentUserId={auth.user.id}
+                />
+            )}
 
             <BroadcastDialog
                 workspace={workspace}
