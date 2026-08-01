@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useHoverShortcuts } from '@/hooks/use-hover-shortcuts';
 import { useInitials } from '@/hooks/use-initials';
+import { isEmojiOnly } from '@/lib/emoji-only';
 import { cn } from '@/lib/utils';
 import type {
     ChannelMember,
@@ -607,7 +608,17 @@ function MessageRow({
                         }}
                     />
                 ) : (
-                    <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
+                    <p
+                        className={cn(
+                            'break-words whitespace-pre-wrap text-foreground/90',
+                            // A message that is only emoji is the emoji: at
+                            // body size it reads as punctuation on an empty
+                            // line rather than as the thing somebody sent.
+                            isEmojiOnly(message.body)
+                                ? 'text-3xl leading-snug'
+                                : 'text-sm leading-relaxed',
+                        )}
+                    >
                         <MessageBody
                             body={message.body}
                             workspace={workspace}

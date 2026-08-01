@@ -1,6 +1,7 @@
 import { Download, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ImageLightbox } from '@/components/chat/image-lightbox';
 import { cn } from '@/lib/utils';
 import type { MessageAttachment } from '@/types/chat';
 
@@ -76,6 +77,7 @@ function isAudio(attachment: MessageAttachment): boolean {
  */
 function ImageAttachment({ attachment }: { attachment: MessageAttachment }) {
     const [failed, setFailed] = useState(false);
+    const [open, setOpen] = useState(false);
 
     if (failed) {
         return <FileAttachment attachment={attachment} />;
@@ -83,11 +85,16 @@ function ImageAttachment({ attachment }: { attachment: MessageAttachment }) {
 
     return (
         <div className="relative w-fit max-w-full">
-            <a
-                href={attachment.url}
-                target="_blank"
-                rel="noreferrer"
-                className="block overflow-hidden rounded-lg border"
+            {/*
+                A button rather than a link to the file: clicking a picture in a
+                conversation means "let me look at it", not "take me away from
+                this page". The download button in the corner is the other
+                intention, and it stays a link.
+            */}
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="block overflow-hidden rounded-lg border focus-visible:ring-2 focus-visible:outline-none"
             >
                 <img
                     src={attachment.previewUrl ?? attachment.url}
@@ -96,8 +103,19 @@ function ImageAttachment({ attachment }: { attachment: MessageAttachment }) {
                     onError={() => setFailed(true)}
                     className="max-h-80 w-auto max-w-full object-contain"
                 />
-            </a>
+            </button>
             <DownloadOverlay attachment={attachment} />
+
+            {open && (
+                <ImageLightbox
+                    // The original here, not the preview: the whole point of
+                    // opening it is to see more than the conversation showed.
+                    src={attachment.url}
+                    alt={attachment.name}
+                    downloadUrl={downloadUrl(attachment)}
+                    onClose={() => setOpen(false)}
+                />
+            )}
         </div>
     );
 }
