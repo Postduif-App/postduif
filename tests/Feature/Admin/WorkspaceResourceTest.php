@@ -2,7 +2,9 @@
 
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\WorkspaceRole;
+use App\Features\Tickets;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
+use App\Filament\Resources\Workspaces\Pages\EditWorkspaceFeatures;
 use App\Filament\Resources\Workspaces\Pages\ListWorkspaces;
 use App\Filament\Resources\Workspaces\RelationManagers\ChannelsRelationManager;
 use App\Filament\Resources\Workspaces\RelationManagers\MembersRelationManager;
@@ -119,4 +121,44 @@ test('it keeps an ordinary user out of the workspace list', function () {
     $this->actingAs(User::factory()->create())
         ->get('/admin/workspaces')
         ->assertForbidden();
+});
+
+test('it shows a moderator which features a workspace offers', function () {
+    $workspace = Workspace::factory()->create();
+
+    Livewire::test(EditWorkspaceFeatures::class, ['record' => $workspace->getRouteKey()])
+        ->assertSchemaStateSet([
+            'tickets' => true,
+            // Off until somebody says otherwise, which is the whole reason it
+            // is worth showing here.
+            'ai-access' => false,
+        ]);
+});
+
+test('it switches a feature off for one workspace', function () {
+    $workspace = Workspace::factory()->create();
+    $other = Workspace::factory()->create();
+
+    Livewire::test(EditWorkspaceFeatures::class, ['record' => $workspace->getRouteKey()])
+        ->fillForm(['tickets' => false])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($workspace->hasFeature(Tickets::class))->toBeFalse()
+        // And nobody else's, which is the point of the scope.
+        ->and($other->hasFeature(Tickets::class))->toBeTrue();
+});
+
+/**
+ * Every field on this page is a feature, so saving must not touch the record
+ * itself — a form that quietly rewrote the name would be a nasty surprise.
+ */
+test('it leaves the workspace record alone when saving features', function () {
+    $workspace = Workspace::factory()->create(['name' => 'Bouwbedrijf Jansen']);
+
+    Livewire::test(EditWorkspaceFeatures::class, ['record' => $workspace->getRouteKey()])
+        ->fillForm(['webhooks' => false])
+        ->call('save');
+
+    expect($workspace->fresh()->name)->toBe('Bouwbedrijf Jansen');
 });

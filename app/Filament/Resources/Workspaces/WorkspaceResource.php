@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Workspaces;
 
 use App\Filament\Resources\Workspaces\Pages\CreateWorkspace;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
+use App\Filament\Resources\Workspaces\Pages\EditWorkspaceFeatures;
 use App\Filament\Resources\Workspaces\Pages\ListWorkspaces;
 use App\Filament\Resources\Workspaces\Pages\ViewWorkspace;
 use App\Filament\Resources\Workspaces\RelationManagers\ChannelsRelationManager;
@@ -13,6 +14,8 @@ use App\Filament\Resources\Workspaces\Schemas\WorkspaceInfolist;
 use App\Filament\Resources\Workspaces\Tables\WorkspacesTable;
 use App\Models\Workspace;
 use BackedEnum;
+use Filament\Navigation\NavigationItem;
+use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -65,6 +68,21 @@ class WorkspaceResource extends Resource
         ];
     }
 
+    /**
+     * The pages that belong to one workspace, as a menu beside it. Without
+     * this, the features page would exist at a URL nobody can reach.
+     *
+     * @return array<int, NavigationItem>
+     */
+    public static function getRecordSubNavigation(Page $page): array
+    {
+        return $page->generateNavigationItems([
+            ViewWorkspace::class,
+            EditWorkspace::class,
+            EditWorkspaceFeatures::class,
+        ]);
+    }
+
     public static function getPages(): array
     {
         return [
@@ -72,6 +90,7 @@ class WorkspaceResource extends Resource
             'create' => CreateWorkspace::route('/create'),
             'view' => ViewWorkspace::route('/{record}'),
             'edit' => EditWorkspace::route('/{record}/edit'),
+            'features' => EditWorkspaceFeatures::route('/{record}/features'),
         ];
     }
 }
