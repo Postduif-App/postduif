@@ -2,7 +2,17 @@ import { router } from '@inertiajs/react';
 import { AlertTriangle, CalendarClock, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { fromLocalInput, toLocalInput } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import {
@@ -97,6 +107,7 @@ function ScheduledRow({
     scheduled: ScheduledMessage;
 }) {
     const [editing, setEditing] = useState(false);
+    const [confirming, setConfirming] = useState(false);
     const [body, setBody] = useState(scheduled.body);
     const [sendAt, setSendAt] = useState(toLocalInput(scheduled.sendAt));
 
@@ -204,11 +215,7 @@ function ScheduledRow({
                     </button>
                     <button
                         type="button"
-                        onClick={() =>
-                            router.delete(destroyScheduled.url(target), {
-                                preserveScroll: true,
-                            })
-                        }
+                        onClick={() => setConfirming(true)}
                         aria-label="Intrekken"
                         title="Intrekken"
                         className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
@@ -217,6 +224,48 @@ function ScheduledRow({
                     </button>
                 </div>
             )}
+
+            {/*
+                Asked before it happens, unlike deleting a message you already
+                sent: this one was never said, so there is no copy of it
+                anywhere — not in somebody's mail, not on a screen. Clicking
+                the wrong row means the words are simply gone.
+            */}
+            <AlertDialog
+                open={confirming}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        setConfirming(false);
+                    }
+                }}
+            >
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            Dit ingeplande bericht intrekken?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Het gaat niet meer uit en de tekst is weg. Het is
+                            nog nergens gezegd, dus er blijft niets van over.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogAction
+                            className={buttonVariants({
+                                variant: 'destructive',
+                            })}
+                            onClick={() =>
+                                router.delete(destroyScheduled.url(target), {
+                                    preserveScroll: true,
+                                })
+                            }
+                        >
+                            Intrekken
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </li>
     );
 }
