@@ -51,6 +51,7 @@ class DirectMessageController extends Controller
                 'id' => $candidate->id,
                 'name' => $candidate->name,
                 'username' => $candidate->username,
+                'avatarUrl' => $candidate->avatarUrl(),
                 'isGuest' => WorkspaceRole::from($candidate->membership->role)->isGuest(),
                 'statusEmoji' => $candidate->status_emoji,
                 'statusText' => $candidate->status_text,

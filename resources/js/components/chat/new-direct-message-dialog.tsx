@@ -144,9 +144,17 @@ export function NewDirectMessageDialog({
                                 onClick={() => start(member)}
                                 className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-muted disabled:opacity-60"
                             >
-                                <span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-[11px] font-semibold">
-                                    {getInitials(member.name)}
-                                </span>
+                                {member.avatarUrl ? (
+                                    <img
+                                        src={member.avatarUrl}
+                                        alt=""
+                                        className="size-7 shrink-0 rounded object-cover"
+                                    />
+                                ) : (
+                                    <span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-[11px] font-semibold">
+                                        {getInitials(member.name)}
+                                    </span>
+                                )}
                                 <span className="min-w-0 flex-1">
                                     <span className="flex items-center gap-1.5">
                                         <span className="truncate text-sm font-medium">

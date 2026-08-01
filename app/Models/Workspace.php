@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string|null $avatar_path
  * @property BroadcastMentionPolicy $broadcast_mentions
  * @property ChannelCreationPolicy $channel_creation
  * @property array<int, string> $blocked_words
@@ -120,6 +121,17 @@ class Workspace extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Where this workspace's logo can be fetched, or null when it has none.
+     *
+     * Stored as a column and a file rather than through the media library —
+     * see the users migration for the type clash that rules that out.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path === null ? null : route('avatars.workspace', $this);
     }
 
     public function getRouteKeyName(): string

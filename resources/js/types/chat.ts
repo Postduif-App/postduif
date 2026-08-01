@@ -6,6 +6,8 @@ export interface ChatWorkspace {
     id: number;
     name: string;
     slug: string;
+    /** The workspace's logo, or null — then its first letter stands in. */
+    avatarUrl: string | null;
     /** Whether this member may use @here and @everyone. */
     canBroadcastMention: boolean;
     canManage: boolean;

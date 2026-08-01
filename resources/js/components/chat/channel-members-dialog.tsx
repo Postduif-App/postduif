@@ -65,9 +65,18 @@ function MemberRow({
             )}
         >
             <span className="relative shrink-0">
-                <span className="flex size-7 items-center justify-center rounded bg-muted text-[11px] font-semibold">
-                    {getInitials(member.name)}
-                </span>
+                {/* The face when there is one, initials when there is not. */}
+                {member.avatarUrl ? (
+                    <img
+                        src={member.avatarUrl}
+                        alt=""
+                        className="size-7 rounded object-cover"
+                    />
+                ) : (
+                    <span className="flex size-7 items-center justify-center rounded bg-muted text-[11px] font-semibold">
+                        {getInitials(member.name)}
+                    </span>
+                )}
                 <AvailabilityDot
                     availability={member.availability}
                     className="absolute -right-0.5 -bottom-0.5"

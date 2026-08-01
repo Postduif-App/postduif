@@ -98,6 +98,9 @@ class BuildChatShell
             'id' => $workspace->id,
             'name' => $workspace->name,
             'slug' => $workspace->slug,
+            // The logo beside the name in the sidebar, or null when none is
+            // set — then the first letter stands in.
+            'avatarUrl' => $workspace->avatarUrl(),
             // Drives whether the composer offers @here and @everyone at all:
             // better to hide them than to let someone pick one and have it
             // quietly notify nobody.

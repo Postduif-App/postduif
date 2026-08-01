@@ -3,6 +3,7 @@
 namespace App\Actions\Users;
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -15,7 +16,11 @@ class StoreAvatar
     private const SIZE = 256;
 
     /**
-     * Take somebody's photo, square it, and put it away.
+     * Take a picture, square it, and put it away.
+     *
+     * One action for a member and for a workspace: the storing is the same
+     * question — crop, shrink, replace what was there — and only who may ask it
+     * differs, which is the controllers' business.
      *
      * Resized on the way in rather than on the way out. An avatar is drawn
      * dozens of times on a page, and serving a four-megabyte original each time
@@ -26,11 +31,12 @@ class StoreAvatar
      * circle or a square, and a photo with bars down the side looks broken
      * rather than considerate.
      */
-    public function handle(User $user, UploadedFile $file): void
+    public function handle(User|Workspace $owner, UploadedFile $file): void
     {
-        $previous = $user->avatar_path;
+        $previous = $owner->avatar_path;
 
-        $path = 'avatars/'.$user->id.'/'.Str::random(24).'.webp';
+        $folder = $owner instanceof User ? 'users' : 'workspaces';
+        $path = 'avatars/'.$folder.'/'.$owner->id.'/'.Str::random(24).'.webp';
 
         // Converted in place in the upload's temporary file: it is going to be
         // read once and written once either way.
@@ -41,7 +47,7 @@ class StoreAvatar
 
         Storage::disk('local')->put($path, (string) file_get_contents($file->getRealPath()));
 
-        $user->forceFill(['avatar_path' => $path])->save();
+        $owner->forceFill(['avatar_path' => $path])->save();
 
         /*
          * The old file goes only after the new one is stored and pointed at.
@@ -53,15 +59,15 @@ class StoreAvatar
         }
     }
 
-    /** Take the face away, file and all. */
-    public function remove(User $user): void
+    /** Take the picture away, file and all. */
+    public function remove(User|Workspace $owner): void
     {
-        if ($user->avatar_path === null) {
+        if ($owner->avatar_path === null) {
             return;
         }
 
-        Storage::disk('local')->delete($user->avatar_path);
+        Storage::disk('local')->delete($owner->avatar_path);
 
-        $user->forceFill(['avatar_path' => null])->save();
+        $owner->forceFill(['avatar_path' => null])->save();
     }
 }

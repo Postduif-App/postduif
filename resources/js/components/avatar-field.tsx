@@ -19,9 +19,16 @@ import { destroy, store } from '@/routes/avatar';
 export function AvatarField({
     name,
     avatarUrl,
+    uploadUrl,
+    removeUrl,
+    hint = 'png, jpg, gif of webp, tot 2 MB. Wordt bijgesneden tot een vierkant.',
 }: {
     name: string;
     avatarUrl: string | null;
+    /** Defaults to the signed-in member's own; a workspace passes its own. */
+    uploadUrl?: string;
+    removeUrl?: string;
+    hint?: string;
 }) {
     const getInitials = useInitials();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +63,7 @@ export function AvatarField({
 
                             setBusy(true);
                             router.post(
-                                store.url(),
+                                uploadUrl ?? store.url(),
                                 { avatar: file },
                                 {
                                     preserveScroll: true,
@@ -85,7 +92,7 @@ export function AvatarField({
                             disabled={busy}
                             onClick={() => {
                                 setBusy(true);
-                                router.delete(destroy.url(), {
+                                router.delete(removeUrl ?? destroy.url(), {
                                     preserveScroll: true,
                                     onFinish: () => setBusy(false),
                                 });
@@ -97,10 +104,7 @@ export function AvatarField({
                     )}
                 </div>
 
-                <p className="text-xs text-muted-foreground">
-                    png, jpg, gif of webp, tot 2 MB. Wordt bijgesneden tot een
-                    vierkant.
-                </p>
+                <p className="text-xs text-muted-foreground">{hint}</p>
             </div>
         </div>
     );

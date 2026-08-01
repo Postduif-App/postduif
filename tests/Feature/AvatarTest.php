@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\WorkspaceRole;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -121,4 +122,64 @@ it('is not reachable while signed out', function () {
     $user = User::factory()->create();
 
     $this->get(route('avatars.user', $user))->assertRedirect(route('login'));
+});
+
+it('stores a logo for the workspace', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+
+    actingAs($user)
+        ->post(route('workspace.avatar.store'), [
+            'avatar' => UploadedFile::fake()->image('logo.png', 800, 400),
+        ])
+        ->assertRedirect();
+
+    expect($workspace->fresh()->avatar_path)->not->toBeNull();
+});
+
+/** Setting it is for whoever runs the workspace, not for everybody in it. */
+it('refuses a plain member setting the logo', function () {
+    $user = User::factory()->create();
+    workspaceWithMember($user, WorkspaceRole::Member);
+
+    actingAs($user)
+        ->post(route('workspace.avatar.store'), [
+            'avatar' => UploadedFile::fake()->image('logo.png'),
+        ])
+        ->assertForbidden();
+});
+
+/**
+ * Membership is the rule here, one step narrower than a face: sharing some
+ * other workspace says nothing about belonging to this one.
+ */
+it('shows the logo to members and to nobody else', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+
+    actingAs($user)->post(route('workspace.avatar.store'), [
+        'avatar' => UploadedFile::fake()->image('logo.png'),
+    ]);
+
+    actingAs($user)->get(route('avatars.workspace', $workspace))->assertOk();
+
+    actingAs(User::factory()->create())
+        ->get(route('avatars.workspace', $workspace))
+        ->assertNotFound();
+});
+
+it('takes the logo away again', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+
+    actingAs($user)->post(route('workspace.avatar.store'), [
+        'avatar' => UploadedFile::fake()->image('logo.png'),
+    ]);
+
+    $path = $workspace->fresh()->avatar_path;
+
+    actingAs($user)->delete(route('workspace.avatar.destroy'))->assertRedirect();
+
+    expect($workspace->fresh()->avatar_path)->toBeNull()
+        ->and(Storage::disk('local')->exists($path))->toBeFalse();
 });

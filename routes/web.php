@@ -38,6 +38,10 @@ Route::get('avatars/users/{user}', AvatarController::class)
     ->middleware(['auth', 'verified'])
     ->name('avatars.user');
 
+Route::get('avatars/workspaces/{workspace}', [AvatarController::class, 'workspace'])
+    ->middleware(['auth', 'verified'])
+    ->name('avatars.workspace');
+
 // Order matters: settings claims /app/settings before chat.php registers the
 // /app/{workspace} wildcard that would otherwise match it.
 require __DIR__.'/settings.php';

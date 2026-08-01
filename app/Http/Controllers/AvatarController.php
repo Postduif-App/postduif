@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -18,6 +19,20 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class AvatarController extends Controller
 {
+    /**
+     * A workspace's own logo.
+     *
+     * Membership is the rule, one step narrower than a member's face: sharing
+     * some other workspace with somebody says nothing about whether you belong
+     * to this one.
+     */
+    public function workspace(Request $request, Workspace $workspace): StreamedResponse
+    {
+        abort_unless($workspace->hasMember($request->user()), 404);
+
+        return $this->stream($workspace->avatar_path);
+    }
+
     public function __invoke(Request $request, User $user): StreamedResponse
     {
         $viewer = $request->user();
@@ -32,14 +47,22 @@ class AvatarController extends Controller
             404,
         );
 
-        $path = $user->avatar_path;
+        return $this->stream($user->avatar_path);
+    }
 
+    /**
+     * The stored square, or nothing.
+     *
+     * Cached briefly and privately: a face does not change often and this is
+     * requested many times per page, but the answer differs per viewer so a
+     * shared cache must not hold it.
+     */
+    private function stream(?string $path): StreamedResponse
+    {
         abort_if($path === null || ! Storage::disk('local')->exists($path), 404);
 
         return Storage::disk('local')->response($path, null, [
             'Content-Type' => 'image/webp',
-            // A face does not change often and this is requested many times per
-            // page. Private, because the answer differs per viewer.
             'Cache-Control' => 'private, max-age=300',
             'X-Content-Type-Options' => 'nosniff',
         ]);

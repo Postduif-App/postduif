@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { clearDraft, readDraft, saveDraft } from '@/lib/composer-draft';
+import {
+    clearDraft,
+    readDraft,
+    readDraftOnServer,
+    saveDraft,
+    subscribeToDraft,
+} from '@/lib/composer-draft';
 
 /**
  * The suite runs in node, which has neither a window nor a localStorage. Both
@@ -61,5 +67,39 @@ describe('composer drafts', () => {
         clearDraft('werkruimte:1');
 
         expect(readDraft('werkruimte:1')).toBe('');
+    });
+
+    /**
+     * The server has no storage. Rendering a filled field there and an empty
+     * one in the browser is what React refuses to hydrate.
+     */
+    it('renders empty on the server', () => {
+        saveDraft('werkruimte:1', 'iets');
+
+        expect(readDraftOnServer()).toBe('');
+    });
+
+    it('tells one conversation about its own changes and no others', () => {
+        let mine = 0;
+        let theirs = 0;
+
+        const stopMine = subscribeToDraft('werkruimte:1', () => mine++);
+        const stopTheirs = subscribeToDraft('werkruimte:2', () => theirs++);
+
+        saveDraft('werkruimte:1', 'hallo');
+
+        expect(mine).toBe(1);
+        expect(theirs).toBe(0);
+
+        stopMine();
+        stopTheirs();
+    });
+
+    /** A composer with nothing to remember still needs somewhere to type. */
+    it('keeps an ephemeral draft out of storage', () => {
+        saveDraft('ephemeral:abc', 'een opmerking');
+
+        expect(readDraft('ephemeral:abc')).toBe('een opmerking');
+        expect(localStorage.length).toBe(0);
     });
 });

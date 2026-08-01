@@ -45,6 +45,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * Your own face. Only ever your own — an avatar is how somebody chooses to
      * appear, and nobody else gets to choose it for them.
      */
+    Route::post('app/settings/workspace/avatar', [WorkspaceController::class, 'storeAvatar'])
+        ->name('workspace.avatar.store');
+    Route::delete('app/settings/workspace/avatar', [WorkspaceController::class, 'destroyAvatar'])
+        ->name('workspace.avatar.destroy');
+
     Route::post('app/settings/avatar', [AvatarController::class, 'store'])->name('avatar.store');
     Route::delete('app/settings/avatar', [AvatarController::class, 'destroy'])->name('avatar.destroy');
 

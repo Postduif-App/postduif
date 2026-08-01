@@ -41,6 +41,7 @@ class ChannelMemberController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'username' => $user->username,
+                'avatarUrl' => $user->avatarUrl(),
                 // Adding somebody from outside to a channel is a different
                 // decision from adding a colleague, so say which one this is
                 // before the click rather than after.

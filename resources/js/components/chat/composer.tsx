@@ -9,13 +9,25 @@ import {
     Square,
     X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/hooks/use-initials';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
-import { readDraft, saveDraft } from '@/lib/composer-draft';
+import {
+    readDraft,
+    readDraftOnServer,
+    saveDraft,
+    subscribeToDraft,
+} from '@/lib/composer-draft';
 import { EMOJI_GROUPS } from '@/lib/emoji';
 import { cn } from '@/lib/utils';
 import type {
@@ -236,22 +248,34 @@ export function Composer({
     onTyping,
 }: ComposerProps) {
     /*
-     * Restored through the initialiser rather than in an effect: this runs once
-     * on mount, which is exactly when a draft should come back, and setting
-     * state from an effect is a render the component did not need.
+     * The draft is the field.
+     *
+     * Read from an external store rather than held in component state: the
+     * value lives in the browser's storage, which the server cannot see, so
+     * reading it while rendering would put a filled field in one tree and an
+     * empty one in the other — which React refuses to hydrate.
+     * useSyncExternalStore is the shape React provides for exactly that, and it
+     * is what use-appearance in this project already uses.
+     *
+     * A composer with no draftKey gets a store too, keyed to this instance and
+     * kept in memory only: one shape for both, rather than two code paths that
+     * behave subtly differently.
      */
-    const [body, setBody] = useState(() =>
-        draftKey === undefined ? '' : readDraft(draftKey),
+    const instanceKey = useId();
+    const key = draftKey ?? `ephemeral:${instanceKey}`;
+
+    const body = useSyncExternalStore(
+        useCallback(
+            (callback: () => void) => subscribeToDraft(key, callback),
+            [key],
+        ),
+        useCallback(() => readDraft(key), [key]),
+        readDraftOnServer,
     );
 
-    /** Type into the field, and remember it for next time. */
-    const write = (value: string) => {
-        setBody(value);
+    /** Type into the field. The store is what the field shows. */
+    const write = (value: string) => saveDraft(key, value);
 
-        if (draftKey !== undefined) {
-            saveDraft(draftKey, value);
-        }
-    };
     const [active, setActive] = useState<ActiveTrigger | null>(null);
     const [highlighted, setHighlighted] = useState(0);
     /**

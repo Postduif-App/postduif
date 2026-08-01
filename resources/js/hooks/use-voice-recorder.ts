@@ -36,9 +36,16 @@ function supported(): boolean {
 }
 
 export function useVoiceRecorder(): VoiceRecorder {
-    const [state, setState] = useState<RecorderState>(
-        supported() ? 'idle' : 'unavailable',
-    );
+    /*
+     * Starts as 'idle' on both sides, deliberately.
+     *
+     * Asking whether MediaRecorder exists during the first render is a
+     * server/client branch: the server has no window, so it would render one
+     * tree and the browser another, and React refuses to hydrate that. Support
+     * is found out when somebody presses record, which is the only moment it
+     * matters anyway.
+     */
+    const [state, setState] = useState<RecorderState>('idle');
     const [seconds, setSeconds] = useState(0);
 
     const recorderRef = useRef<MediaRecorder | null>(null);
@@ -69,6 +76,13 @@ export function useVoiceRecorder(): VoiceRecorder {
 
     const start = async () => {
         if (state !== 'idle') {
+            return;
+        }
+
+        // Checked here rather than on mount: see the state above.
+        if (!supported()) {
+            setState('unavailable');
+
             return;
         }
 

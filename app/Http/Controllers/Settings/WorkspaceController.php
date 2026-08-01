@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Users\StoreAvatar;
 use App\Concerns\ResolvesCurrentWorkspace;
+use App\Enums\AttachmentType;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class WorkspaceController extends Controller
             'workspace' => [
                 'name' => $workspace->name,
                 'slug' => $workspace->slug,
+                'avatarUrl' => $workspace->avatarUrl(),
             ],
         ]);
     }
@@ -47,5 +50,48 @@ class WorkspaceController extends Controller
         $workspace->update($validated);
 
         return back()->with('status', 'Instellingen opgeslagen.');
+    }
+
+    /**
+     * The workspace's logo.
+     *
+     * Its own endpoints rather than a field on the form above: a picture is
+     * uploaded the moment it is chosen, and folding a file into a form that
+     * saves a name would make renaming the workspace re-upload the logo.
+     *
+     * currentWorkspace('manage') is the permission — the same one that opens
+     * this screen at all.
+     */
+    public function storeAvatar(Request $request, StoreAvatar $storeAvatar): RedirectResponse
+    {
+        $workspace = $this->currentWorkspace($request, 'manage');
+
+        $request->validate([
+            'avatar' => [
+                'required',
+                'image',
+                'max:2048',
+                // The image group, so an SVG cannot come in — a script in a
+                // costume, exactly as with attachments.
+                'mimetypes:'.implode(',', AttachmentType::Images->mimeTypes()),
+            ],
+        ], [
+            'avatar.mimetypes' => 'Kies een gewone afbeelding: png, jpg, gif of webp.',
+        ]);
+
+        $storeAvatar->handle($workspace, $request->file('avatar'));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logo opgeslagen.']);
+
+        return back();
+    }
+
+    public function destroyAvatar(Request $request, StoreAvatar $storeAvatar): RedirectResponse
+    {
+        $storeAvatar->remove($this->currentWorkspace($request, 'manage'));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logo verwijderd.']);
+
+        return back();
     }
 }

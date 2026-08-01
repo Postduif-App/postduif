@@ -233,7 +233,17 @@ function WorkspaceMenu({
     workspace: ChatWorkspace;
     onInvite: () => void;
 }) {
-    const badge = (
+    /*
+        The logo when there is one, the first two letters otherwise. Same square
+        either way, so the row does not shift the moment somebody uploads one.
+    */
+    const badge = workspace.avatarUrl ? (
+        <img
+            src={workspace.avatarUrl}
+            alt=""
+            className="size-7 shrink-0 rounded-md object-cover"
+        />
+    ) : (
         <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
             {workspace.name.slice(0, 2).toUpperCase()}
         </div>

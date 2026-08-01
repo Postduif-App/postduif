@@ -1,5 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 
+import { AvatarField } from '@/components/avatar-field';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -7,11 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { update } from '@/routes/workspace';
+import {
+    destroy as destroyAvatar,
+    store as storeAvatar,
+} from '@/routes/workspace/avatar';
 
 interface WorkspaceSettingsProps {
     workspace: {
         name: string;
         slug: string;
+        /** The logo, or null when none is set. */
+        avatarUrl: string | null;
     };
 }
 
@@ -27,6 +34,14 @@ export default function WorkspaceSettings({
                     variant="small"
                     title="Algemeen"
                     description={`Geldt voor iedereen in ${workspace.name}`}
+                />
+
+                <AvatarField
+                    name={workspace.name}
+                    avatarUrl={workspace.avatarUrl}
+                    uploadUrl={storeAvatar.url()}
+                    removeUrl={destroyAvatar.url()}
+                    hint="Het logo van deze workspace, zichtbaar voor iedereen die erin zit."
                 />
 
                 <Form {...update.form()} options={{ preserveScroll: true }}>

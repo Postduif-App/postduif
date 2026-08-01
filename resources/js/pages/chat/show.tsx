@@ -8,7 +8,7 @@ import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -177,6 +177,14 @@ export default function ChatShow({
         <DropdownMenu>
             <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
                 <Avatar className="size-8 shrink-0">
+                    {/*
+                        Above the fallback rather than instead of it: Radix
+                        draws the initials until the picture has loaded, and
+                        keeps them if it never does.
+                    */}
+                    {auth.avatarUrl && (
+                        <AvatarImage src={auth.avatarUrl} alt="" />
+                    )}
                     <AvatarFallback className="text-xs font-semibold">
                         {getInitials(auth.user.name)}
                     </AvatarFallback>
