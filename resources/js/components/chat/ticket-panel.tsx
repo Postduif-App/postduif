@@ -129,40 +129,108 @@ const PROPERTY_TRIGGER =
     'h-7 w-full justify-between border-transparent bg-transparent px-2 text-sm shadow-none transition-colors hover:bg-muted data-[state=open]:bg-muted [&>svg]:opacity-0 hover:[&>svg]:opacity-60 data-[state=open]:[&>svg]:opacity-60';
 
 /**
- * What the ticket says it is about, turned into a form.
+ * The title, edited where it is read.
  *
- * Title and description edit together rather than one at a time. They are one
- * sentence split over two fields — a title corrected without its description is
- * how a ticket ends up contradicting itself — and the server takes both in a
- * single patch anyway.
- *
- * No Enter-to-save here, unlike the message editor: a description is written in
- * paragraphs, and a key that submits halfway through the second one loses the
- * rest.
+ * Enter saves, unlike the description below: a title is one line, so there is
+ * no second paragraph for a submitting key to cut off. Blur saves too — having
+ * clicked away from a one-line field, being told the change was thrown away is
+ * not a thing anybody wants to hear.
  */
-function TicketDescriptionEditor({
+function TicketTitleEditor({
     title,
-    body,
+    number,
     onSave,
     onCancel,
 }: {
     title: string;
-    body: string;
-    onSave: (title: string, body: string) => void;
+    /** Shown beside the field, so the ticket stays identifiable while editing. */
+    number: number;
+    onSave: (title: string) => void;
     onCancel: () => void;
 }) {
-    const [draftTitle, setDraftTitle] = useState(title);
+    const [draft, setDraft] = useState(title);
+    const ref = useRef<HTMLInputElement>(null);
+
+    // Mount only, and selected rather than placed at the end: renaming usually
+    // means replacing the whole thing, not appending to it.
+    useEffect(() => {
+        ref.current?.focus();
+        ref.current?.select();
+    }, []);
+
+    const save = () => {
+        const trimmed = draft.trim();
+
+        // An empty title is not a correction, it is a ticket nobody can find
+        // again. Treated as never having been made.
+        if (trimmed === '') {
+            onCancel();
+
+            return;
+        }
+
+        onSave(trimmed);
+    };
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+                #{number}
+            </span>
+            <Input
+                ref={ref}
+                value={draft}
+                maxLength={160}
+                aria-label="Titel"
+                onChange={(event) => setDraft(event.target.value)}
+                onBlur={save}
+                onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        save();
+                    }
+
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        onCancel();
+                    }
+                }}
+                className="h-7 text-sm font-semibold"
+            />
+        </div>
+    );
+}
+
+/**
+ * The description, turned into a form.
+ *
+ * The title is not here. It is edited where it is read — in the header — so
+ * correcting a typo in it does not mean opening the description and being asked
+ * about that too.
+ *
+ * No Enter-to-save, unlike the title and the message editor: a description is
+ * written in paragraphs, and a key that submits halfway through the second one
+ * loses the rest.
+ */
+function TicketDescriptionEditor({
+    body,
+    onSave,
+    onCancel,
+}: {
+    body: string;
+    onSave: (body: string) => void;
+    onCancel: () => void;
+}) {
     const [draftBody, setDraftBody] = useState(body);
-    const titleRef = useRef<HTMLInputElement>(null);
+    const bodyRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        titleRef.current?.focus();
-        titleRef.current?.setSelectionRange(title.length, title.length);
+        bodyRef.current?.focus();
+        bodyRef.current?.setSelectionRange(body.length, body.length);
         // Mount only: re-running this would fight the caret on every keystroke.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const trimmedTitle = draftTitle.trim();
     const trimmedBody = draftBody.trim();
 
     return (
@@ -175,15 +243,8 @@ function TicketDescriptionEditor({
                 }
             }}
         >
-            <Input
-                ref={titleRef}
-                value={draftTitle}
-                maxLength={160}
-                aria-label="Titel"
-                onChange={(event) => setDraftTitle(event.target.value)}
-                className="text-sm font-medium"
-            />
             <textarea
+                ref={bodyRef}
                 value={draftBody}
                 rows={5}
                 maxLength={4000}
@@ -194,8 +255,8 @@ function TicketDescriptionEditor({
             <div className="flex items-center gap-2">
                 <Button
                     size="sm"
-                    disabled={trimmedTitle === '' || trimmedBody === ''}
-                    onClick={() => onSave(trimmedTitle, trimmedBody)}
+                    disabled={trimmedBody === ''}
+                    onClick={() => onSave(trimmedBody)}
                 >
                     Opslaan
                 </Button>
@@ -219,6 +280,7 @@ export function TicketPanel({
 }: TicketPanelProps) {
     const [sending, setSending] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [editingTitle, setEditingTitle] = useState(false);
 
     const target = {
         workspace: workspace.slug,
@@ -256,10 +318,44 @@ export function TicketPanel({
     return (
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
-                <div className="min-w-0">
-                    <h2 className="truncate text-sm font-semibold">
-                        #{ticket.number} {ticket.title}
-                    </h2>
+                <div className="min-w-0 flex-1">
+                    {editingTitle ? (
+                        <TicketTitleEditor
+                            title={ticket.title}
+                            number={ticket.number}
+                            onCancel={() => setEditingTitle(false)}
+                            onSave={(title) => {
+                                setEditingTitle(false);
+
+                                if (title !== ticket.title) {
+                                    patch({ title });
+                                }
+                            }}
+                        />
+                    ) : (
+                        <h2 className="group/title flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                            <span className="truncate">
+                                #{ticket.number} {ticket.title}
+                            </span>
+
+                            {/*
+                                Edited where it is read. Reaching a title
+                                through the description meant being asked about
+                                the description too, every time a word in the
+                                title was wrong.
+                            */}
+                            {ticket.canEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingTitle(true)}
+                                    aria-label="Titel aanpassen"
+                                    className="shrink-0 opacity-0 transition-opacity group-hover/title:opacity-60 hover:opacity-100 focus-visible:opacity-100"
+                                >
+                                    <Pencil className="size-3" />
+                                </button>
+                            )}
+                        </h2>
+                    )}
                     <p className="truncate text-xs text-muted-foreground">
                         {ticket.opener?.name ?? 'Onbekend'}
                         {ticket.createdAt &&
@@ -461,25 +557,15 @@ export function TicketPanel({
                 </div>
 
                 <div className="border-b px-4 py-3">
-                    {/*
-                        The title is repeated here while editing, because the
-                        header truncates to one line: correcting a title in a
-                        field you cannot read the whole of is how a typo gets
-                        replaced by a different one.
-                    */}
                     {editing ? (
                         <TicketDescriptionEditor
-                            title={ticket.title}
                             body={ticket.body}
                             onCancel={() => setEditing(false)}
-                            onSave={(title, body) => {
+                            onSave={(body) => {
                                 setEditing(false);
 
-                                if (
-                                    title !== ticket.title ||
-                                    body !== ticket.body
-                                ) {
-                                    patch({ title, body });
+                                if (body !== ticket.body) {
+                                    patch({ body });
                                 }
                             }}
                         />
@@ -498,7 +584,7 @@ export function TicketPanel({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    aria-label="Titel en omschrijving aanpassen"
+                                    aria-label="Omschrijving aanpassen"
                                     onClick={() => setEditing(true)}
                                     className="size-7 shrink-0 opacity-0 transition-opacity group-hover/body:opacity-60 focus-visible:opacity-100"
                                 >

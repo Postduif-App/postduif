@@ -239,6 +239,47 @@ it('stays quiet in a channel that switched announcements off', function () {
     expect($channel->messages()->whereNotNull('bot_name')->count())->toBe(0);
 });
 
+/**
+ * The title on its own, which is how the panel sends it now: it is edited in
+ * the header where it is read, rather than by opening the description and being
+ * asked about that too.
+ */
+it('corrects only the title, leaving the description alone', function () {
+    [$member, , $workspace, $channel] = ticketFixture();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'opened_by' => $member->id,
+        'body' => 'De omschrijving blijft staan.',
+    ]);
+
+    actingAs($member)->patch(route('chat.tickets.update', [$workspace, $channel, $ticket]), [
+        'title' => 'Alleen de titel',
+    ])->assertRedirect();
+
+    $ticket->refresh();
+
+    expect($ticket->title)->toBe('Alleen de titel')
+        ->and($ticket->body)->toBe('De omschrijving blijft staan.');
+});
+
+it('corrects only the description, leaving the title alone', function () {
+    [$member, , $workspace, $channel] = ticketFixture();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'opened_by' => $member->id,
+        'title' => 'De titel blijft staan',
+    ]);
+
+    actingAs($member)->patch(route('chat.tickets.update', [$workspace, $channel, $ticket]), [
+        'body' => 'Alleen de omschrijving.',
+    ])->assertRedirect();
+
+    $ticket->refresh();
+
+    expect($ticket->body)->toBe('Alleen de omschrijving.')
+        ->and($ticket->title)->toBe('De titel blijft staan');
+});
+
 it('corrects the title and the description of a ticket', function () {
     [$member, , $workspace, $channel] = ticketFixture();
     $ticket = Ticket::factory()->create([
