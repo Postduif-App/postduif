@@ -130,6 +130,16 @@ class BuildChatShell
             'features' => $this->features($workspace),
 
             /*
+             * Whether the member list beside the conversation appears at all.
+             * One answer, worked out here: the setting has three states and a
+             * guest is outside all of them, and the browser should not be the
+             * place where a role gets interpreted.
+             */
+            'showsMemberPanel' => $workspace->member_panel->allows(
+                $workspace->roleFor($user),
+            ),
+
+            /*
              * Whether the composer shows a paperclip at all, and what it lets
              * through before the server gets a say.
              *

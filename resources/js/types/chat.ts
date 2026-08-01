@@ -26,6 +26,12 @@ export interface ChatWorkspace {
      */
     features: WorkspaceFeatures;
     /**
+     * Whether the member list beside the conversation appears. Already worked
+     * out against the setting and this member's role — the browser never sees
+     * the three states, only the answer.
+     */
+    showsMemberPanel: boolean;
+    /**
      * What the composer may send along with a message, or null when sharing is
      * switched off for this workspace.
      */

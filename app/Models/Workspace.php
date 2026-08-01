@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AttachmentType;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
+use App\Enums\MemberPanelVisibility;
 use App\Enums\WorkspaceAccent;
 use App\Enums\WorkspaceFont;
 use App\Enums\WorkspaceRole;
@@ -28,6 +29,7 @@ use Laravel\Pennant\Feature;
  * @property string|null $avatar_path
  * @property BroadcastMentionPolicy $broadcast_mentions
  * @property ChannelCreationPolicy $channel_creation
+ * @property MemberPanelVisibility $member_panel
  * @property array<int, string> $blocked_words
  * @property bool $uploads_enabled
  * @property array<int, string> $allowed_attachment_types
@@ -42,7 +44,7 @@ use Laravel\Pennant\Feature;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'slug', 'owner_id', 'broadcast_mentions', 'blocked_words', 'accent', 'font', 'channel_creation', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'link_previews_enabled'])]
+#[Fillable(['name', 'slug', 'owner_id', 'broadcast_mentions', 'blocked_words', 'accent', 'font', 'channel_creation', 'member_panel', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'link_previews_enabled'])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -58,6 +60,7 @@ class Workspace extends Model
     protected $attributes = [
         'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
         'channel_creation' => ChannelCreationPolicy::Everyone->value,
+        'member_panel' => MemberPanelVisibility::Off->value,
         'blocked_words' => '[]',
         'uploads_enabled' => true,
         'link_previews_enabled' => false,
@@ -72,6 +75,7 @@ class Workspace extends Model
         return [
             'broadcast_mentions' => BroadcastMentionPolicy::class,
             'channel_creation' => ChannelCreationPolicy::class,
+            'member_panel' => MemberPanelVisibility::class,
             'blocked_words' => 'array',
             'uploads_enabled' => 'boolean',
             'allowed_attachment_types' => 'array',

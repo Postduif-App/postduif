@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Workspaces\Schemas;
 
 use App\Enums\BroadcastMentionPolicy;
+use App\Enums\MemberPanelVisibility;
 use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
@@ -51,6 +52,14 @@ class WorkspaceForm
                             ->selectablePlaceholder(false)
                             ->required()
                             ->helperText('Bepaalt wie een mention mag plaatsen die het hele channel notificeert.'),
+
+                        Select::make('member_panel')
+                            ->label('Ledenlijst naast het gesprek')
+                            ->options(MemberPanelVisibility::class)
+                            ->default(MemberPanelVisibility::Off)
+                            ->selectablePlaceholder(false)
+                            ->required()
+                            ->helperText('Wie de lijst met workspaceleden en hun status te zien krijgt. Gasten nooit.'),
 
                         /**
                          * Normalised on the way in, so the matcher never has to
