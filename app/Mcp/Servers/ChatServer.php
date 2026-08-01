@@ -2,6 +2,9 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\FindChannelsTool;
+use App\Mcp\Tools\SearchMessagesTool;
+use App\Mcp\Tools\SendMessageTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -37,7 +40,9 @@ class ChatServer extends Server
      * @var array<int, class-string<Tool>>
      */
     protected array $tools = [
-        //
+        FindChannelsTool::class,
+        SearchMessagesTool::class,
+        SendMessageTool::class,
     ];
 
     /**
