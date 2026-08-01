@@ -262,6 +262,7 @@ export default function ChatShow({
                 <MemberPanel
                     members={workspaceMembers}
                     currentUserId={auth.user.id}
+                    workspaceSlug={workspace.slug}
                 />
             )}
 

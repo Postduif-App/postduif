@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import { useInitials } from '@/hooks/use-initials';
+import { useWorkspacePresence } from '@/hooks/use-workspace-presence';
 import { cn } from '@/lib/utils';
 import type { ChannelMember } from '@/types/chat';
 
@@ -16,16 +17,31 @@ import type { ChannelMember } from '@/types/chat';
 export function MemberPanel({
     members,
     currentUserId,
+    workspaceSlug,
 }: {
     members: ChannelMember[];
     currentUserId: number;
+    workspaceSlug: string;
 }) {
     const getInitials = useInitials();
     const [open, setOpen] = useState(true);
+    const present = useWorkspacePresence(workspaceSlug);
 
     if (members.length === 0) {
         return null;
     }
+
+    /*
+     * Whoever is here first, then by name. Sorted in the browser rather than on
+     * the server because presence changes by the second and the page does not:
+     * a member closing their laptop would otherwise leave the list claiming
+     * they are around until somebody reloads.
+     */
+    const sorted = [...members].sort((a, b) => {
+        const here = Number(present.has(b.id)) - Number(present.has(a.id));
+
+        return here !== 0 ? here : a.name.localeCompare(b.name, 'nl');
+    });
 
     return (
         <aside
@@ -54,7 +70,7 @@ export function MemberPanel({
 
             {open && (
                 <div className="flex-1 overflow-y-auto p-2">
-                    {members.map((member) => (
+                    {sorted.map((member) => (
                         <div
                             key={member.id}
                             className="flex items-center gap-2.5 rounded-md px-2 py-1.5"
@@ -71,13 +87,37 @@ export function MemberPanel({
                                         {getInitials(member.name)}
                                     </span>
                                 )}
-                                <AvailabilityDot
-                                    availability={member.availability}
-                                    className="absolute -right-0.5 -bottom-0.5"
-                                />
+                                {/*
+                                    Present but with nothing to say about
+                                    themselves gets a plain green dot;
+                                    AvailabilityDot draws nothing for plain
+                                    "available" precisely so it can be used
+                                    everywhere. Here being online IS the
+                                    information, so it needs its own mark.
+                                */}
+                                {present.has(member.id) &&
+                                member.availability === 'available' ? (
+                                    <span
+                                        title="Nu online"
+                                        className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-sidebar bg-emerald-500"
+                                    />
+                                ) : (
+                                    <AvailabilityDot
+                                        availability={member.availability}
+                                        className="absolute -right-0.5 -bottom-0.5"
+                                    />
+                                )}
                             </span>
 
-                            <span className="min-w-0 flex-1">
+                            <span
+                                className={cn(
+                                    'min-w-0 flex-1',
+                                    // Away rather than gone: still listed, so
+                                    // the count stays honest, but visibly not
+                                    // somebody to expect an answer from.
+                                    !present.has(member.id) && 'opacity-55',
+                                )}
+                            >
                                 <span className="flex items-center gap-1.5">
                                     <span className="truncate text-sm">
                                         {member.name}

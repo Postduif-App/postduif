@@ -142,3 +142,31 @@ it('refuses someone outside the workspace entirely', function () {
         ])
         ->assertForbidden();
 });
+
+it('authorises a member on the workspace presence channel', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+
+    actingAs($user)
+        ->post('/broadcasting/auth', [
+            'socket_id' => '123.456',
+            'channel_name' => 'presence-chat.workspace.'.$workspace->slug,
+        ])
+        ->assertOk();
+});
+
+/**
+ * The panel is a list of the workspace's members, so membership is the whole
+ * test — being able to read one channel in it is not a way onto the roster.
+ */
+it('refuses the workspace presence channel to somebody outside it', function () {
+    $outsider = User::factory()->create();
+    $workspace = workspaceWithMember(User::factory()->create());
+
+    actingAs($outsider)
+        ->post('/broadcasting/auth', [
+            'socket_id' => '123.456',
+            'channel_name' => 'presence-chat.workspace.'.$workspace->slug,
+        ])
+        ->assertForbidden();
+});
