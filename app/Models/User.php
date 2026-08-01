@@ -39,6 +39,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
+ * @property string|null $avatar_path
  * @property string|null $remember_token
  * @property-read WorkspaceMembership $membership The workspace membership this
  *     user was loaded through, on the relations that name it — see
@@ -52,6 +53,37 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * Where this person's face is stored, or null when they set none.
+     *
+     * A column and a file rather than the media library the attachments use,
+     * and the reason is a type clash worth writing down: that table keys
+     * model_id as a ULID because messages are ULID-keyed, and Postgres will not
+     * compare a varchar to a user's integer id. One file with no collection
+     * semantics does not need a library anyway.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path === null ? null : route('avatars.user', $this);
+    }
+
+    /**
+     * The face, under the name the frontend already draws.
+     *
+     * UserInfo has read `user.avatar` since the starter kit; nothing ever
+     * filled it. Filling it here is less code than a second field, and it makes
+     * the user menu show a photo without touching the component.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            ...parent::toArray(),
+            'avatar' => $this->avatarUrl(),
+        ];
+    }
 
     /**
      * Handles that address a whole group. Someone called "Here" must not end up

@@ -97,6 +97,8 @@ export interface ChannelMember {
     id: number;
     name: string;
     username: string;
+    /** Their face, or null when they set none — then initials stand in. */
+    avatarUrl: string | null;
     /** Somebody from outside, present only for the channels they were put in. */
     isGuest: boolean;
     /** What they said they are doing. Null when they said nothing. */
@@ -223,6 +225,8 @@ export interface MessageAuthor {
  * stay unable to hold a bot.
  */
 export interface MessageSender {
+    /** The sender's face, or null. Always null for a bot. */
+    avatarUrl: string | null;
     /**
      * Null when a webhook posted the message. Deliberately not a synthetic id:
      * this value gets compared against the signed-in member, and a bot must

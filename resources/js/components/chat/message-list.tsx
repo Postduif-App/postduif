@@ -32,7 +32,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     Tooltip,
     TooltipContent,
@@ -493,6 +493,18 @@ function MessageRow({
             ) : (
                 <div className="relative mt-0.5 shrink-0">
                     <Avatar className="size-9 rounded-md">
+                        {/*
+                            The image sits above the fallback rather than
+                            instead of it: Radix draws the initials until the
+                            picture has loaded, and keeps them if it never does.
+                        */}
+                        {message.author.avatarUrl && (
+                            <AvatarImage
+                                src={message.author.avatarUrl}
+                                alt=""
+                                className="rounded-md"
+                            />
+                        )}
                         <AvatarFallback
                             className={cn(
                                 'rounded-md text-xs font-semibold',

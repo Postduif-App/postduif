@@ -100,6 +100,7 @@ it('carries the same shape for a bot message as the page props', function () {
             'name' => 'Buildbot',
             'isBot' => true,
             'isGuest' => false,
+            'avatarUrl' => null,
         ]);
 });
 

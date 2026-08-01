@@ -1,6 +1,7 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import { AvatarField } from '@/components/avatar-field';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -35,6 +36,8 @@ export default function Profile({
                     title="Profiel"
                     description="Je naam en e-mailadres"
                 />
+
+                <AvatarField name={auth.user.name} avatarUrl={auth.avatarUrl} />
 
                 <Form
                     {...ProfileController.update.form()}

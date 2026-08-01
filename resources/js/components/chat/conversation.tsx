@@ -99,6 +99,8 @@ interface ConversationProps {
     bookmarkedIds: string[];
     currentUser: MessageAuthor;
     currentUsername?: string;
+    /** The signed-in member's own face, for the optimistic draft. */
+    currentUserAvatarUrl?: string | null;
     /** Marks the member's own optimistic drafts, so the badge does not appear
      *  only once the server echo lands. */
     currentUserIsGuest?: boolean;
@@ -216,6 +218,7 @@ export function Conversation({
     bookmarkedIds,
     currentUser,
     currentUsername,
+    currentUserAvatarUrl,
     currentUserIsGuest = false,
 }: ConversationProps) {
     const [pending, setPending] = useState<ChatMessage[]>([]);
@@ -417,6 +420,8 @@ export function Conversation({
                     ...currentUser,
                     isBot: false,
                     isGuest: currentUserIsGuest,
+                    // The page already knows this member's own face.
+                    avatarUrl: currentUserAvatarUrl ?? null,
                 },
                 // A message you type is your own; forwarding goes through its
                 // own endpoint and comes back from the server.
@@ -476,7 +481,13 @@ export function Conversation({
                 },
             );
         },
-        [channel.id, currentUser, currentUserIsGuest, workspace.slug],
+        [
+            channel.id,
+            currentUser,
+            currentUserAvatarUrl,
+            currentUserIsGuest,
+            workspace.slug,
+        ],
     );
 
     /**

@@ -24,6 +24,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /** The signed-in member's own face, or null when they set none. */
+    avatarUrl: string | null;
     /**
      * The workspace the settings screens act on, and the way back to the chat.
      * Null for somebody who belongs to none yet.

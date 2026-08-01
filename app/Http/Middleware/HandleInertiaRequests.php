@@ -51,6 +51,13 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                /*
+                 * Beside the user rather than appended to it: an appended
+                 * attribute rides along on every serialisation of a user,
+                 * including the admin panel's lists, and this is only ever
+                 * drawn for the signed-in member.
+                 */
+                'avatarUrl' => $request->user()?->avatarUrl(),
                 // The settings screens live inside the application rather than
                 // in a shell of their own, so they need to know which workspace
                 // you came from — for the way back, and to name the section.

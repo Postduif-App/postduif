@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\AvatarController;
 use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -40,6 +41,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * The tokens a member handed to an AI client. Their own screen: a token
      * acts as the person across every workspace they belong to.
      */
+    /*
+     * Your own face. Only ever your own — an avatar is how somebody chooses to
+     * appear, and nobody else gets to choose it for them.
+     */
+    Route::post('app/settings/avatar', [AvatarController::class, 'store'])->name('avatar.store');
+    Route::delete('app/settings/avatar', [AvatarController::class, 'destroy'])->name('avatar.destroy');
+
     Route::get('app/settings/mcp-tokens', [McpTokenController::class, 'index'])
         ->name('mcp-tokens.index');
     Route::post('app/settings/mcp-tokens', [McpTokenController::class, 'store'])

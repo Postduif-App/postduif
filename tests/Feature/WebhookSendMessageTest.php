@@ -60,6 +60,7 @@ it('presents a bot message with its bot name and no member id', function () {
         'name' => 'Buildbot',
         'isBot' => true,
         'isGuest' => false,
+        'avatarUrl' => null,
     ]);
 });
 
@@ -73,6 +74,7 @@ it('marks a message from a member as not being from a bot', function () {
         'name' => $first->name,
         'isBot' => false,
         'isGuest' => false,
+        'avatarUrl' => null,
     ]);
 });
 

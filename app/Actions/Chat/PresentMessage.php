@@ -174,7 +174,7 @@ class PresentMessage
      * from outside should be able to see that at a glance rather than having to
      * remember who was invited for what — the same reason a bot is labelled.
      *
-     * @return array{id: int|null, name: string, isBot: bool, isGuest: bool}
+     * @return array{id: int|null, name: string, isBot: bool, isGuest: bool, avatarUrl: string|null}
      */
     private function author(Message $message): array
     {
@@ -184,6 +184,8 @@ class PresentMessage
                 'name' => (string) $message->bot_name,
                 'isBot' => true,
                 'isGuest' => false,
+                // A bot has no face to set.
+                'avatarUrl' => null,
             ];
         }
 
@@ -192,6 +194,7 @@ class PresentMessage
             'name' => $message->author->name,
             'isBot' => false,
             'isGuest' => isset($this->guestsIn($message->workspace_id)[$message->author->id]),
+            'avatarUrl' => $message->author->avatarUrl(),
         ];
     }
 

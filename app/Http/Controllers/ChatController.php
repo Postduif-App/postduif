@@ -354,6 +354,7 @@ class ChatController extends Controller
                 'id' => $member->id,
                 'name' => $member->name,
                 'username' => $member->username,
+                'avatarUrl' => $member->avatarUrl(),
                 'isGuest' => $guestIds->has($member->id),
                 'statusEmoji' => $member->status_emoji,
                 'statusText' => $member->status_text,

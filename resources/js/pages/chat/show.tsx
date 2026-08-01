@@ -241,6 +241,7 @@ export default function ChatShow({
                 scheduled={scheduled}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
                 currentUsername={auth.user.username as string | undefined}
+                currentUserAvatarUrl={auth.avatarUrl}
                 currentUserIsGuest={auth.workspaceRole === 'guest'}
             />
 

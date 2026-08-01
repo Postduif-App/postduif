@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
 use App\Http\Controllers\SessionStatusController;
@@ -27,6 +28,15 @@ Route::get('join/{token}', [InviteLinkJoinController::class, 'show'])->name('inv
 Route::post('join/{token}', [InviteLinkJoinController::class, 'join'])
     ->middleware('throttle:10,1')
     ->name('invite-links.join');
+
+/*
+ * Somebody's face. Behind auth rather than on a public disk: this is a
+ * photograph of a person, and the controller asks whether the viewer shares a
+ * workspace with them.
+ */
+Route::get('avatars/users/{user}', AvatarController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('avatars.user');
 
 // Order matters: settings claims /app/settings before chat.php registers the
 // /app/{workspace} wildcard that would otherwise match it.
