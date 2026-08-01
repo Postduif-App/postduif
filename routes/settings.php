@@ -6,6 +6,7 @@ use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StatusController;
+use App\Http\Controllers\Settings\StatusRuleController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
@@ -52,6 +53,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('app/settings/avatar', [AvatarController::class, 'store'])->name('avatar.store');
     Route::delete('app/settings/avatar', [AvatarController::class, 'destroy'])->name('avatar.destroy');
+
+    /*
+     * The rules that set somebody's status for them. Their own screen and
+     * nobody else's: a status is what a person says about themselves.
+     */
+    Route::get('app/settings/status-rules', [StatusRuleController::class, 'index'])
+        ->name('status-rules.index');
+    Route::post('app/settings/status-rules', [StatusRuleController::class, 'store'])
+        ->name('status-rules.store');
+    Route::put('app/settings/status-rules/order', [StatusRuleController::class, 'reorder'])
+        ->name('status-rules.reorder');
+    Route::patch('app/settings/status-rules/{statusRule}', [StatusRuleController::class, 'update'])
+        ->name('status-rules.update');
+    Route::delete('app/settings/status-rules/{statusRule}', [StatusRuleController::class, 'destroy'])
+        ->name('status-rules.destroy');
 
     Route::get('app/settings/mcp-tokens', [McpTokenController::class, 'index'])
         ->name('mcp-tokens.index');

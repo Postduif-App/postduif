@@ -11,6 +11,7 @@ import { index as mcpTokens } from '@/routes/mcp-tokens';
 import { edit as editNotifications } from '@/routes/notifications';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
+import { index as statusRules } from '@/routes/status-rules';
 import { edit as editWorkspace } from '@/routes/workspace';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
@@ -57,6 +58,7 @@ export default function SettingsLayout({
                 { title: 'Beveiliging', href: editSecurity() },
                 { title: 'Notificaties', href: editNotifications() },
                 { title: 'Weergave', href: editAppearance() },
+                { title: 'Statusregels', href: statusRules() },
                 { title: 'AI-toegang', href: mcpTokens() },
             ],
         },
