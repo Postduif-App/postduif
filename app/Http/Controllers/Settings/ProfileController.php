@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use DateTimeZone;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,13 @@ class ProfileController extends Controller
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            /*
+             * Every zone PHP knows, which is also the set the validator accepts
+             * — one list, so the dropdown cannot offer something the rules
+             * would then refuse. Grouping happens in the browser, off the
+             * prefix, rather than being baked in here.
+             */
+            'timezones' => DateTimeZone::listIdentifiers(),
         ]);
     }
 

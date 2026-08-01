@@ -5,6 +5,7 @@ import { AvatarField } from '@/components/avatar-field';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { TimezoneField } from '@/components/timezone-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,9 +19,12 @@ type PageProps = {
 export default function Profile({
     mustVerifyEmail,
     status,
+    timezones,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
+    /** Every zone PHP knows — the same set the validator accepts. */
+    timezones: string[];
 }) {
     const { auth } = usePage<PageProps>().props;
 
@@ -86,6 +90,12 @@ export default function Profile({
                                     message={errors.email}
                                 />
                             </div>
+
+                            <TimezoneField
+                                timezones={timezones}
+                                value={auth.user.timezone}
+                                error={errors.timezone}
+                            />
 
                             {mustVerifyEmail &&
                                 auth.user.email_verified_at === null && (

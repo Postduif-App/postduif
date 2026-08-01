@@ -9,6 +9,8 @@ export type User = {
     id: number;
     name: string;
     email: string;
+    /** The zone repeating times are read in — see the profile settings. */
+    timezone: string;
     status_emoji: string | null;
     status_text: string | null;
     availability: Availability;

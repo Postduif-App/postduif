@@ -26,6 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $username
  * @property string $email
+ * @property string $timezone
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $admin_at
  * @property Carbon|null $suspended_at
@@ -49,7 +50,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'username', 'email', 'password'])]
+#[Fillable(['name', 'username', 'email', 'timezone', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'pushover_user_key'])]
 class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
@@ -98,6 +99,16 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
     public const RESERVED_HANDLES = ['here', 'everyone', 'channel', 'all'];
 
     /**
+     * Where somebody is until they say otherwise.
+     *
+     * The application stores moments in UTC and always will; this is the other
+     * question — which wall clock a repeating time means. A default is
+     * unavoidable, so it may as well be the one that is right for almost
+     * everybody here rather than one that is right for nobody.
+     */
+    public const DEFAULT_TIMEZONE = 'Europe/Amsterdam';
+
+    /**
      * The database defaults only apply on insert, so a model that was just made
      * still reads null for them. Declared here too, so every user has an
      * availability from the moment they exist.
@@ -105,6 +116,7 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'timezone' => self::DEFAULT_TIMEZONE,
         'availability' => Availability::Available->value,
         'recent_statuses' => '[]',
     ];
