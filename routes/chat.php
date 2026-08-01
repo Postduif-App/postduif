@@ -198,6 +198,10 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::get('c/{channel}/webhooks', [ChannelWebhookController::class, 'index'])->name('channels.webhooks.index');
                 Route::post('c/{channel}/webhooks', [ChannelWebhookController::class, 'store'])->name('channels.webhooks.store');
 
+                Route::patch('c/{channel}/webhooks/{webhook}', [ChannelWebhookController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('channels.webhooks.update');
+
                 Route::post('c/{channel}/webhooks/{webhook}/token', [ChannelWebhookController::class, 'regenerate'])
                     ->scopeBindings()
                     ->name('channels.webhooks.regenerate');

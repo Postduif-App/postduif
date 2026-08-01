@@ -279,3 +279,77 @@ it('refuses to replace the url of a webhook from another channel', function () {
         ->postJson(route('chat.channels.webhooks.regenerate', [$workspace, $channel, $elsewhere]))
         ->assertNotFound();
 });
+
+it('creates a webhook that reads its text from a path', function () {
+    [$user, , $workspace, $channel] = channelWithManagerAndMember();
+
+    actingAs($user)->postJson(route('chat.channels.webhooks.store', [$workspace, $channel]), [
+        'name' => 'GitHub',
+        'bot_name' => 'GitHub',
+        'body_path' => 'issue.title',
+    ])->assertCreated()
+        ->assertJsonPath('webhook.bodyPath', 'issue.title');
+
+    expect(Webhook::sole()->body_path)->toBe('issue.title');
+});
+
+it('points an existing webhook at a different part of the payload', function () {
+    [$user, , $workspace, $channel] = channelWithManagerAndMember();
+    $webhook = Webhook::factory()->for($channel)->create(['body_path' => null]);
+
+    actingAs($user)->patchJson(
+        route('chat.channels.webhooks.update', [$workspace, $channel, $webhook]),
+        [
+            'name' => $webhook->name,
+            'bot_name' => $webhook->bot_name,
+            'body_path' => 'payload.commits.0.message',
+        ],
+    )->assertOk();
+
+    expect($webhook->refresh()->body_path)->toBe('payload.commits.0.message');
+});
+
+/** Blank means the original contract, not a path that matches nothing. */
+it('reads an emptied path as no path at all', function () {
+    [$user, , $workspace, $channel] = channelWithManagerAndMember();
+    $webhook = Webhook::factory()->for($channel)->create(['body_path' => 'issue.title']);
+
+    actingAs($user)->patchJson(
+        route('chat.channels.webhooks.update', [$workspace, $channel, $webhook]),
+        ['name' => $webhook->name, 'bot_name' => $webhook->bot_name, 'body_path' => ''],
+    )->assertOk();
+
+    expect($webhook->refresh()->body_path)->toBeNull();
+});
+
+/**
+ * Caught here rather than at three in the morning, when the path it names has
+ * been quietly matching nothing for a week.
+ */
+it('refuses a path that is not a path', function () {
+    [$user, , $workspace, $channel] = channelWithManagerAndMember();
+
+    actingAs($user)->postJson(route('chat.channels.webhooks.store', [$workspace, $channel]), [
+        'name' => 'GitHub',
+        'bot_name' => 'GitHub',
+        'body_path' => 'issue title!',
+    ])->assertJsonValidationErrors('body_path');
+});
+
+it('refuses to change a webhook by somebody who may not manage the channel', function () {
+    [, , $workspace, $channel] = channelWithManagerAndMember();
+    $webhook = Webhook::factory()->for($channel)->create();
+
+    $outsider = User::factory()->create();
+    $workspace->members()->attach($outsider->id, [
+        'role' => WorkspaceRole::Member->value,
+        'joined_at' => now(),
+    ]);
+
+    actingAs($outsider)->patchJson(
+        route('chat.channels.webhooks.update', [$workspace, $channel, $webhook]),
+        ['name' => 'Gekaapt', 'bot_name' => 'Gekaapt', 'body_path' => null],
+    )->assertForbidden();
+
+    expect($webhook->refresh()->name)->not->toBe('Gekaapt');
+});

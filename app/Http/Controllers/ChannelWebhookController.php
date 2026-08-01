@@ -37,16 +37,14 @@ class ChannelWebhookController extends Controller
     {
         $this->authorizeChannel($request, $workspace, $channel);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:80'],
-            'bot_name' => ['required', 'string', 'max:80'],
-        ]);
+        $validated = $this->validated($request);
 
         $webhook = new Webhook([
             'workspace_id' => $channel->workspace_id,
             'channel_id' => $channel->id,
             'name' => $validated['name'],
             'bot_name' => $validated['bot_name'],
+            'body_path' => $validated['body_path'],
             'created_by' => $request->user()->id,
         ]);
 
@@ -60,6 +58,53 @@ class ChannelWebhookController extends Controller
             'token' => $token,
             'url' => route('webhooks.messages.store', $token),
         ], 201);
+    }
+
+    /**
+     * Change what a webhook is called and where it reads its text.
+     *
+     * Deliberately not the token: regenerating breaks whatever is currently
+     * posting, so it stays its own deliberate act next door.
+     */
+    public function update(
+        Request $request,
+        Workspace $workspace,
+        Channel $channel,
+        Webhook $webhook,
+    ): JsonResponse {
+        $this->authorizeChannel($request, $workspace, $channel);
+
+        $webhook->update($this->validated($request));
+
+        return response()->json(['webhook' => $this->present($webhook->load('creator'))]);
+    }
+
+    /**
+     * @return array{name: string, bot_name: string, body_path: string|null}
+     */
+    private function validated(Request $request): array
+    {
+        /** @var array{name: string, bot_name: string, body_path?: string|null} $validated */
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'bot_name' => ['required', 'string', 'max:80'],
+            /*
+             * Dot notation into whatever the sender posts. Only the characters
+             * a path can be made of, so a typo is caught here rather than at
+             * three in the morning when the thing it names never matches.
+             */
+            'body_path' => ['nullable', 'string', 'max:200', 'regex:/^[A-Za-z0-9_.\\-]+$/'],
+        ]);
+
+        return [
+            'name' => $validated['name'],
+            'bot_name' => $validated['bot_name'],
+            // Blank and absent both mean the original {"text": ...} contract,
+            // so neither is stored as a path that matches nothing.
+            'body_path' => blank($validated['body_path'] ?? null)
+                ? null
+                : $validated['body_path'],
+        ];
     }
 
     /**
@@ -111,6 +156,9 @@ class ChannelWebhookController extends Controller
             'id' => $webhook->id,
             'name' => $webhook->name,
             'botName' => $webhook->bot_name,
+            // Null means it expects {"text": "..."}; a path means it reads the
+            // sender's own JSON. See ResolveWebhookBody.
+            'bodyPath' => $webhook->body_path,
             'createdBy' => $webhook->creator?->name,
             'lastUsedAt' => $webhook->last_used_at?->toIso8601String(),
             'revokedAt' => $webhook->revoked_at?->toIso8601String(),

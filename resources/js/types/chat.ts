@@ -155,6 +155,11 @@ export interface ChannelWebhook {
     id: number;
     name: string;
     botName: string;
+    /**
+     * Where in the sender's own JSON the message text sits, in dot notation.
+     * Null when it expects the plain {"text": "..."} it always did.
+     */
+    bodyPath: string | null;
     createdBy: string | null;
     lastUsedAt: string | null;
     revokedAt: string | null;

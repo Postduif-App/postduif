@@ -11,6 +11,7 @@ import {
     index,
     regenerate,
     store,
+    update,
 } from '@/routes/chat/channels/webhooks';
 import type {
     ActiveChannel,
@@ -135,6 +136,7 @@ export function ChannelWebhooksSection({
     const [saving, setSaving] = useState(false);
     const [name, setName] = useState('');
     const [botName, setBotName] = useState('');
+    const [bodyPath, setBodyPath] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     const target = { workspace: workspace.slug, channel: channel.id };
@@ -195,7 +197,11 @@ export function ChannelWebhooksSection({
             const response = await fetch(store.url(target), {
                 method: 'POST',
                 headers: mutatingHeaders(),
-                body: JSON.stringify({ name, bot_name: botName }),
+                body: JSON.stringify({
+                    name,
+                    bot_name: botName,
+                    body_path: bodyPath.trim() || null,
+                }),
             });
 
             if (!response.ok) {
@@ -223,6 +229,40 @@ export function ChannelWebhooksSection({
 
         if (response.ok) {
             replace((await response.json()).webhook);
+        }
+    };
+
+    /**
+     * Point a webhook at a different part of the payload.
+     *
+     * Saved on blur rather than behind a button: it is one field, and a Save
+     * next to a single input is a step that only exists to be forgotten. A
+     * value that has not changed does not go anywhere.
+     */
+    const retarget = async (webhook: ChannelWebhook, path: string) => {
+        const wanted = path.trim() === '' ? null : path.trim();
+
+        if (wanted === webhook.bodyPath) {
+            return;
+        }
+
+        const response = await fetch(
+            update.url({ ...target, webhook: webhook.id }),
+            {
+                method: 'PATCH',
+                headers: mutatingHeaders(),
+                body: JSON.stringify({
+                    name: webhook.name,
+                    bot_name: webhook.botName,
+                    body_path: wanted,
+                }),
+            },
+        );
+
+        if (response.ok) {
+            replace((await response.json()).webhook);
+        } else {
+            setError('Dat pad kon niet opgeslagen worden.');
         }
     };
 
@@ -291,6 +331,32 @@ export function ChannelWebhooksSection({
                         />
                         <p className="text-xs text-muted-foreground">
                             De naam bij de berichten. Er staat altijd BOT naast.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="webhook-body-path">
+                            Waar staat de tekst
+                        </Label>
+                        <Input
+                            id="webhook-body-path"
+                            value={bodyPath}
+                            maxLength={200}
+                            placeholder="text"
+                            onChange={(event) =>
+                                setBodyPath(event.target.value)
+                            }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Leeg laten als de afzender{' '}
+                            <code className="font-mono">
+                                {'{"text": "..."}'}
+                            </code>{' '}
+                            stuurt. Stuurt hij iets anders, wijs dan met punten
+                            aan waar de tekst staat —{' '}
+                            <code className="font-mono">issue.title</code>, of{' '}
+                            <code className="font-mono">commits.0.message</code>{' '}
+                            voor het eerste item uit een lijst.
                         </p>
                     </div>
 
@@ -370,10 +436,42 @@ export function ChannelWebhooksSection({
                             {/* A revoked webhook has no working URL, so it gets
                                 no row of buttons offering one. */}
                             {!webhook.revokedAt && (
-                                <WebhookUrl
-                                    url={webhook.url}
-                                    onRegenerate={() => void renew(webhook)}
-                                />
+                                <>
+                                    <WebhookUrl
+                                        url={webhook.url}
+                                        onRegenerate={() => void renew(webhook)}
+                                    />
+
+                                    {/*
+                                        Editable here rather than only at
+                                        creation: which field carries the text
+                                        is the thing you get wrong first and
+                                        find out about later.
+                                    */}
+                                    <div className="flex items-center gap-2">
+                                        <Label
+                                            htmlFor={`webhook-path-${webhook.id}`}
+                                            className="shrink-0 text-xs text-muted-foreground"
+                                        >
+                                            Tekst uit
+                                        </Label>
+                                        <Input
+                                            id={`webhook-path-${webhook.id}`}
+                                            defaultValue={
+                                                webhook.bodyPath ?? ''
+                                            }
+                                            maxLength={200}
+                                            placeholder="text"
+                                            className="h-8 font-mono text-xs"
+                                            onBlur={(event) =>
+                                                void retarget(
+                                                    webhook,
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </>
                             )}
                         </li>
                     ))}
@@ -382,7 +480,9 @@ export function ChannelWebhooksSection({
 
             <p className="text-xs text-muted-foreground">
                 Stuur een POST naar de URL met een JSON-body zoals{' '}
-                <code className="font-mono">{'{"text": "Hallo"}'}</code>.
+                <code className="font-mono">{'{"text": "Hallo"}'}</code>. Staat
+                er een pad bij &ldquo;tekst uit&rdquo;, dan mag de afzender
+                sturen wat hij al stuurt en halen wij de tekst daar vandaan.
             </p>
         </div>
     );
