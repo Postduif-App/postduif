@@ -38,3 +38,15 @@ Schedule::command('tickets:notify-stale')
 Schedule::command('chat:dispatch-scheduled')
     ->everyMinute()
     ->withoutOverlapping();
+
+/**
+ * Every minute. Somebody who says their status changes at nine means nine, and
+ * a coarser interval would turn the time they picked into a rough indication —
+ * the same reasoning as the scheduled messages above.
+ *
+ * Cheap when there is nothing to do: only members who actually have rules are
+ * looked at, and for each of them the answer is usually "already right".
+ */
+Schedule::command('users:apply-status-rules')
+    ->everyMinute()
+    ->withoutOverlapping();

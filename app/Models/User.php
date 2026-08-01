@@ -33,6 +33,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $status_emoji
  * @property string|null $status_text
  * @property Availability $availability
+ * @property int|null $status_rule_id
+ * @property bool $status_is_manual
  * @property array<int, array{emoji: string|null, text: string}> $recent_statuses
  * @property int|null $notify_after_minutes
  * @property bool $notify_via_mail
@@ -136,6 +138,7 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             'recent_statuses' => 'array',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'status_is_manual' => 'boolean',
             'notify_via_mail' => 'boolean',
             'notify_via_pushover' => 'boolean',
             // A credential for somebody's own device. Encrypted rather than
