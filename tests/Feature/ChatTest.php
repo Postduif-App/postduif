@@ -9,22 +9,6 @@ use Illuminate\Support\Str;
 
 use function Pest\Laravel\actingAs;
 
-function workspaceWithMember(User $user, WorkspaceRole $role = WorkspaceRole::Member): Workspace
-{
-    $workspace = Workspace::factory()->create();
-    $workspace->members()->attach($user->id, ['role' => $role->value, 'joined_at' => now()]);
-
-    return $workspace;
-}
-
-function channelWithMember(Workspace $workspace, User $user): Channel
-{
-    $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
-    $channel->members()->attach($user->id, ['joined_at' => now()]);
-
-    return $channel;
-}
-
 it('sends the landing page to the members workspace', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);

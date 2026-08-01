@@ -102,7 +102,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->workspaces->first()?->pivot->role,
+                'role' => $user->workspaces->first()?->membership->role,
             ])
             ->all();
     }

@@ -14,10 +14,14 @@ interface ThreadPanelProps {
     workspace: ChatWorkspace;
     channel: ActiveChannel;
     channels: ChannelSummary[];
+    currentUserId: number;
     currentUsername?: string;
     parent: ChatMessage;
     replies: ChatMessage[];
     onClose: () => void;
+    onReact?: (message: ChatMessage, emoji: string) => void;
+    onDelete?: (message: ChatMessage) => void;
+    onEdit?: (message: ChatMessage, body: string) => void;
     onReply: (body: string) => void;
     onTyping: () => void;
 }
@@ -26,10 +30,14 @@ export function ThreadPanel({
     workspace,
     channel,
     channels,
+    currentUserId,
     currentUsername,
     parent,
     replies,
     onClose,
+    onReact,
+    onDelete,
+    onEdit,
     onReply,
     onTyping,
 }: ThreadPanelProps) {
@@ -65,18 +73,39 @@ export function ThreadPanel({
                 workspace={workspace}
                 members={channel.members}
                 channels={channels}
+                ticketChannelId={channel.hasTickets ? channel.id : null}
+                currentUserId={currentUserId}
                 currentUsername={currentUsername}
+                onReact={onReact}
+                onDelete={onDelete}
+                onEdit={onEdit}
             />
 
             <Composer
+                /*
+                    canReply already folds in membership, the archive and the
+                    channel's own setting — asking each of those here again is
+                    how the panel and the server would end up disagreeing. The
+                    placeholder still tells the two common cases apart, because
+                    "je mag hier niet" without a reason is the kind of message
+                    people file a bug about.
+                */
                 placeholder={
-                    channel.isMember
-                        ? 'Antwoord in thread'
-                        : 'Word lid van dit kanaal om te reageren'
+                    !channel.repliesOpen
+                        ? 'Reageren staat uit in dit kanaal'
+                        : channel.isMember
+                          ? 'Antwoord in thread'
+                          : 'Word lid van dit kanaal om te reageren'
                 }
-                disabled={!channel.isMember}
+                disabled={!channel.canReply}
                 members={channel.members}
                 channels={channels}
+                workspace={workspace}
+                memberCount={channel.memberCount}
+                // The thread's own key, not the channel's: an answer half typed
+                // in a thread has nothing to do with what stands in the field
+                // below the conversation.
+                draftKey={`${workspace.slug}:${channel.id}:thread:${parent.id}`}
                 onSend={onReply}
                 onTyping={onTyping}
             />

@@ -82,3 +82,75 @@ it('returns nothing for an empty query', function () {
         ->assertOk()
         ->assertJsonCount(0, 'results');
 });
+
+it('names the thread a hit lives in, so the panel can be opened on it', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    $parent = Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'body' => 'Wie pakt de release op',
+    ]);
+
+    Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'parent_id' => $parent->id,
+        'body' => 'Ik doe de deployment',
+    ]);
+
+    actingAs($user)
+        ->getJson(route('chat.search', $workspace).'?q=deployment')
+        ->assertOk()
+        ->assertJsonCount(1, 'results')
+        ->assertJsonPath('results.0.threadId', $parent->id);
+});
+
+it('leaves the thread empty for a message that sits in the channel itself', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'body' => 'Losse deployment zonder thread',
+    ]);
+
+    actingAs($user)
+        ->getJson(route('chat.search', $workspace).'?q=deployment')
+        ->assertJsonPath('results.0.threadId', null);
+});
+
+it('opens that thread when the channel page is asked for it', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    $parent = Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'body' => 'Wie pakt de release op',
+    ]);
+
+    $reply = Message::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'parent_id' => $parent->id,
+        'body' => 'Ik doe de deployment',
+    ]);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]).'?thread='.$parent->id)
+        ->assertInertia(fn ($page) => $page
+            ->where('thread.parent.id', $parent->id)
+            ->where('thread.replies.0.id', $reply->id)
+        );
+});

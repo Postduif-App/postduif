@@ -24,6 +24,10 @@ class MessageController extends Controller
             body: $request->string('body')->trim()->value(),
             parentId: $request->input('parent_id'),
             id: $request->string('id')->value(),
+            quotedId: $request->input('quoted_message_id'),
+            // A message may be nothing but a file, so an empty list is normal
+            // here rather than a sign that something went missing.
+            attachments: $request->file('attachments', []),
         );
 
         return back();

@@ -3,7 +3,10 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Availability;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,20 +25,55 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $username
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property Carbon|null $admin_at
+ * @property Carbon|null $suspended_at
+ * @property string|null $status_emoji
+ * @property string|null $status_text
+ * @property Availability $availability
+ * @property array<int, array{emoji: string|null, text: string}> $recent_statuses
+ * @property int|null $notify_after_minutes
+ * @property bool $notify_via_mail
+ * @property bool $notify_via_pushover
+ * @property string|null $pushover_user_key
  * @property string $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
+ * @property-read WorkspaceMembership $membership The workspace membership this
+ *     user was loaded through, on the relations that name it — see
+ *     Workspace::members(). Absent on a user fetched any other way.
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'username', 'email', 'password'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'pushover_user_key'])]
+class User extends Authenticatable implements FilamentUser, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * Handles that address a whole group. Someone called "Here" must not end up
+     * owning the "here" handle, or a message meant for the room would quietly
+     * reach one person instead. Enforced both when a handle is generated during
+     * sign-up and when a moderator edits one.
+     *
+     * @var array<int, string>
+     */
+    public const RESERVED_HANDLES = ['here', 'everyone', 'channel', 'all'];
+
+    /**
+     * The database defaults only apply on insert, so a model that was just made
+     * still reads null for them. Declared here too, so every user has an
+     * availability from the moment they exist.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'availability' => Availability::Available->value,
+        'recent_statuses' => '[]',
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -46,24 +84,115 @@ class User extends Authenticatable implements PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'admin_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'availability' => Availability::class,
+            'recent_statuses' => 'array',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'notify_via_mail' => 'boolean',
+            'notify_via_pushover' => 'boolean',
+            // A credential for somebody's own device. Encrypted rather than
+            // hashed: unlike a password it has to be sent onwards to Pushover,
+            // so it must be readable — just not by reading the table.
+            'pushover_user_key' => 'encrypted',
         ];
     }
 
-    /** @return BelongsToMany<Workspace, $this> */
+    /**
+     * Where a Pushover notification for this member should go.
+     *
+     * Named the way Laravel looks it up: routeNotificationFor{Channel}. Returns
+     * null when pushes are switched off, so the channel has nothing to send to
+     * rather than having to ask about the preference itself.
+     */
+    public function routeNotificationForPushover(): ?string
+    {
+        return $this->wantsPushover() ? $this->pushover_user_key : null;
+    }
+
+    /**
+     * Whether this member has asked to hear about channels they have been away
+     * from, and has somewhere for it to arrive.
+     *
+     * All three halves are the question: a threshold with neither delivery
+     * method switched on is a setting that would quietly produce nothing, and
+     * "niet storen" is the member saying so out loud right now — which outranks
+     * a preference they set months ago.
+     *
+     * Nothing is written off while they are unavailable: the pointer that
+     * records what somebody has been told only moves when a summary actually
+     * goes out. So what happened during "niet storen" is still waiting when
+     * they come back, rather than having been silently marked as delivered.
+     */
+    public function wantsAbsenceNotifications(): bool
+    {
+        if (! $this->availability->allowsNotifications()) {
+            return false;
+        }
+
+        if ($this->notify_after_minutes === null) {
+            return false;
+        }
+
+        return $this->notify_via_mail || $this->wantsPushover();
+    }
+
+    /**
+     * Pushover needs a key for the device it is going to. Asking for pushes
+     * without one is not an error worth refusing a form over — it simply is not
+     * a delivery method yet.
+     */
+    public function wantsPushover(): bool
+    {
+        return $this->notify_via_pushover && filled($this->pushover_user_key);
+    }
+
+    /**
+     * A platform moderator, as opposed to an owner or admin of a single
+     * workspace. Only these users get into the Filament panel.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->admin_at !== null;
+    }
+
+    /**
+     * Barred from the platform by a moderator. Their account, messages and
+     * memberships stay intact — only the door is closed. EnsureAccountIsNotSuspended
+     * turns this into an actual lock-out, on every request and not just at login.
+     */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    /**
+     * A suspended moderator loses the panel too, which is what keeps them from
+     * simply lifting their own suspension from the inside.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->isAdmin() && ! $this->isSuspended();
+    }
+
+    /** @return BelongsToMany<Workspace, $this, WorkspaceMembership, 'membership'> */
     public function workspaces(): BelongsToMany
     {
         return $this->belongsToMany(Workspace::class, 'workspace_user')
+            ->using(WorkspaceMembership::class)
+            // See Workspace::members() for why this is named.
+            ->as('membership')
             ->withPivot(['role', 'display_name', 'joined_at'])
             ->withTimestamps();
     }
 
-    /** @return BelongsToMany<Channel, $this> */
+    /** @return BelongsToMany<Channel, $this, ChannelMembership, 'pivot'> */
     public function channels(): BelongsToMany
     {
         return $this->belongsToMany(Channel::class)
-            ->withPivot(['last_read_message_id', 'muted_at', 'joined_at'])
+            ->using(ChannelMembership::class)
+            ->withPivot(['last_read_message_id', 'last_read_at', 'last_notified_message_id', 'muted_at', 'muted_until', 'favorited_at', 'joined_at'])
             ->withTimestamps();
     }
 
@@ -71,5 +200,17 @@ class User extends Authenticatable implements PasskeyUser
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    /**
+     * Threads this member closed in the sidebar, by their parent message.
+     *
+     * @return BelongsToMany<Message, $this>
+     */
+    public function closedThreads(): BelongsToMany
+    {
+        return $this->belongsToMany(Message::class, 'thread_user')
+            ->withPivot('closed_at')
+            ->withTimestamps();
     }
 }

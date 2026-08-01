@@ -48,7 +48,10 @@ class CountUnread
             ->whereIn('messages.channel_id', $channelIds)
             ->whereNull('messages.parent_id')
             ->whereNull('messages.deleted_at')
-            ->where('messages.user_id', '!=', $user->id)
+            // IS DISTINCT FROM rather than !=, because a webhook leaves user_id
+            // null and "null != 5" is null in SQL, not true — which would drop
+            // every bot message out of the count.
+            ->whereRaw('messages.user_id IS DISTINCT FROM ?', [$user->id])
             ->where(function ($query) {
                 $query->whereNull('channel_user.last_read_message_id')
                     ->orWhereColumn('messages.id', '>', 'channel_user.last_read_message_id');

@@ -18,7 +18,10 @@ class ChannelFactory extends Factory
      */
     public function definition(): array
     {
-        $name = Str::slug(fake()->unique()->words(2, true));
+        // Two word() calls rather than words(2, true): the plural one is
+        // declared as returning either a list or a string depending on a flag,
+        // which is not something a type can follow.
+        $name = Str::slug(fake()->unique()->word().' '.fake()->word());
 
         return [
             'workspace_id' => Workspace::factory(),

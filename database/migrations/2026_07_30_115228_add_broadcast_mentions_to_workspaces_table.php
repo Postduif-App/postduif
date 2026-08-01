@@ -1,0 +1,25 @@
+<?php
+
+use App\Enums\BroadcastMentionPolicy;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('workspaces', function (Blueprint $table) {
+            $table->string('broadcast_mentions')
+                ->default(BroadcastMentionPolicy::Admins->value)
+                ->after('slug');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('workspaces', function (Blueprint $table) {
+            $table->dropColumn('broadcast_mentions');
+        });
+    }
+};

@@ -1,0 +1,329 @@
+<?php
+
+namespace App\Actions\Chat;
+
+use App\Enums\AttachmentType;
+use App\Models\Channel;
+use App\Models\ChannelSection;
+use App\Models\Message;
+use App\Models\Ticket;
+use App\Models\User;
+use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Collection;
+
+/**
+ * Everything the chat screen has around whatever it is showing: the workspace
+ * header, the channel list, the direct messages and the active threads.
+ *
+ * Pulled out of ChatController once a second page needed it. The workspace-wide
+ * ticket view is not a channel, but it lives inside the same shell — the same
+ * sidebar, the same unread badges, the same live connection — and two
+ * controllers each building that shell their own way is how the badges on one
+ * page start disagreeing with the badges on the other.
+ */
+class BuildChatShell
+{
+    public function __construct(
+        private readonly CountUnread $countUnread,
+        private readonly FindActiveThreads $findActiveThreads,
+        private readonly PresentMessage $presentMessage,
+    ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function handle(Workspace $workspace, User $user): array
+    {
+        $channels = $this->visibleChannels($workspace, $user);
+
+        /*
+         * Tags are internal. They label channels for the people running the
+         * workspace — "klant", "intern", "escalatie" — and a customer sitting
+         * in one of them has no business reading how their channel is filed.
+         * Nothing downstream has to know: with an empty list the sidebar filter
+         * disappears, the chips in the header draw nothing, and the broadcast
+         * dialog offers no tags.
+         */
+        $seesTags = $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
+
+        return [
+            'workspace' => $this->workspace($workspace, $user),
+            ...$this->channels($channels, $user, $seesTags),
+            /*
+             * Every tag on a channel this member can see — for the sidebar
+             * filter, and for the settings dialog to suggest from.
+             *
+             * Derived from what they can see rather than read off the
+             * workspace: even for a member, a list of every label in use would
+             * tell them which subjects exist behind doors they cannot open.
+             * Typing a label that already exists elsewhere still reuses it —
+             * see ChannelTag::claim — so nothing is duplicated by hiding it.
+             */
+            'workspaceTags' => ! $seesTags ? [] : $channels
+                ->flatMap(fn (Channel $channel) => $channel->tags->pluck('name'))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all(),
+            // Hung under their own channel in the sidebar, so a lively thread
+            // stays visible even while the channel it lives in is scrolled past.
+            'activeThreads' => $this->findActiveThreads->handle($user, $workspace)
+                ->map(fn (Message $thread): array => $this->presentMessage->threadSummary($thread))
+                ->all(),
+            /*
+             * The channels that were put away, for whoever may take them back
+             * out. Empty for everybody else, so the sidebar has nothing to
+             * draw: an archived channel is meant to be out of the way, and a
+             * section listing them for people who cannot reopen them would be
+             * clutter that never becomes useful.
+             */
+            'archivedChannels' => $this->archivedChannels($workspace, $user),
+            /*
+             * The groups this member arranged for themselves, and which channel
+             * sits in which. Sent as a list of sections with channel ids rather
+             * than as a field on each channel: the sidebar draws them as
+             * headings, and a section with nothing in it still has to appear —
+             * otherwise a group somebody just made looks like it failed.
+             */
+            'sections' => $this->sections($workspace, $user),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function workspace(Workspace $workspace, User $user): array
+    {
+        return [
+            'id' => $workspace->id,
+            'name' => $workspace->name,
+            'slug' => $workspace->slug,
+            // Drives whether the composer offers @here and @everyone at all:
+            // better to hide them than to let someone pick one and have it
+            // quietly notify nobody.
+            'canBroadcastMention' => $user->can('broadcastMention', $workspace),
+            'canManage' => $user->can('manage', $workspace),
+            'canInvite' => $user->can('invite', $workspace),
+            // Hides "Kanaal toevoegen" for a guest. The request checks the same
+            // ability, so this only spares them a button that would have
+            // refused them.
+            'canCreateChannel' => $user->can('createChannel', $workspace),
+            // Unlike canCreateChannel this stays true for a guest: they may
+            // write to the people in their own channels. Who those are is
+            // decided by the candidate search, not here.
+            'canStartDirectMessage' => $user->can('startDirectMessage', $workspace),
+            // Whether the "Rondsturen" entry appears at all. False for a guest,
+            // who is here for their own channels rather than for the workspace.
+            'canBroadcastToChannels' => $user->can('broadcastToChannels', $workspace),
+
+            /*
+             * Whether the composer shows a paperclip at all, and what it lets
+             * through before the server gets a say.
+             *
+             * Null when sharing is off, so the browser has nothing to draw
+             * rather than a set of limits that would be refused anyway. The
+             * accept list is a hint for the file dialog — the endpoint decides
+             * for real, on the file's own bytes.
+             */
+            'uploads' => $workspace->uploads_enabled ? [
+                'maxKb' => $workspace->max_attachment_kb,
+                'accept' => implode(',', array_map(
+                    fn (string $mimeType): string => str_ends_with($mimeType, '/')
+                        ? $mimeType.'*'
+                        : $mimeType,
+                    array_merge(...array_map(
+                        fn (AttachmentType $type): array => $type->mimeTypes(),
+                        $workspace->allowedAttachmentTypes(),
+                    )),
+                )),
+            ] : null,
+        ];
+    }
+
+    /**
+     * The sidebar splits channels from DMs, which is purely presentational:
+     * both are rows in the channels table.
+     *
+     * @param  Collection<int, Channel>  $channels
+     * @return array{channels: array<int, array<string, mixed>>, directMessages: array<int, array<string, mixed>>}
+     */
+    private function channels($channels, User $user, bool $seesTags): array
+    {
+        ['unread' => $unread, 'mentions' => $mentions] = $this->countUnread
+            ->handle($user, $channels->pluck('id'));
+
+        // One query for the whole sidebar rather than one per row. Not filtered
+        // by the ticket policy: a channel that stopped keeping tickets still has
+        // to show the ones already open, or switching the setting off would hide
+        // outstanding work.
+        $openTickets = Ticket::query()
+            ->whereIn('channel_id', $channels->pluck('id'))
+            ->open()
+            ->selectRaw('channel_id, count(*) as total')
+            ->groupBy('channel_id')
+            ->pluck('total', 'channel_id');
+
+        $present = fn (Channel $channel): array => [
+            'id' => $channel->id,
+            'type' => $channel->type->value,
+            'name' => $channel->name,
+            'label' => $channel->displayNameFor($user),
+            'isMember' => $channel->members->contains($user),
+            // Quiet for this member, and until when. Read off the loaded
+            // membership rather than queried per row: the sidebar draws every
+            // channel this member is in, and that is a query each.
+            'mutedUntil' => $this->mutedUntil($channel, $user),
+            // Whether this member keeps it at the top of their own sidebar.
+            'isFavorite' => $channel->membershipFor($user)?->favorited_at !== null,
+            'unreadCount' => $unread[$channel->id] ?? 0,
+            'mentionCount' => $mentions[$channel->id] ?? 0,
+            'openTicketCount' => $openTickets[$channel->id] ?? 0,
+            // Whether this channel keeps tickets at all — which is what decides
+            // whether the sidebar offers the workspace-wide list. Not the same
+            // question as the count above: a channel can keep tickets and have
+            // none outstanding.
+            'hasTickets' => $channel->hasTickets(),
+            // What the sidebar filters on. Empty for a guest, and for a DM,
+            // which never carries any — absent would make every reader of this
+            // payload check for it.
+            'tags' => $seesTags ? $channel->tags->pluck('name')->all() : [],
+            // Only for a one-on-one, where the row stands for a person and
+            // their status is as much a part of them as their name. A channel
+            // is a room; a room has no status.
+            'status' => $this->directStatus($channel, $user),
+        ];
+
+        return [
+            'channels' => $channels
+                ->reject(fn (Channel $channel) => $channel->isDirect())
+                ->map($present)->values()->all(),
+            'directMessages' => $channels
+                ->filter(fn (Channel $channel) => $channel->isDirect())
+                ->map($present)->values()->all(),
+        ];
+    }
+
+    /**
+     * The channels this member has in their sidebar.
+     *
+     * Public because the ticket view needs the same set to scope itself to: a
+     * ticket is exactly as visible as the channel it sits in, and asking that
+     * question twice in two different ways is how a guest ends up seeing one
+     * they should not.
+     *
+     * @return Collection<int, Channel>
+     */
+    public function visibleChannels(Workspace $workspace, User $user)
+    {
+        return $workspace->channels()
+            ->visibleTo($user)
+            ->notHiddenBy($user)
+            ->whereNull('archived_at')
+            ->with(['members', 'tags'])
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * The groups this member made in their own sidebar.
+     *
+     * Channel ids only: the rows themselves are already in the channel list
+     * above, and sending them twice would be two copies of an unread count that
+     * could disagree.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sections(Workspace $workspace, User $user): array
+    {
+        return ChannelSection::query()
+            ->where('user_id', $user->id)
+            ->where('workspace_id', $workspace->id)
+            ->with('channels:id')
+            ->inOrder()
+            ->get()
+            ->map(fn (ChannelSection $section): array => [
+                'id' => $section->id,
+                'name' => $section->name,
+                'channelIds' => $section->channels->pluck('id')->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * The channels this member put away and may take back out.
+     *
+     * Read with the same visibility rules as the live list — an archived
+     * private channel is still private — and then narrowed to the ones this
+     * member answers for.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function archivedChannels(Workspace $workspace, User $user): array
+    {
+        return $workspace->channels()
+            ->visibleTo($user)
+            ->whereNotNull('archived_at')
+            ->with('members')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (Channel $channel): bool => $user->can('archiveChannel', $channel))
+            ->map(fn (Channel $channel): array => [
+                'id' => $channel->id,
+                'label' => $channel->displayNameFor($user),
+                'archivedAt' => $channel->archived_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * When this member's mute on this channel runs out, or null when it is not
+     * muted. The string 'forever' stands for a mute with no end.
+     */
+    private function mutedUntil(Channel $channel, User $user): ?string
+    {
+        $membership = $channel->membershipFor($user);
+
+        if ($membership === null || ! $membership->isMuted()) {
+            return null;
+        }
+
+        return $membership->muted_until?->toIso8601String() ?? 'forever';
+    }
+
+    /**
+     * The other person's status, for a sidebar row that is a conversation with
+     * exactly one of them.
+     *
+     * Null for a channel, for a note to self, and for a group DM: with more
+     * than one person on the other side there is no single status to show, and
+     * picking one of them would be arbitrary.
+     *
+     * The person's id travels along: a status that changes while the page is
+     * open arrives over the socket addressed by user, and without it the
+     * browser has no way to tell whose row to update.
+     *
+     * @return array{userId: int, emoji: string|null, text: string|null, availability: string}|null
+     */
+    private function directStatus(Channel $channel, User $viewer): ?array
+    {
+        if (! $channel->isDirect()) {
+            return null;
+        }
+
+        $others = $channel->members->reject(fn (User $member) => $member->is($viewer));
+
+        if ($others->count() !== 1) {
+            return null;
+        }
+
+        $other = $others->first();
+
+        return [
+            'userId' => $other->id,
+            'emoji' => $other->status_emoji,
+            'text' => $other->status_text,
+            'availability' => $other->availability->value,
+        ];
+    }
+}

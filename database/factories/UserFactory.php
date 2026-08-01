@@ -48,6 +48,26 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the user moderates the whole platform.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'admin_at' => now(),
+        ]);
+    }
+
+    /**
+     * Indicate that a moderator has barred the user from the platform.
+     */
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'suspended_at' => now(),
+        ]);
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static

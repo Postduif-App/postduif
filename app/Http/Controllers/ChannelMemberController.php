@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\AddChannelMembers;
+use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -19,7 +20,10 @@ class ChannelMemberController extends Controller
     {
         $this->authorizeChannel($request, $workspace, $channel, 'addMembers');
 
-        $terms = $request->string('q')->trim()->value();
+        // A handle is written "@fenna" everywhere it is shown, so somebody who
+        // types it that way here must not come up empty; the column holds it
+        // without the sign. Same reasoning as the DM picker.
+        $terms = $request->string('q')->trim()->ltrim('@')->value();
 
         $candidates = $workspace->members()
             ->whereNotIn('users.id', $channel->members()->pluck('users.id'))
@@ -37,6 +41,13 @@ class ChannelMemberController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'username' => $user->username,
+                // Adding somebody from outside to a channel is a different
+                // decision from adding a colleague, so say which one this is
+                // before the click rather than after.
+                'isGuest' => WorkspaceRole::from($user->membership->role)->isGuest(),
+                'statusEmoji' => $user->status_emoji,
+                'statusText' => $user->status_text,
+                'availability' => $user->availability->value,
             ])->values(),
         ]);
     }

@@ -1,5 +1,5 @@
 import { Form } from '@inertiajs/react';
-import { Globe, Lock } from 'lucide-react';
+import { Globe, Lock, MessageSquare, Newspaper } from 'lucide-react';
 import { useState } from 'react';
 
 import InputError from '@/components/input-error';
@@ -45,6 +45,31 @@ const VISIBILITY: {
     },
 ];
 
+/**
+ * How the channel reads. A separate question from the visibility above it: an
+ * internal newsletter is exactly the kind of feed that belongs behind a private
+ * channel, so the two choices do not constrain each other.
+ */
+const LAYOUTS: {
+    value: 'chat' | 'feed';
+    label: string;
+    hint: string;
+    icon: typeof Globe;
+}[] = [
+    {
+        value: 'chat',
+        label: 'Gesprek',
+        hint: 'Berichten onder elkaar, zoals een gewoon kanaal.',
+        icon: MessageSquare,
+    },
+    {
+        value: 'feed',
+        label: 'Feed',
+        hint: 'Langere berichten met meer ruimte, zoals een nieuwsbrief of blog.',
+        icon: Newspaper,
+    },
+];
+
 export function CreateChannelDialog({
     workspace,
     open,
@@ -52,6 +77,7 @@ export function CreateChannelDialog({
 }: CreateChannelDialogProps) {
     const [name, setName] = useState('');
     const [type, setType] = useState<'public' | 'private'>('public');
+    const [layout, setLayout] = useState<'chat' | 'feed'>('chat');
 
     // Preview the slug the server will store, so nobody is surprised that
     // "Nieuwe Klanten" becomes #nieuwe-klanten after saving.
@@ -89,6 +115,7 @@ export function CreateChannelDialog({
                     {({ processing, errors }) => (
                         <>
                             <input type="hidden" name="type" value={type} />
+                            <input type="hidden" name="layout" value={layout} />
 
                             <div className="grid gap-2">
                                 <Label htmlFor="channel-name">Naam</Label>
@@ -147,6 +174,44 @@ export function CreateChannelDialog({
                                     </label>
                                 ))}
                                 <InputError message={errors.type} />
+                            </fieldset>
+
+                            <fieldset className="grid gap-2">
+                                <legend className="mb-2 text-sm font-medium">
+                                    Weergave
+                                </legend>
+                                {LAYOUTS.map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className={cn(
+                                            'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                                            layout === option.value
+                                                ? 'border-primary bg-primary/5'
+                                                : 'hover:bg-muted/50',
+                                        )}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="channel-layout"
+                                            value={option.value}
+                                            checked={layout === option.value}
+                                            onChange={() =>
+                                                setLayout(option.value)
+                                            }
+                                            className="mt-1"
+                                        />
+                                        <span>
+                                            <span className="flex items-center gap-1.5 text-sm font-medium">
+                                                <option.icon className="size-3.5" />
+                                                {option.label}
+                                            </span>
+                                            <span className="block text-xs text-muted-foreground">
+                                                {option.hint}
+                                            </span>
+                                        </span>
+                                    </label>
+                                ))}
+                                <InputError message={errors.layout} />
                             </fieldset>
 
                             <div className="grid gap-2">

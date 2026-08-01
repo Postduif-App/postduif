@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ChannelLayout;
 use App\Enums\ChannelType;
 use App\Models\Workspace;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -17,7 +18,7 @@ class StoreChannelRequest extends FormRequest
         /** @var Workspace $workspace */
         $workspace = $this->route('workspace');
 
-        return $workspace->hasMember($this->user());
+        return $this->user()->can('createChannel', $workspace);
     }
 
     /**
@@ -47,6 +48,9 @@ class StoreChannelRequest extends FormRequest
             ],
             'type' => ['required', new Enum(ChannelType::class), Rule::notIn([ChannelType::Direct->value])],
             'topic' => ['nullable', 'string', 'max:255'],
+            // Optional: a caller that says nothing gets an ordinary
+            // conversation, which is what almost every channel is.
+            'layout' => ['sometimes', new Enum(ChannelLayout::class)],
         ];
     }
 

@@ -4,6 +4,7 @@ use App\Events\MessageSent;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Webhook;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -71,6 +72,35 @@ it('carries the same message shape as the page props', function () {
         ->and($broadcast['message']['body'])->toBe('Vergelijk mij')
         ->and($broadcast['parentId'])->toBeNull()
         ->and($broadcast['channelId'])->toBe($channel->id);
+});
+
+/**
+ * The same parity check for a bot message. It is the one that matters most:
+ * the author is the only part of the payload that differs per sender, so if
+ * the two paths are ever going to drift apart, it will be here.
+ */
+it('carries the same shape for a bot message as the page props', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    $webhook = Webhook::factory()->for($channel)->create(['bot_name' => 'Buildbot']);
+    $message = Message::factory()->fromBot($webhook)->create(['body' => 'Vergelijk mij']);
+
+    $broadcast = (new MessageSent($message))->broadcastWith();
+
+    $props = actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->viewData('page')['props']['messages'][0];
+
+    expect(array_keys($broadcast['message']))->toBe(array_keys($props))
+        ->and($broadcast['message']['author'])->toBe($props['author'])
+        ->and($props['author'])->toBe([
+            'id' => null,
+            'name' => 'Buildbot',
+            'isBot' => true,
+            'isGuest' => false,
+        ]);
 });
 
 it('authorises a member on the channel presence channel', function () {

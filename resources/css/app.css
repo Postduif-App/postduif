@@ -140,4 +140,19 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /*
+     * Tailwind's reset drops the browser's own cursor: pointer on buttons, on
+     * the reasoning that a button is not a link. In an app that is almost
+     * entirely buttons that reads as nothing being clickable, so it comes back
+     * here rather than as a cursor-pointer class on every button in the tree.
+     *
+     * Not on disabled ones: they carry their own cursor, and a hand over
+     * something that does not respond is worse than no hand at all.
+     */
+    button:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    summary {
+        cursor: pointer;
+    }
 }

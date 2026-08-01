@@ -2,6 +2,7 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\ChannelLayout;
 use App\Enums\ChannelType;
 use App\Models\Channel;
 use App\Models\User;
@@ -24,13 +25,15 @@ class CreateChannel
         string $name,
         ChannelType $type = ChannelType::Public,
         ?string $topic = null,
+        ChannelLayout $layout = ChannelLayout::Chat,
     ): Channel {
-        return DB::transaction(function () use ($workspace, $creator, $name, $type, $topic) {
+        return DB::transaction(function () use ($workspace, $creator, $name, $type, $topic, $layout) {
             $slug = Str::slug($name);
 
             $channel = Channel::create([
                 'workspace_id' => $workspace->id,
                 'type' => $type,
+                'layout' => $layout,
                 'name' => $slug,
                 'slug' => $slug,
                 'topic' => $topic,

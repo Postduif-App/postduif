@@ -10,7 +10,6 @@ import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { edit } from '@/routes/security';
 
 type Props = {
     passwordRules: string;
@@ -23,15 +22,15 @@ export default function Security(props: Props) {
 
     return (
         <>
-            <Head title="Security settings" />
+            <Head title="Beveiliging" />
 
-            <h1 className="sr-only">Security settings</h1>
+            <h1 className="sr-only">Beveiliging</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    title="Beveiliging"
+                    description="Je wachtwoord, tweestapsverificatie en passkeys"
                 />
 
                 <Form
@@ -136,12 +135,3 @@ export default function Security(props: Props) {
         </>
     );
 }
-
-Security.layout = {
-    breadcrumbs: [
-        {
-            title: 'Security settings',
-            href: edit(),
-        },
-    ],
-};

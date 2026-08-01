@@ -7,7 +7,6 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import type { Auth } from '@/types';
 
@@ -26,15 +25,15 @@ export default function Profile({
 
     return (
         <>
-            <Head title="Profile settings" />
+            <Head title="Profiel" />
 
-            <h1 className="sr-only">Profile settings</h1>
+            <h1 className="sr-only">Profiel</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Profile"
-                    description="Update your name and email address"
+                    title="Profiel"
+                    description="Je naam en e-mailadres"
                 />
 
                 <Form
@@ -127,12 +126,3 @@ export default function Profile({
         </>
     );
 }
-
-Profile.layout = {
-    breadcrumbs: [
-        {
-            title: 'Profile settings',
-            href: edit(),
-        },
-    ],
-};

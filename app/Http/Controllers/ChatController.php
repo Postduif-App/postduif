@@ -2,10 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Chat\CountUnread;
+use App\Actions\Chat\BuildChatShell;
+use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
+use App\Actions\Tickets\PresentTicket;
+use App\Enums\WorkspaceRole;
+use App\Models\Bookmark;
 use App\Models\Channel;
+use App\Models\ChannelLink;
+use App\Models\Message;
+use App\Models\ScheduledMessage;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
@@ -17,8 +25,10 @@ class ChatController extends Controller
 {
     public function __construct(
         private readonly PresentMessage $presentMessage,
-        private readonly CountUnread $countUnread,
+        private readonly BuildChatShell $buildChatShell,
         private readonly MarkChannelRead $markChannelRead,
+        private readonly PresentTicket $presentTicket,
+        private readonly HideDirectMessage $hideDirectMessage,
     ) {}
 
     /**
@@ -59,7 +69,8 @@ class ChatController extends Controller
         $this->authorize('view', $channel);
 
         $messages = $channel->rootMessages()
-            ->with(['author', 'reactions'])
+            ->visible()
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
             ->before($request->query('before'))
             ->orderByDesc('id')
             ->limit(50)
@@ -72,36 +83,282 @@ class ChatController extends Controller
         // read as a bug rather than as information.
         $this->markChannelRead->handle($channel, $user);
 
+        // Opening a conversation you had put away brings it back. Otherwise the
+        // sidebar would leave out the very row you are reading.
+        if ($channel->isDirect()) {
+            $this->hideDirectMessage->reopen($channel, $user);
+        }
+
         return Inertia::render('chat/show', [
-            'workspace' => [
-                'id' => $workspace->id,
-                'name' => $workspace->name,
-                'slug' => $workspace->slug,
-            ],
-            ...$this->sidebarChannels($workspace, $user),
+            ...$this->buildChatShell->handle($workspace, $user),
             'channel' => [
                 'id' => $channel->id,
                 'type' => $channel->type->value,
+                // How the conversation is drawn. Not the same question as the
+                // type next to it, which says who may see it.
+                'layout' => $channel->isFeed() ? 'feed' : 'chat',
                 'name' => $channel->name,
                 'label' => $channel->loadMissing('members')->displayNameFor($user),
                 'topic' => $channel->topic,
                 'memberCount' => $channel->members()->count(),
                 'isMember' => $channel->members()->whereKey($user->id)->exists(),
+                // Whether this member has asked for quiet here, and until when.
+                // Their own decision and nobody else's, so it travels with the
+                // channel rather than with its settings.
+                'mutedUntil' => $this->mutedUntil($channel, $user),
+                'isFavorite' => $channel->loadMissing('members')
+                    ->membershipFor($user)?->favorited_at !== null,
+                'postingPolicy' => $channel->posting_policy->value,
+                // Whether threads are open here at all. Not the same question
+                // as canReply below: this one is the channel's setting, that
+                // one is this member against it.
+                'repliesOpen' => $channel->replies_open,
+                'canReply' => $user->can('reply', $channel),
+                'ticketPolicy' => $channel->ticket_policy->value,
+                'ticketAnnouncements' => $channel->ticket_announcements,
+                'ticketStatusAnnouncements' => $channel->ticket_status_announcements,
+                // Not the same question as the policy above: a DM never keeps
+                // tickets, whatever the column happens to say.
+                'hasTickets' => $channel->hasTickets(),
+                'canCreateTicket' => $user->can('create', [Ticket::class, $channel]),
+                // Whether the composer opens at all. Reacting and answering in
+                // a thread stay open even when this is false, so those are not
+                // the same question.
+                'canPost' => $user->can('post', $channel),
+                'canManageSettings' => $user->can('manageSettings', $channel),
+                // Asked apart from canManageSettings because it answers
+                // differently on an archived channel, which may still be
+                // deleted but no longer configured.
+                'canDelete' => $user->can('deleteChannel', $channel),
+                // The reversible neighbour of canDelete, and the same people.
+                'canArchive' => $user->can('archiveChannel', $channel),
+                // Whether the pin button appears on a message at all. The same
+                // ability as managing the channel — pinning is editorial, see
+                // MessagePolicy::pin() — but asked here as its own question, so
+                // the browser never has to infer one from the other.
+                'canPin' => $user->can('manageSettings', $channel),
+                // Whether the member button at the top opens anything. False
+                // for a guest, so for them it stays a presence indicator.
+                'canViewMembers' => $user->can('viewMembers', $channel),
                 'canAddMembers' => $user->can('addMembers', $channel),
                 'canLeave' => $user->can('leave', $channel),
                 'createdBy' => $channel->created_by,
+                // The labels on this channel. Empty for a guest: a tag says how
+                // the channel is filed internally — "klant", "escalatie" — and
+                // that is not the customer's business. See BuildChatShell.
+                'tags' => $workspace->roleFor($user)?->canBrowseWorkspace()
+                    ? $channel->tags->pluck('name')->all()
+                    : [],
+                // Drawn for everyone who can see the channel, guests included:
+                // a link to the shared planning is exactly the kind of thing an
+                // outside participant is in the channel for.
+                'links' => $channel->links->map(fn (ChannelLink $link): array => [
+                    'id' => $link->id,
+                    'label' => $link->label,
+                    'url' => $link->url,
+                ])->values()->all(),
                 // Feeds the composer's @-autocomplete and lets the renderer
                 // tell a real mention apart from an email address.
-                'members' => $channel->members
-                    ->map(fn (User $member): array => [
-                        'id' => $member->id,
-                        'name' => $member->name,
-                        'username' => $member->username,
-                    ])->values()->all(),
+                'members' => $this->channelMembers($workspace, $channel),
             ],
-            'messages' => $this->presentMessage->collection($messages, $user),
+            'messages' => $this->presentMessage->collection($messages),
+            /*
+             * Which of these this member set aside — beside the messages rather
+             * than inside them, and deliberately so: the message payload is
+             * also what gets broadcast to everyone in the channel, and a
+             * "saved" flag in there would be one person's answer sent to all of
+             * them.
+             */
+            'bookmarkedIds' => Bookmark::query()
+                ->where('user_id', $user->id)
+                ->whereIn('message_id', $messages->pluck('id'))
+                ->pluck('message_id')
+                ->all(),
+            // Their own list rather than something read off the messages above:
+            // the page loads the last fifty messages, and a channel intro
+            // pinned months ago is not among them — which is precisely why it
+            // was pinned.
+            'pins' => $this->pins($channel),
+            'scheduled' => $this->scheduled($channel, $user),
             'thread' => $this->thread($channel, $user, $request->query('thread')),
+            // The board is a second view of this channel rather than a page of
+            // its own: it needs the same sidebar, the same unread counts and the
+            // same live connection, and duplicating that shell is how the two
+            // would drift apart.
+            'tickets' => $this->tickets($channel, $user),
+            'ticket' => $this->ticket($channel, $user, $request->query('ticket')),
+            // Which of the two views the channel opens in. Decided here rather
+            // than read off the URL in the browser, so a channel that stopped
+            // keeping tickets cannot be left showing a board through a stale
+            // link.
+            'view' => $request->query('view') === 'tickets' && $channel->hasTickets()
+                ? 'tickets'
+                : 'messages',
         ]);
+    }
+
+    /**
+     * What is pinned in this channel, oldest pin first.
+     *
+     * No ability check of its own: whoever may see the channel may read what is
+     * pinned in it. Pinning is the ability that is restricted — reading the
+     * rules cannot be.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function pins(Channel $channel): array
+    {
+        $pinned = $channel->messages()
+            ->pinned()
+            ->with(['author', 'pinner'])
+            ->get();
+
+        return $this->presentMessage->pins($pinned);
+    }
+
+    /**
+     * What this member still has waiting in this channel, soonest first.
+     *
+     * Their own only, and never anybody else's: a scheduled message has not
+     * been said yet, so there is nothing for a channel admin to moderate —
+     * only somebody's draft to leave alone.
+     *
+     * Failed ones stay in the list. A message that silently never arrived is
+     * worse than one that says why, and the author is the only person who can
+     * do anything about it.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function scheduled(Channel $channel, User $user): array
+    {
+        return $channel->scheduledMessages()
+            ->where('user_id', $user->id)
+            ->whereNull('sent_at')
+            ->orderBy('send_at')
+            ->get()
+            ->map(fn (ScheduledMessage $scheduled): array => [
+                'id' => $scheduled->id,
+                'body' => $scheduled->body,
+                'sendAt' => $scheduled->send_at->toIso8601String(),
+                'failedAt' => $scheduled->failed_at?->toIso8601String(),
+                'failureReason' => $scheduled->failure_reason,
+            ])->all();
+    }
+
+    /**
+     * The channel's tickets, plus a count per status.
+     *
+     * Null when the channel keeps none, so the page can tell "no tickets yet"
+     * apart from "this channel does not do tickets" without a second flag.
+     *
+     * The counts are their own query rather than a tally of the rows above: the
+     * board shows at most a page of tickets, and a header that counts only what
+     * happens to be loaded is a header that quietly lies as soon as a channel
+     * gets busy.
+     *
+     * @return array{rows: array<int, array<string, mixed>>, counts: array<string, int>}|null
+     */
+    private function tickets(Channel $channel, User $user): ?array
+    {
+        if (! $user->can('viewBoard', [Ticket::class, $channel])) {
+            return null;
+        }
+
+        $rows = $channel->tickets()
+            ->with(['opener', 'assignee'])
+            ->withCount('comments')
+            ->inBoardOrder()
+            ->limit(100)
+            ->get();
+
+        return [
+            'rows' => $this->presentTicket->collection($rows),
+            'counts' => $channel->tickets()
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status')
+                ->all(),
+        ];
+    }
+
+    /**
+     * The open ticket, or null when the query string names none.
+     *
+     * Addressed by its number rather than its id, the same way people talk
+     * about it — see Ticket::getRouteKeyName().
+     *
+     * @return array<string, mixed>|null
+     */
+    private function ticket(Channel $channel, User $user, ?string $number): ?array
+    {
+        if ($number === null || ! $user->can('viewBoard', [Ticket::class, $channel])) {
+            return null;
+        }
+
+        $ticket = $channel->tickets()->where('number', $number)->first();
+
+        return $ticket === null ? null : [
+            ...$this->presentTicket->handle($ticket),
+            'canManage' => $user->can('manage', $ticket),
+            'canConfirm' => $user->can('confirm', $ticket),
+            'canEdit' => $user->can('update', $ticket),
+        ];
+    }
+
+    /**
+     * When this member's mute on this channel runs out.
+     *
+     * Three answers in one field: null for a channel that is not muted, the
+     * string 'forever' for a mute with no end, and a moment for one that has.
+     * The browser only ever draws one of the three, and folding them into one
+     * field keeps it from having to combine two nullable ones and get the
+     * "muted but expired" case subtly wrong.
+     */
+    private function mutedUntil(Channel $channel, User $user): ?string
+    {
+        $membership = $channel->loadMissing('members')->membershipFor($user);
+
+        if ($membership === null || ! $membership->isMuted()) {
+            return null;
+        }
+
+        return $membership->muted_until?->toIso8601String() ?? 'forever';
+    }
+
+    /**
+     * The channel's members, each marked as a guest or not.
+     *
+     * Scoped to this channel, which is what keeps it safe to hand to a guest:
+     * the payload feeds the @-autocomplete, so anything workspace-wide in here
+     * would undo the isolation the guest role exists for.
+     *
+     * The guest ids come from one query for the whole channel rather than a
+     * role lookup per member.
+     *
+     * The status travels with the member rather than with each message: a
+     * status is what somebody is doing now, while a message is a record of a
+     * moment. Baked into the message payload it would freeze — every line from
+     * this morning still saying "in vergadering" long after the meeting ended.
+     *
+     * @return array<int, array{id: int, name: string, username: string, isGuest: bool, statusEmoji: string|null, statusText: string|null, availability: string}>
+     */
+    private function channelMembers(Workspace $workspace, Channel $channel): array
+    {
+        $guestIds = $workspace->members()
+            ->wherePivot('role', WorkspaceRole::Guest->value)
+            ->pluck('users.id')
+            ->flip();
+
+        return $channel->members
+            ->map(fn (User $member): array => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'username' => $member->username,
+                'isGuest' => $guestIds->has($member->id),
+                'statusEmoji' => $member->status_emoji,
+                'statusText' => $member->status_text,
+                'availability' => $member->availability->value,
+            ])->values()->all();
     }
 
     /**
@@ -119,7 +376,8 @@ class ChatController extends Controller
         }
 
         $parent = $channel->rootMessages()
-            ->with(['author', 'reactions'])
+            ->visible()
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
             ->whereKey($parentId)
             ->first();
 
@@ -128,51 +386,13 @@ class ChatController extends Controller
         }
 
         $replies = $parent->replies()
-            ->with(['author', 'reactions'])
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
             ->orderBy('id')
             ->get();
 
         return [
-            'parent' => $this->presentMessage->handle($parent, $user),
-            'replies' => $this->presentMessage->collection($replies, $user),
-        ];
-    }
-
-    /**
-     * The sidebar splits channels from DMs, which is purely presentational:
-     * both are rows in the channels table.
-     *
-     * @return array{channels: array<int, array<string, mixed>>, directMessages: array<int, array<string, mixed>>}
-     */
-    private function sidebarChannels(Workspace $workspace, User $user): array
-    {
-        $channels = $workspace->channels()
-            ->visibleTo($user)
-            ->whereNull('archived_at')
-            ->with('members')
-            ->orderBy('name')
-            ->get();
-
-        ['unread' => $unread, 'mentions' => $mentions] = $this->countUnread
-            ->handle($user, $channels->pluck('id'));
-
-        $present = fn (Channel $channel): array => [
-            'id' => $channel->id,
-            'type' => $channel->type->value,
-            'name' => $channel->name,
-            'label' => $channel->displayNameFor($user),
-            'isMember' => $channel->members->contains($user),
-            'unreadCount' => $unread[$channel->id] ?? 0,
-            'mentionCount' => $mentions[$channel->id] ?? 0,
-        ];
-
-        return [
-            'channels' => $channels
-                ->reject(fn (Channel $channel) => $channel->isDirect())
-                ->map($present)->values()->all(),
-            'directMessages' => $channels
-                ->filter(fn (Channel $channel) => $channel->isDirect())
-                ->map($present)->values()->all(),
+            'parent' => $this->presentMessage->handle($parent),
+            'replies' => $this->presentMessage->collection($replies),
         ];
     }
 

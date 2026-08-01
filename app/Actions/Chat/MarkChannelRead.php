@@ -19,11 +19,15 @@ class MarkChannelRead
      */
     public function handle(Channel $channel, User $user, ?string $messageId = null): void
     {
-        $membership = $channel->members()->find($user->id);
+        // The pointer itself, not the membership row it sits on: the member's
+        // name and status have no bearing on where they had read to.
+        $membership = $channel->members()->whereKey($user->id);
 
-        if ($membership === null) {
+        if (! $membership->exists()) {
             return;
         }
+
+        $readUpTo = $membership->value('channel_user.last_read_message_id');
 
         $messageId ??= $channel->messages()->max('id');
 
@@ -33,13 +37,18 @@ class MarkChannelRead
 
         // ULIDs sort by creation time, so this also guards against an older
         // pointer arriving late and dragging the member back into the past.
-        if ($membership->pivot->last_read_message_id !== null
-            && $membership->pivot->last_read_message_id >= $messageId) {
+        // The timestamp is written either way: opening a channel that holds
+        // nothing new is still the member being present in it, and that is what
+        // the absence notifications ask about.
+        if ($readUpTo !== null && $readUpTo >= $messageId) {
+            $channel->members()->updateExistingPivot($user->id, ['last_read_at' => now()]);
+
             return;
         }
 
         $channel->members()->updateExistingPivot($user->id, [
             'last_read_message_id' => $messageId,
+            'last_read_at' => now(),
         ]);
 
         Mention::query()

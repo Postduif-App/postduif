@@ -34,10 +34,25 @@
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-        @fonts
+        {{--
+            Only the face this workspace actually reads in. Loading all three
+            bundled families would mean two of them are downloaded and
+            preloaded for nothing on every single page.
+        --}}
+        @if ($page['props']['theme']['font'] ?? null)
+            @fonts([$page['props']['theme']['font']])
+        @endif
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
+        {{--
+            The workspace theme, printed after the bundled stylesheet so its
+            variables win, and server-side so the first paint is already in the
+            right accent instead of flashing the default one. React keeps this
+            same element up to date once it takes over — see workspace-theme.tsx.
+        --}}
+        <style id="workspace-theme">{!! $page['props']['theme']['css'] ?? '' !!}</style>
+
         <x-inertia::head>
             <title>{{ config('app.name', 'Laravel') }}</title>
         </x-inertia::head>

@@ -100,10 +100,23 @@ export function SearchDialog({
                                 onSelect={() => {
                                     onOpenChange(false);
                                     router.visit(
-                                        show({
-                                            workspace: workspace.slug,
-                                            channel: hit.channel.id,
-                                        }),
+                                        show(
+                                            {
+                                                workspace: workspace.slug,
+                                                channel: hit.channel.id,
+                                            },
+                                            // A reply lives in a thread, and
+                                            // the thread panel opens from the
+                                            // URL — so the result decides what
+                                            // is open, not just where we land.
+                                            hit.threadId
+                                                ? {
+                                                      query: {
+                                                          thread: hit.threadId,
+                                                      },
+                                                  }
+                                                : undefined,
+                                        ),
                                     );
                                 }}
                                 className="flex flex-col items-start gap-0.5"
@@ -118,6 +131,11 @@ export function SearchDialog({
                                     )}
                                     {hit.channel.name ?? 'Direct bericht'} ·{' '}
                                     {hit.author}
+                                    {hit.authorIsBot && (
+                                        <span className="rounded-sm bg-muted px-1 py-px text-[10px] font-semibold tracking-wide uppercase">
+                                            Bot
+                                        </span>
+                                    )}
                                 </span>
                                 <span className="line-clamp-2 text-sm">
                                     {hit.body}

@@ -28,6 +28,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /**
+     * Pushover turns a notification into a push on a member's own phone. The
+     * application token identifies Pcom; the key of the device it goes to is a
+     * per-member setting.
+     */
+    'pushover' => [
+        'token' => env('PUSHOVER_TOKEN'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

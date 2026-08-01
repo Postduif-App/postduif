@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { Check, Crown, LogOut, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { GuestBadge } from '@/components/chat/guest-badge';
+import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -62,15 +64,29 @@ function MemberRow({
                 selected && 'bg-primary/10',
             )}
         >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-[11px] font-semibold">
-                {getInitials(member.name)}
+            <span className="relative shrink-0">
+                <span className="flex size-7 items-center justify-center rounded bg-muted text-[11px] font-semibold">
+                    {getInitials(member.name)}
+                </span>
+                <AvailabilityDot
+                    availability={member.availability}
+                    className="absolute -right-0.5 -bottom-0.5"
+                />
             </span>
             <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
-                    {member.name}
+                <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-medium">
+                        {member.name}
+                    </span>
+                    {member.isGuest && <GuestBadge />}
+                    <MemberStatus
+                        emoji={member.statusEmoji}
+                        text={member.statusText}
+                    />
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
                     @{member.username}
+                    {member.statusText && ` · ${member.statusText}`}
                 </span>
             </span>
             {trailing}

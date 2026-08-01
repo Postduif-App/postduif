@@ -1,5 +1,10 @@
 <?php
 
+use App\Enums\ChannelTicketPolicy;
+use App\Enums\WorkspaceRole;
+use App\Models\Channel;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +49,53 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * A workspace with this user in it. Lives here rather than in one test file so
+ * every suite can be run on its own with --filter.
+ */
+function workspaceWithMember(User $user, WorkspaceRole $role = WorkspaceRole::Member): Workspace
 {
-    // ..
+    $workspace = Workspace::factory()->create();
+    $workspace->members()->attach($user->id, ['role' => $role->value, 'joined_at' => now()]);
+
+    return $workspace;
+}
+
+function channelWithMember(Workspace $workspace, User $user): Channel
+{
+    $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
+    $channel->members()->attach($user->id, ['joined_at' => now()]);
+
+    return $channel;
+}
+
+/**
+ * A channel that keeps tickets, with a member and a guest in it.
+ *
+ * The guest is part of the fixture rather than an extra step: a customer
+ * channel with nobody external in it is not the case any of these tests are
+ * really about.
+ *
+ * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
+ */
+function ticketFixture(ChannelTicketPolicy $policy = ChannelTicketPolicy::Everyone): array
+{
+    $member = User::factory()->create();
+    $workspace = workspaceWithMember($member);
+
+    $channel = Channel::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $member->id,
+        'ticket_policy' => $policy,
+    ]);
+    $channel->members()->attach($member->id, ['joined_at' => now()]);
+
+    $guest = User::factory()->create();
+    $workspace->members()->attach($guest->id, [
+        'role' => WorkspaceRole::Guest->value,
+        'joined_at' => now(),
+    ]);
+    $channel->members()->attach($guest->id, ['joined_at' => now()]);
+
+    return [$member, $guest, $workspace, $channel];
 }

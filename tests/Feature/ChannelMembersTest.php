@@ -154,6 +154,18 @@ it('filters candidates by name or handle', function () {
         ->assertJsonCount(0, 'candidates');
 });
 
+it('finds a handle whether or not the @ is typed along with it', function () {
+    [$insider, $colleague, $workspace, $channel] = privateChannelWithOutsider();
+    $colleague->forceFill(['name' => 'Amara Okafor', 'username' => 'amara'])->save();
+
+    foreach (['amara', '@amara'] as $terms) {
+        actingAs($insider)
+            ->getJson(route('chat.channels.members.index', [$workspace, $channel]).'?q='.urlencode($terms))
+            ->assertJsonCount(1, 'candidates')
+            ->assertJsonPath('candidates.0.id', $colleague->id);
+    }
+});
+
 it('never leaks the candidate list to an outsider', function () {
     [, $colleague, $workspace, $channel] = privateChannelWithOutsider();
 
