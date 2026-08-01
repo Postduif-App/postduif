@@ -251,6 +251,43 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             ->values();
     }
 
+    /**
+     * What time it is where this member is.
+     *
+     * Every repeating rule is read against this rather than against the
+     * application's UTC. A rule saying nine o'clock means the nine on their own
+     * clock, and nothing about it converts.
+     */
+    public function localNow(?Carbon $at = null): Carbon
+    {
+        return ($at?->copy() ?? Carbon::now())->setTimezone($this->timezone);
+    }
+
+    /**
+     * The rule in force right now, or null when none covers this moment.
+     *
+     * First match wins, which is why order is a field and not a preference:
+     * "and this the rest of the time" is written as a rule covering everything,
+     * placed underneath the one that does not.
+     */
+    public function activeStatusRule(?Carbon $at = null): ?StatusRule
+    {
+        $localNow = $this->localNow($at);
+
+        return $this->statusRules
+            ->first(fn (StatusRule $rule): bool => $rule->matchesAt($localNow));
+    }
+
+    /**
+     * This member's rules, in the order they are asked.
+     *
+     * @return HasMany<StatusRule, $this>
+     */
+    public function statusRules(): HasMany
+    {
+        return $this->hasMany(StatusRule::class)->orderBy('position')->orderBy('id');
+    }
+
     /** @return BelongsToMany<Channel, $this, ChannelMembership, 'pivot'> */
     public function channels(): BelongsToMany
     {
