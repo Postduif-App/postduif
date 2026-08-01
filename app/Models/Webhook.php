@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
  * @property string $name
  * @property string $bot_name
  * @property string|null $body_path
+ * @property array<string, mixed>|null $last_payload
  * @property string $token_hash
  * @property string|null $token
  * @property int|null $created_by
@@ -30,6 +31,37 @@ class Webhook extends Model
 {
     /** @use HasFactory<WebhookFactory> */
     use HasFactory;
+
+    /**
+     * How much of a sample payload is worth keeping.
+     *
+     * Every real webhook body fits well inside this. Something that does not is
+     * not a sample anybody is going to read anyway, and the point of keeping
+     * one is to look at it while writing a path.
+     */
+    public const MAX_PAYLOAD_BYTES = 16384;
+
+    /**
+     * Remember what arrived, so whoever sets the path can see it.
+     *
+     * Only ever the last one. A sender may post anything at all — names,
+     * addresses, somebody's own words — so this is a sample to read once while
+     * wiring the thing up, not a log, and it goes when the webhook goes.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function rememberPayload(array $payload): void
+    {
+        $encoded = json_encode($payload);
+
+        $this->forceFill([
+            'last_payload' => $encoded !== false && strlen($encoded) <= self::MAX_PAYLOAD_BYTES
+                ? $payload
+                // Said out loud rather than left null, which would be
+                // indistinguishable from a webhook nothing has ever posted to.
+                : ['_truncated' => true],
+        ])->save();
+    }
 
     /**
      * Long enough that guessing is hopeless, and prefixed so a token that ends
@@ -53,6 +85,7 @@ class Webhook extends Model
     protected function casts(): array
     {
         return [
+            'last_payload' => 'array',
             // Encrypted rather than plain, so the column is unreadable without
             // the APP_KEY. That is weaker than storing nothing at all, which is
             // what this used to do — see the migration for why it changed.

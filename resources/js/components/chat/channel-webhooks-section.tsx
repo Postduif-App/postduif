@@ -1,6 +1,7 @@
 import { Bot, Check, Copy, Eye, EyeOff, Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { PayloadPaths } from '@/components/chat/payload-paths';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -457,6 +458,12 @@ export function ChannelWebhooksSection({
                                         </Label>
                                         <Input
                                             id={`webhook-path-${webhook.id}`}
+                                            // Keyed on the stored path so
+                                            // picking one from the sample below
+                                            // remounts the field with it, which
+                                            // an uncontrolled input would
+                                            // otherwise ignore.
+                                            key={webhook.bodyPath ?? ''}
                                             defaultValue={
                                                 webhook.bodyPath ?? ''
                                             }
@@ -471,6 +478,20 @@ export function ChannelWebhooksSection({
                                             }
                                         />
                                     </div>
+
+                                    {/*
+                                        Writing a path against a payload you
+                                        cannot see is guessing. Here it is, with
+                                        every usable path in it clickable.
+                                    */}
+                                    {webhook.lastPayload && (
+                                        <PayloadPaths
+                                            payload={webhook.lastPayload}
+                                            onPick={(path) =>
+                                                void retarget(webhook, path)
+                                            }
+                                        />
+                                    )}
                                 </>
                             )}
                         </li>

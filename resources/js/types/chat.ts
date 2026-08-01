@@ -160,6 +160,12 @@ export interface ChannelWebhook {
      * Null when it expects the plain {"text": "..."} it always did.
      */
     bodyPath: string | null;
+    /**
+     * The last thing this webhook received, to write a path against. Null until
+     * something has posted to it; {_truncated: true} when what arrived was too
+     * large to be worth keeping.
+     */
+    lastPayload: Record<string, unknown> | null;
     createdBy: string | null;
     lastUsedAt: string | null;
     revokedAt: string | null;

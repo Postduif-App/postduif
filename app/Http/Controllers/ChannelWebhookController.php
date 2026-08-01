@@ -159,6 +159,13 @@ class ChannelWebhookController extends Controller
             // Null means it expects {"text": "..."}; a path means it reads the
             // sender's own JSON. See ResolveWebhookBody.
             'bodyPath' => $webhook->body_path,
+            /*
+             * The last thing that arrived, for writing a path against. Behind
+             * the same permission as the URL beside it — whoever may manage the
+             * channel set this webhook up, and a payload can hold anything the
+             * sender put in it.
+             */
+            'lastPayload' => $webhook->last_payload,
             'createdBy' => $webhook->creator?->name,
             'lastUsedAt' => $webhook->last_used_at?->toIso8601String(),
             'revokedAt' => $webhook->revoked_at?->toIso8601String(),

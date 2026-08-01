@@ -57,6 +57,12 @@ class WebhookMessageController extends Controller
         // put here by somebody who could already manage the channel, and that
         // is where the decision was made.
         /*
+         * Kept before the body is worked out, deliberately: a payload that did
+         * not match the path is precisely the one somebody needs to look at.
+         */
+        $webhook->rememberPayload($request->all());
+
+        /*
          * What counts as the message is the webhook's own business — see
          * ResolveWebhookBody. Resolved after the checks above rather than in a
          * form request, so an unknown token never gets as far as being told

@@ -131,3 +131,48 @@ it('answers an unknown token before looking at the payload at all', function () 
     test()->postJson(route('webhooks.messages.store', 'whk_bestaatniet'), [])
         ->assertNotFound();
 });
+
+it('keeps what arrived, so a path can be written against it', function () {
+    [$webhook, $token] = pathWebhook(null);
+
+    postJsonToWebhook($token, ['text' => 'Hallo', 'repo' => ['name' => 'pcom']]);
+
+    // Compared loosely: jsonb does not keep the key order it was given, so a
+    // strict comparison would call this different from itself.
+    expect($webhook->refresh()->last_payload)
+        ->toEqual(['text' => 'Hallo', 'repo' => ['name' => 'pcom']]);
+});
+
+/**
+ * The one you most need to see: your path did not match, and now you can look
+ * at why. So the sample is kept before the body is worked out.
+ */
+it('keeps a payload that did not match the path', function () {
+    [$webhook, $token] = pathWebhook('issue.title');
+
+    postJsonToWebhook($token, ['iets' => 'anders'])->assertStatus(422);
+
+    expect($webhook->refresh()->last_payload)->toBe(['iets' => 'anders']);
+});
+
+it('keeps only the last one', function () {
+    [$webhook, $token] = pathWebhook(null);
+
+    postJsonToWebhook($token, ['text' => 'Eerste']);
+    postJsonToWebhook($token, ['text' => 'Tweede']);
+
+    // A sample to read while wiring it up, not a log of everything ever sent.
+    expect($webhook->refresh()->last_payload)->toBe(['text' => 'Tweede']);
+});
+
+it('says so rather than keeping something enormous', function () {
+    [$webhook, $token] = pathWebhook('text');
+
+    postJsonToWebhook($token, [
+        'text' => 'Kort genoeg',
+        'ballast' => str_repeat('x', Webhook::MAX_PAYLOAD_BYTES),
+    ])->assertCreated();
+
+    // Distinguishable from a webhook nothing has ever posted to.
+    expect($webhook->refresh()->last_payload)->toBe(['_truncated' => true]);
+});
