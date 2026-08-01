@@ -8,6 +8,7 @@ use App\Enums\ChannelCreationPolicy;
 use App\Enums\WorkspaceAccent;
 use App\Enums\WorkspaceFont;
 use App\Enums\WorkspaceRole;
+use App\Features\WorkspaceFeature;
 use Database\Factories\WorkspaceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * @property int $id
@@ -137,6 +139,34 @@ class Workspace extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Whether a part of the product is switched on here.
+     *
+     * The scope is passed explicitly rather than resolved from the current
+     * request: a scheduled message goes out from a queue worker, where there
+     * is no request to read a workspace from, and a flag that silently answers
+     * for the wrong workspace is worse than one that is a nuisance to ask.
+     *
+     * @param  class-string<WorkspaceFeature>  $feature
+     */
+    public function hasFeature(string $feature): bool
+    {
+        return Feature::for($this)->active($feature);
+    }
+
+    /**
+     * Every feature and its stand here, for a screen that shows them all.
+     *
+     * @return array<class-string<WorkspaceFeature>, bool>
+     */
+    public function featureStates(): array
+    {
+        $values = Feature::for($this)->values(WorkspaceFeature::ALL);
+
+        /** @var array<class-string<WorkspaceFeature>, bool> */
+        return array_map(fn ($value): bool => $value === true, $values);
     }
 
     /** @return BelongsTo<User, $this> */
