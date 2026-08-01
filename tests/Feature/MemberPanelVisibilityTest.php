@@ -94,3 +94,21 @@ it('sends nobody to a member who does not get the panel', function () {
         ->get(route('chat.show', [$workspace, $channel]))
         ->assertInertia(fn ($page) => $page->has('workspaceMembers', 0));
 });
+
+it('remembers that the panel was left open', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace->update(['member_panel' => MemberPanelVisibility::Everyone]);
+
+    $channel = channelWithMember($workspace, $user);
+
+    // Nothing said yet: the extra panel starts out of the way.
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page->where('memberPanelOpen', false));
+
+    actingAs($user)
+        ->withUnencryptedCookie('member_panel_state', 'true')
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page->where('memberPanelOpen', true));
+});

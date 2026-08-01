@@ -103,6 +103,17 @@ class HandleInertiaRequests extends Middleware
                     : $workspace->font->alias(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            /*
+             * Whether the member list on the right is open. Read here rather
+             * than from the browser after mount, for the same reason as the
+             * sidebar beside it: the first paint has to be right, and a panel
+             * that flicks open before closing again is worse than one that
+             * forgets.
+             *
+             * Closed unless it says otherwise — the opposite default from the
+             * sidebar, because this panel is the extra one.
+             */
+            'memberPanelOpen' => $request->cookie('member_panel_state') === 'true',
         ];
     }
 }

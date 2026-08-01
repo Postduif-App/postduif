@@ -104,6 +104,14 @@ interface ConversationProps {
     /** Marks the member's own optimistic drafts, so the badge does not appear
      *  only once the server echo lands. */
     currentUserIsGuest?: boolean;
+    /**
+     * Whether the workspace member panel beside this conversation is showing.
+     * Not to be confused with membersOpen below, which is this channel's own
+     * member dialog — different list, different question.
+     */
+    workspacePanelOpen?: boolean;
+    /** Absent when this workspace does not offer the panel at all. */
+    onToggleWorkspacePanel?: () => void;
 }
 
 function ChannelIcon({ type }: { type: ActiveChannel['type'] }) {
@@ -220,6 +228,8 @@ export function Conversation({
     currentUsername,
     currentUserAvatarUrl,
     currentUserIsGuest = false,
+    workspacePanelOpen = false,
+    onToggleWorkspacePanel,
 }: ConversationProps) {
     const [pending, setPending] = useState<ChatMessage[]>([]);
 
@@ -906,6 +916,37 @@ export function Conversation({
                                 {scheduled.length === 1
                                     ? '1 bericht staat klaar'
                                     : `${scheduled.length} berichten staan klaar`}
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+
+                    {/*
+                        The way back to the member panel once it has been closed
+                        away. Here rather than on the panel itself, because a
+                        panel that is gone has nowhere to put its own handle.
+                    */}
+                    {onToggleWorkspacePanel && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={onToggleWorkspacePanel}
+                                    aria-pressed={workspacePanelOpen}
+                                    aria-label="Ledenlijst"
+                                    className={cn(
+                                        'hidden rounded-md border px-1.5 py-1 text-xs transition-colors lg:flex',
+                                        workspacePanelOpen
+                                            ? 'border-primary/40 text-primary'
+                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                                    )}
+                                >
+                                    <Users className="size-3.5" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {workspacePanelOpen
+                                    ? 'Ledenlijst sluiten'
+                                    : 'Wie zit er in deze workspace'}
                             </TooltipContent>
                         </Tooltip>
                     )}

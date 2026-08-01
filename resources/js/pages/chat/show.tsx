@@ -63,6 +63,8 @@ interface ChatShowProps {
     sections: ChannelSectionRow[];
     /** Everybody in the workspace, or empty when this member is not shown them. */
     workspaceMembers: ChannelMember[];
+    /** Whether the panel was left open, remembered in a cookie. */
+    memberPanelOpen: boolean;
     /** Which of the messages above this member set aside for later. */
     bookmarkedIds: string[];
     /** What this member still has waiting in this channel. */
@@ -85,6 +87,7 @@ export default function ChatShow({
     archivedChannels,
     sections,
     workspaceMembers,
+    memberPanelOpen,
     bookmarkedIds,
     scheduled,
 }: ChatShowProps) {
@@ -95,6 +98,18 @@ export default function ChatShow({
     const [inviteOpen, setInviteOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
     const [broadcastOpen, setBroadcastOpen] = useState(false);
+
+    /*
+     * Seeded from the server so the first paint is already right, then written
+     * back to the same cookie. A panel that flicks open and closes again on
+     * every load is worse than one that forgets where it was.
+     */
+    const [membersOpen, setMembersOpen] = useState(memberPanelOpen);
+
+    const toggleMembers = (open: boolean) => {
+        setMembersOpen(open);
+        document.cookie = `member_panel_state=${open}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    };
 
     // Messages keep arriving over the socket long after a session ends, so the
     // page has to notice on its own that nobody is signed in any more.
@@ -256,13 +271,20 @@ export default function ChatShow({
                 currentUsername={auth.user.username as string | undefined}
                 currentUserAvatarUrl={auth.avatarUrl}
                 currentUserIsGuest={auth.workspaceRole === 'guest'}
+                workspacePanelOpen={membersOpen}
+                onToggleWorkspacePanel={
+                    workspace.showsMemberPanel
+                        ? () => toggleMembers(!membersOpen)
+                        : undefined
+                }
             />
 
-            {workspace.showsMemberPanel && (
+            {workspace.showsMemberPanel && membersOpen && (
                 <MemberPanel
                     members={workspaceMembers}
                     currentUserId={auth.user.id}
                     workspaceSlug={workspace.slug}
+                    onClose={() => toggleMembers(false)}
                 />
             )}
 
