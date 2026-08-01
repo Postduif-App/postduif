@@ -1,7 +1,21 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
+
+/** The browser's own zone. A stable string, so React can compare snapshots. */
+function readBrowserTimezone(): string {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** There is no browser on the server, and no zone to suggest. */
+function readNothing(): null {
+    return null;
+}
+
+function subscribeToNothing(): () => void {
+    return () => {};
+}
 
 /**
  * The zone repeating times are read in.
@@ -25,8 +39,18 @@ export function TimezoneField({
      * What the browser thinks. Offered rather than applied: somebody on a
      * laptop in another country for a week has not moved, and a setting that
      * quietly followed them there would rewrite their working hours.
+     *
+     * Read through an external store rather than during render, because the
+     * server has no browser to ask: reading it straight would have the server
+     * render UTC and the browser render Amsterdam, which is a hydration
+     * mismatch — the same shape of bug as the composer draft. Nothing ever
+     * changes it, so the subscribe half has nothing to do.
      */
-    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const detected = useSyncExternalStore(
+        subscribeToNothing,
+        readBrowserTimezone,
+        readNothing,
+    );
 
     const regions = Object.entries(
         timezones.reduce<Record<string, string[]>>((groups, zone) => {
@@ -63,19 +87,24 @@ export function TimezoneField({
             <p className="text-xs text-muted-foreground">
                 Waarin herhalende tijden gelezen worden, zoals een status die
                 elke werkdag om negen uur ingaat.
-                {timezones.includes(detected) && detected !== selected && (
-                    <>
-                        {' '}
-                        Je browser staat op {detected.replace(/_/g, ' ')}.{' '}
-                        <button
-                            type="button"
-                            onClick={() => setSelected(detected)}
-                            className="underline underline-offset-4"
-                        >
-                            Overnemen
-                        </button>
-                    </>
-                )}
+                {detected !== null &&
+                    timezones.includes(detected) &&
+                    detected !== selected && (
+                        <>
+                            {' '}
+                            Je browser staat op {detected.replace(
+                                /_/g,
+                                ' ',
+                            )}.{' '}
+                            <button
+                                type="button"
+                                onClick={() => setSelected(detected)}
+                                className="underline underline-offset-4"
+                            >
+                                Overnemen
+                            </button>
+                        </>
+                    )}
             </p>
 
             <InputError className="mt-2" message={error} />
