@@ -32,6 +32,8 @@ class FindChannelsTool extends Tool
 
         $search = trim((string) $request->get('search', ''));
 
+        $open = $user->workspacesOpenToAi()->pluck('id');
+
         $channels = Channel::query()
             ->visibleTo($user)
             ->whereNull('archived_at')
@@ -40,14 +42,19 @@ class FindChannelsTool extends Tool
             ->orderBy('name')
             ->limit(self::LIMIT)
             ->get()
-            // Only the workspaces this member actually belongs to. visibleTo
-            // already implies it, but saying it here means a workspace they
-            // were removed from cannot surface through a stale membership row.
+            /*
+             * Only the workspaces this member belongs to that let AI clients
+             * in at all. Membership is already implied by visibleTo, but saying
+             * it here means a workspace they were removed from cannot surface
+             * through a stale membership row.
+             */
             ->filter(fn (Channel $channel): bool => $channel->workspace instanceof Workspace
-                && $channel->workspace->hasMember($user));
+                && $open->contains($channel->workspace->id));
 
         if ($channels->isEmpty()) {
             return Response::text($search === ''
+                // Says nothing about why. A workspace that switched AI access
+                // off has not told this client that it exists.
                 ? 'Deze gebruiker zit in geen enkel kanaal.'
                 : 'Geen kanaal gevonden voor "'.$search.'".');
         }

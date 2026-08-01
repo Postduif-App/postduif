@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\Availability;
+use App\Features\AiAccess;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -217,6 +219,24 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             ->as('membership')
             ->withPivot(['role', 'display_name', 'joined_at'])
             ->withTimestamps();
+    }
+
+    /**
+     * The workspaces this member belongs to that let AI clients in.
+     *
+     * One definition for all of the MCP tools, deliberately. Each of them
+     * queries differently — channels by name, messages by term, a single
+     * channel by id — so there is no single query to put the check in, and
+     * three copies of "and the workspace allows it" is three chances to write
+     * a fourth tool without one.
+     *
+     * @return Collection<int, Workspace>
+     */
+    public function workspacesOpenToAi(): Collection
+    {
+        return $this->workspaces
+            ->filter(fn (Workspace $workspace): bool => $workspace->hasFeature(AiAccess::class))
+            ->values();
     }
 
     /** @return BelongsToMany<Channel, $this, ChannelMembership, 'pivot'> */

@@ -51,6 +51,15 @@ class SendMessageTool extends Tool
             return Response::error('Kanaal niet gevonden.');
         }
 
+        /*
+         * And the same answer again where the workspace does not let AI clients
+         * in. A different one — "AI-toegang staat uit" — would confirm that the
+         * channel exists, which is exactly what the line above refuses to do.
+         */
+        if (! $user->workspacesOpenToAi()->contains('id', $channel->workspace_id)) {
+            return Response::error('Kanaal niet gevonden.');
+        }
+
         if (! $user->can('post', $channel)) {
             return Response::error(
                 'Deze gebruiker mag niet posten in dit kanaal.'

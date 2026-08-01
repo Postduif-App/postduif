@@ -3,6 +3,7 @@
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
 use App\Events\MessageSent;
+use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
 use App\Mcp\Tools\SendMessageTool;
 use App\Models\Channel;
@@ -11,6 +12,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
+use Laravel\Pennant\Feature;
 
 /**
  * A member with somewhere to write.
@@ -21,6 +23,14 @@ function memberWhoCanPost(): array
 {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
+
+    /*
+     * These tests are about what an AI client can do where it has been let in.
+     * Whether it is let in at all is a workspace's own decision, tested in
+     * FeatureEnforcementTest — and switched off by default, which is why it has
+     * to be said out loud here.
+     */
+    Feature::for($workspace)->activate(AiAccess::class);
     $channel = channelWithMember($workspace, $user);
 
     return [$user, $workspace, $channel];

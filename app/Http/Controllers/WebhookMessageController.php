@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\SendMessage;
+use App\Features\Webhooks;
 use App\Http\Requests\StoreWebhookMessageRequest;
 use App\Models\Webhook;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,7 @@ class WebhookMessageController extends Controller
     ): JsonResponse {
         $webhook = Webhook::query()
             ->active()
-            ->with('channel')
+            ->with('channel.workspace')
             ->where('token_hash', Webhook::hashToken($token))
             ->first();
 
@@ -36,6 +37,17 @@ class WebhookMessageController extends Controller
             $webhook->channel === null || $webhook->channel->archived_at !== null,
             422,
             'Dit kanaal is gearchiveerd.',
+        );
+
+        /*
+         * The workspace may have switched webhooks off since this one was made.
+         * The same 404 as an unknown token, for the same reason: a different
+         * answer here would confirm that the token is real.
+         */
+        abort_unless(
+            $webhook->channel->workspace?->hasFeature(Webhooks::class) ?? false,
+            404,
+            'Onbekende webhook.',
         );
 
         // ChannelPostingPolicy is deliberately not consulted. It narrows who

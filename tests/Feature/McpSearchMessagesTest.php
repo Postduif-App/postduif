@@ -1,12 +1,14 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
 use App\Mcp\Tools\SearchMessagesTool;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
+use Laravel\Pennant\Feature;
 
 /**
  * A member with one message to find.
@@ -17,6 +19,14 @@ function memberWithMessage(string $body = 'De levering komt dinsdag'): array
 {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
+
+    /*
+     * These tests are about what an AI client can do where it has been let in.
+     * Whether it is let in at all is a workspace's own decision, tested in
+     * FeatureEnforcementTest — and switched off by default, which is why it has
+     * to be said out loud here.
+     */
+    Feature::for($workspace)->activate(AiAccess::class);
     $channel = channelWithMember($workspace, $user);
 
     $message = Message::factory()->create([

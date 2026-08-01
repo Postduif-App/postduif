@@ -61,14 +61,18 @@ class SearchMessagesTool extends Tool
      */
     private function search(User $user, string $terms, ?Channel $channel): array
     {
+        $open = $user->workspacesOpenToAi();
+
         $workspaces = $channel !== null
             ? [$channel->workspace]
-            : $user->workspaces;
+            : $open;
 
         $results = [];
 
         foreach ($workspaces as $workspace) {
-            if (! $workspace instanceof Workspace || ! $workspace->hasMember($user)) {
+            // The narrowed case comes in from the outside, so it is checked
+            // against the same list rather than trusted for having been named.
+            if (! $workspace instanceof Workspace || ! $open->contains('id', $workspace->id)) {
                 continue;
             }
 
