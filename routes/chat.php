@@ -23,6 +23,7 @@ use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\ThreadClosureController;
+use App\Http\Controllers\TicketCommentAttachmentController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\WorkspaceBookmarkController;
@@ -234,6 +235,18 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::patch('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'update'])
                     ->scopeBindings()
                     ->name('tickets.comments.update');
+
+                /*
+                 * The only way to a file on a ticket comment: they sit on the
+                 * private disk, and this asks the ChannelPolicy first — see
+                 * TicketCommentAttachmentController.
+                 */
+                Route::get(
+                    'c/{channel}/tickets/{ticket}/comments/{comment}/files/{attachment}',
+                    [TicketCommentAttachmentController::class, 'show'],
+                )
+                    ->scopeBindings()
+                    ->name('tickets.comments.attachments.show');
 
                 Route::delete('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])
                     ->scopeBindings()

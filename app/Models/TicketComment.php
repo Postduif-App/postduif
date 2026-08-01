@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -36,6 +37,16 @@ class TicketComment extends Model
         return [
             'edited_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The files hung on this comment.
+     *
+     * @return HasMany<TicketCommentAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TicketCommentAttachment::class)->oldest('id');
     }
 
     /** @return BelongsTo<Ticket, $this> */

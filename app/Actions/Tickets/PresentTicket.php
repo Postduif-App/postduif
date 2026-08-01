@@ -6,6 +6,7 @@ use App\Actions\Chat\CensorBlockedWords;
 use App\Enums\WorkspaceRole;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Models\TicketCommentAttachment;
 use App\Models\TicketEvent;
 use App\Models\User;
 use App\Models\Workspace;
@@ -87,6 +88,45 @@ class PresentTicket
     }
 
     /**
+     * The files on one comment, with the only URL that leads to them.
+     *
+     * Built here rather than on the model: the address needs the workspace and
+     * the channel the ticket hangs in, and a model that had to know its own
+     * route would have to know those too.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachments(Ticket $ticket, TicketComment $comment): array
+    {
+        $channel = $ticket->channel;
+
+        // The workspace itself, not its id: it is bound by slug, so an id here
+        // would build a URL that resolves to nothing.
+        $workspace = $channel?->workspace;
+
+        if ($channel === null || $workspace === null) {
+            return [];
+        }
+
+        return $comment->attachments
+            ->map(fn (TicketCommentAttachment $attachment): array => [
+                'id' => $attachment->id,
+                'name' => $attachment->name,
+                'mimeType' => $attachment->mime_type,
+                'size' => $attachment->size,
+                'isImage' => $attachment->isImage(),
+                'url' => route('chat.tickets.comments.attachments.show', [
+                    $workspace,
+                    $channel,
+                    $ticket,
+                    $comment,
+                    $attachment,
+                ]),
+            ])
+            ->all();
+    }
+
+    /**
      * Comments and events in one chronological list.
      *
      * Merged here rather than in the browser: they are two tables with two
@@ -97,7 +137,7 @@ class PresentTicket
      */
     public function timeline(Ticket $ticket): array
     {
-        $ticket->loadMissing(['allComments.author', 'events.actor']);
+        $ticket->loadMissing(['allComments.author', 'allComments.attachments', 'events.actor', 'channel.workspace']);
 
         $comments = $ticket->allComments->map(fn (TicketComment $comment): array => [
             'kind' => 'comment',
@@ -109,6 +149,12 @@ class PresentTicket
             'deleted' => $comment->isDeleted(),
             'editedAt' => $comment->edited_at?->toIso8601String(),
             'createdAt' => $comment->created_at?->toIso8601String(),
+            // A withdrawn comment keeps its place but hands out nothing: taking
+            // the words back and leaving the screenshot would be half a
+            // withdrawal.
+            'attachments' => $comment->isDeleted()
+                ? []
+                : $this->attachments($ticket, $comment),
         ]);
 
         $events = $ticket->events->map(fn (TicketEvent $event): array => [

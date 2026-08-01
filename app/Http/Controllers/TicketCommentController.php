@@ -26,6 +26,7 @@ class TicketCommentController extends Controller
             ticket: $ticket,
             author: $request->user(),
             body: $request->string('body')->trim()->value(),
+            attachments: array_values($request->file('attachments', [])),
         );
 
         return back();
