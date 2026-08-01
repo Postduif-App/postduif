@@ -191,5 +191,9 @@ it('sends the files along with the ticket', function () {
             ->has('ticket.timeline.0.attachments', 1)
             ->where('ticket.timeline.0.attachments.0.name', 'schermafbeelding.png')
             ->where('ticket.timeline.0.attachments.0.isImage', true)
+            // Sent even though nothing fills it: the renderer is shared with
+            // the conversation, and a shape that is "the same except one key"
+            // is the one that trips it up.
+            ->where('ticket.timeline.0.attachments.0.previewUrl', null)
         );
 });

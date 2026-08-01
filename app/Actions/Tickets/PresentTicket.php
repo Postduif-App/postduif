@@ -115,6 +115,14 @@ class PresentTicket
                 'mimeType' => $attachment->mime_type,
                 'size' => $attachment->size,
                 'isImage' => $attachment->isImage(),
+                /*
+                 * No smaller copy is made for these. A ticket shows a handful
+                 * of files rather than the hundreds a channel scrolls past, so
+                 * the original is what gets drawn — but the field is sent all
+                 * the same, because the renderer is shared and a shape that is
+                 * "the same except one key" is the one that trips it up.
+                 */
+                'previewUrl' => null,
                 'url' => route('chat.tickets.comments.attachments.show', [
                     $workspace,
                     $channel,

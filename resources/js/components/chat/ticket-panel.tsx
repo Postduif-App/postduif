@@ -3,6 +3,7 @@ import { CornerUpLeft, Pencil, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Composer } from '@/components/chat/composer';
+import { MessageAttachments } from '@/components/chat/message-attachments';
 import { MessageBody } from '@/components/chat/message-body';
 import {
     ALL_STATUSES,
@@ -298,7 +299,7 @@ export function TicketPanel({
      * The Composer holds the draft and clears it itself, so this only has to
      * send what it hands over.
      */
-    const send = (body: string) => {
+    const send = (body: string, files: File[]) => {
         if (sending) {
             return;
         }
@@ -306,7 +307,9 @@ export function TicketPanel({
         setSending(true);
         router.post(
             storeComment.url(target),
-            { body },
+            // Inertia turns this into a multipart request by itself once a File
+            // is in it, so there is no form to build here.
+            { body, attachments: files },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -666,6 +669,18 @@ export function TicketPanel({
                                         />
                                     )}
                                 </p>
+
+                                {/*
+                                    The same renderer the conversation uses, so
+                                    a screenshot on a ticket opens the way a
+                                    screenshot on a message does. No onRemove:
+                                    a comment's files go when the comment does.
+                                */}
+                                {!entry.deleted && (
+                                    <MessageAttachments
+                                        attachments={entry.attachments}
+                                    />
+                                )}
                             </li>
                         ) : (
                             <li
@@ -694,6 +709,10 @@ export function TicketPanel({
                     disabled={sending}
                     workspace={workspace}
                     triggers=""
+                    // The workspace's own file settings, the same ones the
+                    // channel composer gets. Null where sharing is off, and
+                    // then no paperclip appears at all.
+                    attachments={workspace.uploads ?? undefined}
                     onSend={send}
                 />
             </div>

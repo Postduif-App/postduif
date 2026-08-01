@@ -477,6 +477,11 @@ export type TicketTimelineEntry =
           deleted: boolean;
           editedAt: string | null;
           createdAt: string | null;
+          /**
+           * Files hung on this comment. Empty for a withdrawn one: taking the
+           * words back and leaving the screenshot would be half a withdrawal.
+           */
+          attachments: MessageAttachment[];
       }
     | {
           kind: 'event';
