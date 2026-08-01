@@ -23,9 +23,11 @@ class ForwardMessage
      * is attribution, not authorship — they cannot edit or delete a copy they
      * did not place.
      *
-     * Attachments deliberately stay behind. They live on a private disk behind
-     * a route scoped to the original channel, so a copied file would be a link
-     * the reader cannot open — see pcom-yvwn for carrying them along properly.
+     * The files come along as copies rather than as a second row pointing at
+     * the same bytes. A shared file would be reachable through the original
+     * message's route, which is scoped to a channel the reader may not be in —
+     * and taking the original message back would take the forward's files with
+     * it. Own copy, own message, own permission check.
      */
     public function handle(
         Message $message,
@@ -53,7 +55,31 @@ class ForwardMessage
             'forwarded_from' => $this->attribution($message),
         ])->save();
 
+        $this->copyAttachments($message, $forwarded, $target);
+
         return $forwarded;
+    }
+
+    /**
+     * Carry the files across, as copies.
+     *
+     * Judged against the workspace as it stands now rather than as it stood
+     * when the file was uploaded: a workspace that has since switched sharing
+     * off, or stopped taking that kind of file, means it now — and a forward is
+     * a new message, not a replay of an old one. The words still go; only the
+     * files stay behind.
+     */
+    private function copyAttachments(Message $message, Message $forwarded, Channel $target): void
+    {
+        $workspace = $target->workspace;
+
+        foreach ($message->getMedia(Message::ATTACHMENTS) as $attachment) {
+            if (! $workspace->acceptsAttachment((string) $attachment->mime_type)) {
+                continue;
+            }
+
+            $attachment->copy($forwarded, Message::ATTACHMENTS);
+        }
     }
 
     /**

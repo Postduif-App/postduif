@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Forward, Hash, Lock, MessageSquare } from 'lucide-react';
+import { Forward, Hash, Lock, MessageSquare, Paperclip } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -72,9 +72,17 @@ export function ForwardDialog({
                 </DialogHeader>
 
                 {message && (
-                    <p className="line-clamp-3 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-                        {message.body}
-                    </p>
+                    <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                        <p className="line-clamp-3">{message.body}</p>
+                        {message.attachments.length > 0 && (
+                            <p className="mt-1 flex items-center gap-1.5 text-xs">
+                                <Paperclip className="size-3" />
+                                {message.attachments.length === 1
+                                    ? '1 bestand gaat mee'
+                                    : `${message.attachments.length} bestanden gaan mee`}
+                            </p>
+                        )}
+                    </div>
                 )}
 
                 <div className="grid gap-2">

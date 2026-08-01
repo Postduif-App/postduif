@@ -6,6 +6,8 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\UploadedFile;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 use function Pest\Laravel\actingAs;
 
@@ -33,6 +35,24 @@ function forwardableMessage(): array
     ]);
 
     return [$user, $workspace, $source, $target, $message];
+}
+
+/**
+ * A file on a message, with the mime type it would really have.
+ *
+ * A fake upload is empty, and an empty file is detected as
+ * "application/x-empty" — which no workspace allows, so the forward would skip
+ * it for a reason that has nothing to do with what is being tested.
+ */
+function attachPdf(Message $message): Media
+{
+    $media = $message
+        ->addMedia(UploadedFile::fake()->create('plattegrond.pdf', 20, 'application/pdf'))
+        ->toMediaCollection(Message::ATTACHMENTS);
+
+    $media->forceFill(['mime_type' => 'application/pdf'])->save();
+
+    return $media;
 }
 
 it('carries a message into another channel', function () {
@@ -141,4 +161,76 @@ it('keeps the bot name as the attribution', function () {
     ]);
 
     expect($target->messages()->sole()->forwarded_from)->toBe('Statuspagina');
+});
+
+it('carries the files along as copies', function () {
+    [$user, $workspace, $source, $target, $message] = forwardableMessage();
+
+    $original = attachPdf($message);
+
+    actingAs($user)->post(route('chat.messages.forward', [$workspace, $source, $message]), [
+        'channel_id' => $target->id,
+    ]);
+
+    $copy = $target->messages()->sole()->getFirstMedia(Message::ATTACHMENTS);
+
+    expect($copy)->not->toBeNull()
+        ->and($copy->file_name)->toBe('plattegrond.pdf')
+        // A copy, not a second row pointing at the same bytes: the forward has
+        // to keep working when the original message is taken back.
+        ->and($copy->id)->not->toBe($original->id)
+        ->and($copy->getPath())->not->toBe($original->getPath());
+});
+
+it('leaves the forward alone when the original is taken back', function () {
+    [$user, $workspace, $source, $target, $message] = forwardableMessage();
+
+    attachPdf($message);
+
+    actingAs($user)->post(route('chat.messages.forward', [$workspace, $source, $message]), [
+        'channel_id' => $target->id,
+    ]);
+
+    $copy = $target->messages()->sole()->getFirstMedia(Message::ATTACHMENTS);
+
+    $message->forceDelete();
+
+    expect(Media::whereKey($copy->id)->exists())->toBeTrue()
+        ->and(is_file($copy->fresh()->getPath()))->toBeTrue();
+});
+
+/**
+ * Judged against the workspace as it stands now: one that has since stopped
+ * taking that kind of file means it now, and a forward is a new message.
+ */
+it('leaves a file behind that the workspace no longer takes', function () {
+    [$user, $workspace, $source, $target, $message] = forwardableMessage();
+
+    attachPdf($message);
+
+    $workspace->update(['allowed_attachment_types' => ['images']]);
+
+    actingAs($user)->post(route('chat.messages.forward', [$workspace, $source, $message]), [
+        'channel_id' => $target->id,
+    ]);
+
+    $forwarded = $target->messages()->sole();
+
+    // The words still go; only the file stays behind.
+    expect($forwarded->body)->toBe('De levering is verzet naar dinsdag')
+        ->and($forwarded->getMedia(Message::ATTACHMENTS))->toBeEmpty();
+});
+
+it('leaves the files behind when sharing is switched off altogether', function () {
+    [$user, $workspace, $source, $target, $message] = forwardableMessage();
+
+    attachPdf($message);
+
+    $workspace->update(['uploads_enabled' => false]);
+
+    actingAs($user)->post(route('chat.messages.forward', [$workspace, $source, $message]), [
+        'channel_id' => $target->id,
+    ]);
+
+    expect($target->messages()->sole()->getMedia(Message::ATTACHMENTS))->toBeEmpty();
 });
