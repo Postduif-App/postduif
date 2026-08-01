@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -34,6 +35,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Not under /settings: this is set from the user menu, not from a screen.
     Route::patch('app/status', [StatusController::class, 'update'])->name('status.update');
+
+    /*
+     * The tokens a member handed to an AI client. Their own screen: a token
+     * acts as the person across every workspace they belong to.
+     */
+    Route::get('app/settings/mcp-tokens', [McpTokenController::class, 'index'])
+        ->name('mcp-tokens.index');
+    Route::post('app/settings/mcp-tokens', [McpTokenController::class, 'store'])
+        ->name('mcp-tokens.store');
+    Route::delete('app/settings/mcp-tokens/{mcpToken}', [McpTokenController::class, 'destroy'])
+        ->name('mcp-tokens.destroy');
 
     Route::get('app/settings/notifications', [NotificationController::class, 'edit'])
         ->name('notifications.edit');
