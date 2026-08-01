@@ -7,6 +7,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * A row that scrolls sideways without a bar under it.
+ *
+ * For places where the scrolling is incidental rather than the point — the
+ * ticket filters give way so the button beside them can stay put, and a bar
+ * announcing that would draw more attention than the thing it is hiding.
+ */
+@utility scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,

@@ -64,33 +64,43 @@ export function TicketBoard({
 
     return (
         <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
-                {filters.map((option) => {
-                    const selected = filter === option.value;
+            {/*
+                One row, always. Opening a ticket narrows the board, and a
+                wrapping header answered that by pushing "Nieuw ticket" onto a
+                line of its own — so the button moved every time somebody
+                clicked a ticket. The filters give way instead: they scroll
+                sideways when there is not enough room, and the button stays
+                where it was.
+            */}
+            <div className="flex items-center gap-2 border-b px-4 py-3">
+                <div className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+                    {filters.map((option) => {
+                        const selected = filter === option.value;
 
-                    return (
-                        <button
-                            key={option.value}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setFilter(option.value)}
-                            className={cn(
-                                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                                selected
-                                    ? 'border-primary/50 bg-primary/10 text-foreground'
-                                    : 'text-muted-foreground hover:bg-muted',
-                            )}
-                        >
-                            {option.label}
-                            <span className="ml-1.5 tabular-nums opacity-70">
-                                {option.total}
-                            </span>
-                        </button>
-                    );
-                })}
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() => setFilter(option.value)}
+                                className={cn(
+                                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors',
+                                    selected
+                                        ? 'border-primary/50 bg-primary/10 text-foreground'
+                                        : 'text-muted-foreground hover:bg-muted',
+                                )}
+                            >
+                                {option.label}
+                                <span className="ml-1.5 tabular-nums opacity-70">
+                                    {option.total}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
 
                 {canCreate && (
-                    <Button size="sm" className="ml-auto" onClick={onCreate}>
+                    <Button size="sm" className="shrink-0" onClick={onCreate}>
                         <Plus className="size-4" />
                         Nieuw ticket
                     </Button>
