@@ -66,10 +66,12 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              * reachable while signed out, so it lives next to invitations.show
              * in web.php.
              */
-            Route::post('invite-links', [InviteLinkController::class, 'store'])
-                ->name('invite-links.store');
-            Route::delete('invite-links/{invite_link}', [InviteLinkController::class, 'destroy'])
-                ->name('invite-links.destroy');
+            Route::middleware('feature:invite-links')->group(function () {
+                Route::post('invite-links', [InviteLinkController::class, 'store'])
+                    ->name('invite-links.store');
+                Route::delete('invite-links/{invite_link}', [InviteLinkController::class, 'destroy'])
+                    ->name('invite-links.destroy');
+            });
             /**
              * A DM is not created through channels.store: StoreChannelRequest
              * refuses type=dm, and rightly so — there is no name, slug or topic
@@ -101,6 +103,7 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              * is the whole point of it.
              */
             Route::get('tickets', [WorkspaceTicketController::class, 'index'])
+                ->middleware('feature:tickets')
                 ->name('tickets.index');
 
             /*
@@ -114,6 +117,7 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
             // Everything this member set aside, across channels — see
             // WorkspaceBookmarkController.
             Route::get('saved', [WorkspaceBookmarkController::class, 'index'])
+                ->middleware('feature:saved-messages')
                 ->name('saved.index');
 
             /*
@@ -189,56 +193,63 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->scopeBindings()
                 ->name('channels.links.destroy');
 
-            Route::get('c/{channel}/webhooks', [ChannelWebhookController::class, 'index'])->name('channels.webhooks.index');
-            Route::post('c/{channel}/webhooks', [ChannelWebhookController::class, 'store'])->name('channels.webhooks.store');
+            /* Het beheer; het endpoint dat een webhook gebruikt zit in api.php. */
+            Route::middleware('feature:webhooks')->group(function () {
+                Route::get('c/{channel}/webhooks', [ChannelWebhookController::class, 'index'])->name('channels.webhooks.index');
+                Route::post('c/{channel}/webhooks', [ChannelWebhookController::class, 'store'])->name('channels.webhooks.store');
 
-            Route::post('c/{channel}/webhooks/{webhook}/token', [ChannelWebhookController::class, 'regenerate'])
-                ->scopeBindings()
-                ->name('channels.webhooks.regenerate');
+                Route::post('c/{channel}/webhooks/{webhook}/token', [ChannelWebhookController::class, 'regenerate'])
+                    ->scopeBindings()
+                    ->name('channels.webhooks.regenerate');
 
-            // Scoped, so a webhook id belonging to another channel is a 404
-            // rather than something the controller has to remember to check.
-            Route::delete('c/{channel}/webhooks/{webhook}', [ChannelWebhookController::class, 'destroy'])
-                ->scopeBindings()
-                ->name('channels.webhooks.destroy');
+                // Scoped, so a webhook id belonging to another channel is a 404
+                // rather than something the controller has to remember to check.
+                Route::delete('c/{channel}/webhooks/{webhook}', [ChannelWebhookController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('channels.webhooks.destroy');
+            });
 
             /**
              * Tickets are read through chat.show with ?view=tickets, the same
              * way an open thread travels in the query string. Only the writes
              * live on routes of their own.
              */
-            Route::post('c/{channel}/tickets', [TicketController::class, 'store'])->name('tickets.store');
+            Route::middleware('feature:tickets')->group(function () {
+                Route::post('c/{channel}/tickets', [TicketController::class, 'store'])->name('tickets.store');
 
-            // Scoped, so a ticket number from another channel is a 404 rather
-            // than something every method has to remember to check.
-            Route::patch('c/{channel}/tickets/{ticket}', [TicketController::class, 'update'])
-                ->scopeBindings()
-                ->name('tickets.update');
+                // Scoped, so a ticket number from another channel is a 404 rather
+                // than something every method has to remember to check.
+                Route::patch('c/{channel}/tickets/{ticket}', [TicketController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('tickets.update');
 
-            Route::post('c/{channel}/tickets/{ticket}/comments', [TicketCommentController::class, 'store'])
-                ->scopeBindings()
-                ->name('tickets.comments.store');
+                Route::post('c/{channel}/tickets/{ticket}/comments', [TicketCommentController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('tickets.comments.store');
 
-            Route::patch('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'update'])
-                ->scopeBindings()
-                ->name('tickets.comments.update');
+                Route::patch('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('tickets.comments.update');
 
-            Route::delete('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])
-                ->scopeBindings()
-                ->name('tickets.comments.destroy');
+                Route::delete('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('tickets.comments.destroy');
+            });
 
             /**
              * Written now, said later. Scoped, so an id from another channel is
              * a 404 rather than something each method has to remember.
              */
-            Route::post('c/{channel}/scheduled', [ScheduledMessageController::class, 'store'])
-                ->name('channels.scheduled.store');
-            Route::patch('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'update'])
-                ->scopeBindings()
-                ->name('channels.scheduled.update');
-            Route::delete('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'destroy'])
-                ->scopeBindings()
-                ->name('channels.scheduled.destroy');
+            Route::middleware('feature:scheduled-messages')->group(function () {
+                Route::post('c/{channel}/scheduled', [ScheduledMessageController::class, 'store'])
+                    ->name('channels.scheduled.store');
+                Route::patch('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('channels.scheduled.update');
+                Route::delete('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('channels.scheduled.destroy');
+            });
 
             Route::post('c/{channel}/messages', [MessageController::class, 'store'])->name('messages.store');
 
@@ -273,21 +284,27 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              * it comes from, because that is the permission checked first —
              * the target is a field, and it is checked in the controller.
              */
-            Route::post('c/{channel}/messages/{message}/forward', MessageForwardController::class)
-                ->scopeBindings()
-                ->name('messages.forward');
+
+            Route::middleware('feature:message-forwarding')->group(function () {
+                Route::post('c/{channel}/messages/{message}/forward', MessageForwardController::class)
+                    ->scopeBindings()
+                    ->name('messages.forward');
+            });
 
             /*
              * Setting a message aside for yourself. Next to pinning because the
              * gesture is the same shape, and deliberately not the same thing:
              * a pin is the channel's, this is one member's own.
              */
-            Route::post('c/{channel}/messages/{message}/bookmark', [MessageBookmarkController::class, 'store'])
-                ->scopeBindings()
-                ->name('messages.bookmark');
-            Route::delete('c/{channel}/messages/{message}/bookmark', [MessageBookmarkController::class, 'destroy'])
-                ->scopeBindings()
-                ->name('messages.unbookmark');
+
+            Route::middleware('feature:saved-messages')->group(function () {
+                Route::post('c/{channel}/messages/{message}/bookmark', [MessageBookmarkController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('messages.bookmark');
+                Route::delete('c/{channel}/messages/{message}/bookmark', [MessageBookmarkController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('messages.unbookmark');
+            });
 
             // Pinning is one flag on the message, so there is nothing to
             // address beyond the message itself — POST puts it up, DELETE takes

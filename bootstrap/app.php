@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountIsNotSuspended;
+use App\Http\Middleware\EnsureFeatureIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        $middleware->alias(['feature' => EnsureFeatureIsActive::class]);
 
         // After HandleInertiaRequests on purpose: a suspended member gets sent
         // back to the login screen, and Inertia has to turn that redirect into

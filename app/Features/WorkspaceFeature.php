@@ -3,6 +3,7 @@
 namespace App\Features;
 
 use App\Models\Workspace;
+use Illuminate\Support\Str;
 
 /**
  * A part of the product a workspace may switch off.
@@ -37,6 +38,35 @@ abstract class WorkspaceFeature
         InviteLinks::class,
         AiAccess::class,
     ];
+
+    /**
+     * How a route asks for this feature: middleware('feature:tickets').
+     *
+     * Derived from the class name rather than declared, so there is no second
+     * list to keep in step with the first. The cost is that renaming a class
+     * renames the key — which is fine, because the key only ever appears in
+     * route files that a rename has to touch anyway.
+     */
+    public static function key(): string
+    {
+        return Str::kebab(class_basename(static::class));
+    }
+
+    /**
+     * The feature a route asked for, or null when nothing answers to that name.
+     *
+     * @return class-string<WorkspaceFeature>|null
+     */
+    public static function fromKey(string $key): ?string
+    {
+        foreach (self::ALL as $feature) {
+            if ($feature::key() === $key) {
+                return $feature;
+            }
+        }
+
+        return null;
+    }
 
     /** What the feature is called where a person reads it. */
     abstract public static function label(): string;
