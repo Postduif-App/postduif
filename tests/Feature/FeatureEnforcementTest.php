@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ChannelTicketPolicy;
 use App\Enums\WorkspaceRole;
 use App\Features\InviteLinks;
 use App\Features\MessageForwarding;
@@ -10,6 +11,7 @@ use App\Features\Webhooks;
 use App\Features\WorkspaceFeature;
 use App\Models\Channel;
 use App\Models\Message;
+use App\Models\ScheduledMessage;
 use App\Models\User;
 use App\Models\Workspace;
 use Laravel\Pennant\Feature;
@@ -114,4 +116,56 @@ it('leaves everything alone in a workspace that switched nothing off', function 
         'body' => 'Gewoon inplannen',
         'send_at' => now()->addDay()->toDateTimeString(),
     ])->assertRedirect();
+});
+
+it('tells the page which features this workspace offers', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $channel = channelWithMember($workspace, $user);
+
+    Feature::for($workspace)->deactivate(SavedMessages::class);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page
+            ->where('workspace.features.saved-messages', false)
+            ->where('workspace.features.tickets', true)
+        );
+});
+
+/**
+ * A channel that was keeping tickets when the workspace switched them off still
+ * says it does. The board must not open on the strength of that older answer.
+ */
+it('does not open the ticket board where tickets are switched off', function () {
+    [$user, $workspace, $channel] = workspaceWithout(Tickets::class);
+
+    $channel->update(['ticket_policy' => ChannelTicketPolicy::Everyone]);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]).'?view=tickets')
+        ->assertInertia(fn ($page) => $page
+            ->where('view', 'messages')
+            ->where('tickets', null)
+        );
+});
+
+/**
+ * Switching scheduling off stops new messages being parked, and deliberately
+ * does not strand the ones already waiting: they will still go out, so calling
+ * one back has to stay possible.
+ */
+it('still lets a waiting message be cancelled after scheduling is switched off', function () {
+    [$user, $workspace, $channel] = workspaceWithout(ScheduledMessages::class);
+
+    $scheduled = ScheduledMessage::factory()->create([
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+    ]);
+
+    actingAs($user)->delete(
+        route('chat.channels.scheduled.destroy', [$workspace, $channel, $scheduled])
+    )->assertRedirect();
+
+    expect(ScheduledMessage::count())->toBe(0);
 });

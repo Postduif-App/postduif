@@ -26,6 +26,8 @@ interface InvitationsProps {
     workspaceName: string;
     workspaceSlug: string;
     invitations: PendingInvitation[];
+    /** False when this workspace switched shareable links off. */
+    inviteLinksEnabled: boolean;
     inviteLinks: InviteLink[];
     /** Non-DM, unarchived channels a link may be pointed at. */
     channels: InvitableChannel[];
@@ -40,6 +42,7 @@ export default function WorkspaceInvitations({
     workspaceName,
     workspaceSlug,
     invitations,
+    inviteLinksEnabled,
     inviteLinks,
     channels,
 }: InvitationsProps) {
@@ -149,17 +152,21 @@ export default function WorkspaceInvitations({
                     own: both are ways in that are still open, and what you come
                     to this page for is to see all of them at once.
                 */}
-                <Heading
-                    variant="small"
-                    title="Uitnodigingslinks"
-                    description="Voor wie je uitnodigt zonder hun adres te kennen"
-                />
+                {inviteLinksEnabled && (
+                    <>
+                        <Heading
+                            variant="small"
+                            title="Uitnodigingslinks"
+                            description="Voor wie je uitnodigt zonder hun adres te kennen"
+                        />
 
-                <InviteLinksSection
-                    workspaceSlug={workspaceSlug}
-                    links={inviteLinks}
-                    channels={channels}
-                />
+                        <InviteLinksSection
+                            workspaceSlug={workspaceSlug}
+                            links={inviteLinks}
+                            channels={channels}
+                        />
+                    </>
+                )}
             </div>
         </>
     );

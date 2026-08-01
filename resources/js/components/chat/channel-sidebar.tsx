@@ -679,33 +679,41 @@ export function ChannelSidebar({
                     )}
                 </Link>
 
-                <Link
-                    href={savedIndex(workspace.slug)}
-                    className={cn(
-                        'mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                        savedActive
-                            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
-                    )}
-                >
-                    <Bookmark className="size-4 shrink-0 opacity-70" />
-                    Bewaard
-                </Link>
-
-                {channels.some((row) => row.hasTickets) && (
+                {workspace.features['saved-messages'] && (
                     <Link
-                        href={ticketsIndex(workspace.slug)}
+                        href={savedIndex(workspace.slug)}
                         className={cn(
                             'mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                            ticketsActive
+                            savedActive
                                 ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                                 : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
                         )}
                     >
-                        <TicketIcon className="size-4 shrink-0 opacity-70" />
-                        Tickets
+                        <Bookmark className="size-4 shrink-0 opacity-70" />
+                        Bewaard
                     </Link>
                 )}
+
+                {/*
+                    Two conditions, and they mean different things: the feature
+                    says the workspace keeps tickets at all, the channels say
+                    somebody has actually opened one. Neither implies the other.
+                */}
+                {workspace.features.tickets &&
+                    channels.some((row) => row.hasTickets) && (
+                        <Link
+                            href={ticketsIndex(workspace.slug)}
+                            className={cn(
+                                'mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                                ticketsActive
+                                    ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
+                            )}
+                        >
+                            <TicketIcon className="size-4 shrink-0 opacity-70" />
+                            Tickets
+                        </Link>
+                    )}
 
                 {filterable.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1">

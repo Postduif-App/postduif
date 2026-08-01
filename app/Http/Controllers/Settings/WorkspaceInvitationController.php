@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\ChannelType;
+use App\Features\InviteLinks;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\Invitation;
@@ -54,7 +55,15 @@ class WorkspaceInvitationController extends Controller
                         ->all(),
                 ])
                 ->all(),
-            'inviteLinks' => $this->linksFor($workspace),
+            /*
+             * Empty rather than absent when links are switched off: the section
+             * disappears from the page, and there is nothing left to draw that
+             * points at an endpoint which would refuse it.
+             */
+            'inviteLinksEnabled' => $workspace->hasFeature(InviteLinks::class),
+            'inviteLinks' => $workspace->hasFeature(InviteLinks::class)
+                ? $this->linksFor($workspace)
+                : [],
             'channels' => $this->invitableChannels($workspace),
         ]);
     }

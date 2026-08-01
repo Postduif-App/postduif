@@ -8,6 +8,7 @@ use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Tickets\PresentTicket;
 use App\Enums\WorkspaceRole;
+use App\Features\Tickets;
 use App\Models\Bookmark;
 use App\Models\Channel;
 use App\Models\ChannelLink;
@@ -88,6 +89,14 @@ class ChatController extends Controller
         if ($channel->isDirect()) {
             $this->hideDirectMessage->reopen($channel, $user);
         }
+
+        /*
+         * Both halves have to hold: the workspace has to offer tickets and this
+         * channel has to keep them. A channel that was keeping them when the
+         * workspace switched them off still says it does, and the column is the
+         * older of the two answers.
+         */
+        $keepsTickets = $workspace->hasFeature(Tickets::class) && $channel->hasTickets();
 
         return Inertia::render('chat/show', [
             ...$this->buildChatShell->handle($workspace, $user),
@@ -185,13 +194,15 @@ class ChatController extends Controller
             // its own: it needs the same sidebar, the same unread counts and the
             // same live connection, and duplicating that shell is how the two
             // would drift apart.
-            'tickets' => $this->tickets($channel, $user),
-            'ticket' => $this->ticket($channel, $user, $request->query('ticket')),
+            'tickets' => $keepsTickets ? $this->tickets($channel, $user) : null,
+            'ticket' => $keepsTickets
+                ? $this->ticket($channel, $user, $request->query('ticket'))
+                : null,
             // Which of the two views the channel opens in. Decided here rather
             // than read off the URL in the browser, so a channel that stopped
-            // keeping tickets cannot be left showing a board through a stale
-            // link.
-            'view' => $request->query('view') === 'tickets' && $channel->hasTickets()
+            // keeping tickets — or a workspace that switched them off
+            // altogether — cannot be left showing a board through a stale link.
+            'view' => $request->query('view') === 'tickets' && $keepsTickets
                 ? 'tickets'
                 : 'messages',
         ]);

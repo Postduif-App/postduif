@@ -416,6 +416,19 @@ export function ChannelSettingsDialog({
     const [saving, setSaving] = useState(false);
     const [active, setActive] = useState<TabId>('general');
 
+    /*
+     * A tab whose feature the workspace switched off does not appear. The panel
+     * behind it is dropped with it: 'active' can only ever hold a tab that was
+     * rendered, and 'general' — where it starts — is not one of these.
+     */
+    const tabs = TABS.filter((tab) =>
+        tab.id === 'webhooks'
+            ? workspace.features.webhooks
+            : tab.id === 'tickets'
+              ? workspace.features.tickets
+              : true,
+    );
+
     const reset = () => {
         setVisibility(channel.type === 'private' ? 'private' : 'public');
         setTags(channel.tags);
@@ -477,7 +490,7 @@ export function ChannelSettingsDialog({
                 <DialogHeader className="border-b px-6 py-4">
                     <DialogTitle>Instellingen van #{channel.label}</DialogTitle>
                     <DialogDescription>
-                        {TABS.find((tab) => tab.id === active)?.description}
+                        {tabs.find((tab) => tab.id === active)?.description}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -495,7 +508,7 @@ export function ChannelSettingsDialog({
                         aria-label="Kanaalinstellingen"
                         className="flex w-48 shrink-0 flex-col gap-1 border-r p-3"
                     >
-                        {TABS.map((tab) => (
+                        {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 type="button"

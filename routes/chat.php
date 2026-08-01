@@ -240,16 +240,23 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              * Written now, said later. Scoped, so an id from another channel is
              * a 404 rather than something each method has to remember.
              */
-            Route::middleware('feature:scheduled-messages')->group(function () {
-                Route::post('c/{channel}/scheduled', [ScheduledMessageController::class, 'store'])
-                    ->name('channels.scheduled.store');
-                Route::patch('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'update'])
-                    ->scopeBindings()
-                    ->name('channels.scheduled.update');
-                Route::delete('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'destroy'])
-                    ->scopeBindings()
-                    ->name('channels.scheduled.destroy');
-            });
+            Route::post('c/{channel}/scheduled', [ScheduledMessageController::class, 'store'])
+                ->middleware('feature:scheduled-messages')
+                ->name('channels.scheduled.store');
+
+            /*
+             * Changing and cancelling stay open even where scheduling has since
+             * been switched off, and only these two do. What is already in the
+             * queue was parked when it was allowed and will still go out; a
+             * member who can see it waiting but cannot call it back has been
+             * handed a worse deal than one who was never offered the feature.
+             */
+            Route::patch('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'update'])
+                ->scopeBindings()
+                ->name('channels.scheduled.update');
+            Route::delete('c/{channel}/scheduled/{scheduled_message}', [ScheduledMessageController::class, 'destroy'])
+                ->scopeBindings()
+                ->name('channels.scheduled.destroy');
 
             Route::post('c/{channel}/messages', [MessageController::class, 'store'])->name('messages.store');
 

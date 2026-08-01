@@ -20,6 +20,12 @@ export interface ChatWorkspace {
     /** False for a guest: addressing several channels at once is not theirs. */
     canBroadcastToChannels: boolean;
     /**
+     * Which parts of the product this workspace offers. Separate from the can*
+     * flags on purpose: those say what this member may do, these say what
+     * exists here at all. A button needs both.
+     */
+    features: WorkspaceFeatures;
+    /**
      * What the composer may send along with a message, or null when sharing is
      * switched off for this workspace.
      */
@@ -29,6 +35,21 @@ export interface ChatWorkspace {
         /** A hint for the file dialog; the server decides for real. */
         accept: string;
     } | null;
+}
+
+/**
+ * The switches a workspace can throw, under the same names the routes use — so
+ * a hidden button and the endpoint that would have refused it are visibly the
+ * same feature.
+ */
+export interface WorkspaceFeatures {
+    'scheduled-messages': boolean;
+    'saved-messages': boolean;
+    'message-forwarding': boolean;
+    tickets: boolean;
+    webhooks: boolean;
+    'invite-links': boolean;
+    'ai-access': boolean;
 }
 
 /** Handles that address a group rather than a person. */

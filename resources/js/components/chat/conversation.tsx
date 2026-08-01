@@ -1084,8 +1084,16 @@ export function Conversation({
                                 onDelete={remove}
                                 onRemoveAttachment={removeAttachment}
                                 bookmarkedIds={saved}
-                                onToggleBookmark={toggleBookmark}
-                                onForward={setForwarding}
+                                onToggleBookmark={
+                                    workspace.features['saved-messages']
+                                        ? toggleBookmark
+                                        : undefined
+                                }
+                                onForward={
+                                    workspace.features['message-forwarding']
+                                        ? setForwarding
+                                        : undefined
+                                }
                                 onEdit={edit}
                                 onOpenThread={openThread}
                                 onQuote={
@@ -1130,19 +1138,26 @@ export function Conversation({
                         // Only in the channel itself. A thread reply answers
                         // something being said now, so a delay there would land
                         // in a conversation that has moved on.
-                        onSchedule={(body, sendAt) => {
-                            setQuoting(null);
-                            router.post(
-                                storeScheduled.url({
-                                    workspace: workspace.slug,
-                                    channel: channel.id,
-                                }),
-                                // The field hands over a bare wall clock; the
-                                // offset is applied here, where it is known.
-                                { body, send_at: fromLocalInput(sendAt) },
-                                { preserveScroll: true },
-                            );
-                        }}
+                        onSchedule={
+                            !workspace.features['scheduled-messages']
+                                ? undefined
+                                : (body, sendAt) => {
+                                      setQuoting(null);
+                                      router.post(
+                                          storeScheduled.url({
+                                              workspace: workspace.slug,
+                                              channel: channel.id,
+                                          }),
+                                          // The field hands over a bare wall clock; the
+                                          // offset is applied here, where it is known.
+                                          {
+                                              body,
+                                              send_at: fromLocalInput(sendAt),
+                                          },
+                                          { preserveScroll: true },
+                                      );
+                                  }
+                        }
                         quoting={quoting}
                         onCancelQuote={() => setQuoting(null)}
                         onTyping={notifyTyping}

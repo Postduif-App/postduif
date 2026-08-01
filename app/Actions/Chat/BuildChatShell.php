@@ -120,6 +120,16 @@ class BuildChatShell
             'canBroadcastToChannels' => $user->can('broadcastToChannels', $workspace),
 
             /*
+             * Which parts of the product this workspace offers.
+             *
+             * Beside the can* abilities rather than mixed in with them, because
+             * they answer different questions: those are about this member,
+             * these are about the room. A button needs both to be true — you
+             * may do it, and it exists here.
+             */
+            'features' => $this->features($workspace),
+
+            /*
              * Whether the composer shows a paperclip at all, and what it lets
              * through before the server gets a say.
              *
@@ -141,6 +151,25 @@ class BuildChatShell
                 )),
             ] : null,
         ];
+    }
+
+    /**
+     * The feature switches under the short names the routes use, so the button
+     * and the endpoint that refuses it are recognisably the same thing.
+     *
+     * @return array<string, bool>
+     */
+    private function features(Workspace $workspace): array
+    {
+        $states = $workspace->featureStates();
+
+        $named = [];
+
+        foreach ($states as $feature => $active) {
+            $named[$feature::key()] = $active;
+        }
+
+        return $named;
     }
 
     /**
