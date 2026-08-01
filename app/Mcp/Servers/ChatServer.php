@@ -5,6 +5,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools\FindChannelsTool;
 use App\Mcp\Tools\SearchMessagesTool;
 use App\Mcp\Tools\SendMessageTool;
+use App\Mcp\Tools\SetStatusTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -25,7 +26,8 @@ use Laravel\Mcp\Server\Tool;
 #[Version('1.0.0')]
 #[Instructions(<<<'TEXT'
 Deze server geeft toegang tot de chat van één gebruiker: de kanalen die zij
-mogen zien, de berichten daarin, en het plaatsen van een bericht.
+mogen zien, de berichten daarin, het plaatsen van een bericht, en het zetten
+van hun status.
 
 Werkwijze: zoek eerst het kanaal met find-channels, gebruik daarna het id dat
 je terugkrijgt. Kanaal-ids zijn niet te raden en verschillen per workspace.
@@ -43,6 +45,7 @@ class ChatServer extends Server
         FindChannelsTool::class,
         SearchMessagesTool::class,
         SendMessageTool::class,
+        SetStatusTool::class,
     ];
 
     /**
