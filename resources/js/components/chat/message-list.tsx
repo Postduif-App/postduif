@@ -615,7 +615,7 @@ function MessageRow({
                             // body size it reads as punctuation on an empty
                             // line rather than as the thing somebody sent.
                             isEmojiOnly(message.body)
-                                ? 'text-3xl leading-snug'
+                                ? 'text-5xl leading-tight'
                                 : 'text-sm leading-relaxed',
                         )}
                     >
