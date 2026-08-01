@@ -18,13 +18,14 @@ use Illuminate\Support\Str;
  * @property int $channel_id
  * @property string $name
  * @property string $bot_name
+ * @property string|null $body_path
  * @property string $token_hash
  * @property string|null $token
  * @property int|null $created_by
  * @property Carbon|null $last_used_at
  * @property Carbon|null $revoked_at
  */
-#[Fillable(['workspace_id', 'channel_id', 'name', 'bot_name', 'created_by'])]
+#[Fillable(['workspace_id', 'channel_id', 'name', 'bot_name', 'body_path', 'created_by'])]
 class Webhook extends Model
 {
     /** @use HasFactory<WebhookFactory> */

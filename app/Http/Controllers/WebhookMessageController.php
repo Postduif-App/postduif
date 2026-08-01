@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Chat\ResolveWebhookBody;
 use App\Actions\Chat\SendMessage;
 use App\Features\Webhooks;
-use App\Http\Requests\StoreWebhookMessageRequest;
 use App\Models\Webhook;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WebhookMessageController extends Controller
 {
@@ -18,9 +19,10 @@ class WebhookMessageController extends Controller
      * why nothing here leaks whether a given token was ever valid.
      */
     public function __invoke(
-        StoreWebhookMessageRequest $request,
+        Request $request,
         string $token,
         SendMessage $sendMessage,
+        ResolveWebhookBody $resolveBody,
     ): JsonResponse {
         $webhook = Webhook::query()
             ->active()
@@ -54,9 +56,15 @@ class WebhookMessageController extends Controller
         // among the members may post, and a webhook is not a member — it was
         // put here by somebody who could already manage the channel, and that
         // is where the decision was made.
+        /*
+         * What counts as the message is the webhook's own business — see
+         * ResolveWebhookBody. Resolved after the checks above rather than in a
+         * form request, so an unknown token never gets as far as being told
+         * what shape its payload should have been.
+         */
         $message = $sendMessage->fromWebhook(
             $webhook,
-            $request->string('text')->trim()->value(),
+            $resolveBody->handle($webhook, $request->all()),
         );
 
         $webhook->forceFill(['last_used_at' => now()])->save();
