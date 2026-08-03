@@ -3,13 +3,23 @@
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
+use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\PublicTransferController;
 use App\Http\Controllers\SecretAnswerController;
 use App\Http\Controllers\SecretFillController;
 use App\Http\Controllers\SessionStatusController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+/**
+ * The public site. Outside every auth group on purpose: this is the one part of
+ * the application meant for people who have no account and may never get one.
+ *
+ * Note what it must survive — HandleInertiaRequests shares auth.workspace as
+ * null for a signed-out visitor, and the workspace theme as an empty string. A
+ * marketing layout that reached for either would work for the developer who is
+ * always logged in and break for everybody else.
+ */
+Route::get('/', [MarketingController::class, 'home'])->name('home');
 
 Route::get('session-status', SessionStatusController::class)->name('session.status');
 

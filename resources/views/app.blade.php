@@ -30,9 +30,21 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
+        {{--
+            The dove, in the huisstijl. Three files because browsers pick
+            differently: the .ico carries 16/32/48 for the ones that still want
+            it, the .svg is what anything modern prefers and scales cleanly, and
+            iOS reads only the apple-touch-icon — which is full-bleed on purpose,
+            because iOS rounds the corners itself and a pre-rounded source
+            leaves a dark halo where its mask does not line up.
+        --}}
+        <link rel="icon" href="/favicon.ico" sizes="32x32">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="manifest" href="/site.webmanifest">
+
+        {{-- Ink, so the browser chrome matches the icon rather than fighting it. --}}
+        <meta name="theme-color" content="#16160F">
 
         {{--
             Only the face this workspace actually reads in. Loading all three

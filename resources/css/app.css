@@ -172,3 +172,123 @@
         cursor: pointer;
     }
 }
+
+/*
+ * The house style.
+ *
+ * The names are the ones the huisstijl uses, so a conversation about "zand" and
+ * a line of CSS are about the same thing.
+ *
+ * Declared at the root because a token is only a named constant — nothing is
+ * styled by these existing. What is scoped is the *use* of them, in .postduif
+ * below: that is where a page decides to be the brand rather than the
+ * application, which is themed per workspace with an accent a beheerder picks.
+ *
+ * The split matters for exactly one thing today: the dove in the chat's left
+ * rail is a brand mark on an application screen, and it needs the yellow and
+ * the ink without dragging the whole marketing palette in with it.
+ */
+:root {
+    --pd-geel: #e8c81e;
+    --pd-inkt: #16160f;
+    --pd-roet: #2a2922;
+    --pd-steen: #6b6a5d;
+    --pd-zand: #e2e0d6;
+    --pd-papier: #f7f6f1;
+    --pd-wit: #ffffff;
+
+    /* Links, mentions and system notices. Never a button — see the huisstijl. */
+    --pd-cyaan: #0e7c8a;
+
+    /* Errors and destructive actions, and nothing else. */
+    --pd-baksteen: #b4442e;
+
+    --pd-mono:
+        'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --pd-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/** Wearing the house style, rather than merely knowing its names. */
+.postduif {
+    background: var(--pd-papier);
+    color: var(--pd-inkt);
+    font-family: var(--pd-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Plex Mono carries everything structural: headings, buttons, labels, code.
+ * The negative tracking is from the huisstijl and is what keeps a 76px heading
+ * from reading as a wall.
+ */
+.postduif :is(h1, h2, h3) {
+    font-family: var(--pd-mono);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+}
+
+.postduif a {
+    color: var(--pd-cyaan);
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in oklab, var(--pd-cyaan) 35%, transparent);
+}
+
+.postduif a:hover {
+    color: var(--pd-inkt);
+    border-bottom-color: var(--pd-inkt);
+}
+
+/* A link that is a button is not a link, and gets no underline. */
+.postduif a:where(.pd-button, .pd-plain) {
+    border-bottom: none;
+}
+
+/*
+ * The shadcn tokens, remapped inside the brand scope.
+ *
+ * This is what lets a login form look like Postduif without a single component
+ * being rewritten: Button, Input and Label already read these variables, so
+ * overriding them here re-dresses every control on the external screens and
+ * touches nothing inside the application.
+ *
+ * The huisstijl's own rules are what the values encode. Ink is the primary
+ * because yellow is never a fill behind text — it is a block, a line or a dot,
+ * and a yellow button with dark text would be the one place the palette breaks
+ * its own rule. Yellow shows up as the focus ring instead, which is exactly the
+ * "vraag aandacht" job the huisstijl gives it.
+ */
+.postduif {
+    --background: #f7f6f1;
+    --foreground: #16160f;
+
+    /* Cards sit on paper, so they are white with a sand edge. */
+    --card: #ffffff;
+    --card-foreground: #16160f;
+    --popover: #ffffff;
+    --popover-foreground: #16160f;
+
+    --primary: #16160f;
+    --primary-foreground: #e8c81e;
+
+    --secondary: #eceadf;
+    --secondary-foreground: #16160f;
+
+    --muted: #eceadf;
+    --muted-foreground: #6b6a5d;
+
+    --accent: #eceadf;
+    --accent-foreground: #16160f;
+
+    /* Brick, and only for what has gone wrong. */
+    --destructive: #b4442e;
+    --destructive-foreground: #b4442e;
+
+    --border: #e2e0d6;
+    --input: #c9c7ba;
+
+    /* The one place yellow belongs on a control: where the eye should go. */
+    --ring: #e8c81e;
+
+    /* Components 6px, cards 10px — the huisstijl's own two radii. */
+    --radius: 0.375rem;
+}

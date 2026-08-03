@@ -31,6 +31,18 @@ export default defineConfig({
                 bunny('JetBrains Mono', {
                     weights: [400, 500, 600],
                 }),
+                /*
+                 * The two faces of the house style. Bundled here rather than
+                 * pulled from Google Fonts as the design file does — the reason
+                 * above applies doubly to a page whose whole argument is that
+                 * nobody is reading along.
+                 */
+                bunny('IBM Plex Mono', {
+                    weights: [400, 500, 600, 700],
+                }),
+                bunny('IBM Plex Sans', {
+                    weights: [400, 500, 600],
+                }),
             ],
         }),
         inertia(),
