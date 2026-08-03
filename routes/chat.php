@@ -19,6 +19,7 @@ use App\Http\Controllers\MessageDeletionController;
 use App\Http\Controllers\MessageEditController;
 use App\Http\Controllers\MessageForwardController;
 use App\Http\Controllers\MessagePinController;
+use App\Http\Controllers\PollController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
@@ -72,6 +73,28 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('invite-links.store');
                 Route::delete('invite-links/{invite_link}', [InviteLinkController::class, 'destroy'])
                     ->name('invite-links.destroy');
+            });
+
+            /*
+             * A question put to a channel. Under the channel because that is
+             * where it is asked; voting is not, because a poll's id is enough
+             * to find it and the vote is about the poll rather than the room.
+             */
+            Route::middleware('feature:polls')->group(function () {
+                Route::post('c/{channel}/polls', [PollController::class, 'store'])
+                    ->name('polls.store');
+                Route::get('polls/{poll}', [PollController::class, 'show'])
+                    ->name('polls.show');
+                Route::post('polls/{poll}/options/{option}', [PollController::class, 'vote'])
+                    ->name('polls.vote');
+                Route::delete('polls/{poll}', [PollController::class, 'close'])
+                    ->name('polls.close');
+
+                // Undoing that. Its own address rather than the close route
+                // with a flag: closing and reopening are separate acts, and
+                // a DELETE that sometimes un-deletes reads as neither.
+                Route::post('polls/{poll}/reopen', [PollController::class, 'reopen'])
+                    ->name('polls.reopen');
             });
             /**
              * A DM is not created through channels.store: StoreChannelRequest

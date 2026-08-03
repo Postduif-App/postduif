@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\WorkspaceRole;
+use App\Features\Polls;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -92,6 +93,19 @@ class WorkspacePolicy
         }
 
         return $workspace->channel_creation->allows($role);
+    }
+
+    /**
+     * Whether this member may put a question to a channel.
+     *
+     * Guests included, unlike asking for secrets: a guest is in the channel and
+     * a question about when to meet is as much about them as anybody. What
+     * keeps this honest is the channel's own posting rule, checked separately —
+     * a poll is a message, and it lands where messages are allowed.
+     */
+    public function createPoll(User $user, Workspace $workspace): bool
+    {
+        return $workspace->hasFeature(Polls::class) && $workspace->hasMember($user);
     }
 
     /**

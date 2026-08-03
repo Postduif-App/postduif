@@ -34,6 +34,7 @@ abstract class WorkspaceFeature
         SavedMessages::class,
         MessageForwarding::class,
         Tickets::class,
+        Polls::class,
         Webhooks::class,
         InviteLinks::class,
         AiAccess::class,
