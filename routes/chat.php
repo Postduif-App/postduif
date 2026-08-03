@@ -23,6 +23,7 @@ use App\Http\Controllers\PollController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\SecretRequestController;
 use App\Http\Controllers\ThreadClosureController;
 use App\Http\Controllers\TicketCommentAttachmentController;
 use App\Http\Controllers\TicketCommentController;
@@ -95,6 +96,19 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 // a DELETE that sometimes un-deletes reads as neither.
                 Route::post('polls/{poll}/reopen', [PollController::class, 'reopen'])
                     ->name('polls.reopen');
+            });
+
+            /*
+             * Asking somebody for a password or a key, instead of having them
+             * paste it into the conversation. Asking is done from a channel,
+             * so it sits under one; answering is not, and lives in
+             * settings-free territory of its own below.
+             */
+            Route::middleware('feature:secret-requests')->group(function () {
+                Route::post('c/{channel}/secrets', [SecretRequestController::class, 'store'])
+                    ->name('secrets.store');
+                Route::delete('secrets/{secretRequest}', [SecretRequestController::class, 'destroy'])
+                    ->name('secrets.destroy');
             });
             /**
              * A DM is not created through channels.store: StoreChannelRequest

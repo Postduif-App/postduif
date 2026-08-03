@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\WorkspaceRole;
 use App\Features\Polls;
+use App\Features\SecretRequests;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -93,6 +94,23 @@ class WorkspacePolicy
         }
 
         return $workspace->channel_creation->allows($role);
+    }
+
+    /**
+     * Whether this member may ask somebody for a password or a key.
+     *
+     * The guest rule points the other way round from what you might expect: a
+     * guest is usually the one being asked — the customer with the
+     * credentials — so asking is for the people who belong here. Filling one
+     * in is not judged by this at all; see SecretRequestPolicy.
+     */
+    public function createSecretRequest(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(SecretRequests::class)) {
+            return false;
+        }
+
+        return $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
     }
 
     /**

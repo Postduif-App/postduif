@@ -50,3 +50,16 @@ Schedule::command('chat:dispatch-scheduled')
 Schedule::command('users:apply-status-rules')
     ->everyMinute()
     ->withoutOverlapping();
+
+/**
+ * Daily, in the small hours. What is being deleted here is other people's
+ * passwords, and the grace period on a secret request is measured in days
+ * rather than a week for that reason.
+ *
+ * withoutOverlapping because a run over a large backlog can take a while, and
+ * two of them deleting the same rows would have the second one working through
+ * a list that is disappearing under it.
+ */
+Schedule::command('secrets:prune')
+    ->dailyAt('02:30')
+    ->withoutOverlapping();

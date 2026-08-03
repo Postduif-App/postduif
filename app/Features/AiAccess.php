@@ -15,9 +15,10 @@ class AiAccess extends WorkspaceFeature
     }
 
     /**
-     * The one feature that starts switched off.
+     * One of the three that start switched off; see Transfers and
+     * SecretRequests for the others.
      *
-     * Everything else here is the product a workspace signed up for. This one
+     * Most of this list is the product a workspace signed up for. This one
      * hands a copy of the conversation to something outside it, and that is a
      * decision somebody should have to make out loud rather than discover.
      */
