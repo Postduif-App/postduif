@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\WorkspaceRole;
 use App\Features\Polls;
 use App\Features\SecretRequests;
+use App\Features\Transfers;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -97,12 +98,32 @@ class WorkspacePolicy
     }
 
     /**
+     * Whether this member may put files behind a shareable download link.
+     *
+     * Two gates, as with createChannel and in the same order. The feature comes
+     * first because a workspace that has not switched it on has no such thing
+     * at all — the route middleware says the same in 404 form, and this is what
+     * lets a screen leave the button off rather than draw one that refuses.
+     *
+     * Then the role, which keeps guests out: see canSendTransfers().
+     */
+    public function createTransfer(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(Transfers::class)) {
+            return false;
+        }
+
+        return $workspace->roleFor($user)?->canSendTransfers() ?? false;
+    }
+
+    /**
      * Whether this member may ask somebody for a password or a key.
      *
-     * The guest rule points the other way round from what you might expect: a
-     * guest is usually the one being asked — the customer with the
-     * credentials — so asking is for the people who belong here. Filling one
-     * in is not judged by this at all; see SecretRequestPolicy.
+     * The same two gates as createTransfer, and the guest rule points the other
+     * way round from what you might expect: a guest is usually the one being
+     * asked — the customer with the credentials — so asking is for the people
+     * who belong here. Filling one in is not judged by this at all; see
+     * SecretRequestPolicy.
      */
     public function createSecretRequest(User $user, Workspace $workspace): bool
     {

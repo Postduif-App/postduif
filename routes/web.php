@@ -3,6 +3,7 @@
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
+use App\Http\Controllers\PublicTransferController;
 use App\Http\Controllers\SecretAnswerController;
 use App\Http\Controllers\SecretFillController;
 use App\Http\Controllers\SessionStatusController;
@@ -30,6 +31,38 @@ Route::get('join/{token}', [InviteLinkJoinController::class, 'show'])->name('inv
 Route::post('join/{token}', [InviteLinkJoinController::class, 'join'])
     ->middleware('throttle:10,1')
     ->name('invite-links.join');
+
+/**
+ * Files somebody put aside for you. Outside auth for the same reason as the two
+ * above: the person following this link may have no account and may never want
+ * one, and the token is what stands in for having been let in.
+ *
+ * Throttled harder than the pages above, and not only against guessing: these
+ * responses are megabytes rather than kilobytes, so an unthrottled download
+ * route is a way to spend somebody else's bandwidth by refreshing.
+ */
+Route::prefix('transfers/{token}')
+    ->middleware('throttle:60,1')
+    ->group(function () {
+        Route::get('/', [PublicTransferController::class, 'show'])->name('transfers.show');
+
+        /*
+         * Answering the password. Throttled far harder than the rest of this
+         * group: a password on a public URL is one anybody may sit and guess
+         * at, and six tries a minute is the difference between a secret and a
+         * formality.
+         */
+        Route::post('openen', [PublicTransferController::class, 'unlock'])
+            ->middleware('throttle:6,1')
+            ->name('transfers.unlock');
+
+        // The zip before the single file: "zip" would otherwise be read as a
+        // media id by the route below and 404 on its way to being a number.
+        Route::get('zip', [PublicTransferController::class, 'downloadAll'])
+            ->name('transfers.download-all');
+        Route::get('files/{media}', [PublicTransferController::class, 'download'])
+            ->name('transfers.download');
+    });
 
 /**
  * Answering a request for secrets.

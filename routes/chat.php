@@ -28,6 +28,7 @@ use App\Http\Controllers\ThreadClosureController;
 use App\Http\Controllers\TicketCommentAttachmentController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WorkspaceBookmarkController;
 use App\Http\Controllers\WorkspaceInvitationController;
 use App\Http\Controllers\WorkspaceMentionController;
@@ -74,6 +75,26 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('invite-links.store');
                 Route::delete('invite-links/{invite_link}', [InviteLinkController::class, 'destroy'])
                     ->name('invite-links.destroy');
+            });
+
+            /*
+             * Files put aside for somebody behind a link, and the same split as
+             * above: making and withdrawing are things a member does from
+             * inside, while following the link is for somebody who may have no
+             * account at all — that half lives in web.php.
+             */
+            Route::middleware('feature:transfers')->group(function () {
+                Route::post('transfers', [TransferController::class, 'store'])
+                    ->name('transfers.store');
+                Route::delete('transfers/{transfer}', [TransferController::class, 'destroy'])
+                    ->name('transfers.destroy');
+
+                // One address off the list, without disturbing the others. Its
+                // own endpoint rather than a flag on the one above: withdrawing
+                // the whole transfer and withdrawing one person's link are
+                // different acts with different consequences.
+                Route::delete('transfers/{transfer}/recipients/{recipient}', [TransferController::class, 'destroyRecipient'])
+                    ->name('transfers.recipients.destroy');
             });
 
             /*

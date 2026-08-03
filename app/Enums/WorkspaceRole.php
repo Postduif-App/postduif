@@ -83,6 +83,20 @@ enum WorkspaceRole: string implements HasLabel
     }
 
     /**
+     * Whether this role may put files behind a link for the outside world.
+     *
+     * False for guests, and for a stronger reason than the two above: a guest
+     * is somebody from outside who was let into a few channels, and a transfer
+     * hands out a link that spends this workspace's storage and carries its
+     * name. Letting the outside make links on our behalf is the one direction
+     * this feature must not run in.
+     */
+    public function canSendTransfers(): bool
+    {
+        return ! $this->isGuest();
+    }
+
+    /**
      * The same question as canBrowseWorkspace(), in the form a query can ask
      * it: the role values that may see the workspace's public channels.
      *

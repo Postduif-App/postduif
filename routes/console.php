@@ -52,13 +52,23 @@ Schedule::command('users:apply-status-rules')
     ->withoutOverlapping();
 
 /**
- * Daily, in the small hours. What is being deleted here is other people's
- * passwords, and the grace period on a secret request is measured in days
- * rather than a week for that reason.
+ * Daily, in the small hours. Nothing here is urgent — a transfer that expired
+ * this afternoon may perfectly well be cleared tonight — and this is the one
+ * scheduled job that deletes files, so it deserves a moment when nobody is
+ * downloading.
  *
  * withoutOverlapping because a run over a large backlog can take a while, and
  * two of them deleting the same rows would have the second one working through
  * a list that is disappearing under it.
+ */
+Schedule::command('transfers:prune')
+    ->dailyAt('03:30')
+    ->withoutOverlapping();
+
+/**
+ * Daily, an hour before the transfers are cleared. Same reasoning, shorter
+ * fuse: what is being deleted here is other people's passwords, and the
+ * grace period is measured in days rather than a week for that reason.
  */
 Schedule::command('secrets:prune')
     ->dailyAt('02:30')

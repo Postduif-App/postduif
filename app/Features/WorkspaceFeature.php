@@ -37,6 +37,7 @@ abstract class WorkspaceFeature
         Polls::class,
         Webhooks::class,
         InviteLinks::class,
+        Transfers::class,
         SecretRequests::class,
         AiAccess::class,
     ];

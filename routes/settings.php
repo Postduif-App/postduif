@@ -7,6 +7,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StatusController;
 use App\Http\Controllers\Settings\StatusRuleController;
+use App\Http\Controllers\Settings\TransferController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
@@ -105,6 +106,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('app/settings/workspace/invitations', [WorkspaceInvitationController::class, 'index'])
         ->name('workspace.invitations.index');
+
+    /*
+     * What somebody has standing out there behind a download link. Not gated by
+     * the feature middleware, which needs a workspace in the route and there is
+     * none here — the controller asks the same question and answers with the
+     * same 404.
+     */
+    Route::get('app/settings/workspace/transfers', [TransferController::class, 'index'])
+        ->name('workspace.transfers.index');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

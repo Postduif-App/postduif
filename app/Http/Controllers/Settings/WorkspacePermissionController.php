@@ -6,6 +6,7 @@ use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\AttachmentType;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
+use App\Features\Transfers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,6 +44,16 @@ class WorkspacePermissionController extends Controller
                 ),
                 'maxAttachmentKb' => $workspace->max_attachment_kb,
                 'linkPreviewsEnabled' => $workspace->link_previews_enabled,
+
+                /*
+                 * The ceilings on a transfer, and whether they mean anything
+                 * here. A limit shown for a feature this workspace does not
+                 * have reads as a promise it can be used, so the screen asks
+                 * first and hides the pair when the answer is no.
+                 */
+                'transfersEnabled' => $workspace->hasFeature(Transfers::class),
+                'maxTransferKb' => $workspace->max_transfer_kb,
+                'maxTransferDays' => $workspace->max_transfer_days,
             ],
             'attachmentTypeOptions' => collect(AttachmentType::cases())
                 ->map(fn (AttachmentType $type): array => [
@@ -112,12 +123,30 @@ class WorkspacePermissionController extends Controller
              * quietly does not apply is worse than no setting.
              */
             'max_attachment_mb' => ['required_if:uploads_enabled,1', 'integer', 'min:1', 'max:200'],
+
+            /*
+             * The transfer ceilings, sometimes for the same reason as the rest:
+             * a workspace without the feature sends neither field, and what is
+             * not sent is left alone rather than reset.
+             *
+             * Up to ten gigabytes, which is where a browser upload stops being
+             * something a person waits out. The day ceiling caps how long a
+             * link may be asked to live — it is what stops the required expiry
+             * date on a transfer from being answered with "in ten years", and
+             * ninety days is already generous for something meant to be picked
+             * up.
+             */
+            'max_transfer_mb' => ['sometimes', 'integer', 'min:1', 'max:10240'],
+            'max_transfer_days' => ['sometimes', 'integer', 'min:1', 'max:90'],
         ]);
 
         $workspace->update([
-            ...Arr::except($validated, 'max_attachment_mb'),
+            ...Arr::except($validated, ['max_attachment_mb', 'max_transfer_mb']),
             ...isset($validated['max_attachment_mb'])
                 ? ['max_attachment_kb' => $validated['max_attachment_mb'] * 1024]
+                : [],
+            ...isset($validated['max_transfer_mb'])
+                ? ['max_transfer_kb' => $validated['max_transfer_mb'] * 1024]
                 : [],
         ]);
 

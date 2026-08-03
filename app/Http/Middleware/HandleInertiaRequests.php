@@ -6,6 +6,7 @@ use App\Actions\Workspace\BuildThemeStyles;
 use App\Enums\Availability;
 use App\Enums\WorkspaceFont;
 use App\Enums\WorkspaceRole;
+use App\Features\Transfers;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -70,6 +71,15 @@ class HandleInertiaRequests extends Middleware
                 // refuses to open.
                 'canManageWorkspace' => $role?->canManageWorkspace() ?? false,
                 'canInviteToWorkspace' => $role?->canInviteMembers() ?? false,
+                /*
+                 * Whether the transfers screen is listed at all — the feature,
+                 * not the permission. Anybody in the workspace may open it and
+                 * see what they themselves sent; whether they may send anything
+                 * new is the screen's own question, so that a guest gets a page
+                 * without a form rather than a menu entry that 404s.
+                 */
+                'canSeeTransfers' => $workspace !== null
+                    && $workspace->hasFeature(Transfers::class),
                 // The role itself, so a screen can say "you are here as a
                 // guest" without inferring it from a handful of false flags.
                 // Every actual permission still comes from those flags — this

@@ -2,10 +2,15 @@
 
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\WorkspaceRole;
+use App\Features\Transfers;
 use App\Models\Channel;
+use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Pennant\Feature;
 use Tests\TestCase;
 
 /*
@@ -59,6 +64,64 @@ function workspaceWithMember(User $user, WorkspaceRole $role = WorkspaceRole::Me
     $workspace->members()->attach($user->id, ['role' => $role->value, 'joined_at' => now()]);
 
     return $workspace;
+}
+
+/**
+ * A workspace that has switched sending files on, and somebody in it who may.
+ *
+ * The feature is activated by hand rather than left to the factory, and that is
+ * the point of it: transfers are off until a workspace says otherwise, so every
+ * test that wants one has to say so too.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function senderInWorkspace(WorkspaceRole $role = WorkspaceRole::Member): array
+{
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, $role);
+
+    Feature::for($workspace)->activate(Transfers::class);
+
+    return [$user, $workspace];
+}
+
+/**
+ * Something waiting for somebody who has no account here.
+ *
+ * The sender is a real member of a workspace that switched the feature on,
+ * because both are checked on the way out — a link from a workspace that has
+ * since switched sending off must stop working.
+ *
+ * Here rather than in one test file so every suite can be run on its own.
+ *
+ * @return array{0: Transfer, 1: Workspace, 2: User}
+ */
+function waitingTransfer(array $state = [], int $files = 1): array
+{
+    Storage::fake('local');
+
+    $sender = User::factory()->create();
+    $workspace = workspaceWithMember($sender);
+
+    Feature::for($workspace)->activate(Transfers::class);
+
+    $transfer = Transfer::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $sender->id,
+        'title' => 'Offerte week 32',
+        ...$state,
+    ]);
+
+    for ($i = 1; $i <= $files; $i++) {
+        $transfer->addMedia(UploadedFile::fake()->createWithContent(
+            "bestand-{$i}.txt",
+            str_repeat('a', 64),
+        ))->toMediaCollection(Transfer::FILES);
+    }
+
+    return [$transfer->refresh(), $workspace, $sender];
 }
 
 function channelWithMember(Workspace $workspace, User $user): Channel

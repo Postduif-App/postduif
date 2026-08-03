@@ -34,6 +34,8 @@ use Laravel\Pennant\Feature;
  * @property bool $uploads_enabled
  * @property array<int, string> $allowed_attachment_types
  * @property int $max_attachment_kb
+ * @property int $max_transfer_kb
+ * @property int $max_transfer_days
  * @property bool $link_previews_enabled
  * @property WorkspaceAccent $accent
  * @property WorkspaceFont $font
@@ -44,7 +46,7 @@ use Laravel\Pennant\Feature;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'slug', 'owner_id', 'broadcast_mentions', 'blocked_words', 'accent', 'font', 'channel_creation', 'member_panel', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'link_previews_enabled'])]
+#[Fillable(['name', 'slug', 'owner_id', 'broadcast_mentions', 'blocked_words', 'accent', 'font', 'channel_creation', 'member_panel', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'max_transfer_kb', 'max_transfer_days', 'link_previews_enabled'])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -65,6 +67,8 @@ class Workspace extends Model
         'uploads_enabled' => true,
         'link_previews_enabled' => false,
         'max_attachment_kb' => 10240,
+        'max_transfer_kb' => 2097152,
+        'max_transfer_days' => 14,
         'accent' => WorkspaceAccent::Neutral->value,
         'font' => WorkspaceFont::InstrumentSans->value,
     ];
@@ -80,6 +84,8 @@ class Workspace extends Model
             'uploads_enabled' => 'boolean',
             'allowed_attachment_types' => 'array',
             'max_attachment_kb' => 'integer',
+            'max_transfer_kb' => 'integer',
+            'max_transfer_days' => 'integer',
             'link_previews_enabled' => 'boolean',
             'accent' => WorkspaceAccent::class,
             'font' => WorkspaceFont::class,
