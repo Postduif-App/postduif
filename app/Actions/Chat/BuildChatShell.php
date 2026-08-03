@@ -202,6 +202,30 @@ class BuildChatShell
                     )),
                 )),
             ] : null,
+
+            /*
+             * What the message field needs to offer sending files by link, or
+             * null when it must not offer it at all. Both questions in one
+             * value — the workspace has to have the feature and this member has
+             * to be allowed to use it — so the composer cannot draw a button
+             * that the endpoint would refuse.
+             */
+            'transfers' => $user->can('createTransfer', $workspace) ? [
+                'maxKb' => $workspace->max_transfer_kb,
+                'maxDays' => $workspace->max_transfer_days,
+            ] : null,
+
+            /*
+             * Whether the message field may offer to ask somebody for a
+             * password or a key. Same shape and same reasoning as transfers
+             * above: one value answering both "does this workspace have it" and
+             * "may this member use it", so the composer cannot draw a button
+             * the endpoint would refuse.
+             */
+            'secrets' => $user->can('createSecretRequest', $workspace),
+
+            /** Whether the message field may offer to put a question to the channel. */
+            'polls' => $user->can('createPoll', $workspace),
         ];
     }
 

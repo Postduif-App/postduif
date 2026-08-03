@@ -17,7 +17,10 @@ import {
     MessageToolbar,
     messageToolbarButton,
 } from '@/components/chat/message-toolbar';
+import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
+import { SecretCard } from '@/components/chat/secret-card';
+import { TransferCard } from '@/components/chat/transfer-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
@@ -261,6 +264,20 @@ function FeedItem({
 
             {message.linkPreview && (
                 <LinkPreviewCard preview={message.linkPreview} />
+            )}
+
+            {message.transferCard && (
+                <TransferCard card={message.transferCard} />
+            )}
+
+            {message.secretCard && <SecretCard card={message.secretCard} />}
+
+            {message.pollCard && (
+                <PollCard
+                    card={message.pollCard}
+                    workspaceSlug={workspace.slug}
+                    currentUserId={currentUserId}
+                />
             )}
 
             <MessageAttachments

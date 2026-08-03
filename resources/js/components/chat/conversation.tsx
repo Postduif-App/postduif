@@ -93,6 +93,16 @@ interface ConversationProps {
     channels: ChannelSummary[];
     /** Every tag in use in the workspace, for the settings dialog to suggest. */
     workspaceTags: string[];
+    /**
+     * Opens the page's own dialog for sending files by link, or absent where
+     * this member may not. The dialog lives on the page so the button here, the
+     * slash command and the palette all reach the same one.
+     */
+    onSendFiles?: () => void;
+    /** The same, for asking somebody for a password or a key. */
+    onAskSecret?: () => void;
+    /** The same, for putting a question to the channel. */
+    onAskPoll?: () => void;
     /** The groups this member arranged, for filing this channel into one. */
     sections: ChannelSectionRow[];
     /** Which of the messages above this member set aside. */
@@ -222,6 +232,9 @@ export function Conversation({
     scheduled,
     channels,
     workspaceTags,
+    onSendFiles,
+    onAskSecret,
+    onAskPoll,
     sections,
     bookmarkedIds,
     currentUser,
@@ -241,6 +254,7 @@ export function Conversation({
      * not survive a refresh either.
      */
     const [quoting, setQuoting] = useState<ChatMessage | null>(null);
+
     const [drafted, setDrafted] = useState<Record<string, MessageReaction[]>>(
         {},
     );
@@ -439,6 +453,11 @@ export function Conversation({
                 // Looked up after the fact, on a queue: the card arrives with
                 // the next render rather than with the message.
                 linkPreview: null,
+                // Filled in by the server echo: the card is a database lookup,
+                // and the browser has not made the transfer row yet.
+                transferCard: null,
+                secretCard: null,
+                pollCard: null,
                 reactions: [],
                 /*
                     Stand-ins pointing at the files still in the browser, so a
@@ -1171,6 +1190,47 @@ export function Conversation({
                         workspace={workspace}
                         memberCount={channel.memberCount}
                         attachments={workspace.uploads ?? undefined}
+                        onSendFiles={onSendFiles}
+                        /*
+                            Built here rather than inside the composer: what is
+                            on this list depends on what this member may do in
+                            this channel, and those answers already live at this
+                            level.
+                        */
+                        onAskSecret={onAskSecret}
+                        onAskPoll={onAskPoll}
+                        commands={[
+                            ...(onSendFiles
+                                ? [
+                                      {
+                                          name: 'versturen',
+                                          description:
+                                              'Grote bestanden versturen via een downloadlink',
+                                          run: onSendFiles,
+                                      },
+                                  ]
+                                : []),
+                            ...(onAskSecret
+                                ? [
+                                      {
+                                          name: 'geheim',
+                                          description:
+                                              'Om een wachtwoord of sleutel vragen',
+                                          run: onAskSecret,
+                                      },
+                                  ]
+                                : []),
+                            ...(onAskPoll
+                                ? [
+                                      {
+                                          name: 'poll',
+                                          description:
+                                              'Een vraag aan het kanaal stellen',
+                                          run: onAskPoll,
+                                      },
+                                  ]
+                                : []),
+                        ]}
                         draftKey={`${workspace.slug}:${channel.id}`}
                         onSend={(body, files) => {
                             post(body, null, quoting, files);

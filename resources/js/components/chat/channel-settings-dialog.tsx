@@ -485,11 +485,20 @@ export function ChannelSettingsDialog({
                 the tab strip takes a column of its own, the panel beside it
                 still has to hold a webhook URL without wrapping it into
                 something nobody can read, and only that panel scrolls.
+
+                The height is fixed rather than capped: a box that sizes to its
+                contents resizes on every tab click, so the tab you are aiming
+                for moves out from under the cursor.
             */}
-            <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+            <DialogContent className="flex h-[min(38rem,85vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
                 <DialogHeader className="border-b px-6 py-4">
                     <DialogTitle>Instellingen van #{channel.label}</DialogTitle>
-                    <DialogDescription>
+                    {/*
+                        Two lines are reserved: the descriptions differ in
+                        length per tab, and without the floor the panel below
+                        starts a line higher on the short ones.
+                    */}
+                    <DialogDescription className="min-h-10">
                         {tabs.find((tab) => tab.id === active)?.description}
                     </DialogDescription>
                 </DialogHeader>

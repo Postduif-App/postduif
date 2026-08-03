@@ -15,6 +15,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useInitials } from '@/hooks/use-initials';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { cn } from '@/lib/utils';
@@ -105,6 +106,8 @@ export default function WorkspaceMentions({
     const getInitials = useInitials();
 
     const [searchOpen, setSearchOpen] = useState(false);
+
+    useCommandPaletteShortcut(setSearchOpen);
     const [createOpen, setCreateOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
@@ -156,7 +159,6 @@ export default function WorkspaceMentions({
                 activeThreads={activeThreads}
                 activeChannelId={null}
                 mentionsActive
-                workspaceTags={workspaceTags}
                 archivedChannels={archivedChannels}
                 sections={sections}
                 onOpenSearch={() => setSearchOpen(true)}
@@ -255,6 +257,22 @@ export default function WorkspaceMentions({
 
             <SearchDialog
                 workspace={workspace}
+                channels={channels}
+                directMessages={directMessages}
+                actions={{
+                    onCreateChannel: workspace.canCreateChannel
+                        ? () => setCreateOpen(true)
+                        : undefined,
+                    onStartDirectMessage: workspace.canStartDirectMessage
+                        ? () => setDirectOpen(true)
+                        : undefined,
+                    onInvitePeople: workspace.canInvite
+                        ? () => setInviteOpen(true)
+                        : undefined,
+                    onBroadcast: workspace.canBroadcastToChannels
+                        ? () => setBroadcastOpen(true)
+                        : undefined,
+                }}
                 open={searchOpen}
                 onOpenChange={setSearchOpen}
             />

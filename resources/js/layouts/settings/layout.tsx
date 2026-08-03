@@ -17,6 +17,7 @@ import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
 import { edit as editWorkspacePermissions } from '@/routes/workspace/permissions';
 import { edit as editWorkspaceTheme } from '@/routes/workspace/theme';
+import { index as workspaceTransfers } from '@/routes/workspace/transfers';
 import type { Auth, NavItem } from '@/types';
 
 interface NavGroup {
@@ -78,6 +79,11 @@ export default function SettingsLayout({
             : []),
         ...(auth.canInviteToWorkspace
             ? [{ title: 'Uitnodigingen', href: workspaceInvitations() }]
+            : []),
+        // Listed for everyone in the workspace, not just for admins: sending a
+        // file is ordinary work, and the screen shows you your own.
+        ...(auth.canSeeTransfers
+            ? [{ title: 'Bestanden versturen', href: workspaceTransfers() }]
             : []),
     ];
 

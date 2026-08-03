@@ -14,7 +14,20 @@ function ScrollArea({
       className={cn("relative", className)}
       {...props}
     >
+      {/*
+        Radix sets this element's overflow from state the scrollbar only settles
+        once its effects have run: overflowY is "scroll" while a scrollbar is
+        enabled and "hidden" while it is not. Effects do not run on the server,
+        so the two renders cannot agree, and with SSR on (see config/inertia.php)
+        every ScrollArea on the page reports a hydration mismatch.
+
+        Suppressed rather than worked around. The mismatch is one style property
+        that React re-renders correctly the moment Radix's effects run, so
+        nothing is left wrong on screen — what the warning costs is a console
+        full of noise that hides the mismatches worth reading.
+      */}
       <ScrollAreaPrimitive.Viewport
+        suppressHydrationWarning
         data-slot="scroll-area-viewport"
         className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
       >

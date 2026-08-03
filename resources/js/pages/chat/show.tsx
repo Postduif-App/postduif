@@ -1,5 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { BroadcastDialog } from '@/components/chat/broadcast-dialog';
 import { ChannelSidebar } from '@/components/chat/channel-sidebar';
@@ -8,7 +8,10 @@ import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { MemberPanel } from '@/components/chat/member-panel';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
+import { PollDialog } from '@/components/chat/poll-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
+import { SecretRequestDialog } from '@/components/chat/secret-request-dialog';
+import { TransferDialog } from '@/components/chat/transfer-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -16,6 +19,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useInitials } from '@/hooks/use-initials';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { useSidebarActivity } from '@/hooks/use-sidebar-activity';
@@ -173,18 +177,18 @@ export default function ChatShow({
         }),
     };
 
-    useEffect(() => {
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault();
-                setSearchOpen((open) => !open);
-            }
-        };
+    useCommandPaletteShortcut(setSearchOpen);
 
-        document.addEventListener('keydown', onKeyDown);
-
-        return () => document.removeEventListener('keydown', onKeyDown);
-    }, []);
+    /*
+     * The two channel-scoped dialogs live here rather than in the conversation
+     * or the composer, so that the button beside the message field, the slash
+     * commands and the palette all open the same one. They were duplicated
+     * before — one instance for the button and one for the command — which is
+     * two things that can be open at once.
+     */
+    const [sendingFiles, setSendingFiles] = useState(false);
+    const [askingSecret, setAskingSecret] = useState(false);
+    const [askingPoll, setAskingPoll] = useState(false);
 
     /*
         Bottom of the sidebar rather than the top right of the conversation: it
@@ -236,7 +240,6 @@ export default function ChatShow({
                 directMessages={withActivity(directMessages)}
                 activeThreads={activeThreads}
                 activeChannelId={channel.id}
-                workspaceTags={workspaceTags}
                 archivedChannels={archivedChannels}
                 sections={sections}
                 onOpenSearch={() => setSearchOpen(true)}
@@ -263,8 +266,19 @@ export default function ChatShow({
                 tickets={tickets}
                 ticket={ticket}
                 channels={withActivity(channels)}
-                workspaceTags={workspaceTags}
                 sections={sections}
+                workspaceTags={workspaceTags}
+                onSendFiles={
+                    workspace.transfers
+                        ? () => setSendingFiles(true)
+                        : undefined
+                }
+                onAskSecret={
+                    workspace.secrets ? () => setAskingSecret(true) : undefined
+                }
+                onAskPoll={
+                    workspace.polls ? () => setAskingPoll(true) : undefined
+                }
                 bookmarkedIds={bookmarkedIds}
                 scheduled={scheduled}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
@@ -296,8 +310,67 @@ export default function ChatShow({
                 onOpenChange={setBroadcastOpen}
             />
 
+            {workspace.transfers && (
+                <TransferDialog
+                    workspaceSlug={workspace.slug}
+                    channelId={channel.id}
+                    maxKb={workspace.transfers.maxKb}
+                    maxDays={workspace.transfers.maxDays}
+                    open={sendingFiles}
+                    onOpenChange={setSendingFiles}
+                />
+            )}
+
+            {workspace.secrets && (
+                <SecretRequestDialog
+                    workspaceSlug={workspace.slug}
+                    channelId={channel.id}
+                    open={askingSecret}
+                    onOpenChange={setAskingSecret}
+                />
+            )}
+
+            {workspace.polls && (
+                <PollDialog
+                    workspaceSlug={workspace.slug}
+                    channelId={channel.id}
+                    open={askingPoll}
+                    onOpenChange={setAskingPoll}
+                />
+            )}
+
             <SearchDialog
                 workspace={workspace}
+                channels={channels}
+                directMessages={directMessages}
+                actions={{
+                    onCreateChannel: workspace.canCreateChannel
+                        ? () => setCreateOpen(true)
+                        : undefined,
+                    onStartDirectMessage: workspace.canStartDirectMessage
+                        ? () => setDirectOpen(true)
+                        : undefined,
+                    onInvitePeople: workspace.canInvite
+                        ? () => setInviteOpen(true)
+                        : undefined,
+                    onBroadcast: workspace.canBroadcastToChannels
+                        ? () => setBroadcastOpen(true)
+                        : undefined,
+                    /*
+                     * Only here, and only because this screen has a channel to
+                     * act on. The palette also opens on the saved, mentions and
+                     * ticket screens, where there is nothing to send a file to.
+                     */
+                    onSendFiles: workspace.transfers
+                        ? () => setSendingFiles(true)
+                        : undefined,
+                    onAskSecret: workspace.secrets
+                        ? () => setAskingSecret(true)
+                        : undefined,
+                    onAskPoll: workspace.polls
+                        ? () => setAskingPoll(true)
+                        : undefined,
+                }}
                 open={searchOpen}
                 onOpenChange={setSearchOpen}
             />

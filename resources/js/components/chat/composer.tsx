@@ -1,11 +1,15 @@
 import {
+    BarChart3,
     CalendarClock,
     Hash,
     Lock,
     Megaphone,
     Mic,
     Paperclip,
+    KeyRound,
+    Send,
     SendHorizonal,
+    Slash,
     Square,
     X,
 } from 'lucide-react';
@@ -28,6 +32,8 @@ import {
     saveDraft,
     subscribeToDraft,
 } from '@/lib/composer-draft';
+import type { ActiveTrigger } from '@/lib/composer-triggers';
+import { FRAGMENT, triggerAt } from '@/lib/composer-triggers';
 import { EMOJI_GROUPS } from '@/lib/emoji';
 import { cn } from '@/lib/utils';
 import type {
@@ -73,6 +79,40 @@ interface ComposerProps {
         /** For the file dialog's filter — the server decides for real. */
         accept: string;
     };
+    /**
+     * Sending files by link instead of hanging them on the message.
+     *
+     * Absent where it cannot be offered: the workspace has the feature off, or
+     * this member may not send. Separate from attachments because the two
+     * answer different questions — that one is what a message may carry, this
+     * one is what to do with the file that will not fit in one.
+     */
+    /**
+     * Opens the dialog for sending files by link, or absent where that is not
+     * on offer here.
+     *
+     * A callback rather than the dialog's own configuration: the dialog itself
+     * lives one level up, so the button beside this field, the "/versturen"
+     * command and the palette all open the same one. Two dialogs for one job is
+     * two things that can be open at once.
+     */
+    onSendFiles?: () => void;
+    /** The same, for asking somebody for a password or a key. */
+    onAskSecret?: () => void;
+    /** The same, for putting a question to the channel. */
+    onAskPoll?: () => void;
+    /**
+     * What "/" offers, or absent for a field that has nothing to offer.
+     *
+     * The caller decides the list, because what is on it depends on what this
+     * member may do here — and those answers already live where the composer is
+     * rendered rather than inside it.
+     */
+    commands?: ComposerCommand[];
+    /**
+     * Whether the field may offer to ask somebody for a password or a key.
+     * A plain boolean, unlike transfers: there are no ceilings to pass on.
+     */
     /**
      * Where to keep what was typed but not sent, or absent not to keep it.
      *
@@ -141,8 +181,19 @@ const TRIGGERS = '@#:';
  */
 const EMOJI_QUERY_FLOOR = 2;
 
-/** Characters that may follow a trigger; covers handles, slugs and emoji names. */
-const FRAGMENT = '[a-z0-9._-]*';
+/**
+ * Something the message field can do instead of sending words.
+ *
+ * Reached by typing "/" at the very start of an empty message. A command is a
+ * thing the browser does — open a dialog, mostly — and never something posted
+ * to the server: the field either sends a message or gets out of the way.
+ */
+export interface ComposerCommand {
+    /** Typed after the slash, and what the list filters on. */
+    name: string;
+    description: string;
+    run: () => void;
+}
 
 interface Suggestion {
     key: string;
@@ -150,39 +201,18 @@ interface Suggestion {
     insert: string;
     primary: string;
     secondary?: string;
-    icon: 'member' | 'public' | 'private' | 'broadcast' | 'emoji';
+    icon: 'member' | 'public' | 'private' | 'broadcast' | 'emoji' | 'command';
     /**
      * What the emoji suggestions carry: the trigger goes away with them, unlike
      * an @handle or a #channel, which keep theirs in the message.
      */
     replacesTrigger?: boolean;
-}
-
-interface ActiveTrigger {
-    char: string;
-    query: string;
-}
-
-/**
- * The trigger and fragment directly left of the caret, or null.
- *
- * Anchored to a word boundary so an email address does not open the picker
- * halfway through typing it, and neither does "issue#12".
- */
-function triggerAt(
-    value: string,
-    caret: number,
-    triggers: string,
-): ActiveTrigger | null {
-    if (triggers === '') {
-        return null;
-    }
-
-    const match = value
-        .slice(0, caret)
-        .match(new RegExp(`(?:^|\\s)([${triggers}])(${FRAGMENT})$`, 'i'));
-
-    return match ? { char: match[1], query: match[2].toLowerCase() } : null;
+    /**
+     * What a command does when it is chosen. Present only on commands, and its
+     * presence is what tells complete() to run something and empty the field
+     * rather than write into it.
+     */
+    run?: () => void;
 }
 
 function SuggestionIcon({
@@ -200,6 +230,14 @@ function SuggestionIcon({
         return (
             <span className="flex size-6 shrink-0 items-center justify-center text-base leading-none">
                 {name}
+            </span>
+        );
+    }
+
+    if (icon === 'command') {
+        return (
+            <span className="flex size-6 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
+                <Slash className="size-3" />
             </span>
         );
     }
@@ -240,6 +278,10 @@ export function Composer({
     memberCount = 0,
     triggers = TRIGGERS,
     attachments,
+    onSendFiles,
+    onAskSecret,
+    onAskPoll,
+    commands,
     draftKey,
     onSend,
     onSchedule,
@@ -340,6 +382,20 @@ export function Composer({
             return [];
         }
 
+        if (active.char === '/') {
+            return (commands ?? [])
+                .filter((command) => command.name.startsWith(active.query))
+                .slice(0, MAX_SUGGESTIONS)
+                .map((command) => ({
+                    key: `command-${command.name}`,
+                    insert: command.name,
+                    primary: `/${command.name}`,
+                    secondary: command.description,
+                    icon: 'command' as const,
+                    run: command.run,
+                }));
+        }
+
         if (active.char === ':') {
             if (active.query.length < EMOJI_QUERY_FLOOR) {
                 return [];
@@ -423,6 +479,14 @@ export function Composer({
             }));
     })();
 
+    /*
+     * The slash joins the list only where there is something to offer, so a
+     * field without commands treats "/" as an ordinary character — which is
+     * what it is in "en/of".
+     */
+    const activeTriggers =
+        commands && commands.length > 0 ? `${triggers}/` : triggers;
+
     const resize = () => {
         const textarea = textareaRef.current;
 
@@ -433,6 +497,19 @@ export function Composer({
     };
 
     const complete = (suggestion: Suggestion) => {
+        /*
+         * A command empties the field and does its thing. Nothing is written,
+         * because "/versturen" is not something anybody wants left in the
+         * message they are about to send.
+         */
+        if (suggestion.run) {
+            write('');
+            setActive(null);
+            suggestion.run();
+
+            return;
+        }
+
         const textarea = textareaRef.current;
         const caret = textarea?.selectionStart ?? body.length;
         const trigger = active?.char ?? '@';
@@ -675,6 +752,18 @@ export function Composer({
                 <p className="px-1 pb-1 text-xs text-destructive">
                     Te groot om mee te sturen: {tooLarge.join(', ')}. Het
                     maximum is {readableSize((attachments?.maxKb ?? 0) * 1024)}.
+                    {/*
+                        Points at the way out rather than leaving somebody
+                        stuck: this is the exact moment the other feature is
+                        the answer, and the only moment it is obvious.
+                    */}
+                    {onSendFiles && (
+                        <>
+                            {' '}
+                            Groter versturen kan met de knop ernaast — dan komt
+                            er een downloadlink in het kanaal.
+                        </>
+                    )}
                 </p>
             )}
 
@@ -721,7 +810,7 @@ export function Composer({
                             triggerAt(
                                 event.target.value,
                                 event.target.selectionStart,
-                                triggers,
+                                activeTriggers,
                             ),
                         );
                         setHighlighted(0);
@@ -877,6 +966,45 @@ export function Composer({
                         </Button>
                     </>
                 )}
+                {onAskPoll && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={disabled || sendAt !== null}
+                        onClick={onAskPoll}
+                        title="Een vraag aan het kanaal stellen"
+                        aria-label="Een vraag aan het kanaal stellen"
+                    >
+                        <BarChart3 className="size-4" />
+                    </Button>
+                )}
+
+                {onAskSecret && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={disabled || sendAt !== null}
+                        onClick={onAskSecret}
+                        title="Om een wachtwoord of sleutel vragen"
+                        aria-label="Om een wachtwoord of sleutel vragen"
+                    >
+                        <KeyRound className="size-4" />
+                    </Button>
+                )}
+
+                {onSendFiles && (
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={disabled || sendAt !== null}
+                        onClick={onSendFiles}
+                        title="Grote bestanden versturen via een link"
+                        aria-label="Grote bestanden versturen via een link"
+                    >
+                        <Send className="size-4" />
+                    </Button>
+                )}
+
                 {/*
                     Not offered while files are waiting: only the words would go
                     out later, and a paperclip that quietly drops its file is

@@ -5,6 +5,11 @@ namespace App\Actions\Chat;
 use App\Enums\WorkspaceRole;
 use App\Models\LinkPreview;
 use App\Models\Message;
+use App\Models\Poll;
+use App\Models\PollOption;
+use App\Models\PollVote;
+use App\Models\SecretRequest;
+use App\Models\Transfer;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -37,6 +42,30 @@ class PresentMessage
      * @var array<int, array<int, true>>
      */
     private array $guestIds = [];
+
+    /**
+     * Polls already looked up, keyed by id.
+     *
+     * @var array<string, Poll|null>
+     */
+    private array $polls = [];
+
+    /**
+     * Secret requests already looked up, keyed by id.
+     *
+     * @var array<string, SecretRequest|null>
+     */
+    private array $secretRequests = [];
+
+    /**
+     * Transfers already looked up, keyed by token.
+     *
+     * Same reason as the previews below: one link pasted five times is one
+     * query, not five.
+     *
+     * @var array<string, Transfer|null>
+     */
+    private array $transfers = [];
 
     /**
      * Previews already looked up, keyed by URL.
@@ -95,7 +124,270 @@ class PresentMessage
             // What the first link in the message turned out to be, when it has
             // been looked up and the look-up produced something.
             'linkPreview' => $deleted ? null : $this->linkPreview($message),
+            // What a link to our own transfer route is carrying. Kept apart
+            // from linkPreview because it is a different kind of thing: that
+            // one is what somebody else's page said about itself, this one is
+            // our own database.
+            'transferCard' => $deleted ? null : $this->transferCard($message),
+            // The same idea for a request for secrets: a bare link to a form
+            // says nothing about what is being asked or whether anybody still
+            // needs to answer it.
+            'secretCard' => $deleted ? null : $this->secretCard($message),
+            // And a question put to the channel, with where the votes stand.
+            'pollCard' => $deleted ? null : $this->pollCard($message),
         ];
+    }
+
+    /**
+     * A poll, and how the channel has answered so far.
+     *
+     * Who voted for what is carried along rather than kept back, because that
+     * is what this feature decided a poll is — see the polls migration. It also
+     * solves a problem the transfer card ran into: this output is the broadcast
+     * payload as well, sent to everybody at once, so it cannot hold "what you
+     * chose". The browser works that out from the voters below and the user it
+     * already knows it is.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function pollCard(Message $message): ?array
+    {
+        $id = $this->pollIdIn($message->body);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $poll = $this->polls[$id] ??= Poll::query()
+            ->with(['options.votes.voter'])
+            ->find($id);
+
+        if ($poll === null || $poll->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'id' => $poll->id,
+            'question' => $poll->question,
+            'allowsMultiple' => $poll->allows_multiple,
+            'isClosed' => $poll->isClosed(),
+            // Which of the two it was, so the card can say "gesloten" where
+            // somebody stopped it and "verlopen" where the moment passed.
+            'state' => match (true) {
+                $poll->closed_at !== null => 'closed',
+                $poll->isClosed() => 'expired',
+                default => 'open',
+            },
+            'closesAt' => $poll->closes_at,
+
+            // Who asked, rather than "may you close this": the same payload
+            // goes to everybody, so the question of whose poll it is has to be
+            // answered in the browser, against the user it already knows it is.
+            // A channel manager may close somebody else's poll — the policy
+            // says so — but there is no way to offer them the button from here
+            // without a payload per viewer, and the asker is the case that
+            // matters.
+            'askedBy' => $poll->created_by,
+
+            // People, not ticks: on a multiple-choice poll one person may
+            // appear under three answers.
+            'voterCount' => $poll->options
+                ->flatMap(fn (PollOption $option) => $option->votes->pluck('user_id'))
+                ->unique()
+                ->count(),
+
+            'options' => $poll->options->map(fn (PollOption $option): array => [
+                'id' => $option->id,
+                'label' => $option->label,
+                'voters' => $option->votes
+                    ->map(fn (PollVote $vote): array => [
+                        'id' => $vote->user_id,
+                        'name' => $vote->voter?->name,
+                        // Faces rather than a tally: who answered what is the
+                        // thing this poll shows, and a name only appears on
+                        // hover. The initials fall back to the name.
+                        'avatarUrl' => $vote->voter?->avatarUrl(),
+                    ])->all(),
+            ])->all(),
+        ];
+    }
+
+    /**
+     * The id of the first link in this body pointing at a poll, or null.
+     *
+     * Built from the route, as the transfer and secret matchers are.
+     */
+    private function pollIdIn(string $body): ?string
+    {
+        $prefix = route('chat.polls.show', ['__WS__', '__ID__']);
+        [$before] = explode('__ID__', $prefix, 2);
+
+        // The workspace slug sits inside the prefix, so match it as a segment
+        // rather than pinning the one this message happens to be in.
+        $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
+        $pattern = str_replace(preg_quote('__WS__', '/'), '[a-z0-9-]+', $pattern);
+
+        return preg_match($pattern, $body, $matches) === 1
+            ? mb_strtolower($matches[1])
+            : null;
+    }
+
+    /**
+     * What a link to one of our own secret requests is asking for.
+     *
+     * Note what is deliberately absent: which key was answered by whom, and of
+     * course any value. The count is enough to tell somebody in the channel
+     * whether there is still something for them to do, and anything finer would
+     * be saying who holds which credential in front of everyone.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function secretCard(Message $message): ?array
+    {
+        $id = $this->secretRequestIdIn($message->body);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $request = $this->secretRequests[$id] ??= SecretRequest::query()
+            ->withCount(['keys', 'values'])
+            ->find($id);
+
+        if ($request === null) {
+            return null;
+        }
+
+        // Only a request from the workspace this message is in, for the reason
+        // the transfer card checks the same thing.
+        if ($request->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'id' => $request->id,
+            'title' => $request->title,
+            'keyCount' => $request->keys_count,
+            'answeredCount' => $request->values_count,
+            'expiresAt' => $request->expires_at,
+            'state' => match (true) {
+                $request->isRevoked() => 'revoked',
+                $request->hasExpired() => 'expired',
+                default => 'open',
+            },
+            /*
+             * One link for everybody, and the server decides where it lands —
+             * see SecretFillController::show(), which sends the person who
+             * asked to the answers instead of to the form.
+             *
+             * It has to work that way round rather than being decided here:
+             * this output is also the broadcast payload, which goes to every
+             * member of the channel at once. Anything that differs per viewer
+             * would be wrong for all but one of them.
+             */
+            'url' => route('secrets.show', $request->id),
+        ];
+    }
+
+    /**
+     * The id of the first link in this body pointing at our own secret form.
+     *
+     * Built from the route rather than matched by pattern, for the reason
+     * transferTokenIn() is: a change to the URL shape must not leave this
+     * quietly matching nothing.
+     */
+    private function secretRequestIdIn(string $body): ?string
+    {
+        $prefix = route('secrets.show', '__ID__');
+        [$before] = explode('__ID__', $prefix, 2);
+
+        $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
+
+        return preg_match($pattern, $body, $matches) === 1
+            ? mb_strtolower($matches[1])
+            : null;
+    }
+
+    /**
+     * What a link to one of our own transfers is holding.
+     *
+     * The mirror of linkPreview() below, and worth having as its own thing: a
+     * transfer link is a token and nothing else, so a channel full of them
+     * reads as a wall of noise. What makes this cheap is that nothing is
+     * fetched — the route is ours and the answer is a row we already have,
+     * where a link preview has to go and ask somebody else's server.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function transferCard(Message $message): ?array
+    {
+        $token = $this->transferTokenIn($message->body);
+
+        if ($token === null) {
+            return null;
+        }
+
+        $transfer = $this->transfers[$token] ??= Transfer::query()
+            ->with('media')
+            ->where('token', $token)
+            ->first();
+
+        if ($transfer === null) {
+            return null;
+        }
+
+        /*
+         * Only a transfer from the workspace this message is in. A link pasted
+         * from elsewhere is somebody else's, and drawing its title here would
+         * carry the contents of one workspace into another on the strength of a
+         * pasted URL.
+         */
+        if ($transfer->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        /*
+         * Nothing for a transfer addressed to named people: the shared token
+         * opens nothing for that audience, so a card would be advertising
+         * something no one reading the channel can open.
+         */
+        if (! $transfer->audience->opensWithTransferToken()) {
+            return null;
+        }
+
+        return [
+            'title' => $transfer->title,
+            'fileCount' => $transfer->files()->count(),
+            'size' => $transfer->size(),
+            'expiresAt' => $transfer->expires_at,
+            // Said here so the channel shows a dead link as dead, rather than
+            // leaving somebody to click through and find out.
+            'state' => match (true) {
+                $transfer->isRevoked() => 'revoked',
+                $transfer->hasExpired() => 'expired',
+                $transfer->isExhausted() => 'exhausted',
+                default => 'usable',
+            },
+            'isLocked' => $transfer->isLocked(),
+            'url' => route('transfers.show', $transfer->token),
+        ];
+    }
+
+    /**
+     * The token of the first link in this body that points at our own transfer
+     * page, or null when there is none.
+     *
+     * Matched against the route rather than by pattern, so a change to the URL
+     * shape cannot leave this quietly matching nothing.
+     */
+    private function transferTokenIn(string $body): ?string
+    {
+        $prefix = route('transfers.show', '__TOKEN__');
+        [$before] = explode('__TOKEN__', $prefix, 2);
+
+        $pattern = '/'.preg_quote($before, '/').'([A-Za-z0-9]{64})\b/';
+
+        return preg_match($pattern, $body, $matches) === 1 ? $matches[1] : null;
     }
 
     /**

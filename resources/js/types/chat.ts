@@ -35,6 +35,24 @@ export interface ChatWorkspace {
      * What the composer may send along with a message, or null when sharing is
      * switched off for this workspace.
      */
+    /**
+     * What the message field needs to offer sending files by link, or null when
+     * it must not offer it: the workspace has the feature off, or this member
+     * may not send.
+     */
+    transfers: {
+        /** Kilobytes for the whole transfer, straight from the workspace. */
+        maxKb: number;
+        /** The longest a link may be asked to live here. */
+        maxDays: number;
+    } | null;
+    /**
+     * Whether this member may ask somebody for a password or a key here. False
+     * when the workspace has the feature off, or the role may not.
+     */
+    secrets: boolean;
+    /** Whether this member may put a question to a channel here. */
+    polls: boolean;
     uploads: {
         /** Kilobytes, straight from the workspace's own setting. */
         maxKb: number;
@@ -340,8 +358,91 @@ export interface ChatMessage {
      * not say enough to draw a card.
      */
     linkPreview: MessageLinkPreview | null;
+    /**
+     * What a link to one of our own transfers is carrying, or null when the
+     * message holds no such link. Kept apart from linkPreview because it is a
+     * different kind of thing: that one is what somebody else's page said about
+     * itself, this one came out of our own database.
+     */
+    transferCard: MessageTransferCard | null;
+    /**
+     * What a link to one of our own secret requests is asking for, or null when
+     * the message holds no such link.
+     */
+    secretCard: MessageSecretCard | null;
+    /** A question put to the channel, with where the votes stand. */
+    pollCard: MessagePollCard | null;
     /** Set while the message is only in the browser, awaiting the server echo. */
     pending?: boolean;
+}
+
+/**
+ * A transfer somebody linked to in a conversation.
+ *
+ * Nothing here was fetched — see TransferCard for why that matters.
+ */
+export interface MessageTransferCard {
+    title: string | null;
+    fileCount: number;
+    /** Every file together, in bytes. */
+    size: number;
+    expiresAt: string;
+    state: 'usable' | 'expired' | 'revoked' | 'exhausted';
+    /** Whether the recipient will be asked for a password. */
+    isLocked: boolean;
+    url: string;
+}
+
+/**
+ * A poll somebody put to the channel.
+ *
+ * The voters are carried along rather than reduced to counts, for two reasons:
+ * a vote here is not anonymous, and this payload is broadcast to everybody at
+ * once — so "what you chose" cannot be in it, and the browser has to work that
+ * out from the list and the user it already knows it is.
+ */
+export interface MessagePollCard {
+    id: string;
+    question: string;
+    allowsMultiple: boolean;
+    isClosed: boolean;
+    /** Which kind of closed: somebody stopped it, or the moment passed. */
+    state: 'open' | 'closed' | 'expired';
+    closesAt: string | null;
+    /** Who put the question, so the browser can tell whose poll this is. */
+    askedBy: number | null;
+    /** People who answered, not ticks cast. */
+    voterCount: number;
+    options: {
+        id: number;
+        label: string;
+        voters: {
+            id: number;
+            name: string | null;
+            avatarUrl: string | null;
+        }[];
+    }[];
+}
+
+/**
+ * A request for secrets somebody linked to in a conversation.
+ *
+ * Counts only: which key was answered by whom is nobody else's business, and a
+ * value never leaves the requester's own screen.
+ */
+export interface MessageSecretCard {
+    id: string;
+    title: string;
+    keyCount: number;
+    answeredCount: number;
+    expiresAt: string;
+    state: 'open' | 'expired' | 'revoked';
+    /**
+     * The same link for everybody. The server sends the person who asked on to
+     * the answers and everybody else to the form — it cannot be decided here,
+     * because this card is broadcast to the whole channel at once.
+     */
+    url: string;
 }
 
 /**

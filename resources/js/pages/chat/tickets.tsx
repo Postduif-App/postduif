@@ -26,6 +26,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
+import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useInitials } from '@/hooks/use-initials';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { cn } from '@/lib/utils';
@@ -112,6 +113,8 @@ export default function WorkspaceTickets({
     const { auth } = usePage<{ auth: Auth }>().props;
     const getInitials = useInitials();
     const [searchOpen, setSearchOpen] = useState(false);
+
+    useCommandPaletteShortcut(setSearchOpen);
     const [createOpen, setCreateOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
@@ -228,7 +231,6 @@ export default function WorkspaceTickets({
                 activeThreads={activeThreads}
                 activeChannelId={null}
                 ticketsActive
-                workspaceTags={workspaceTags}
                 archivedChannels={archivedChannels}
                 sections={sections}
                 onOpenSearch={() => setSearchOpen(true)}
@@ -484,6 +486,22 @@ export default function WorkspaceTickets({
 
             <SearchDialog
                 workspace={workspace}
+                channels={channels}
+                directMessages={directMessages}
+                actions={{
+                    onCreateChannel: workspace.canCreateChannel
+                        ? () => setCreateOpen(true)
+                        : undefined,
+                    onStartDirectMessage: workspace.canStartDirectMessage
+                        ? () => setDirectOpen(true)
+                        : undefined,
+                    onInvitePeople: workspace.canInvite
+                        ? () => setInviteOpen(true)
+                        : undefined,
+                    onBroadcast: workspace.canBroadcastToChannels
+                        ? () => setBroadcastOpen(true)
+                        : undefined,
+                }}
                 open={searchOpen}
                 onOpenChange={setSearchOpen}
             />

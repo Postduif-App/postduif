@@ -21,7 +21,10 @@ import {
     MessageToolbar,
     messageToolbarButton,
 } from '@/components/chat/message-toolbar';
+import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
+import { SecretCard } from '@/components/chat/secret-card';
+import { TransferCard } from '@/components/chat/transfer-card';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -642,6 +645,22 @@ function MessageRow({
                 */}
                 {!deleted && message.linkPreview && (
                     <LinkPreviewCard preview={message.linkPreview} />
+                )}
+
+                {!deleted && message.transferCard && (
+                    <TransferCard card={message.transferCard} />
+                )}
+
+                {!deleted && message.secretCard && (
+                    <SecretCard card={message.secretCard} />
+                )}
+
+                {!deleted && message.pollCard && (
+                    <PollCard
+                        card={message.pollCard}
+                        workspaceSlug={workspace.slug}
+                        currentUserId={currentUserId}
+                    />
                 )}
 
                 {!deleted && (

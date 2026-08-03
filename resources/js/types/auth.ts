@@ -37,6 +37,8 @@ export type Auth = {
     canManageWorkspace: boolean;
     /** Whether they may bring people in, which is a separate screen. */
     canInviteToWorkspace: boolean;
+    /** Whether this workspace offers sending files behind a download link. */
+    canSeeTransfers: boolean;
     /**
      * The role held in that workspace, null for somebody in none. For what the
      * interface says about you — every permission still comes from its own
