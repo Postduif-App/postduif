@@ -88,7 +88,7 @@ class SecretFillController extends Controller
             'values' => ['required', 'array', 'min:1'],
             'values.*' => ['nullable', 'string', 'max:4000'],
         ], [
-            'values.required' => 'Vul minstens één waarde in.',
+            'values.required' => __('requests.secret.values_required'),
         ]);
 
         $answered = 0;
@@ -128,9 +128,7 @@ class SecretFillController extends Controller
          */
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => $answered === 1
-                ? 'Bedankt, de waarde is opgeslagen. Je kunt hem niet meer bekijken.'
-                : "Bedankt, {$answered} waarden zijn opgeslagen. Je kunt ze niet meer bekijken.",
+            'message' => trans_choice('flashes.secret.filled', $answered),
         ]);
 
         return back();

@@ -6,12 +6,12 @@ class Transfers extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Bestanden versturen';
+        return __('features.transfers.label');
     }
 
     public static function description(): string
     {
-        return 'Bestanden klaarzetten achter een deelbare downloadlink, ook voor mensen buiten de workspace.';
+        return __('features.transfers.description');
     }
 
     /**

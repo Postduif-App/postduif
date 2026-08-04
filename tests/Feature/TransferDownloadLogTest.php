@@ -83,7 +83,7 @@ it('names the address a personal link was given to', function () {
     expect(TransferDownload::sole()->transfer_recipient_id)->toBe($recipient->id);
 
     actingAs($sender)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $transfer->workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('transfers.0.downloadLog', 1)
@@ -99,7 +99,7 @@ it('leaves the who empty for an open link', function () {
     get(route('transfers.download-all', $transfer->token))->assertOk();
 
     actingAs($sender)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $transfer->workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('transfers.0.downloadLog.0.who', null)
@@ -135,7 +135,7 @@ it('shows the recent handovers rather than the whole history', function () {
     TransferDownload::factory()->count(15)->create(['transfer_id' => $transfer->id]);
 
     actingAs($sender)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $transfer->workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('transfers.0.downloadLog', 10)
@@ -149,7 +149,7 @@ it('tells the sender when it was last fetched', function () {
     get(route('transfers.download-all', $transfer->token))->assertOk();
 
     actingAs($sender)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $transfer->workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where(
             'transfers.0.lastDownloadedAt',
@@ -182,7 +182,7 @@ it('does not show a colleague what happened to somebody else transfer', function
     ]);
 
     actingAs($colleague)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('transfers', 0));
 });

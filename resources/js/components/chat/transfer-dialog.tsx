@@ -16,20 +16,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
+import { readableSize } from '@/lib/file-size';
 import { store } from '@/routes/chat/transfers';
-
-function readableSize(bytes: number): string {
-    const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-    let value = bytes;
-    let unit = 0;
-
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-
-    return `${value.toFixed(unit >= 2 && value < 100 ? 1 : 0).replace('.', ',')} ${units[unit]}`;
-}
 
 /**
  * Sending files that are too big to hang on a message, from the message field.
@@ -67,6 +57,8 @@ export function TransferDialog({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
 }) {
+    const { t, tChoice } = useTranslate();
+    const formats = useFormats();
     const [ownOpen, setOwnOpen] = useState(false);
 
     const controlled = open !== undefined;
@@ -86,8 +78,8 @@ export function TransferDialog({
                         size="icon"
                         variant="ghost"
                         disabled={disabled}
-                        title="Grote bestanden versturen via een link"
-                        aria-label="Grote bestanden versturen via een link"
+                        title={t('dialogs.transfer.trigger')}
+                        aria-label={t('dialogs.transfer.trigger')}
                     >
                         <Send className="size-4" />
                     </Button>
@@ -96,11 +88,9 @@ export function TransferDialog({
 
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Bestanden versturen</DialogTitle>
+                    <DialogTitle>{t('dialogs.transfer.title')}</DialogTitle>
                     <DialogDescription>
-                        Voor wat te groot is om mee te sturen met een bericht.
-                        De link komt in dit kanaal te staan en werkt voor
-                        iedereen in deze workspace.
+                        {t('dialogs.transfer.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -131,7 +121,7 @@ export function TransferDialog({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="transfer_files">
-                                    Bestanden
+                                    {t('dialogs.transfer.files_label')}
                                 </Label>
                                 <Input
                                     id="transfer_files"
@@ -142,27 +132,34 @@ export function TransferDialog({
                                     autoFocus
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Samen maximaal {readableSize(maxKb * 1024)}.
+                                    {t('dialogs.transfer.files_hint', {
+                                        size: readableSize(
+                                            maxKb * 1024,
+                                            formats.number,
+                                        ),
+                                    })}
                                 </p>
                                 <InputError message={errors.files} />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="transfer_title">
-                                    Onderwerp (optioneel)
+                                    {t('dialogs.transfer.title_label')}
                                 </Label>
                                 <Input
                                     id="transfer_title"
                                     name="title"
                                     maxLength={120}
-                                    placeholder="Opnames van dinsdag"
+                                    placeholder={t(
+                                        'dialogs.transfer.title_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.title} />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="transfer_days">
-                                    Link blijft geldig (dagen)
+                                    {t('dialogs.transfer.days_label')}
                                 </Label>
                                 <Input
                                     id="transfer_days"
@@ -173,8 +170,10 @@ export function TransferDialog({
                                     defaultValue={Math.min(7, maxDays)}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Daarna verdwijnen de bestanden. Maximaal{' '}
-                                    {maxDays} dagen in deze workspace.
+                                    {tChoice(
+                                        'dialogs.transfer.days_hint',
+                                        maxDays,
+                                    )}
                                 </p>
                                 <InputError message={errors.valid_for_days} />
                             </div>
@@ -204,8 +203,11 @@ export function TransferDialog({
                                         />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Bezig met uploaden —{' '}
-                                        {Math.round(progress.percentage ?? 0)}%
+                                        {t('dialogs.transfer.uploading', {
+                                            percentage: Math.round(
+                                                progress.percentage ?? 0,
+                                            ),
+                                        })}
                                     </p>
                                 </div>
                             )}
@@ -213,7 +215,7 @@ export function TransferDialog({
                             <DialogFooter>
                                 <Button type="submit" disabled={processing}>
                                     {processing && !progress && <Spinner />}
-                                    Versturen
+                                    {t('dialogs.transfer.submit')}
                                 </Button>
                             </DialogFooter>
                         </>

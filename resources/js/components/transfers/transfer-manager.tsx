@@ -1,4 +1,4 @@
-import { Form, Head, router } from '@inertiajs/react';
+import { Form, router } from '@inertiajs/react';
 import { Check, Copy, Send, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -19,9 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
+import { readableSize } from '@/lib/file-size';
 import { cn } from '@/lib/utils';
 import { destroy, store } from '@/routes/chat/transfers';
 import { destroy as revokeRecipient } from '@/routes/chat/transfers/recipients';
+import type { TranslationKey } from '@/types/translations';
 
 type State = 'usable' | 'expired' | 'revoked' | 'exhausted';
 
@@ -74,7 +78,7 @@ interface TransferRow {
     lastDownloadedAt: string | null;
 }
 
-interface TransfersProps {
+export interface TransferManagerProps {
     workspaceName: string;
     workspaceSlug: string;
     canSend: boolean;
@@ -86,30 +90,24 @@ interface TransfersProps {
     transfers: TransferRow[];
 }
 
-/** Why a transfer is on the list but no longer hands anything over. */
-const DEAD: Record<Exclude<State, 'usable'>, string> = {
-    expired: 'verlopen',
-    revoked: 'ingetrokken',
-    exhausted: 'opgebruikt',
+/**
+ * Why a transfer is on the list but no longer hands anything over.
+ *
+ * Keys rather than words: a module constant cannot call a hook, and the reader
+ * whose language decides the wording is only known once something renders.
+ */
+const DEAD: Record<Exclude<State, 'usable'>, TranslationKey> = {
+    expired: 'panels.transfers.dead_expired',
+    revoked: 'panels.transfers.dead_revoked',
+    exhausted: 'panels.transfers.dead_exhausted',
 };
 
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-});
-
-function humanSize(bytes: number): string {
-    const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-    let value = bytes;
-    let unit = 0;
-
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-
-    return `${value.toFixed(unit >= 2 && value < 100 ? 1 : 0).replace('.', ',')} ${units[unit]}`;
-}
+/** The wording of a count, in the language this page was rendered in. */
+type Choose = (
+    key: TranslationKey,
+    count: number,
+    replacements?: Record<string, string | number>,
+) => string;
 
 /**
  * The choices for how long a link may live, trimmed to what this workspace
@@ -118,17 +116,27 @@ function humanSize(bytes: number): string {
  * Filtered rather than validated after the fact: offering "30 dagen" to a
  * workspace that caps at 7 is an invitation to fill in a form that will be
  * refused, and the ceiling is already known when the page is drawn.
+ *
+ * The wording comes in as an argument for the same reason the constant above
+ * holds keys: this is a plain function, and a plain function cannot call the
+ * hook that knows which language to count in.
  */
-function validityOptions(max: number): { value: number; label: string }[] {
+function validityOptions(
+    max: number,
+    tChoice: Choose,
+): { value: number; label: string }[] {
+    const label = (days: number) =>
+        tChoice('panels.transfers.validity_days', days);
+
     return [1, 3, 7, 14, 30, 90]
         .filter((days) => days <= max)
-        .map((days) => ({ value: days, label: `${days} dagen` }))
+        .map((days) => ({ value: days, label: label(days) }))
         .concat(
             // Always offer the ceiling itself, so a workspace capped at 5 days
             // is not left with only "1 dag" and "3 dagen".
             [1, 3, 7, 14, 30, 90].includes(max)
                 ? []
-                : [{ value: max, label: `${max} dagen` }],
+                : [{ value: max, label: label(max) }],
         );
 }
 
@@ -141,6 +149,7 @@ function splitAddresses(value: string): string[] {
 }
 
 function CopyButton({ url }: { url: string }) {
+    const { t } = useTranslate();
     const [copied, copy] = useClipboard();
     const isCopied = copied === url;
 
@@ -150,20 +159,30 @@ function CopyButton({ url }: { url: string }) {
             variant="ghost"
             size="sm"
             onClick={() => void copy(url)}
-            aria-label="Downloadlink kopiëren"
-            title="Downloadlink kopiëren"
+            aria-label={t('panels.transfers.copy_link')}
+            title={t('panels.transfers.copy_link')}
         >
             {isCopied ? (
                 <Check className="size-3.5 text-emerald-600" />
             ) : (
                 <Copy className="size-3.5" />
             )}
-            {isCopied ? 'Gekopieerd' : 'Kopiëren'}
+            {isCopied
+                ? t('panels.transfers.copied')
+                : t('panels.transfers.copy')}
         </Button>
     );
 }
 
-export default function WorkspaceTransfers({
+/**
+ * Sending files by link, and the list of what is still out there.
+ *
+ * A component rather than a page since the screen moved out of workspace
+ * settings and into the app's own shell: what it draws did not change, only
+ * where it hangs. Everything it needs is handed in, so it stays indifferent to
+ * which shell that is.
+ */
+export function TransferManager({
     workspaceName,
     workspaceSlug,
     canSend,
@@ -172,7 +191,10 @@ export default function WorkspaceTransfers({
     audienceOptions,
     seesEveryone,
     transfers,
-}: TransfersProps) {
+}: TransferManagerProps) {
+    const formats = useFormats();
+    const { t, tChoice } = useTranslate();
+
     /*
      * The transfer waiting for a yes. Withdrawing cannot be undone and the link
      * may already be in somebody's mail, so it is worth one question — the same
@@ -192,20 +214,22 @@ export default function WorkspaceTransfers({
     /** The addresses as typed, one per line. */
     const [addresses, setAddresses] = useState('');
 
-    const options = validityOptions(maxTransferDays);
+    const options = validityOptions(maxTransferDays, tChoice);
 
     return (
         <>
-            <Head title="Workspace — bestanden versturen" />
-
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Bestanden versturen"
+                    title={t('panels.transfers.heading')}
                     description={
                         seesEveryone
-                            ? `Alles wat vanuit ${workspaceName} klaarstaat achter een downloadlink`
-                            : `Wat jij vanuit ${workspaceName} hebt klaargezet`
+                            ? t('panels.transfers.description_everyone', {
+                                  workspace: workspaceName,
+                              })
+                            : t('panels.transfers.description_own', {
+                                  workspace: workspaceName,
+                              })
                     }
                 />
 
@@ -221,7 +245,9 @@ export default function WorkspaceTransfers({
                         {({ processing, progress, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="files">Bestanden</Label>
+                                    <Label htmlFor="files">
+                                        {t('panels.transfers.files_label')}
+                                    </Label>
                                     <Input
                                         id="files"
                                         name="files[]"
@@ -230,38 +256,43 @@ export default function WorkspaceTransfers({
                                         required
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Samen maximaal{' '}
-                                        {humanSize(maxTransferKb * 1024)}. Elk
-                                        bestandstype mag — het gaat er aan de
-                                        andere kant altijd als download uit,
-                                        nooit als pagina.
+                                        {t('panels.transfers.files_hint', {
+                                            size: readableSize(
+                                                maxTransferKb * 1024,
+                                                formats.number,
+                                            ),
+                                        })}
                                     </p>
                                     <InputError message={errors.files} />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="title">
-                                        Onderwerp (optioneel)
+                                        {t('panels.transfers.title_label')}
                                     </Label>
                                     <Input
                                         id="title"
                                         name="title"
                                         maxLength={120}
-                                        placeholder="Offerte week 32"
+                                        placeholder={t(
+                                            'panels.transfers.title_placeholder',
+                                        )}
                                     />
                                     <InputError message={errors.title} />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="message">
-                                        Bericht (optioneel)
+                                        {t('panels.transfers.message_label')}
                                     </Label>
                                     <textarea
                                         id="message"
                                         name="message"
                                         rows={2}
                                         maxLength={2000}
-                                        placeholder="Laat maar weten wat je ervan vindt."
+                                        placeholder={t(
+                                            'panels.transfers.message_placeholder',
+                                        )}
                                         className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                                     />
                                     <InputError message={errors.message} />
@@ -269,7 +300,7 @@ export default function WorkspaceTransfers({
 
                                 <fieldset className="grid gap-2">
                                     <legend className="mb-2 text-sm font-medium">
-                                        Wie deze link mag gebruiken
+                                        {t('panels.transfers.audience_legend')}
                                     </legend>
                                     {audienceOptions.map((option) => (
                                         <label
@@ -304,7 +335,9 @@ export default function WorkspaceTransfers({
                                 {audience === 'named-recipients' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="recipients">
-                                            E-mailadressen
+                                            {t(
+                                                'panels.transfers.recipients_label',
+                                            )}
                                         </Label>
                                         {/*
                                             One address per line, split into
@@ -338,10 +371,9 @@ export default function WorkspaceTransfers({
                                             ),
                                         )}
                                         <p className="text-xs text-muted-foreground">
-                                            Eén per regel. Iedereen krijgt een
-                                            eigen link gemaild; de link
-                                            hierboven werkt dan niet meer op
-                                            zichzelf.
+                                            {t(
+                                                'panels.transfers.recipients_hint',
+                                            )}
                                         </p>
                                         <InputError
                                             message={
@@ -355,7 +387,9 @@ export default function WorkspaceTransfers({
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
                                         <Label htmlFor="valid_for_days">
-                                            Link blijft geldig
+                                            {t(
+                                                'panels.transfers.validity_label',
+                                            )}
                                         </Label>
                                         <select
                                             id="valid_for_days"
@@ -381,7 +415,9 @@ export default function WorkspaceTransfers({
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="password">
-                                            Wachtwoord (optioneel)
+                                            {t(
+                                                'panels.transfers.password_label',
+                                            )}
                                         </Label>
                                         <Input
                                             id="password"
@@ -389,14 +425,18 @@ export default function WorkspaceTransfers({
                                             type="text"
                                             minLength={6}
                                             autoComplete="off"
-                                            placeholder="Geen"
+                                            placeholder={t(
+                                                'panels.transfers.password_placeholder',
+                                            )}
                                         />
                                         <InputError message={errors.password} />
                                     </div>
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="max_downloads">
-                                            Maximaal aantal downloads
+                                            {t(
+                                                'panels.transfers.max_downloads_label',
+                                            )}
                                         </Label>
                                         <Input
                                             id="max_downloads"
@@ -404,7 +444,9 @@ export default function WorkspaceTransfers({
                                             type="number"
                                             min={1}
                                             max={1000}
-                                            placeholder="Onbeperkt"
+                                            placeholder={t(
+                                                'panels.transfers.max_downloads_placeholder',
+                                            )}
                                         />
                                         <InputError
                                             message={errors.max_downloads}
@@ -418,11 +460,7 @@ export default function WorkspaceTransfers({
                                     the link it protects is not a second lock.
                                 */}
                                 <p className="text-xs text-muted-foreground">
-                                    Stuur een wachtwoord altijd los van de link
-                                    — via een appje of aan de telefoon.
-                                    Zichtbaar getypt, want dit is geen
-                                    accountwachtwoord maar iets wat je moet
-                                    kunnen voorlezen.
+                                    {t('panels.transfers.password_warning')}
                                 </p>
 
                                 {/*
@@ -451,11 +489,11 @@ export default function WorkspaceTransfers({
                                             />
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Bezig met uploaden —{' '}
-                                            {Math.round(
-                                                progress.percentage ?? 0,
-                                            )}
-                                            %
+                                            {t('panels.transfers.uploading', {
+                                                percentage: Math.round(
+                                                    progress.percentage ?? 0,
+                                                ),
+                                            })}
                                         </p>
                                     </div>
                                 )}
@@ -463,7 +501,7 @@ export default function WorkspaceTransfers({
                                 <Button type="submit">
                                     {processing && !progress && <Spinner />}
                                     <Send className="size-4" />
-                                    Klaarzetten
+                                    {t('panels.transfers.submit')}
                                 </Button>
                             </>
                         )}
@@ -474,12 +512,10 @@ export default function WorkspaceTransfers({
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <Send className="mx-auto size-6 text-muted-foreground" />
                         <p className="mt-3 text-sm font-medium">
-                            Er staat niets klaar
+                            {t('panels.transfers.empty_title')}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Handig voor het bestand dat niet in een bericht
-                            past. De ontvanger heeft geen account nodig — de
-                            link is genoeg.
+                            {t('panels.transfers.empty_hint')}
                         </p>
                     </div>
                 ) : (
@@ -499,23 +535,36 @@ export default function WorkspaceTransfers({
                                     >
                                         {transfer.title ??
                                             transfer.files[0] ??
-                                            'Zonder onderwerp'}
+                                            t('panels.transfers.untitled')}
                                     </span>
                                     <span className="block truncate text-xs text-muted-foreground">
-                                        {transfer.fileCount}{' '}
-                                        {transfer.fileCount === 1
-                                            ? 'bestand'
-                                            : 'bestanden'}{' '}
-                                        · {humanSize(transfer.size)} ·{' '}
-                                        {transfer.downloads}
+                                        {tChoice(
+                                            'panels.transfers.file_count',
+                                            transfer.fileCount,
+                                        )}
+                                        {' · '}
+                                        {readableSize(
+                                            transfer.size,
+                                            formats.number,
+                                        )}
+                                        {' · '}
                                         {transfer.maxDownloads === null
-                                            ? 'x opgehaald'
-                                            : ` van ${transfer.maxDownloads} opgehaald`}
+                                            ? t(
+                                                  'panels.transfers.downloads_open',
+                                                  { count: transfer.downloads },
+                                              )
+                                            : t(
+                                                  'panels.transfers.downloads_capped',
+                                                  {
+                                                      count: transfer.downloads,
+                                                      max: transfer.maxDownloads,
+                                                  },
+                                              )}
                                         {' · '}
                                         {transfer.audienceLabel.toLowerCase()}
                                         {seesEveryone &&
                                             transfer.senderName &&
-                                            ` · van ${transfer.senderName}`}
+                                            ` · ${t('panels.transfers.sent_by', { name: transfer.senderName })}`}
                                     </span>
                                 </span>
 
@@ -528,10 +577,21 @@ export default function WorkspaceTransfers({
                                     )}
                                 >
                                     {transfer.state === 'usable'
-                                        ? `tot ${DATE_FORMAT.format(new Date(transfer.expiresAt))}`
+                                        ? t('panels.transfers.valid_until', {
+                                              date: formats.date.format(
+                                                  new Date(transfer.expiresAt),
+                                              ),
+                                          })
                                         : transfer.clearedAt
-                                          ? `${DEAD[transfer.state]} · bestanden weg op ${DATE_FORMAT.format(new Date(transfer.clearedAt))}`
-                                          : DEAD[transfer.state]}
+                                          ? t('panels.transfers.cleared', {
+                                                state: t(DEAD[transfer.state]),
+                                                date: formats.date.format(
+                                                    new Date(
+                                                        transfer.clearedAt,
+                                                    ),
+                                                ),
+                                            })
+                                          : t(DEAD[transfer.state])}
                                 </span>
 
                                 {transfer.state === 'usable' && (
@@ -546,8 +606,10 @@ export default function WorkspaceTransfers({
                                         onClick={() =>
                                             setPendingRevoke(transfer)
                                         }
-                                        aria-label="Verzending intrekken"
-                                        title="Verzending intrekken"
+                                        aria-label={t(
+                                            'panels.transfers.revoke',
+                                        )}
+                                        title={t('panels.transfers.revoke')}
                                     >
                                         <X className="size-3.5" />
                                     </Button>
@@ -569,8 +631,10 @@ export default function WorkspaceTransfers({
                                 {transfer.downloadLog.length > 0 && (
                                     <details className="w-full">
                                         <summary className="cursor-pointer text-xs text-muted-foreground">
-                                            Laatste downloads (
-                                            {transfer.downloadLog.length})
+                                            {t('panels.transfers.log_summary', {
+                                                count: transfer.downloadLog
+                                                    .length,
+                                            })}
                                         </summary>
                                         <ul className="mt-1 space-y-0.5 pl-1">
                                             {transfer.downloadLog.map(
@@ -582,15 +646,21 @@ export default function WorkspaceTransfers({
                                                         <span className="min-w-0 flex-1 truncate">
                                                             {entry.who ??
                                                                 entry.ip ??
-                                                                'onbekend'}
+                                                                t(
+                                                                    'panels.transfers.log_unknown',
+                                                                )}
                                                         </span>
                                                         <span className="shrink-0">
                                                             {entry.wasWholeArchive
-                                                                ? 'alles'
-                                                                : '1 bestand'}
+                                                                ? t(
+                                                                      'panels.transfers.log_whole_archive',
+                                                                  )
+                                                                : t(
+                                                                      'panels.transfers.log_single_file',
+                                                                  )}
                                                         </span>
                                                         <span className="shrink-0">
-                                                            {DATE_FORMAT.format(
+                                                            {formats.date.format(
                                                                 new Date(
                                                                     entry.at,
                                                                 ),
@@ -622,8 +692,15 @@ export default function WorkspaceTransfers({
                                                     </span>
                                                     <span className="shrink-0">
                                                         {recipient.isRevoked
-                                                            ? 'ingetrokken'
-                                                            : `${recipient.downloads}x opgehaald`}
+                                                            ? t(
+                                                                  'panels.transfers.recipient_revoked',
+                                                              )
+                                                            : t(
+                                                                  'panels.transfers.recipient_downloads',
+                                                                  {
+                                                                      count: recipient.downloads,
+                                                                  },
+                                                              )}
                                                     </span>
                                                     {!recipient.isRevoked && (
                                                         <>
@@ -653,8 +730,18 @@ export default function WorkspaceTransfers({
                                                                         },
                                                                     )
                                                                 }
-                                                                aria-label={`Link voor ${recipient.email} intrekken`}
-                                                                title={`Link voor ${recipient.email} intrekken`}
+                                                                aria-label={t(
+                                                                    'panels.transfers.revoke_recipient',
+                                                                    {
+                                                                        email: recipient.email,
+                                                                    },
+                                                                )}
+                                                                title={t(
+                                                                    'panels.transfers.revoke_recipient',
+                                                                    {
+                                                                        email: recipient.email,
+                                                                    },
+                                                                )}
                                                             >
                                                                 <X className="size-3" />
                                                             </Button>
@@ -678,16 +765,16 @@ export default function WorkspaceTransfers({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Deze verzending intrekken?
+                            {t('panels.transfers.revoke_title')}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            De link stopt meteen met werken. Wie hem al heeft,
-                            krijgt te zien dat de verzending is ingetrokken —
-                            wat al gedownload is, blijft natuurlijk waar het is.
+                            {t('panels.transfers.revoke_description')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('panels.transfers.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -707,7 +794,7 @@ export default function WorkspaceTransfers({
                                 setPendingRevoke(null);
                             }}
                         >
-                            Intrekken
+                            {t('panels.transfers.revoke_confirm')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

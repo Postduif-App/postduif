@@ -16,8 +16,8 @@ class PruneTransfers extends Command
         $removed = $pruner->handle();
 
         $this->info($removed === 0
-            ? 'Niets om op te ruimen.'
-            : ($removed === 1 ? '1 verzending opgeruimd.' : $removed.' verzendingen opgeruimd.'));
+            ? __('console.nothing_to_prune')
+            : trans_choice('console.transfers_pruned', $removed));
 
         return self::SUCCESS;
     }

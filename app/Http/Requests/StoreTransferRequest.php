@@ -170,7 +170,7 @@ class StoreTransferRequest extends FormRequest
             if ($total > $ceiling) {
                 $validator->errors()->add(
                     'files',
-                    'Samen zijn deze bestanden groter dan in deze workspace is toegestaan.',
+                    __('requests.transfer.too_large_together'),
                 );
             }
         });
@@ -182,13 +182,14 @@ class StoreTransferRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'files.required' => 'Kies minstens één bestand om te versturen.',
-            'recipients.required' => 'Noem minstens één e-mailadres, of kies een ander publiek.',
-            'recipients.*.email' => 'Dit is geen geldig e-mailadres.',
-            'files.max' => 'Je kunt maximaal '.self::MAX_FILES.' bestanden tegelijk versturen.',
-            'files.*.max' => 'Dit bestand is groter dan in deze workspace is toegestaan.',
-            'valid_for_days.max' => 'Deze workspace laat een link maximaal '
-                .$this->transferWorkspace()->max_transfer_days.' dagen geldig zijn.',
+            'files.required' => __('requests.transfer.files_required'),
+            'recipients.required' => __('requests.transfer.recipients_required'),
+            'recipients.*.email' => __('requests.transfer.invalid_email'),
+            'files.max' => __('requests.transfer.too_many_files', ['count' => self::MAX_FILES]),
+            'files.*.max' => __('requests.transfer.file_too_large'),
+            'valid_for_days.max' => __('requests.transfer.valid_too_long', [
+                'days' => $this->transferWorkspace()->max_transfer_days,
+            ]),
         ];
     }
 

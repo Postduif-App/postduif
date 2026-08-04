@@ -152,7 +152,7 @@ it('shows the sender which links are narrowed and which are not', function () {
     ]);
 
     actingAs($user)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('transfers.0.audience', TransferAudience::WorkspaceMembers->value)

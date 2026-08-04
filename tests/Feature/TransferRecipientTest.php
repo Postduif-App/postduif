@@ -198,7 +198,7 @@ it('shows the sender who has fetched and who has not', function () {
     get(route('transfers.download', [$first->token, $media->id]))->assertOk();
 
     actingAs($sender)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $transfer->workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('transfers.0.recipients', 2)

@@ -30,9 +30,9 @@ enum TransferAudience: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Everyone => 'Iedereen met de link',
-            self::WorkspaceMembers => 'Alleen leden van deze workspace',
-            self::NamedRecipients => 'Alleen deze e-mailadressen',
+            self::Everyone => __('enums.transfer-audience.label.Everyone'),
+            self::WorkspaceMembers => __('enums.transfer-audience.label.WorkspaceMembers'),
+            self::NamedRecipients => __('enums.transfer-audience.label.NamedRecipients'),
         };
     }
 
@@ -40,9 +40,9 @@ enum TransferAudience: string implements HasLabel
     public function description(): string
     {
         return match ($this) {
-            self::Everyone => 'Wie de link heeft, kan downloaden. Doorsturen werkt dus ook.',
-            self::WorkspaceMembers => 'De ontvanger moet inloggen en lid zijn. Doorgestuurd naar buiten levert niets op.',
-            self::NamedRecipients => 'Iedereen krijgt een eigen link gemaild. Doorsturen kan nog steeds, maar je ziet het aan de tellers en je trekt één adres in zonder de rest te raken.',
+            self::Everyone => __('enums.transfer-audience.description.Everyone'),
+            self::WorkspaceMembers => __('enums.transfer-audience.description.WorkspaceMembers'),
+            self::NamedRecipients => __('enums.transfer-audience.description.NamedRecipients'),
         };
     }
 

@@ -1,79 +1,26 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Actions\Transfers;
 
-use App\Actions\Transfers\PruneTransfers;
-use App\Concerns\ResolvesCurrentWorkspace;
-use App\Enums\TransferAudience;
-use App\Features\Transfers;
-use App\Http\Controllers\Controller;
 use App\Models\Transfer;
 use App\Models\TransferDownload;
 use App\Models\TransferRecipient;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * What somebody has out there, and what it is doing.
  *
- * The counterpart of TransferController, which makes and withdraws them.
- * Sending is a quick action you reach for while working; keeping track of the
- * links still alive is administration, and administration lives here — the same
- * split invitations are under.
+ * Lifted out of the controller when the screen moved from workspace settings
+ * into the app itself: sending files is ordinary work rather than
+ * administration, and the shape of the list did not have to change for that to
+ * be true.
  */
-class TransferController extends Controller
+class PresentTransfers
 {
-    use ResolvesCurrentWorkspace;
-
     /** Enough to answer "is this link doing the rounds", and no more. */
     private const LOG_SHOWN = 10;
-
-    public function index(Request $request): Response
-    {
-        // 'view' rather than 'manage': this is not an admin screen. Sending
-        // files is something any member does, and the list of what they sent is
-        // theirs to look at.
-        $workspace = $this->currentWorkspace($request, 'view');
-
-        abort_unless($workspace->hasFeature(Transfers::class), 404);
-
-        $user = $request->user();
-        $isManager = $user->can('manage', $workspace);
-
-        return Inertia::render('settings/transfers', [
-            'workspaceName' => $workspace->name,
-            // The endpoints that make and withdraw a transfer live under the
-            // workspace prefix, so the form needs the slug to address them.
-            'workspaceSlug' => $workspace->slug,
-            'canSend' => $user->can('createTransfer', $workspace),
-
-            /*
-             * The ceilings, so the form can offer what the endpoint will take
-             * instead of letting somebody upload two gigabytes and then telling
-             * them no.
-             */
-            'maxTransferKb' => $workspace->max_transfer_kb,
-            'maxTransferDays' => $workspace->max_transfer_days,
-
-            // The same set the endpoint accepts, so the form cannot offer a
-            // choice the validator then drops.
-            'audienceOptions' => collect(TransferAudience::cases())
-                ->map(fn (TransferAudience $audience): array => [
-                    'value' => $audience->value,
-                    'label' => $audience->label(),
-                    'hint' => $audience->description(),
-                ])->all(),
-
-            // Said out loud so the list can label the rows that are not yours.
-            // Without it an admin sees a mixed list with no clue why.
-            'seesEveryone' => $isManager,
-            'transfers' => $this->transfersFor($workspace, $isManager ? null : $user->id),
-        ]);
-    }
 
     /**
      * The transfers on the list, newest first.
@@ -87,7 +34,7 @@ class TransferController extends Controller
      * @param  int|null  $onlyFrom  Whose transfers, or null for the workspace's.
      * @return array<int, array<string, mixed>>
      */
-    private function transfersFor(Workspace $workspace, ?int $onlyFrom): array
+    public function handle(Workspace $workspace, ?int $onlyFrom): array
     {
         return Transfer::query()
             ->where('workspace_id', $workspace->id)

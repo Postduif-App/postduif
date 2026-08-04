@@ -1,9 +1,11 @@
-import { Head } from '@inertiajs/react';
+import { Head, setLayoutProps } from '@inertiajs/react';
 import { Check, Copy, Eye, Flame } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { mutatingHeaders } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { reveal } from '@/routes/secrets';
@@ -31,15 +33,6 @@ interface AnswersProps {
     };
 }
 
-function formatMoment(value: string): string {
-    return new Date(value).toLocaleString('nl-NL', {
-        day: 'numeric',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
 /**
  * One answer, hidden until asked for.
  *
@@ -60,6 +53,8 @@ function AnswerRow({
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [copied, copy] = useClipboard();
+    const formats = useFormats();
+    const { t } = useTranslate();
 
     const show = async () => {
         setLoading(true);
@@ -93,13 +88,22 @@ function AnswerRow({
                         {entry.name}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
-                        {entry.isAnswered
-                            ? `ingevuld door ${entry.filledBy ?? 'iemand'}${
-                                  entry.filledAt
-                                      ? ` op ${formatMoment(entry.filledAt)}`
-                                      : ''
-                              }`
-                            : 'nog niet ingevuld'}
+                        {!entry.isAnswered
+                            ? t('account.secret_answers.not_filled')
+                            : entry.filledAt
+                              ? t('account.secret_answers.filled_by_at', {
+                                    name:
+                                        entry.filledBy ??
+                                        t('account.secret_answers.somebody'),
+                                    moment: formats.dateTime.format(
+                                        new Date(entry.filledAt),
+                                    ),
+                                })
+                              : t('account.secret_answers.filled_by', {
+                                    name:
+                                        entry.filledBy ??
+                                        t('account.secret_answers.somebody'),
+                                })}
                     </span>
                 </span>
 
@@ -112,7 +116,7 @@ function AnswerRow({
                         onClick={() => void show()}
                     >
                         <Eye className="size-3.5" />
-                        Tonen
+                        {t('account.secret_answers.show')}
                     </Button>
                 )}
 
@@ -124,11 +128,13 @@ function AnswerRow({
                         onClick={() => void copy(value)}
                     >
                         {copied === value ? (
-                            <Check className="size-3.5 text-emerald-600" />
+                            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                             <Copy className="size-3.5" />
                         )}
-                        {copied === value ? 'Gekopieerd' : 'Kopiëren'}
+                        {copied === value
+                            ? t('account.secret_answers.copied')
+                            : t('account.secret_answers.copy')}
                     </Button>
                 )}
             </div>
@@ -142,20 +148,23 @@ function AnswerRow({
             {burned && (
                 <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                     <Flame className="size-3.5" />
-                    Dit was de enige keer — de waarde is nu verwijderd. Kopieer
-                    hem voor je deze pagina sluit.
+                    {t('account.secret_answers.burned')}
                 </p>
             )}
 
             {failed && (
                 <p className="text-xs text-destructive">
-                    Tonen is niet gelukt. Ververs de pagina en probeer opnieuw.
+                    {t('account.secret_answers.failed')}
                 </p>
             )}
 
             {entry.revealedAt && value === null && !burned && (
                 <p className="text-xs text-muted-foreground">
-                    Eerder bekeken op {formatMoment(entry.revealedAt)}.
+                    {t('account.secret_answers.seen_before', {
+                        moment: formats.dateTime.format(
+                            new Date(entry.revealedAt),
+                        ),
+                    })}
                 </p>
             )}
         </li>
@@ -164,6 +173,13 @@ function AnswerRow({
 
 export default function SecretAnswers({ request }: AnswersProps) {
     const answered = request.keys.filter((key) => key.isAnswered).length;
+    const { t } = useTranslate();
+    const formats = useFormats();
+
+    setLayoutProps({
+        title: t('account.secret_answers.title'),
+        description: t('account.secret_answers.description'),
+    });
 
     return (
         <>
@@ -173,8 +189,11 @@ export default function SecretAnswers({ request }: AnswersProps) {
                 <div className="space-y-1">
                     <h1 className="text-lg font-medium">{request.title}</h1>
                     <p className="text-sm text-muted-foreground">
-                        Gevraagd in #{request.channelName} · {answered} van{' '}
-                        {request.keys.length} ingevuld
+                        {t('account.secret_answers.asked_in', {
+                            channel: request.channelName,
+                            filled: String(answered),
+                            total: String(request.keys.length),
+                        })}
                     </p>
                 </div>
 
@@ -192,11 +211,7 @@ export default function SecretAnswers({ request }: AnswersProps) {
                         )}
                     >
                         <Flame className="mt-0.5 size-4 shrink-0" />
-                        <span>
-                            Dit verzoek verwijdert elke waarde zodra je hem hebt
-                            bekeken. Je krijgt hem één keer te zien, dus zorg
-                            dat je hem meteen kunt gebruiken.
-                        </span>
+                        <span>{t('account.secret_answers.burn_note')}</span>
                     </p>
                 )}
 
@@ -211,21 +226,16 @@ export default function SecretAnswers({ request }: AnswersProps) {
                 </ul>
 
                 <p className="text-xs text-muted-foreground">
-                    Alleen jij kunt deze waarden zien — beheerders van de
-                    workspace niet. Na{' '}
-                    {new Date(request.expiresAt).toLocaleDateString('nl-NL', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                    })}{' '}
-                    wordt het verzoek opgeruimd, waarden en al.
+                    {/*
+                        Door de gedeelde formatter en niet met een vaste
+                        'nl-NL': anders leest een Engelse pagina "After 4
+                        augustus" — half vertaald is hier slechter dan niet.
+                    */}
+                    {t('account.secret_answers.expiry_note', {
+                        date: formats.date.format(new Date(request.expiresAt)),
+                    })}
                 </p>
             </div>
         </>
     );
 }
-
-SecretAnswers.layout = {
-    title: 'Gevraagde gegevens',
-    description: 'Wat er is ingevuld',
-};

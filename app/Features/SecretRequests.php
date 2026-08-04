@@ -6,12 +6,12 @@ class SecretRequests extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Geheimen opvragen';
+        return __('features.secret-requests.label');
     }
 
     public static function description(): string
     {
-        return 'Vraag wachtwoorden en sleutels op via een formulier, in plaats van ze in een gesprek te laten plakken.';
+        return __('features.secret-requests.description');
     }
 
     /**

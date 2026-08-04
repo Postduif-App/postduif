@@ -1,5 +1,7 @@
 import { Lock, Package } from 'lucide-react';
 
+import { useFormats } from '@/hooks/use-formats';
+import { readableSize } from '@/lib/file-size';
 import { cn } from '@/lib/utils';
 import type { MessageTransferCard } from '@/types/chat';
 
@@ -9,24 +11,6 @@ const DEAD: Record<string, string> = {
     revoked: 'ingetrokken',
     exhausted: 'opgebruikt',
 };
-
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-});
-
-function humanSize(bytes: number): string {
-    const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-    let value = bytes;
-    let unit = 0;
-
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-
-    return `${value.toFixed(unit >= 2 && value < 100 ? 1 : 0).replace('.', ',')} ${units[unit]}`;
-}
 
 /**
  * What a link to one of our own transfers is carrying, under the message that
@@ -40,6 +24,7 @@ function humanSize(bytes: number): string {
  * the whole reason to draw it rather than leave the bare token in the text.
  */
 export function TransferCard({ card }: { card: MessageTransferCard }) {
+    const formats = useFormats();
     const dead = card.state !== 'usable';
 
     return (
@@ -70,10 +55,10 @@ export function TransferCard({ card }: { card: MessageTransferCard }) {
                 <span className="block truncate text-xs text-muted-foreground">
                     {card.fileCount}{' '}
                     {card.fileCount === 1 ? 'bestand' : 'bestanden'} ·{' '}
-                    {humanSize(card.size)} ·{' '}
+                    {readableSize(card.size, formats.number)} ·{' '}
                     {dead
                         ? DEAD[card.state]
-                        : `tot ${DATE_FORMAT.format(new Date(card.expiresAt))}`}
+                        : `tot ${formats.date.format(new Date(card.expiresAt))}`}
                 </span>
             </span>
 

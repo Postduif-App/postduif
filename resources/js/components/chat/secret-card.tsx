@@ -1,18 +1,21 @@
 import { KeyRound } from 'lucide-react';
 
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import type { MessageSecretCard } from '@/types/chat';
+import type { TranslationKey } from '@/types/translations';
 
-/** Why the request is in the channel but no longer taking answers. */
-const CLOSED: Record<string, string> = {
-    expired: 'verlopen',
-    revoked: 'ingetrokken',
+/**
+ * Why the request is in the channel but no longer taking answers.
+ *
+ * Keys rather than words: this is a module constant, and a hook cannot be
+ * called from one — so the lookup happens where t() is in reach.
+ */
+const CLOSED: Record<string, TranslationKey> = {
+    expired: 'chat_ui.secret.expired',
+    revoked: 'chat_ui.secret.revoked',
 };
-
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-});
 
 /**
  * A request for secrets, under the message that asked.
@@ -23,6 +26,8 @@ const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', {
  * for them to do.
  */
 export function SecretCard({ card }: { card: MessageSecretCard }) {
+    const formats = useFormats();
+    const { t } = useTranslate();
     const closed = card.state !== 'open';
     const complete = card.answeredCount >= card.keyCount;
 
@@ -51,12 +56,20 @@ export function SecretCard({ card }: { card: MessageSecretCard }) {
                     {card.title}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                    {card.answeredCount} van {card.keyCount} ingevuld ·{' '}
+                    {t('chat_ui.secret.filled', {
+                        done: card.answeredCount,
+                        total: card.keyCount,
+                    })}
+                    {' · '}
                     {closed
-                        ? CLOSED[card.state]
+                        ? t(CLOSED[card.state])
                         : complete
-                          ? 'compleet'
-                          : `tot ${DATE_FORMAT.format(new Date(card.expiresAt))}`}
+                          ? t('chat_ui.secret.complete')
+                          : t('chat_ui.secret.until', {
+                                date: formats.date.format(
+                                    new Date(card.expiresAt),
+                                ),
+                            })}
                 </span>
             </span>
         </a>

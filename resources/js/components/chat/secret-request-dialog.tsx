@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { store } from '@/routes/chat/secrets';
 
 /** One key per line, blanks dropped — people paste these out of a .env file. */
@@ -56,6 +57,7 @@ export function SecretRequestDialog({
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
 }) {
+    const { t } = useTranslate();
     const [ownOpen, setOwnOpen] = useState(false);
     const [keys, setKeys] = useState('');
 
@@ -73,8 +75,8 @@ export function SecretRequestDialog({
                         size="icon"
                         variant="ghost"
                         disabled={disabled}
-                        title="Om een wachtwoord of sleutel vragen"
-                        aria-label="Om een wachtwoord of sleutel vragen"
+                        title={t('dialogs.secret_request.trigger')}
+                        aria-label={t('dialogs.secret_request.trigger')}
                     >
                         <KeyRound className="size-4" />
                     </Button>
@@ -83,11 +85,11 @@ export function SecretRequestDialog({
 
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Om gegevens vragen</DialogTitle>
+                    <DialogTitle>
+                        {t('dialogs.secret_request.title')}
+                    </DialogTitle>
                     <DialogDescription>
-                        De ander vult ze in op een eigen formulier. Alleen jij
-                        kunt ze daarna bekijken — de rest van het kanaal nooit,
-                        en de invuller ook niet meer.
+                        {t('dialogs.secret_request.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -108,21 +110,25 @@ export function SecretRequestDialog({
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="secret_title">Waarvoor</Label>
+                                <Label htmlFor="secret_title">
+                                    {t('dialogs.secret_request.purpose_label')}
+                                </Label>
                                 <Input
                                     id="secret_title"
                                     name="title"
                                     required
                                     autoFocus
                                     maxLength={120}
-                                    placeholder="Omgevingsvariabelen staging"
+                                    placeholder={t(
+                                        'dialogs.secret_request.purpose_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.title} />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="secret_keys">
-                                    Welke sleutels
+                                    {t('dialogs.secret_request.keys_label')}
                                 </Label>
                                 <textarea
                                     id="secret_keys"
@@ -143,9 +149,7 @@ export function SecretRequestDialog({
                                     />
                                 ))}
                                 <p className="text-xs text-muted-foreground">
-                                    Eén per regel. Plak gerust regels uit een
-                                    .env — alles achter de = wordt weggelaten,
-                                    want die waarde hoort hier juist niet.
+                                    {t('dialogs.secret_request.keys_hint')}
                                 </p>
                                 <InputError
                                     message={errors.keys ?? errors['keys.0']}
@@ -154,7 +158,7 @@ export function SecretRequestDialog({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="secret_days">
-                                    Verzoek blijft open (dagen)
+                                    {t('dialogs.secret_request.days_label')}
                                 </Label>
                                 <Input
                                     id="secret_days"
@@ -182,13 +186,10 @@ export function SecretRequestDialog({
                                 />
                                 <span className="min-w-0">
                                     <span className="block font-medium">
-                                        Verwijderen zodra ik het bekeken heb
+                                        {t('dialogs.secret_request.burn_label')}
                                     </span>
                                     <span className="block text-xs text-muted-foreground">
-                                        Je krijgt het één keer te zien. Handig
-                                        voor iets dat meteen een server in gaat,
-                                        onhandig als je het volgende week weer
-                                        nodig hebt.
+                                        {t('dialogs.secret_request.burn_hint')}
                                     </span>
                                 </span>
                             </label>
@@ -199,7 +200,7 @@ export function SecretRequestDialog({
                                     disabled={processing || parsed.length === 0}
                                 >
                                     {processing && <Spinner />}
-                                    Verzoek plaatsen
+                                    {t('dialogs.secret_request.submit')}
                                 </Button>
                             </DialogFooter>
                         </>

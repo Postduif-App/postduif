@@ -64,7 +64,7 @@ class TransferController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Bestanden klaargezet. De link staat in de lijst.',
+            'message' => __('flashes.transfer.created'),
         ]);
 
         /*
@@ -97,7 +97,7 @@ class TransferController extends Controller
             $transfer->forceFill(['revoked_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Verzending ingetrokken.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.transfer.withdrawn')]);
 
         return back();
     }
@@ -125,7 +125,7 @@ class TransferController extends Controller
             $recipient->forceFill(['revoked_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Link voor '.$recipient->email.' ingetrokken.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.transfer.link_withdrawn', ['email' => $recipient->email])]);
 
         return back();
     }

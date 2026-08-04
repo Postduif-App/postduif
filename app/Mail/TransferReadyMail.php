@@ -29,9 +29,12 @@ class TransferReadyMail extends Mailable
         return new Envelope(
             // ?? swallows the null on a departed sender, so ?-> would be
             // saying the same thing twice.
-            subject: ($transfer->sender->name ?? $transfer->workspace->name)
-                .' stuurt je '
-                .($transfer->title ?? 'bestanden'),
+            subject: __('notifications.transfer.subject', [
+                'sender' => $transfer->sender->name ?? $transfer->workspace->name,
+                // The title the sender typed is theirs and stays as typed; only
+                // the stand-in for a transfer without one is ours to translate.
+                'what' => $transfer->title ?? __('notifications.transfer.files'),
+            ]),
         );
     }
 

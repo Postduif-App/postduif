@@ -5,6 +5,7 @@ use App\Features\Transfers;
 use App\Models\Transfer;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -25,10 +26,10 @@ it('shows a member what they have standing out there', function () {
         ->toMediaCollection(Transfer::FILES);
 
     actingAs($user)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('settings/transfers')
+            ->component('chat/transfers')
             ->has('transfers', 1)
             ->where('transfers.0.title', 'Offerte week 32')
             ->where('transfers.0.downloads', 2)
@@ -54,7 +55,7 @@ it('hands the link back in full so it can be copied', function () {
     ]);
 
     actingAs($user)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('transfers.0.url', route('transfers.show', $transfer->token))
@@ -76,7 +77,7 @@ it('does not show one colleague what another is sending', function () {
     ]);
 
     actingAs($colleague)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('transfers', 0));
 });
@@ -101,7 +102,7 @@ it('shows whoever runs the workspace everything that is out there', function () 
     ]);
 
     actingAs($admin)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('transfers', 2)
@@ -120,7 +121,7 @@ it('keeps another workspace out of the list', function () {
     Transfer::factory()->create(['workspace_id' => $workspace->id, 'created_by' => $user->id]);
 
     actingAs($user)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('transfers', 1));
 });
@@ -129,9 +130,9 @@ it('has no such screen in a workspace that never switched sending on', function 
     Storage::fake('local');
 
     $user = User::factory()->create();
-    workspaceWithMember($user);
+    $workspace = workspaceWithMember($user);
 
-    actingAs($user)->get(route('workspace.transfers.index'))->assertNotFound();
+    actingAs($user)->get(route('chat.transfers.index', $workspace))->assertNotFound();
 });
 
 /**
@@ -150,7 +151,7 @@ it('tells a guest they may look but not send', function () {
     ]);
 
     actingAs($guest)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('canSend', false));
 });
@@ -160,7 +161,7 @@ it('shows the ceilings the form has to work within', function () {
     $workspace->update(['max_transfer_kb' => 51200, 'max_transfer_days' => 5]);
 
     actingAs($user)
-        ->get(route('workspace.transfers.index'))
+        ->get(route('chat.transfers.index', $workspace))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('maxTransferKb', 51200)
@@ -173,21 +174,53 @@ it('shows the ceilings the form has to work within', function () {
  * disappear with the feature — a menu item that leads to a 404 is worse than no
  * menu item.
  */
-it('lists the screen in the navigation only where the feature is on', function () {
+it('puts the button in the rail only where the feature is on', function () {
     Storage::fake('local');
 
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
 
+    /*
+     * The rail reads workspace.transfers, which is null until the feature is
+     * switched on and carries the ceilings once it is. One value answering both
+     * "does this workspace have it" and "what may this member send", so the
+     * button cannot appear above a screen that would 404.
+     */
     actingAs($user)
-        ->get(route('profile.edit'))
+        ->get(route('chat.show', [$workspace, $channel]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('auth.canSeeTransfers', false));
+        ->assertInertia(fn ($page) => $page->where('workspace.transfers', null));
 
     Feature::for($workspace)->activate(Transfers::class);
 
     actingAs($user)
-        ->get(route('profile.edit'))
+        ->get(route('chat.show', [$workspace, $channel]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('auth.canSeeTransfers', true));
+        ->assertInertia(fn ($page) => $page->has('workspace.transfers.maxKb'));
+});
+
+it('opens inside the app shell rather than in settings', function () {
+    Storage::fake('local');
+
+    [$user, $workspace] = senderInWorkspace();
+
+    /*
+     * The move this screen made: sending a file to somebody is ordinary work,
+     * so it lives beside the channels with the same sidebar and the same live
+     * connection — not behind a settings menu, which filed it as administration
+     * and put it two clicks further away.
+     */
+    actingAs($user)
+        ->get(route('chat.transfers.index', $workspace))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('chat/transfers')
+            ->has('channels')
+            ->has('activeThreads')
+            ->where('workspace.slug', $workspace->slug));
+});
+
+it('no longer answers on the old settings address', function () {
+    expect(Route::has('workspace.transfers.index'))->toBeFalse();
 });

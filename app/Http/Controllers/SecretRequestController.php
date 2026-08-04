@@ -58,7 +58,7 @@ class SecretRequestController extends Controller
             $secretRequest->forceFill(['revoked_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Verzoek ingetrokken.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.secret.withdrawn')]);
 
         return back();
     }

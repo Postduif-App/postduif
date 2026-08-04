@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, setLayoutProps } from '@inertiajs/react';
 import { Check, ShieldCheck } from 'lucide-react';
 
 import InputError from '@/components/input-error';
@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { fill } from '@/routes/secrets';
+import type { TranslationKey } from '@/types/translations';
 
 interface SecretKey {
     id: number;
@@ -30,20 +33,11 @@ interface FillProps {
     };
 }
 
-const CLOSED: Record<string, string> = {
-    expired:
-        'Dit verzoek is verlopen. Vraag degene die het stuurde om een nieuw verzoek.',
-    revoked:
-        'Dit verzoek is ingetrokken. Neem contact op als je nog iets moet doorgeven.',
+/** Why the door is shut, named; the words themselves live in lang/nl and lang/en. */
+const CLOSED: Record<string, TranslationKey> = {
+    expired: 'auth_screens.secret_fill.expired',
+    revoked: 'auth_screens.secret_fill.revoked',
 };
-
-function formatDate(value: string): string {
-    return new Date(value).toLocaleDateString('nl-NL', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
 
 /**
  * Answering a request for values that should not be typed into a chat.
@@ -55,8 +49,15 @@ function formatDate(value: string): string {
  * stops them from using the box as a notepad.
  */
 export default function SecretFill({ request }: FillProps) {
+    const { t } = useTranslate();
+    const formats = useFormats();
     const open = request.state === 'open';
     const remaining = request.keys.filter((key) => !key.isAnswered);
+
+    setLayoutProps({
+        title: t('auth_screens.secret_fill.title'),
+        description: t('auth_screens.secret_fill.description'),
+    });
 
     return (
         <>
@@ -65,7 +66,9 @@ export default function SecretFill({ request }: FillProps) {
             <div className="flex flex-col gap-6">
                 <div className="space-y-1 text-center">
                     <p className="text-sm text-muted-foreground">
-                        {request.requesterName} vraagt je om
+                        {t('auth_screens.secret_fill.requested_by', {
+                            name: request.requesterName,
+                        })}
                     </p>
                     <p className="text-lg font-medium">{request.title}</p>
                 </div>
@@ -78,13 +81,13 @@ export default function SecretFill({ request }: FillProps) {
 
                 {!open && (
                     <p className="rounded-lg border border-destructive/40 p-3 text-sm text-muted-foreground">
-                        {CLOSED[request.state]}
+                        {t(CLOSED[request.state])}
                     </p>
                 )}
 
                 {open && remaining.length === 0 && (
                     <p className="rounded-lg border p-3 text-sm text-muted-foreground">
-                        Alles is al ingevuld. Er is niets meer voor je te doen.
+                        {t('auth_screens.secret_fill.all_filled')}
                     </p>
                 )}
 
@@ -107,8 +110,10 @@ export default function SecretFill({ request }: FillProps) {
 
                                         {key.isAnswered ? (
                                             <p className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                                                <Check className="size-4 text-emerald-600" />
-                                                Al ingevuld
+                                                <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
+                                                {t(
+                                                    'auth_screens.secret_fill.answered',
+                                                )}
                                             </p>
                                         ) : (
                                             <Input
@@ -139,19 +144,18 @@ export default function SecretFill({ request }: FillProps) {
                                 <p className="flex items-start gap-2 rounded-lg border p-3 text-xs text-muted-foreground">
                                     <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                                     <span>
-                                        Wat je invult is daarna alleen nog voor{' '}
-                                        {request.requesterName} te zien — voor
-                                        jou niet meer, en voor de rest van dit
-                                        kanaal nooit. Controleer het dus voor je
-                                        verstuurt.
+                                        {t('auth_screens.secret_fill.warning', {
+                                            name: request.requesterName,
+                                        })}
                                         {request.burnAfterReading && (
                                             <>
                                                 {' '}
-                                                Zodra {
-                                                    request.requesterName
-                                                }{' '}
-                                                het bekeken heeft, wordt het
-                                                verwijderd.
+                                                {t(
+                                                    'auth_screens.secret_fill.burn_note',
+                                                    {
+                                                        name: request.requesterName,
+                                                    },
+                                                )}
                                             </>
                                         )}
                                     </span>
@@ -159,7 +163,7 @@ export default function SecretFill({ request }: FillProps) {
 
                                 <Button type="submit" className="w-full">
                                     {processing && <Spinner />}
-                                    Versturen
+                                    {t('auth_screens.secret_fill.submit')}
                                 </Button>
                             </>
                         )}
@@ -167,14 +171,13 @@ export default function SecretFill({ request }: FillProps) {
                 )}
 
                 <p className="text-center text-xs text-muted-foreground">
-                    Dit verzoek verloopt op {formatDate(request.expiresAt)}.
+                    {t('auth_screens.secret_fill.expires_on', {
+                        date: formats.longDate.format(
+                            new Date(request.expiresAt),
+                        ),
+                    })}
                 </p>
             </div>
         </>
     );
 }
-
-SecretFill.layout = {
-    title: 'Gevraagd om gegevens',
-    description: 'Vul in wat er gevraagd wordt',
-};

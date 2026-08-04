@@ -16,8 +16,8 @@ class PruneSecretRequests extends Command
         $removed = $pruner->handle();
 
         $this->info($removed === 0
-            ? 'Niets om op te ruimen.'
-            : ($removed === 1 ? '1 verzoek opgeruimd.' : $removed.' verzoeken opgeruimd.'));
+            ? __('console.nothing_to_prune')
+            : trans_choice('console.secrets_pruned', $removed));
 
         return self::SUCCESS;
     }

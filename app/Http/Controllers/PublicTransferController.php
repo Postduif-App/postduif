@@ -188,7 +188,7 @@ class PublicTransferController extends Controller
          */
         if (! $transfer->isLocked() || ! Hash::check($given, (string) $transfer->password)) {
             throw ValidationException::withMessages([
-                'password' => 'Dat wachtwoord klopt niet.',
+                'password' => __('requests.transfer.wrong_password'),
             ]);
         }
 

@@ -63,10 +63,10 @@ class StoreSecretRequestRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'keys.required' => 'Noem minstens één sleutel om naar te vragen.',
-            'keys.max' => 'Maximaal '.self::MAX_KEYS.' sleutels per verzoek.',
-            'keys.*.regex' => 'Een sleutel begint met een letter en bevat verder letters, cijfers, _, . of -.',
-            'valid_for_days.max' => 'Een verzoek blijft maximaal '.self::MAX_VALID_DAYS.' dagen open.',
+            'keys.required' => __('requests.secret_request.keys_required'),
+            'keys.max' => __('requests.secret_request.too_many_keys', ['count' => self::MAX_KEYS]),
+            'keys.*.regex' => __('requests.secret_request.key_shape'),
+            'valid_for_days.max' => __('requests.secret_request.open_too_long', ['days' => self::MAX_VALID_DAYS]),
         ];
     }
 }

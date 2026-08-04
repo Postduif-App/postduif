@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, setLayoutProps } from '@inertiajs/react';
 import { Download, FileDown, Package } from 'lucide-react';
 
 import InputError from '@/components/input-error';
@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
+import { readableSize } from '@/lib/file-size';
+import type { TranslationKey } from '@/types/translations';
 
 type State = 'usable' | 'expired' | 'revoked' | 'exhausted';
 
@@ -37,61 +41,48 @@ interface TransferShowProps {
  * Each reason gets its own words, which is why the server sends one of three
  * rather than a bare "no". The advice differs: a link that ran out may be worth
  * asking about again, a withdrawn one probably was withdrawn on purpose.
+ *
+ * The words live in lang/nl and lang/en; only which pair to use is decided
+ * here. Whoever follows a download link is the reader least likely to have an
+ * account, and so the reader most likely to be reading in their own language.
  */
 const DEAD_END: Record<
     Exclude<State, 'usable'>,
-    { title: string; body: string }
+    { title: TranslationKey; body: TranslationKey }
 > = {
     expired: {
-        title: 'Deze bestanden zijn verlopen',
-        body: 'Een downloadlink is een beperkte tijd geldig; daarna worden de bestanden opgeruimd. Vraag de afzender om ze opnieuw te versturen.',
+        title: 'auth_screens.transfer.expired_title',
+        body: 'auth_screens.transfer.expired_body',
     },
     revoked: {
-        title: 'Deze verzending is ingetrokken',
-        body: 'De afzender heeft de link ingetrokken. Neem contact op als je de bestanden nog nodig hebt.',
+        title: 'auth_screens.transfer.revoked_title',
+        body: 'auth_screens.transfer.revoked_body',
     },
     exhausted: {
-        title: 'Deze link is opgebruikt',
-        body: 'De link mocht een beperkt aantal keer gebruikt worden, en dat aantal is bereikt. Vraag de afzender om een nieuwe.',
+        title: 'auth_screens.transfer.exhausted_title',
+        body: 'auth_screens.transfer.exhausted_body',
     },
 };
 
-/**
- * Sizes in the units people read them in, with a decimal only where it says
- * something — "1,4 GB" is useful, "1,4 kB" is noise.
- */
-function humanSize(bytes: number): string {
-    const units = ['B', 'kB', 'MB', 'GB', 'TB'];
-    let value = bytes;
-    let unit = 0;
-
-    while (value >= 1024 && unit < units.length - 1) {
-        value /= 1024;
-        unit += 1;
-    }
-
-    return `${value.toFixed(unit >= 2 && value < 100 ? 1 : 0).replace('.', ',')} ${units[unit]}`;
-}
-
-function formatDate(value: string): string {
-    return new Date(value).toLocaleDateString('nl-NL', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-}
-
 export default function TransferShow({ transfer }: TransferShowProps) {
+    const { t, tChoice } = useTranslate();
+    const formats = useFormats();
+
+    setLayoutProps({
+        title: t('auth_screens.transfer.title'),
+        description: t('auth_screens.transfer.description'),
+    });
+
     if (transfer.state !== 'usable') {
         const message = DEAD_END[transfer.state];
 
         return (
             <>
-                <Head title="Bestanden" />
+                <Head title={t('auth_screens.transfer.head')} />
                 <div className="space-y-3 text-center">
-                    <h2 className="text-lg font-medium">{message.title}</h2>
+                    <h2 className="text-lg font-medium">{t(message.title)}</h2>
                     <p className="text-sm text-muted-foreground">
-                        {message.body}
+                        {t(message.body)}
                     </p>
                 </div>
             </>
@@ -107,16 +98,18 @@ export default function TransferShow({ transfer }: TransferShowProps) {
     if (transfer.isLocked) {
         return (
             <>
-                <Head title="Bestanden" />
+                <Head title={t('auth_screens.transfer.head')} />
                 <div className="flex flex-col gap-6">
                     <div className="space-y-1 text-center">
                         <p className="text-sm text-muted-foreground">
                             {transfer.senderName
-                                ? `${transfer.senderName} stuurde je bestanden`
-                                : 'Er staan bestanden voor je klaar'}
+                                ? t('auth_screens.transfer.sender_sent_files', {
+                                      name: transfer.senderName,
+                                  })
+                                : t('auth_screens.transfer.files_waiting')}
                         </p>
                         <p className="text-lg font-medium">
-                            Deze verzending heeft een wachtwoord
+                            {t('auth_screens.transfer.password_needed')}
                         </p>
                     </div>
 
@@ -129,7 +122,9 @@ export default function TransferShow({ transfer }: TransferShowProps) {
                         {({ processing, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="password">Wachtwoord</Label>
+                                    <Label htmlFor="password">
+                                        {t('auth_screens.fields.password')}
+                                    </Label>
                                     <Input
                                         id="password"
                                         name="password"
@@ -143,16 +138,14 @@ export default function TransferShow({ transfer }: TransferShowProps) {
 
                                 <Button type="submit" className="w-full">
                                     {processing && <Spinner />}
-                                    Bestanden bekijken
+                                    {t('auth_screens.transfer.unlock')}
                                 </Button>
                             </>
                         )}
                     </Form>
 
                     <p className="text-center text-xs text-muted-foreground">
-                        De afzender heeft je het wachtwoord apart gestuurd —
-                        niet in dezelfde mail als deze link, want dan zou het
-                        geen tweede slot zijn.
+                        {t('auth_screens.transfer.password_note')}
                     </p>
                 </div>
             </>
@@ -163,21 +156,28 @@ export default function TransferShow({ transfer }: TransferShowProps) {
 
     return (
         <>
-            <Head title={transfer.title ?? 'Bestanden'} />
+            <Head title={transfer.title ?? t('auth_screens.transfer.head')} />
 
             <div className="flex flex-col gap-6">
                 <div className="space-y-1 text-center">
                     <p className="text-sm text-muted-foreground">
                         {transfer.senderName
-                            ? `${transfer.senderName} stuurde je`
-                            : 'Er staat iets voor je klaar'}
+                            ? t('auth_screens.transfer.sender_sent', {
+                                  name: transfer.senderName,
+                              })
+                            : t('auth_screens.transfer.something_waiting')}
                     </p>
                     <p className="text-lg font-medium">
                         {transfer.title ??
-                            `${transfer.files.length} ${transfer.files.length === 1 ? 'bestand' : 'bestanden'}`}
+                            tChoice(
+                                'auth_screens.transfer.file_count',
+                                transfer.files.length,
+                            )}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        via {transfer.workspaceName}
+                        {t('auth_screens.transfer.via', {
+                            workspace: transfer.workspaceName,
+                        })}
                     </p>
                 </div>
 
@@ -198,7 +198,7 @@ export default function TransferShow({ transfer }: TransferShowProps) {
                                 {file.name}
                             </span>
                             <span className="shrink-0 text-xs text-muted-foreground">
-                                {humanSize(file.size)}
+                                {readableSize(file.size, formats.number)}
                             </span>
                             {/*
                                 A plain anchor rather than an Inertia Link: the
@@ -209,7 +209,10 @@ export default function TransferShow({ transfer }: TransferShowProps) {
                             <a
                                 href={file.url}
                                 className="shrink-0 rounded p-1.5 hover:bg-muted"
-                                aria-label={`${file.name} downloaden`}
+                                aria-label={t(
+                                    'auth_screens.transfer.download_file',
+                                    { name: file.name },
+                                )}
                             >
                                 <Download className="size-4" />
                             </a>
@@ -221,13 +224,21 @@ export default function TransferShow({ transfer }: TransferShowProps) {
                     <Button asChild className="w-full">
                         <a href={transfer.downloadAllUrl}>
                             <Package className="size-4" />
-                            Alles downloaden ({humanSize(total)})
+                            {t('auth_screens.transfer.download_all', {
+                                size: readableSize(total, formats.number),
+                            })}
                         </a>
                     </Button>
                 )}
 
                 <div className="space-y-1 text-center text-xs text-muted-foreground">
-                    <p>Beschikbaar tot {formatDate(transfer.expiresAt)}</p>
+                    <p>
+                        {t('auth_screens.transfer.available_until', {
+                            date: formats.longDate.format(
+                                new Date(transfer.expiresAt),
+                            ),
+                        })}
+                    </p>
                     {/*
                         Said out loud because the counting is not obvious:
                         fetching the files one by one costs one download each,
@@ -237,12 +248,10 @@ export default function TransferShow({ transfer }: TransferShowProps) {
                     */}
                     {transfer.downloadsLeft !== null && (
                         <p>
-                            Nog {transfer.downloadsLeft}{' '}
-                            {transfer.downloadsLeft === 1
-                                ? 'download'
-                                : 'downloads'}{' '}
-                            beschikbaar. Alles in één keer downloaden telt als
-                            één.
+                            {tChoice(
+                                'auth_screens.transfer.downloads_left',
+                                transfer.downloadsLeft,
+                            )}
                         </p>
                     )}
                 </div>
@@ -250,8 +259,3 @@ export default function TransferShow({ transfer }: TransferShowProps) {
         </>
     );
 }
-
-TransferShow.layout = {
-    title: 'Bestanden voor jou',
-    description: 'Klaargezet om te downloaden',
-};
