@@ -1,18 +1,18 @@
 import { MessageSquare, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { TICKET_STATUS_KEY } from '@/components/chat/ticket-panel';
 import {
     ALL_STATUSES,
     OPEN_STATUSES,
     TicketPriorityLabel,
-    TICKET_STATUS,
     TicketStatusBadge,
 } from '@/components/chat/ticket-status';
 import { Button } from '@/components/ui/button';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import type { TicketBoard as Board, TicketStatus } from '@/types/chat';
-
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short' });
 
 interface TicketBoardProps {
     board: Board;
@@ -39,6 +39,8 @@ export function TicketBoard({
     onOpen,
     onCreate,
 }: TicketBoardProps) {
+    const formats = useFormats();
+    const { t } = useTranslate();
     const [filter, setFilter] = useState<Filter>('outstanding');
 
     const count = (status: TicketStatus) => board.counts[status] ?? 0;
@@ -54,10 +56,14 @@ export function TicketBoard({
     );
 
     const filters: { value: Filter; label: string; total: number }[] = [
-        { value: 'outstanding', label: 'Openstaand', total: outstanding },
+        {
+            value: 'outstanding',
+            label: t('panelen.tickets.outstanding'),
+            total: outstanding,
+        },
         ...ALL_STATUSES.map((status) => ({
             value: status,
-            label: TICKET_STATUS[status].label,
+            label: t(TICKET_STATUS_KEY[status]),
             total: count(status),
         })),
     ];
@@ -102,7 +108,7 @@ export function TicketBoard({
                 {canCreate && (
                     <Button size="sm" className="shrink-0" onClick={onCreate}>
                         <Plus className="size-4" />
-                        Nieuw ticket
+                        {t('panelen.tickets.new')}
                     </Button>
                 )}
             </div>
@@ -111,8 +117,8 @@ export function TicketBoard({
                 {rows.length === 0 ? (
                     <p className="p-8 text-center text-sm text-muted-foreground">
                         {filter === 'outstanding'
-                            ? 'Niets meer openstaand.'
-                            : 'Geen tickets met deze status.'}
+                            ? t('chat_ui.tickets.none_outstanding')
+                            : t('chat_ui.tickets.none_with_status')}
                     </p>
                 ) : (
                     <ul className="divide-y">
@@ -146,9 +152,9 @@ export function TicketBoard({
                                         <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                                             <span className="truncate">
                                                 {ticket.opener?.name ??
-                                                    'Onbekend'}
+                                                    t('panelen.ticket.unknown')}
                                                 {ticket.createdAt &&
-                                                    ` · ${DATE_FORMAT.format(new Date(ticket.createdAt))}`}
+                                                    ` · ${formats.shortDate.format(new Date(ticket.createdAt))}`}
                                             </span>
                                             {ticket.commentCount > 0 && (
                                                 <span className="flex shrink-0 items-center gap-1">
