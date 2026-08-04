@@ -14,6 +14,17 @@ return [
     'no_workspace_yet' => 'Je hoort nog bij geen enkele workspace.',
     'already_sent' => 'Dit bericht is al verstuurd.',
     'unknown_webhook' => 'Onbekende webhook.',
+
+    /*
+     * De weigeringen van de token-API. Eén zin voor drie gevallen — kanaal
+     * bestaat niet, is niet van jou, of staat in een workspace die geen tokens
+     * binnenlaat — want ze uit elkaar houden zou een beller laten aflopen welke
+     * kanalen bestaan en waar deze persoon zit.
+     */
+    'api' => [
+        'no_channel' => 'Kanaal niet gevonden.',
+        'may_not_post' => 'Je mag niet posten in dit kanaal.',
+    ],
     'channel_archived' => 'Dit kanaal is gearchiveerd.',
     'too_many_sections' => 'Je kunt maximaal :count groepen maken.',
     'too_many_status_rules' => 'Je hebt al :count regels.',

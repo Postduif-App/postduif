@@ -4,6 +4,17 @@ return [
     'not_a_member' => 'You\'re not a member of this workspace.',
     'no_workspace_yet' => 'You don\'t belong to any workspace yet.',
     'already_sent' => 'This message has already been sent.',
+    /*
+     * What the token API refuses with. One sentence for three cases — no such
+     * channel, not this member's, or a workspace that lets no token in —
+     * because telling them apart would let a caller walk the ids to find out
+     * which channels exist and where this person is.
+     */
+    'api' => [
+        'no_channel' => 'Channel not found.',
+        'may_not_post' => 'You may not post in this channel.',
+    ],
+
     'unknown_webhook' => 'Unknown webhook.',
     'channel_archived' => 'This channel has been archived.',
     'too_many_sections' => 'You can make at most :count groups.',

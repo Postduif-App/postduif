@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ChannelController;
+use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\StatusController;
 use App\Http\Controllers\WebhookMessageController;
 use App\Http\Controllers\WorkflowWebhookController;
@@ -50,4 +52,12 @@ Route::prefix('v1')
     ->group(function () {
         Route::get('/status', [StatusController::class, 'show'])->name('status.show');
         Route::patch('/status', [StatusController::class, 'update'])->name('status.update');
+
+        /*
+         * Reading the list before writing to it, because posting needs a
+         * channel id and there is nowhere else to get one: the screen does not
+         * show ids and the tool that finds them needs an AI client to call it.
+         */
+        Route::get('/channels', [ChannelController::class, 'index'])->name('channels.index');
+        Route::post('/messages', [MessageController::class, 'store'])->name('messages.store');
     });

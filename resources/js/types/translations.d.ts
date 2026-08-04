@@ -351,6 +351,8 @@ export type TranslationKey =
     | 'channels.visibility.public_explained'
     | 'channels.visibility.public_hint'
     | 'chat.already_sent'
+    | 'chat.api.may_not_post'
+    | 'chat.api.no_channel'
     | 'chat.broadcast_failed'
     | 'chat.broadcast_no_author'
     | 'chat.broadcast_none_allowed'
