@@ -68,9 +68,12 @@ class ChannelMemberController extends Controller
 
         $added = $addChannelMembers->handle($channel, $validated['user_ids']);
 
-        return back()->with('status', $added->isEmpty()
-            ? 'Niemand toegevoegd.'
-            : $added->count().' '.($added->count() === 1 ? 'lid' : 'leden').' toegevoegd.');
+        /*
+         * One key with all three branches rather than a count glued to a word
+         * that agrees with it. The nought is a sentence of its own there —
+         * nothing happened, which should not read as a tally of nought.
+         */
+        return back()->with('status', trans_choice('flashes.channel.members_added', $added->count()));
     }
 
     /**
@@ -100,7 +103,7 @@ class ChannelMemberController extends Controller
 
         $channel->members()->detach($user->id);
 
-        return back()->with('status', $user->name.' is uit het kanaal verwijderd.');
+        return back()->with('status', __('flashes.channel.member_removed', ['name' => $user->name]));
     }
 
     private function authorizeChannel(

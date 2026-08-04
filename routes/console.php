@@ -73,3 +73,71 @@ Schedule::command('transfers:prune')
 Schedule::command('secrets:prune')
     ->dailyAt('02:30')
     ->withoutOverlapping();
+
+/**
+ * Daily, after the rest of the night's clearing up. Nothing downstream waits on
+ * it and nobody is inconvenienced by it running late, so it goes last.
+ *
+ * withoutOverlapping for the same reason as the others: a first run working
+ * through a long backlog should not have a second one deleting rows out from
+ * under it.
+ */
+Schedule::command('inbox:prune')
+    ->dailyAt('04:30')
+    ->withoutOverlapping();
+
+/**
+ * Every minute, beside the scheduled messages and for the same reason: a
+ * moment somebody picked should not arrive noticeably late.
+ *
+ * withoutOverlapping because claiming and sending are two steps — see
+ * DispatchScheduledBroadcasts::claimDue, which stamps the row before posting so
+ * an announcement cannot go out twice.
+ */
+Schedule::command('chat:dispatch-broadcasts')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+/**
+ * Every minute, beside the scheduled messages: a workflow that was told to wait
+ * an hour should not come back noticeably later than that, and the wait is the
+ * one part of a workflow whose timing somebody explicitly chose.
+ *
+ * Cheap when there is nothing to do — one indexed query on (status, resume_at).
+ *
+ * withoutOverlapping is the belt beside the braces: the sweep claims its runs
+ * inside a transaction before dispatching them, so a second one finds nothing
+ * to pick up twice either way.
+ */
+Schedule::command('workflows:resume')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+/**
+ * Every minute, beside the scheduled messages and the status rules. Somebody
+ * who says nine o'clock means nine o'clock, and a coarser interval would turn
+ * the time they picked into a rough indication.
+ *
+ * Cheap when there is nothing to do: only the switched-on scheduled workflows
+ * are looked at, and for almost all of them the answer is "not this minute".
+ *
+ * withoutOverlapping is the belt beside the braces here too — the dispatcher
+ * stamps each workflow before starting it, so one moment cannot fire twice
+ * either way.
+ */
+Schedule::command('workflows:dispatch-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+/**
+ * Daily, after the night's other clearing up. A workflow run holds the context
+ * as it stood — message text, people's names — so it is a debugging aid with a
+ * shelf life rather than a record worth keeping, the same reasoning as the
+ * transfers and the secrets.
+ *
+ * Nothing waits on it and nobody is inconvenienced by it running late, so it
+ * goes last.
+ */
+Schedule::command('workflows:prune-runs')
+    ->dailyAt('04:45')
+    ->withoutOverlapping();

@@ -2,8 +2,9 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\InboxItemType;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 
@@ -51,9 +52,16 @@ class MarkChannelRead
             'last_read_at' => now(),
         ]);
 
-        Mention::query()
+        /*
+         * Mentions only. The other kinds point at a thread's parent, which
+         * sits in this channel and would fall inside the range below — so
+         * scrolling past a thread in the channel would mark its replies read
+         * without anybody having opened it.
+         */
+        InboxItem::query()
             ->where('user_id', $user->id)
             ->where('channel_id', $channel->id)
+            ->ofType(InboxItemType::Mention)
             ->unread()
             ->whereIn('message_id', Message::query()
                 ->select('id')

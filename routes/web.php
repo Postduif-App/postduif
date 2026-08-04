@@ -7,6 +7,7 @@ use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\PublicTransferController;
 use App\Http\Controllers\SecretAnswerController;
 use App\Http\Controllers\SecretFillController;
+use App\Http\Controllers\SentSecretRevealController;
 use App\Http\Controllers\SessionStatusController;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +74,27 @@ Route::prefix('transfers/{token}')
         Route::get('files/{media}', [PublicTransferController::class, 'download'])
             ->name('transfers.download');
     });
+
+/**
+ * Picking up a secret somebody sent you.
+ *
+ * Outside auth, unlike the form for answering a request below, and for the same
+ * reason a transfer link is: the key sits in the fragment of this URL, so
+ * holding the link is what grants access and there is no account to check it
+ * against. The recipient is often a customer who has none.
+ *
+ * Throttled hard on the way in. The reveal is the one endpoint in the
+ * application that destroys what it returns, so a stream of guesses at ids must
+ * be expensive — and where the sender added a password, this throttle is what
+ * makes it worth having.
+ */
+Route::get('geheim/{sentSecret}', [SentSecretRevealController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('sent-secrets.show');
+
+Route::post('geheim/{sentSecret}', [SentSecretRevealController::class, 'reveal'])
+    ->middleware('throttle:6,1')
+    ->name('sent-secrets.reveal');
 
 /**
  * Answering a request for secrets.

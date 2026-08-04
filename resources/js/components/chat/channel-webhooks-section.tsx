@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { mutatingHeaders } from '@/lib/csrf';
 import {
     destroy,
@@ -19,11 +21,6 @@ import type {
     ChannelWebhook,
     ChatWorkspace,
 } from '@/types/chat';
-
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-});
 
 /**
  * The URL of one webhook, shown on request.
@@ -40,6 +37,8 @@ function WebhookUrl({
     url: string | null;
     onRegenerate: () => void;
 }) {
+    const { t } = useTranslate();
+
     const [shown, setShown] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -49,7 +48,7 @@ function WebhookUrl({
         return (
             <div className="flex items-center justify-between gap-2 rounded bg-muted/50 px-2 py-1.5">
                 <p className="text-xs text-muted-foreground">
-                    De URL van deze webhook is niet meer op te vragen.
+                    {t('panels.webhooks.url_gone')}
                 </p>
                 <Button
                     size="sm"
@@ -58,7 +57,7 @@ function WebhookUrl({
                     onClick={onRegenerate}
                 >
                     <RefreshCw className="size-3.5" />
-                    Nieuwe URL
+                    {t('panels.webhooks.new_url')}
                 </Button>
             </div>
         );
@@ -78,7 +77,9 @@ function WebhookUrl({
                     ) : (
                         <Eye className="size-3.5" />
                     )}
-                    {shown ? 'Verbergen' : 'Toon URL'}
+                    {shown
+                        ? t('panels.webhooks.hide_url')
+                        : t('panels.webhooks.show_url')}
                 </Button>
                 <Button
                     size="sm"
@@ -95,17 +96,19 @@ function WebhookUrl({
                     ) : (
                         <Copy className="size-3.5" />
                     )}
-                    {copied ? 'Gekopieerd' : 'Kopiëren'}
+                    {copied
+                        ? t('panels.webhooks.copied')
+                        : t('panels.webhooks.copy')}
                 </Button>
                 <Button
                     size="sm"
                     variant="ghost"
                     className="ml-auto shrink-0 text-muted-foreground"
-                    title="De huidige URL stopt dan met werken"
+                    title={t('panels.webhooks.replace_hint')}
                     onClick={onRegenerate}
                 >
                     <RefreshCw className="size-3.5" />
-                    Vervangen
+                    {t('panels.webhooks.replace')}
                 </Button>
             </div>
 
@@ -131,6 +134,9 @@ export function ChannelWebhooksSection({
     workspace: ChatWorkspace;
     channel: ActiveChannel;
 }) {
+    const formats = useFormats();
+    const { t } = useTranslate();
+
     const [webhooks, setWebhooks] = useState<ChannelWebhook[]>([]);
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
@@ -206,7 +212,7 @@ export function ChannelWebhooksSection({
             });
 
             if (!response.ok) {
-                setError('Aanmaken is niet gelukt. Controleer de namen.');
+                setError(t('panels.webhooks.create_failed'));
 
                 return;
             }
@@ -263,7 +269,7 @@ export function ChannelWebhooksSection({
         if (response.ok) {
             replace((await response.json()).webhook);
         } else {
-            setError('Dat pad kon niet opgeslagen worden.');
+            setError(t('panels.webhooks.path_failed'));
         }
     };
 
@@ -286,10 +292,11 @@ export function ChannelWebhooksSection({
         <div className="flex min-w-0 flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                    <h3 className="text-sm font-medium">Webhooks</h3>
+                    <h3 className="text-sm font-medium">
+                        {t('panels.webhooks.heading')}
+                    </h3>
                     <p className="text-xs text-muted-foreground">
-                        Laat iets buiten Pcom in dit kanaal posten, onder een
-                        eigen naam en herkenbaar als bot.
+                        {t('panels.webhooks.explanation')}
                     </p>
                 </div>
                 {!adding && (
@@ -300,7 +307,7 @@ export function ChannelWebhooksSection({
                         onClick={() => setAdding(true)}
                     >
                         <Plus className="size-3.5" />
-                        Toevoegen
+                        {t('panels.webhooks.add')}
                     </Button>
                 )}
             </div>
@@ -308,7 +315,9 @@ export function ChannelWebhooksSection({
             {adding && (
                 <div className="flex flex-col gap-3 rounded-lg border p-3">
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="webhook-name">Naam</Label>
+                        <Label htmlFor="webhook-name">
+                            {t('panels.webhooks.name_label')}
+                        </Label>
                         <Input
                             id="webhook-name"
                             value={name}
@@ -317,12 +326,14 @@ export function ChannelWebhooksSection({
                             onChange={(event) => setName(event.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Waar deze webhook voor is. Alleen jullie zien dit.
+                            {t('panels.webhooks.name_hint')}
                         </p>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="webhook-bot-name">Postte als</Label>
+                        <Label htmlFor="webhook-bot-name">
+                            {t('panels.webhooks.bot_name_label')}
+                        </Label>
                         <Input
                             id="webhook-bot-name"
                             value={botName}
@@ -331,13 +342,13 @@ export function ChannelWebhooksSection({
                             onChange={(event) => setBotName(event.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            De naam bij de berichten. Er staat altijd BOT naast.
+                            {t('panels.webhooks.bot_name_hint')}
                         </p>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                         <Label htmlFor="webhook-body-path">
-                            Waar staat de tekst
+                            {t('panels.webhooks.body_path_label')}
                         </Label>
                         <Input
                             id="webhook-body-path"
@@ -349,15 +360,17 @@ export function ChannelWebhooksSection({
                             }
                         />
                         <p className="text-xs text-muted-foreground">
-                            Leeg laten als de afzender{' '}
+                            {t('panels.webhooks.body_path_hint_lead')}{' '}
                             <code className="font-mono">
                                 {'{"text": "..."}'}
                             </code>{' '}
-                            stuurt. Stuurt hij iets anders, wijs dan met punten
-                            aan waar de tekst staat —{' '}
-                            <code className="font-mono">issue.title</code>, of{' '}
-                            <code className="font-mono">commits.0.message</code>{' '}
-                            voor het eerste item uit een lijst.
+                            {t('panels.webhooks.body_path_hint_middle')}{' '}
+                            <code className="font-mono">{'issue.title'}</code>
+                            {t('panels.webhooks.body_path_hint_or')}{' '}
+                            <code className="font-mono">
+                                {'commits.0.message'}
+                            </code>{' '}
+                            {t('panels.webhooks.body_path_hint_tail')}
                         </p>
                     </div>
 
@@ -374,7 +387,7 @@ export function ChannelWebhooksSection({
                                 setError(null);
                             }}
                         >
-                            Annuleren
+                            {t('panels.webhooks.cancel')}
                         </Button>
                         <Button
                             size="sm"
@@ -386,7 +399,7 @@ export function ChannelWebhooksSection({
                             onClick={() => void create()}
                         >
                             {saving && <Spinner />}
-                            Aanmaken
+                            {t('panels.webhooks.create')}
                         </Button>
                     </div>
                 </div>
@@ -396,7 +409,7 @@ export function ChannelWebhooksSection({
                 <Spinner />
             ) : webhooks.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                    Nog geen webhooks in dit kanaal.
+                    {t('panels.webhooks.none')}
                 </p>
             ) : (
                 // No scroll of its own: the dialog already scrolls, and a second
@@ -414,12 +427,21 @@ export function ChannelWebhooksSection({
                                         {webhook.name}
                                     </p>
                                     <p className="truncate text-xs text-muted-foreground">
-                                        Postte als {webhook.botName} ·{' '}
+                                        {t('panels.webhooks.posts_as', {
+                                            name: webhook.botName,
+                                        })}
+                                        {' · '}
                                         {webhook.revokedAt
-                                            ? 'ingetrokken'
+                                            ? t('panels.webhooks.revoked')
                                             : webhook.lastUsedAt
-                                              ? `laatst gebruikt ${DATE_FORMAT.format(new Date(webhook.lastUsedAt))}`
-                                              : 'nog niet gebruikt'}
+                                              ? t('panels.webhooks.last_used', {
+                                                    at: formats.shortDateTime.format(
+                                                        new Date(
+                                                            webhook.lastUsedAt,
+                                                        ),
+                                                    ),
+                                                })
+                                              : t('panels.webhooks.never_used')}
                                     </p>
                                 </div>
                                 {!webhook.revokedAt && (
@@ -429,7 +451,7 @@ export function ChannelWebhooksSection({
                                         className="shrink-0 text-destructive"
                                         onClick={() => void revoke(webhook)}
                                     >
-                                        Intrekken
+                                        {t('panels.webhooks.revoke')}
                                     </Button>
                                 )}
                             </div>
@@ -454,7 +476,7 @@ export function ChannelWebhooksSection({
                                             htmlFor={`webhook-path-${webhook.id}`}
                                             className="shrink-0 text-xs text-muted-foreground"
                                         >
-                                            Tekst uit
+                                            {t('panels.webhooks.path_label')}
                                         </Label>
                                         <Input
                                             id={`webhook-path-${webhook.id}`}
@@ -500,10 +522,9 @@ export function ChannelWebhooksSection({
             )}
 
             <p className="text-xs text-muted-foreground">
-                Stuur een POST naar de URL met een JSON-body zoals{' '}
-                <code className="font-mono">{'{"text": "Hallo"}'}</code>. Staat
-                er een pad bij &ldquo;tekst uit&rdquo;, dan mag de afzender
-                sturen wat hij al stuurt en halen wij de tekst daar vandaan.
+                {t('panels.webhooks.footer_lead')}{' '}
+                <code className="font-mono">{'{"text": "Hallo"}'}</code>{' '}
+                {t('panels.webhooks.footer_tail')}
             </p>
         </div>
     );

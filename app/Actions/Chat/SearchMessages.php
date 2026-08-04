@@ -6,6 +6,7 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Full-text search over one workspace, scoped to what a member may read.
@@ -36,10 +37,15 @@ class SearchMessages
      *                                 member cannot read it — a channel they
      *                                 may not see finds nothing rather than
      *                                 saying it exists.
-     *                                 Returns a list rather than a Collection: a Collection is invariant in its
-     *                                 value type, so any hit shaped even slightly more precisely than the
-     *                                 declaration — a non-empty string where a string was promised — no longer
-     *                                 fits. An array is covariant and simply does.
+     * @param  User|null  $from  Narrow to one author. A handle that resolves to
+     *                           nobody is refused by the caller rather than
+     *                           silently ignored here, because "from:fena"
+     *                           finding everything Fenna's colleagues wrote is
+     *                           worse than finding nothing.
+     *                           Returns a list rather than a Collection: a Collection is invariant in its
+     *                           value type, so any hit shaped even slightly more precisely than the
+     *                           declaration — a non-empty string where a string was promised — no longer
+     *                           fits. An array is covariant and simply does.
      * @return array<int, SearchHit>
      */
     public function handle(
@@ -47,6 +53,7 @@ class SearchMessages
         User $user,
         string $terms,
         ?Channel $channel = null,
+        ?User $from = null,
         int $limit = 30,
     ): array {
         $terms = $this->searchable(trim($terms), $workspace, $user);
@@ -66,6 +73,14 @@ class SearchMessages
         return Message::query()
             ->where('workspace_id', $workspace->id)
             ->whereIn('channel_id', $visibleChannelIds)
+            /*
+             * Only messages a person wrote. Webhook posts are deliberately out:
+             * they carry a bot_name and no user_id, so "from:" would have to
+             * mean two different things — a member and a label a webhook chose
+             * for itself — and the second is not something anybody can be held
+             * to. A bot that wants finding has its name in the text.
+             */
+            ->when($from, fn (Builder $query) => $query->where('user_id', $from->id))
             ->matching($terms)
             ->with(['author:id,name', 'channel:id,name,type'])
             ->orderByDesc('id')

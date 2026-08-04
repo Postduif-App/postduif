@@ -1,9 +1,10 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
+use App\Enums\InboxItemType;
 use App\Events\MessageDeleted;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\Reaction;
 use App\Models\User;
@@ -99,7 +100,8 @@ it('takes the mentions and reactions with it', function () {
     [$user, $workspace, $channel] = deletionFixture();
     $message = messageFrom($user, $workspace, $channel);
 
-    Mention::create([
+    InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => $message->id,
         'user_id' => $user->id,
         'channel_id' => $channel->id,
@@ -112,7 +114,7 @@ it('takes the mentions and reactions with it', function () {
 
     actingAs($user)->delete(deleteUrl($workspace, $channel, $message));
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0)
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0)
         ->and(Reaction::where('message_id', $message->id)->count())->toBe(0);
 });
 

@@ -60,9 +60,9 @@ class StoreChannelRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Geef het kanaal een naam.',
-            'name.unique' => 'Er bestaat al een kanaal met deze naam.',
-            'type.not_in' => 'Een direct bericht maak je niet aan als kanaal.',
+            'name.required' => __('requests.channel.name_required'),
+            'name.unique' => __('requests.channel.name_taken'),
+            'type.not_in' => __('requests.channel.not_created_as_channel'),
         ];
     }
 }

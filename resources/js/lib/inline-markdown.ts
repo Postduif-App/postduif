@@ -1,6 +1,18 @@
 export type InlineNode =
     | { type: 'text'; value: string }
+    | { type: 'code'; value: string }
     | { type: 'strong' | 'em' | 'strike'; children: InlineNode[] };
+
+/**
+ * `code`, matched before anything else gets a look at it.
+ *
+ * No lookarounds, unlike the emphasis markers below: a backtick is not a
+ * character that turns up inside identifiers, so there is no snake_case
+ * equivalent to protect. What the class does exclude is a newline, which keeps
+ * an unclosed backtick from swallowing the rest of a message, and an empty span,
+ * so a lone `` pair stays two backticks.
+ */
+const CODE_PATTERN = /`([^`\n]+)`/g;
 
 /**
  * The markers, matched as a pair through the backreference.
@@ -37,17 +49,116 @@ const MARKER_TYPES: Record<string, 'strong' | 'em' | 'strike'> = {
 const MAX_DEPTH = 4;
 
 /**
- * Parse the inline formatting in a message body: bold, italic, strikethrough.
+ * Parse the inline formatting in a message body: code, bold, italic,
+ * strikethrough.
  *
  * Deliberately not a markdown library. A chat message is not a document — links
  * are already live, headings and lists would fight the layout, and an HTML
  * renderer would put an injection surface in the one place users type. This
  * returns a tree of plain data, so what ends up on screen is whatever the
  * component decides to render for each node and never raw markup.
+ *
+ * Code spans win over emphasis, which is the whole point of them: `2 * 3 * 4`
+ * inside backticks is arithmetic that must survive verbatim, and `@fenna` in a
+ * code sample is a variable rather than somebody being addressed.
+ *
+ * They are taken out in front and put back at the end, with a placeholder
+ * holding each one's seat in between. Splitting the text at every span instead
+ * would have been simpler and subtly wrong: the markers of `**kijk naar
+ * `$user`**` would land in two different pieces, and a phrase nobody would call
+ * ambiguous would come out with its asterisks showing. The placeholder keeps
+ * the sentence in one piece, so the emphasis pass sees the shape the author
+ * typed.
  */
 export function parseInline(text: string, depth = 0): InlineNode[] {
+    const spans: string[] = [];
+
+    const masked = text
+        /*
+         * A NUL in the input would otherwise be read as one of our own markers.
+         * It renders as nothing and cannot be typed on purpose, so dropping it is
+         * no loss — and it is the one character that has to be ours alone.
+         *
+         * That is also exactly what no-control-regex objects to, so the rule is
+         * switched off for the two lines that need it: a printable sentinel
+         * could be typed by a reader and then mistaken for one of ours.
+         */
+        // eslint-disable-next-line no-control-regex
+        .replace(/\u0000/g, '')
+        .replace(CODE_PATTERN, (_, code: string) => {
+            spans.push(code);
+
+            return `\u0000${spans.length - 1}\u0000`;
+        });
+
+    return restore(parseEmphasis(masked, depth), spans);
+}
+
+/**
+ * A seat held for a code span: its index, fenced off by NULs.
+ *
+ * Same reason for the disable as in mask(): the marker has to be a character
+ * nobody can type, which is the thing the rule is warning about.
+ */
+// eslint-disable-next-line no-control-regex
+const PLACEHOLDER_PATTERN = /\u0000(\d+)\u0000/g;
+
+/**
+ * Put the code spans back where their placeholders ended up.
+ *
+ * After the emphasis pass rather than during it, because a placeholder can come
+ * out anywhere in the tree — inside a bold phrase, inside a bold phrase inside
+ * an italic one — and only a walk of the finished tree finds all of them.
+ */
+function restore(nodes: InlineNode[], spans: string[]): InlineNode[] {
+    if (spans.length === 0) {
+        return nodes;
+    }
+
+    return nodes.flatMap((node): InlineNode[] => {
+        if (node.type === 'code') {
+            return [node];
+        }
+
+        if (node.type !== 'text') {
+            return [{ ...node, children: restore(node.children, spans) }];
+        }
+
+        const parts: InlineNode[] = [];
+        let cursor = 0;
+
+        for (const match of node.value.matchAll(PLACEHOLDER_PATTERN)) {
+            if (match.index === undefined) {
+                continue;
+            }
+
+            if (match.index > cursor) {
+                parts.push({
+                    type: 'text',
+                    value: node.value.slice(cursor, match.index),
+                });
+            }
+
+            parts.push({ type: 'code', value: spans[Number(match[1])] });
+
+            cursor = match.index + match[0].length;
+        }
+
+        if (cursor < node.value.length) {
+            parts.push({ type: 'text', value: node.value.slice(cursor) });
+        }
+
+        return parts;
+    });
+}
+
+/**
+ * The emphasis pass, over text whose code spans are already standing in as
+ * placeholders.
+ */
+function parseEmphasis(text: string, depth: number): InlineNode[] {
     if (depth >= MAX_DEPTH) {
-        return [{ type: 'text', value: text }];
+        return text === '' ? [] : [{ type: 'text', value: text }];
     }
 
     const nodes: InlineNode[] = [];
@@ -69,7 +180,10 @@ export function parseInline(text: string, depth = 0): InlineNode[] {
 
         nodes.push({
             type: MARKER_TYPES[marker],
-            children: parseInline(inner, depth + 1),
+            // Itself, not parseInline: the text still carries placeholders, and
+            // going back through the front door would strip the NULs holding
+            // them and leave a bare index behind where a code span should be.
+            children: parseEmphasis(inner, depth + 1),
         });
 
         cursor = match.index + whole.length;

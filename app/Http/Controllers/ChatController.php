@@ -38,9 +38,14 @@ class ChatController extends Controller
      */
     public function home(Request $request): RedirectResponse
     {
-        $workspace = $request->user()->workspaces()->oldest('workspace_user.joined_at')->first();
+        // Same tiebreak as the switcher in BuildChatShell, so "the first one"
+        // means the same thing in both places.
+        $workspace = $request->user()->workspaces()
+            ->oldest('workspace_user.joined_at')
+            ->orderBy('workspaces.id')
+            ->first();
 
-        abort_if($workspace === null, 404, 'Je hoort nog bij geen enkele workspace.');
+        abort_if($workspace === null, 404, __('chat.no_workspace_yet'));
 
         return redirect()->route('chat.index', $workspace);
     }
@@ -410,6 +415,6 @@ class ChatController extends Controller
 
     private function authorizeMembership(User $user, Workspace $workspace): void
     {
-        abort_unless($workspace->hasMember($user), 403, 'Je bent geen lid van deze workspace.');
+        abort_unless($workspace->hasMember($user), 403, __('chat.not_a_member'));
     }
 }

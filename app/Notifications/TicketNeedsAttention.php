@@ -49,8 +49,8 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
     {
         $mail = (new MailMessage)
             ->subject($this->subject())
-            ->greeting('Hoi '.$notifiable->name.',')
-            ->line('Deze tickets blijven liggen:');
+            ->greeting(__('notifications.greeting', ['name' => $notifiable->name]))
+            ->line(__('notifications.tickets.intro'));
 
         foreach ($this->tickets as $ticket) {
             $mail->line(sprintf(
@@ -63,7 +63,7 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
 
         $first = $this->tickets->first();
 
-        return $mail->action('Openen', route('chat.show', [
+        return $mail->action(__('notifications.tickets.open'), route('chat.show', [
             $first->channel->workspace,
             $first->channel,
             'view' => 'tickets',
@@ -88,9 +88,7 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
 
     private function subject(): string
     {
-        return $this->tickets->count() === 1
-            ? 'Een ticket blijft liggen'
-            : $this->tickets->count().' tickets blijven liggen';
+        return trans_choice('notifications.tickets.subject', $this->tickets->count());
     }
 
     /**
@@ -103,9 +101,9 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
     private function reason(Ticket $ticket): string
     {
         if ($ticket->due_at !== null && $ticket->due_at->isPast()) {
-            return 'over de streefdatum';
+            return __('notifications.tickets.overdue');
         }
 
-        return 'nog geen antwoord';
+        return __('notifications.tickets.unanswered');
     }
 }

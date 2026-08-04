@@ -60,7 +60,7 @@ class NotificationController extends Controller
             'via_pushover' => ['boolean'],
             'pushover_user_key' => ['nullable', 'string', 'max:255'],
         ], [
-            'notify_after_minutes.in' => 'Kies een van de aangeboden termijnen.',
+            'notify_after_minutes.in' => __('requests.notifications.invalid_window'),
         ]);
 
         $user = $request->user();
@@ -83,18 +83,23 @@ class NotificationController extends Controller
 
         $user->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Notificaties opgeslagen.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.notifications_saved')]);
 
         return to_route('notifications.edit');
     }
 
     private function label(int $minutes): string
     {
+        /*
+         * Four whole answers rather than a number with a word stuck to it. "60
+         * minuten" is not what anybody says, and a language that inflects the
+         * unit cannot be served by gluing one on at all.
+         */
         return match (true) {
-            $minutes < 60 => $minutes.' minuten',
-            $minutes === 60 => 'een uur',
-            $minutes < 1440 => ($minutes / 60).' uur',
-            default => 'een dag',
+            $minutes < 60 => __('settings.notifications.duration_minutes', ['count' => $minutes]),
+            $minutes === 60 => __('settings.notifications.duration_hour'),
+            $minutes < 1440 => __('settings.notifications.duration_hours', ['count' => $minutes / 60]),
+            default => __('settings.notifications.duration_day'),
         };
     }
 }

@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, index, remove, store } from '@/routes/chat/channels/members';
 import type { ActiveChannel, ChannelMember, ChatWorkspace } from '@/types/chat';
@@ -110,6 +111,7 @@ export function ChannelMembersDialog({
     open,
     onOpenChange,
 }: ChannelMembersDialogProps) {
+    const { t } = useTranslate();
     const [query, setQuery] = useState('');
     const [candidates, setCandidates] = useState<ChannelMember[]>([]);
     const [selected, setSelected] = useState<number[]>([]);
@@ -188,22 +190,26 @@ export function ChannelMembersDialog({
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>
-                        Leden van{' '}
-                        {channel.type === 'dm'
-                            ? channel.label
-                            : `#${channel.label}`}
+                        {t('channels.members.title', {
+                            channel:
+                                channel.type === 'dm'
+                                    ? channel.label
+                                    : `#${channel.label}`,
+                        })}
                     </DialogTitle>
                     <DialogDescription>
                         {channel.type === 'private'
-                            ? 'Dit kanaal is privé — alleen wie hier staat ziet het bestaan.'
-                            : 'Iedereen in de workspace kan dit kanaal lezen.'}
+                            ? t('channels.members.private_note')
+                            : t('channels.members.public_note')}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-5">
                     <div className="grid gap-1.5">
                         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                            In dit kanaal ({channel.members.length})
+                            {t('channels.members.in_channel', {
+                                count: channel.members.length,
+                            })}
                         </p>
                         {/*
                             A plain overflow container, not Radix's ScrollArea:
@@ -220,13 +226,18 @@ export function ChannelMembersDialog({
                                         member.id === channel.createdBy ? (
                                             <span className="flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                                                 <Crown className="size-3" />
-                                                eigenaar
+                                                {t('channels.members.owner')}
                                             </span>
                                         ) : channel.canAddMembers ? (
                                             <button
                                                 type="button"
-                                                aria-label={`${member.name} verwijderen`}
-                                                title="Verwijderen uit kanaal"
+                                                aria-label={t(
+                                                    'channels.members.remove',
+                                                    { name: member.name },
+                                                )}
+                                                title={t(
+                                                    'channels.members.remove_title',
+                                                )}
                                                 onClick={() =>
                                                     setPendingRemoval(member)
                                                 }
@@ -244,11 +255,13 @@ export function ChannelMembersDialog({
                     {canInvite && (
                         <div className="grid gap-1.5 border-t pt-4">
                             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                Toevoegen
+                                {t('channels.members.add')}
                             </p>
                             <Input
                                 value={query}
-                                placeholder="Zoek een teamgenoot…"
+                                placeholder={t(
+                                    'channels.members.search_placeholder',
+                                )}
                                 onChange={(event) =>
                                     setQuery(event.target.value)
                                 }
@@ -279,8 +292,8 @@ export function ChannelMembersDialog({
                                 {!loading && candidates.length === 0 && (
                                     <p className="px-2 py-2 text-sm text-muted-foreground">
                                         {query.trim() === ''
-                                            ? 'Iedereen zit er al in.'
-                                            : 'Niemand gevonden.'}
+                                            ? t('channels.members.all_in')
+                                            : t('channels.members.none_found')}
                                     </p>
                                 )}
                             </div>
@@ -304,12 +317,11 @@ export function ChannelMembersDialog({
                             }
                         >
                             <LogOut className="size-4" />
-                            Kanaal verlaten
+                            {t('channels.members.leave')}
                         </Button>
                     ) : channel.createdBy === currentUserId ? (
                         <p className="max-w-[15rem] text-xs text-muted-foreground">
-                            Je hebt dit kanaal aangemaakt en kunt het daarom
-                            niet verlaten.
+                            {t('channels.members.cannot_leave')}
                         </p>
                     ) : (
                         <span />
@@ -327,8 +339,10 @@ export function ChannelMembersDialog({
                                 <UserPlus className="size-4" />
                             )}
                             {selected.length === 0
-                                ? 'Toevoegen'
-                                : `${selected.length} toevoegen`}
+                                ? t('channels.members.add')
+                                : t('channels.members.add_selected', {
+                                      count: selected.length,
+                                  })}
                         </Button>
                     )}
                 </DialogFooter>
@@ -345,16 +359,26 @@ export function ChannelMembersDialog({
                 <AlertDialogContent className="sm:max-w-sm">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {pendingRemoval?.name} verwijderen?
+                            {t('channels.members.remove_question', {
+                                name: pendingRemoval?.name ?? '',
+                            })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {channel.type === 'private'
-                                ? `Hiermee verliest ${pendingRemoval?.name} toegang tot #${channel.label} en verdwijnt het kanaal uit hun zijbalk. Eerdere berichten blijven staan.`
-                                : `${pendingRemoval?.name} kan #${channel.label} daarna nog wel lezen, maar niet meer meepraten tot ze zich opnieuw aansluiten.`}
+                            {t(
+                                channel.type === 'private'
+                                    ? 'channels.members.remove_private'
+                                    : 'channels.members.remove_public',
+                                {
+                                    name: pendingRemoval?.name ?? '',
+                                    channel: channel.label,
+                                },
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('channels.actions.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -383,7 +407,7 @@ export function ChannelMembersDialog({
                                 );
                             }}
                         >
-                            Verwijderen
+                            {t('channels.actions.remove')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

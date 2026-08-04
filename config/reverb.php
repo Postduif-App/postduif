@@ -38,12 +38,20 @@ return [
                  * The app is served over https by Valet, and a browser refuses
                  * to open a plain ws:// socket from an https page. Point Reverb
                  * at the same Valet certificate so the websocket is wss:// too.
+                 *
+                 * Keyed off the certificate, and off nothing else: a non-empty
+                 * array here makes Reverb start a *secure* server, so a filter
+                 * that only drops nulls would turn `REVERB_TLS_CERT=` — an
+                 * empty line in .env, which is a string — into a TLS server
+                 * without a certificate. Behind a proxy that terminates TLS,
+                 * every plain connection is then refused, and the only clue is
+                 * the word "secure" in one line of the startup log.
                  */
-                'tls' => array_filter([
+                'tls' => filled(env('REVERB_TLS_CERT')) ? [
                     'local_cert' => env('REVERB_TLS_CERT'),
                     'local_pk' => env('REVERB_TLS_KEY'),
                     'verify_peer' => env('REVERB_TLS_VERIFY_PEER', false),
-                ], fn ($value) => $value !== null),
+                ] : [],
             ],
             'max_request_size' => env('REVERB_MAX_REQUEST_SIZE', 10_000),
             'scaling' => [

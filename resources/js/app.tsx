@@ -75,6 +75,15 @@ createInertiaApp({
             // reading width.
             case name === 'settings/members':
                 return WideSettingsLayout;
+            /*
+             * The workflow builder and its run history, for the same reason as
+             * the member list: a row of steps with a form open on each is not a
+             * thing that fits a reading column, and a run's context is JSON that
+             * has to be readable rather than pretty.
+             */
+            case name === 'settings/workflows':
+            case name === 'settings/workflow-runs':
+                return WideSettingsLayout;
             // Settings bring their own full-height shell, in the same idiom as
             // the chat: no second application frame around it.
             case name.startsWith('settings/'):

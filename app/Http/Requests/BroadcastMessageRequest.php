@@ -41,6 +41,13 @@ class BroadcastMessageRequest extends FormRequest
             'channels.*' => ['integer'],
             'tags' => ['array', 'required_without:channels'],
             'tags.*' => ['string', 'max:40'],
+
+            /*
+             * Absent means now. A moment in the past is refused rather than
+             * quietly sent immediately: somebody who typed yesterday's date
+             * made a mistake, and sending anyway would hide it.
+             */
+            'send_at' => ['nullable', 'date', 'after:now'],
         ];
     }
 
@@ -50,9 +57,10 @@ class BroadcastMessageRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'body.required' => 'Schrijf eerst een bericht.',
-            'channels.required_without' => 'Kies minstens één kanaal of tag.',
-            'tags.required_without' => 'Kies minstens één kanaal of tag.',
+            'body.required' => __('requests.broadcast.body_required'),
+            'channels.required_without' => __('requests.broadcast.no_target'),
+            'tags.required_without' => __('requests.broadcast.no_target'),
+            'send_at.after' => __('requests.broadcast.send_at_past'),
         ];
     }
 }

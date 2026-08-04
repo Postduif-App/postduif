@@ -38,7 +38,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import {
     destroy as removeMember,
@@ -74,12 +76,6 @@ interface MembersProps {
     roleOptions: Option[];
     channelOptions: ChannelOption[];
 }
-
-const JOINED_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-});
 
 /** Below this a filter box is clutter rather than help. */
 const FILTER_FROM = 8;
@@ -196,6 +192,8 @@ function MemberRow({
     onEditChannels: (member: WorkspaceMember) => void;
 }) {
     const getInitials = useInitials();
+    const { t } = useTranslate();
+    const formats = useFormats();
 
     return (
         <tr className="border-t">
@@ -240,7 +238,9 @@ function MemberRow({
                     >
                         <SelectTrigger
                             className="w-36"
-                            aria-label={`Rol van ${member.name}`}
+                            aria-label={t('settings.members.role_of', {
+                                name: member.name,
+                            })}
                         >
                             <SelectValue />
                         </SelectTrigger>
@@ -290,7 +290,7 @@ function MemberRow({
 
             <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
                 {member.joinedAt
-                    ? JOINED_FORMAT.format(new Date(member.joinedAt))
+                    ? formats.mediumDate.format(new Date(member.joinedAt))
                     : '—'}
             </td>
 
@@ -309,7 +309,9 @@ function MemberRow({
                 ) : (
                     // For everyone else it is the whole workspace, and a number
                     // here would suggest a boundary that is not there.
-                    <span className="opacity-60">alle</span>
+                    <span className="opacity-60">
+                        {t('settings.members.all_channels')}
+                    </span>
                 )}
             </td>
 
@@ -326,7 +328,9 @@ function MemberRow({
                     {(member.canManageChannels || member.canRemove) && (
                         <DropdownMenu>
                             <DropdownMenuTrigger
-                                aria-label={`Acties voor ${member.name}`}
+                                aria-label={t('settings.members.actions_for', {
+                                    name: member.name,
+                                })}
                                 className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
                             >
                                 <MoreHorizontal className="size-4" />
@@ -340,7 +344,9 @@ function MemberRow({
                                             }
                                         >
                                             <Hash className="size-4" />
-                                            Kanalen beheren
+                                            {t(
+                                                'settings.members.manage_channels',
+                                            )}
                                         </DropdownMenuItem>
                                     )}
                                 {member.canRemove && (
@@ -349,7 +355,7 @@ function MemberRow({
                                         onSelect={() => onRemove(member)}
                                     >
                                         <UserMinus className="size-4" />
-                                        Uit de workspace verwijderen
+                                        {t('settings.members.remove')}
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
@@ -371,6 +377,7 @@ export default function WorkspaceMembers({
     const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
     const [pendingRemoval, setPendingRemoval] =
         useState<WorkspaceMember | null>(null);
+    const { t } = useTranslate();
     const [editingChannelsOf, setEditingChannelsOf] =
         useState<WorkspaceMember | null>(null);
 
@@ -400,13 +407,17 @@ export default function WorkspaceMembers({
 
     return (
         <>
-            <Head title="Workspace — leden" />
+            <Head title={t('settings.members.head')} />
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title={`Leden (${members.length})`}
-                    description={`Iedereen die toegang heeft tot ${workspaceName}`}
+                    title={t('settings.members.title', {
+                        count: members.length,
+                    })}
+                    description={t('settings.members.description', {
+                        workspace: workspaceName,
+                    })}
                 />
 
                 {members.length >= FILTER_FROM && (
@@ -415,9 +426,11 @@ export default function WorkspaceMembers({
                         <Input
                             value={filter}
                             onChange={(event) => setFilter(event.target.value)}
-                            placeholder="Zoek op naam of handle…"
+                            placeholder={t(
+                                'settings.members.filter_placeholder',
+                            )}
                             className="pl-8"
-                            aria-label="Zoek een lid"
+                            aria-label={t('settings.members.filter')}
                         />
                     </div>
                 )}
@@ -432,19 +445,21 @@ export default function WorkspaceMembers({
                         <thead>
                             <tr className="bg-muted/40">
                                 <SortableHeader
-                                    label="Naam"
+                                    label={t('settings.members.column_name')}
                                     column="name"
                                     sort={sort}
                                     onSort={toggleSort}
                                 />
                                 <SortableHeader
-                                    label="Handle"
+                                    label={t(
+                                        'settings.members.column_username',
+                                    )}
                                     column="username"
                                     sort={sort}
                                     onSort={toggleSort}
                                 />
                                 <SortableHeader
-                                    label="Rol"
+                                    label={t('settings.members.column_role')}
                                     column="role"
                                     sort={sort}
                                     onSort={toggleSort}
@@ -458,10 +473,10 @@ export default function WorkspaceMembers({
                                     scope="col"
                                     className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
                                 >
-                                    Status
+                                    {t('settings.members.column_status')}
                                 </th>
                                 <SortableHeader
-                                    label="Lid sinds"
+                                    label={t('settings.members.column_joined')}
                                     column="joinedAt"
                                     sort={sort}
                                     onSort={toggleSort}
@@ -470,10 +485,12 @@ export default function WorkspaceMembers({
                                     scope="col"
                                     className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
                                 >
-                                    Kanalen
+                                    {t('settings.members.column_channels')}
                                 </th>
                                 <th scope="col" className="px-3 py-2">
-                                    <span className="sr-only">Acties</span>
+                                    <span className="sr-only">
+                                        {t('settings.members.column_actions')}
+                                    </span>
                                 </th>
                             </tr>
                         </thead>
@@ -493,7 +510,7 @@ export default function WorkspaceMembers({
                                         colSpan={7}
                                         className="px-3 py-6 text-center text-sm text-muted-foreground"
                                     >
-                                        Niemand gevonden.
+                                        {t('settings.members.none_found')}
                                     </td>
                                 </tr>
                             )}
@@ -531,16 +548,20 @@ export default function WorkspaceMembers({
                 <AlertDialogContent className="sm:max-w-md">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {pendingRemoval?.name} uit de workspace verwijderen?
+                            {t('settings.members.remove_question', {
+                                name: pendingRemoval?.name ?? '',
+                            })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {pendingRemoval?.name} verliest toegang tot alle
-                            kanalen hier, ook de privékanalen. Eerder verstuurde
-                            berichten blijven staan.
+                            {t('settings.members.remove_explanation', {
+                                name: pendingRemoval?.name ?? '',
+                            })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('settings.actions.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -555,7 +576,7 @@ export default function WorkspaceMembers({
                                 }
                             }}
                         >
-                            Verwijderen
+                            {t('settings.members.remove_confirm')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Chat;
 
+use App\Events\ReactionAdded;
 use App\Events\ReactionToggled;
 use App\Models\Message;
 use App\Models\User;
@@ -43,7 +44,46 @@ class ToggleReaction
 
         $this->announce($message);
 
+        ReactionAdded::dispatch($message, $user, $emoji);
+
         return true;
+    }
+
+    /**
+     * Put a reaction there, and leave it alone if it already is.
+     *
+     * Beside handle() rather than through it, because a workflow says "react
+     * with this" and means it every time it runs. Toggling would make the
+     * second run undo the first, which is what a button means and not what a
+     * rule does.
+     */
+    public function add(Message $message, User $user, string $emoji): void
+    {
+        $message->reactions()->createOrFirst([
+            'user_id' => $user->id,
+            'emoji' => $emoji,
+        ]);
+
+        $this->announce($message);
+
+        ReactionAdded::dispatch($message, $user, $emoji);
+    }
+
+    /**
+     * Take one off, and say nothing if it was not there.
+     *
+     * Only ever this person's own: the unique index is on the three of them
+     * together, so there is no way to phrase this that would reach somebody
+     * else's reaction.
+     */
+    public function remove(Message $message, User $user, string $emoji): void
+    {
+        $message->reactions()
+            ->where('user_id', $user->id)
+            ->where('emoji', $emoji)
+            ->delete();
+
+        $this->announce($message);
     }
 
     /**

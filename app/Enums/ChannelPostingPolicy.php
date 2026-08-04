@@ -43,8 +43,8 @@ enum ChannelPostingPolicy: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Everyone => 'Iedereen in dit kanaal',
-            self::Admins => 'Alleen beheerders en de kanaalmaker',
+            self::Everyone => __('enums.channel-posting-policy.label.Everyone'),
+            self::Admins => __('enums.channel-posting-policy.label.Admins'),
         };
     }
 
@@ -55,8 +55,8 @@ enum ChannelPostingPolicy: string implements HasLabel
     public function description(): string
     {
         return match ($this) {
-            self::Everyone => 'Een gewoon gesprek: elk lid kan berichten plaatsen.',
-            self::Admins => 'Een zendkanaal: anderen kunnen wel reageren en in threads antwoorden.',
+            self::Everyone => __('enums.channel-posting-policy.description.Everyone'),
+            self::Admins => __('enums.channel-posting-policy.description.Admins'),
         };
     }
 }

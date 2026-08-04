@@ -4,20 +4,21 @@ import type { PropsWithChildren } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn, toUrl } from '@/lib/utils';
+import { index as apiTokens } from '@/routes/api-tokens';
 import { edit as editAppearance } from '@/routes/appearance';
 import { index as openWorkspace } from '@/routes/chat';
-import { index as mcpTokens } from '@/routes/mcp-tokens';
 import { edit as editNotifications } from '@/routes/notifications';
 import { edit as editProfile } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import { index as statusRules } from '@/routes/status-rules';
+import { index as workflowsIndex } from '@/routes/workflows';
 import { edit as editWorkspace } from '@/routes/workspace';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
 import { edit as editWorkspacePermissions } from '@/routes/workspace/permissions';
 import { edit as editWorkspaceTheme } from '@/routes/workspace/theme';
-import { index as workspaceTransfers } from '@/routes/workspace/transfers';
 import type { Auth, NavItem } from '@/types';
 
 interface NavGroup {
@@ -50,17 +51,21 @@ export default function SettingsLayout({
     // "Algemeen" and "Leden" at the same time. Every screen here is a leaf.
     const { isCurrentUrl } = useCurrentUrl();
     const { auth } = usePage<{ auth: Auth }>().props;
+    const { t } = useTranslate();
 
     const groups: NavGroup[] = [
         {
-            title: 'Jouw account',
+            title: t('settings.nav.account'),
             items: [
-                { title: 'Profiel', href: editProfile() },
-                { title: 'Beveiliging', href: editSecurity() },
-                { title: 'Notificaties', href: editNotifications() },
-                { title: 'Weergave', href: editAppearance() },
-                { title: 'Statusregels', href: statusRules() },
-                { title: 'AI-toegang', href: mcpTokens() },
+                { title: t('settings.nav.profile'), href: editProfile() },
+                { title: t('settings.nav.security'), href: editSecurity() },
+                {
+                    title: t('settings.nav.notifications'),
+                    href: editNotifications(),
+                },
+                { title: t('settings.nav.appearance'), href: editAppearance() },
+                { title: t('settings.nav.status_rules'), href: statusRules() },
+                { title: t('settings.nav.api_tokens'), href: apiTokens() },
             ],
         },
     ];
@@ -71,25 +76,48 @@ export default function SettingsLayout({
     const workspaceItems: NavItem[] = [
         ...(auth.canManageWorkspace
             ? [
-                  { title: 'Algemeen', href: editWorkspace() },
-                  { title: 'Rechten', href: editWorkspacePermissions() },
-                  { title: 'Thema', href: editWorkspaceTheme() },
-                  { title: 'Leden', href: workspaceMembers() },
+                  { title: t('settings.nav.general'), href: editWorkspace() },
+                  {
+                      title: t('settings.nav.permissions'),
+                      href: editWorkspacePermissions(),
+                  },
+                  {
+                      title: t('settings.nav.theme'),
+                      href: editWorkspaceTheme(),
+                  },
+                  {
+                      title: t('settings.nav.members'),
+                      href: workspaceMembers(),
+                  },
+                  /*
+                   * Only where the workspace has workflows switched on. Listed
+                   * by that rather than by role alone, unlike its neighbours:
+                   * the screen answers 404 for a workspace that has them off,
+                   * and a link that refuses to open is worse than no link.
+                   */
+                  ...(auth.canManageWorkflows
+                      ? [
+                            {
+                                title: t('settings.nav.workflows'),
+                                href: workflowsIndex(),
+                            },
+                        ]
+                      : []),
               ]
             : []),
         ...(auth.canInviteToWorkspace
-            ? [{ title: 'Uitnodigingen', href: workspaceInvitations() }]
-            : []),
-        // Listed for everyone in the workspace, not just for admins: sending a
-        // file is ordinary work, and the screen shows you your own.
-        ...(auth.canSeeTransfers
-            ? [{ title: 'Bestanden versturen', href: workspaceTransfers() }]
+            ? [
+                  {
+                      title: t('settings.nav.invitations'),
+                      href: workspaceInvitations(),
+                  },
+              ]
             : []),
     ];
 
     if (workspaceItems.length > 0) {
         groups.push({
-            title: auth.workspace?.name ?? 'Workspace',
+            title: auth.workspace?.name ?? t('settings.nav.workspace'),
             items: workspaceItems,
         });
     }
@@ -112,7 +140,10 @@ export default function SettingsLayout({
                 </div>
 
                 <ScrollArea className="flex-1 px-2 py-4">
-                    <nav aria-label="Instellingen" className="space-y-6">
+                    <nav
+                        aria-label={t('settings.nav.label')}
+                        className="space-y-6"
+                    >
                         {groups.map((group) => (
                             <div key={group.title}>
                                 <h2 className="truncate px-2 pb-1 text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">

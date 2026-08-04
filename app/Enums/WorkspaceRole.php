@@ -22,10 +22,10 @@ enum WorkspaceRole: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Owner => 'Eigenaar',
-            self::Admin => 'Beheerder',
-            self::Member => 'Lid',
-            self::Guest => 'Gast',
+            self::Owner => __('enums.workspace-role.getLabel.Owner'),
+            self::Admin => __('enums.workspace-role.getLabel.Admin'),
+            self::Member => __('enums.workspace-role.getLabel.Member'),
+            self::Guest => __('enums.workspace-role.getLabel.Guest'),
         };
     }
 

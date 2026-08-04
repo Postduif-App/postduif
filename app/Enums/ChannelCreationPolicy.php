@@ -37,8 +37,8 @@ enum ChannelCreationPolicy: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Everyone => 'Iedereen in de workspace',
-            self::Admins => 'Alleen beheerders en de eigenaar',
+            self::Everyone => __('enums.channel-creation-policy.label.Everyone'),
+            self::Admins => __('enums.channel-creation-policy.label.Admins'),
         };
     }
 }

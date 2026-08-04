@@ -3,7 +3,7 @@
 namespace App\Actions\Chat;
 
 use App\Events\MessageDeleted;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +22,7 @@ class DeleteMessage
         DB::transaction(function () use ($message) {
             // A badge for a message nobody can open any more is worse than no
             // badge at all, so the mentions go rather than being marked read.
-            Mention::query()->where('message_id', $message->id)->delete();
+            InboxItem::query()->where('message_id', $message->id)->delete();
             $message->reactions()->delete();
 
             // A pin points at words, and there are none left. Leaving it would

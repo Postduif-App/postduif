@@ -9,6 +9,7 @@ use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\PollVote;
 use App\Models\SecretRequest;
+use App\Models\SentSecret;
 use App\Models\Transfer;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
@@ -66,6 +67,14 @@ class PresentMessage
      * @var array<string, Transfer|null>
      */
     private array $transfers = [];
+
+    /**
+     * Secrets already fetched, keyed by id — the same reason the lists above
+     * exist: a channel can hold several links to the same one.
+     *
+     * @var array<string, SentSecret|null>
+     */
+    private array $sentSecrets = [];
 
     /**
      * Previews already looked up, keyed by URL.
@@ -135,6 +144,8 @@ class PresentMessage
             'secretCard' => $deleted ? null : $this->secretCard($message),
             // And a question put to the channel, with where the votes stand.
             'pollCard' => $deleted ? null : $this->pollCard($message),
+            // And a secret put aside for one person: who it is for, never what.
+            'sentSecretCard' => $deleted ? null : $this->sentSecretCard($message),
         ];
     }
 
@@ -287,6 +298,60 @@ class PresentMessage
              */
             'url' => route('secrets.show', $request->id),
         ];
+    }
+
+    /**
+     * A secret somebody put aside for one person in this channel.
+     *
+     * Says who it is for and whether it is still there — never what it is, and
+     * this card could not tell you if it wanted to: the server holds ciphertext
+     * it has no key for. Note that the url below is deliberately not enough to
+     * open anything. The key lives in the fragment, which only the sender's
+     * browser ever had, so this link is an announcement rather than a way in.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function sentSecretCard(Message $message): ?array
+    {
+        $id = $this->sentSecretIdIn($message->body);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $secret = $this->sentSecrets[$id] ??= SentSecret::query()
+            ->with('recipient')
+            ->find($id);
+
+        if ($secret === null || $secret->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'id' => $secret->id,
+            'label' => $secret->label,
+            // The name rather than the id: the card is read, not clicked
+            // through, and everybody in the channel gets the same payload.
+            'recipientName' => $secret->recipient->name,
+            'senderId' => $secret->created_by,
+            'expiresAt' => $secret->expires_at,
+            'revealedAt' => $secret->revealed_at,
+            'state' => $secret->state(),
+            'url' => route('sent-secrets.show', $secret->id),
+        ];
+    }
+
+    /** The id of the first link in this body pointing at one of our secrets. */
+    private function sentSecretIdIn(string $body): ?string
+    {
+        $prefix = route('sent-secrets.show', '__ID__');
+        [$before] = explode('__ID__', $prefix, 2);
+
+        $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
+
+        return preg_match($pattern, $body, $matches) === 1
+            ? mb_strtolower($matches[1])
+            : null;
     }
 
     /**

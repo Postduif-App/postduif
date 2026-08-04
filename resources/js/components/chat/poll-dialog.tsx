@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { store } from '@/routes/chat/polls';
 
 /** One answer per line, blanks dropped. */
@@ -25,15 +26,20 @@ function splitOptions(value: string): string[] {
         .filter((line) => line.length > 0);
 }
 
-/** How long the channel gets. Hours, because that is what somebody decides. */
-const DURATIONS: { value: string; label: string }[] = [
-    { value: '', label: 'Tot ik hem sluit' },
-    { value: '1', label: '1 uur' },
-    { value: '8', label: '8 uur' },
-    { value: '24', label: '1 dag' },
-    { value: '72', label: '3 dagen' },
-    { value: '168', label: '1 week' },
-];
+/**
+ * How long the channel gets. Hours, because that is what somebody decides.
+ *
+ * The wording lives beside the number rather than in the list, so the list can
+ * stay a plain constant while the labels come out of the language files.
+ */
+const DURATIONS = [
+    { value: '', key: 'dialogs.poll.duration_until_closed' },
+    { value: '1', key: 'dialogs.poll.duration_one_hour' },
+    { value: '8', key: 'dialogs.poll.duration_eight_hours' },
+    { value: '24', key: 'dialogs.poll.duration_one_day' },
+    { value: '72', key: 'dialogs.poll.duration_three_days' },
+    { value: '168', key: 'dialogs.poll.duration_one_week' },
+] as const;
 
 /**
  * Putting a question to the channel.
@@ -54,6 +60,7 @@ export function PollDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
+    const { t } = useTranslate();
     const [options, setOptions] = useState('');
 
     const parsed = splitOptions(options);
@@ -62,10 +69,9 @@ export function PollDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Een vraag stellen</DialogTitle>
+                    <DialogTitle>{t('dialogs.poll.title')}</DialogTitle>
                     <DialogDescription>
-                        Iedereen in dit kanaal kan stemmen — en ziet wie wat
-                        stemt.
+                        {t('dialogs.poll.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -86,20 +92,26 @@ export function PollDialog({
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-2">
-                                <Label htmlFor="poll_question">Vraag</Label>
+                                <Label htmlFor="poll_question">
+                                    {t('dialogs.poll.question_label')}
+                                </Label>
                                 <Input
                                     id="poll_question"
                                     name="question"
                                     required
                                     autoFocus
                                     maxLength={200}
-                                    placeholder="Wanneer doen we de retro?"
+                                    placeholder={t(
+                                        'dialogs.poll.question_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.question} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="poll_options">Antwoorden</Label>
+                                <Label htmlFor="poll_options">
+                                    {t('dialogs.poll.options_label')}
+                                </Label>
                                 <textarea
                                     id="poll_options"
                                     rows={4}
@@ -107,7 +119,9 @@ export function PollDialog({
                                     onChange={(event) =>
                                         setOptions(event.target.value)
                                     }
-                                    placeholder={'Dinsdag\nWoensdag'}
+                                    placeholder={t(
+                                        'dialogs.poll.options_placeholder',
+                                    )}
                                     className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                                 />
                                 {parsed.map((label, index) => (
@@ -119,7 +133,7 @@ export function PollDialog({
                                     />
                                 ))}
                                 <p className="text-xs text-muted-foreground">
-                                    Eén per regel, minstens twee.
+                                    {t('dialogs.poll.options_hint')}
                                 </p>
                                 <InputError
                                     message={
@@ -130,7 +144,7 @@ export function PollDialog({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="poll_closes">
-                                    Open gedurende
+                                    {t('dialogs.poll.duration_label')}
                                 </Label>
                                 <select
                                     id="poll_closes"
@@ -140,10 +154,10 @@ export function PollDialog({
                                 >
                                     {DURATIONS.map((option) => (
                                         <option
-                                            key={option.label}
+                                            key={option.key}
                                             value={option.value}
                                         >
-                                            {option.label}
+                                            {t(option.key)}
                                         </option>
                                     ))}
                                 </select>
@@ -162,7 +176,7 @@ export function PollDialog({
                                     name="allows_multiple"
                                     value="1"
                                 />
-                                Meerdere antwoorden mogen
+                                {t('dialogs.poll.allows_multiple')}
                             </label>
 
                             <DialogFooter>
@@ -172,7 +186,7 @@ export function PollDialog({
                                 >
                                     {processing && <Spinner />}
                                     <BarChart3 className="size-4" />
-                                    Vraag plaatsen
+                                    {t('dialogs.poll.submit')}
                                 </Button>
                             </DialogFooter>
                         </>

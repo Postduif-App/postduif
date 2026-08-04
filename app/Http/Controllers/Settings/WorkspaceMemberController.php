@@ -119,11 +119,16 @@ class WorkspaceMemberController extends Controller
             ? $restrictChannelAccess->handle($workspace, $user)
             : 0;
 
-        return back()->with('status', $user->name.' is nu '.mb_strtolower($role->getLabel()).'.'.match (true) {
-            $dropped === 0 => '',
-            $dropped === 1 => ' Eén openbaar kanaal is daarbij losgekoppeld.',
-            default => " {$dropped} openbare kanalen zijn daarbij losgekoppeld.",
-        });
+        /*
+         * One sentence per branch, chosen by how many channels went. Built by
+         * hand this was a role sentence with a second one glued on, which is
+         * still followable in Dutch and not buildable at all in a language that
+         * puts the parts in another order.
+         */
+        return back()->with('status', trans_choice('flashes.member.role_changed', $dropped, [
+            'name' => $user->name,
+            'role' => mb_strtolower($role->getLabel()),
+        ]));
     }
 
     public function destroy(
@@ -137,7 +142,7 @@ class WorkspaceMemberController extends Controller
 
         $removeMember->handle($workspace, $user);
 
-        return back()->with('status', $user->name.' is uit de workspace verwijderd.');
+        return back()->with('status', __('flashes.member.removed', ['name' => $user->name]));
     }
 
     /**
@@ -168,8 +173,8 @@ class WorkspaceMemberController extends Controller
             ->handle($workspace, $user, $validated['channel_ids'] ?? []);
 
         return back()->with('status', $added === 0 && $removed === 0
-            ? 'Er is niets veranderd aan de kanalen van '.$user->name.'.'
-            : 'De kanalen van '.$user->name.' zijn bijgewerkt.');
+            ? __('flashes.member.channels_unchanged', ['name' => $user->name])
+            : __('flashes.member.channels_updated', ['name' => $user->name]));
     }
 
     /**
@@ -219,7 +224,7 @@ class WorkspaceMemberController extends Controller
 
         if ($owners <= 1) {
             throw ValidationException::withMessages([
-                'role' => 'Er moet altijd minstens één eigenaar zijn. Wijs eerst iemand anders aan.',
+                'role' => __('requests.member.last_owner'),
             ]);
         }
     }

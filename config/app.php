@@ -78,7 +78,14 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    /*
+     * Dutch, because that is what this application is written in. It only
+     * decides what happens where nobody asked: a queued job, a scheduled
+     * command, a notification going out at three in the morning. Every actual
+     * request goes through HandleLocale, which asks the member and then their
+     * browser first.
+     */
+    'locale' => env('APP_LOCALE', 'nl'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 

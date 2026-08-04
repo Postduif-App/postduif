@@ -18,6 +18,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRecentEmoji } from '@/hooks/use-recent-emoji';
+import { useTranslate } from '@/hooks/use-translate';
 import { EMOJI_GROUPS, QUICK_EMOJI } from '@/lib/emoji';
 
 /** How many emoji the quick row holds before you have to go searching. */
@@ -37,14 +38,15 @@ const QUICK_SLOTS = 8;
  */
 export function ReactionPicker({
     onSelect,
-    label = 'Reageer met een emoji',
+    label: given,
     triggerClassName,
 }: {
     onSelect: (emoji: string) => void;
     /**
      * What the trigger says it does. Reacting is not the only use: the composer
      * opens the same picker to write one into a message, and "reageer met"
-     * would be a lie there.
+     * would be a lie there. Left out, it says so itself — which a default
+     * parameter cannot do, because the wording comes from a hook.
      */
     label?: string;
     /**
@@ -54,8 +56,11 @@ export function ReactionPicker({
      */
     triggerClassName?: string;
 }) {
+    const { t } = useTranslate();
     const [browsing, setBrowsing] = useState(false);
     const [recent, remember] = useRecentEmoji();
+
+    const label = given ?? t('chat_ui.reactions.pick');
 
     // What you last used, topped up with the defaults so the row is never thin.
     const quick = [
@@ -99,8 +104,8 @@ export function ReactionPicker({
 
                     <DropdownMenuItem
                         onSelect={() => setBrowsing(true)}
-                        aria-label="Zoek een andere emoji"
-                        title="Zoek een andere emoji"
+                        aria-label={t('chat_ui.reactions.search')}
+                        title={t('chat_ui.reactions.search')}
                         className="justify-center p-1.5"
                     >
                         <Search className="size-3.5" />
@@ -117,12 +122,16 @@ export function ReactionPicker({
                 <CommandDialog
                     open
                     onOpenChange={setBrowsing}
-                    title="Emoji kiezen"
-                    description="Zoek een emoji"
+                    title={t('chat_ui.reactions.dialog_title')}
+                    description={t('chat_ui.reactions.dialog_description')}
                 >
-                    <CommandInput placeholder="Zoek een emoji…" />
+                    <CommandInput
+                        placeholder={t('chat_ui.reactions.placeholder')}
+                    />
                     <CommandList>
-                        <CommandEmpty>Geen emoji gevonden.</CommandEmpty>
+                        <CommandEmpty>
+                            {t('chat_ui.reactions.none')}
+                        </CommandEmpty>
 
                         {EMOJI_GROUPS.map((group) => (
                             <CommandGroup

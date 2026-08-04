@@ -1,7 +1,11 @@
+import { Link } from '@inertiajs/react';
 import {
     Bookmark,
     Bot,
+    Check,
+    Copy,
     Forward,
+    Link as LinkIcon,
     MessageSquareText,
     Pencil,
     Pin,
@@ -24,6 +28,7 @@ import {
 import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { SecretCard } from '@/components/chat/secret-card';
+import { SentSecretCard } from '@/components/chat/sent-secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
 import {
     AlertDialog,
@@ -41,10 +46,17 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useClipboard } from '@/hooks/use-clipboard';
+import { useConfettiOnView } from '@/hooks/use-confetti-on-view';
+import { useFormats } from '@/hooks/use-formats';
 import { useHoverShortcuts } from '@/hooks/use-hover-shortcuts';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
+import { isCelebration } from '@/lib/confetti';
 import { isEmojiOnly } from '@/lib/emoji-only';
 import { cn } from '@/lib/utils';
+import { show } from '@/routes/chat';
+import { show as memberProfile } from '@/routes/chat/members';
 import type {
     ChannelMember,
     ChannelSummary,
@@ -55,12 +67,6 @@ import type {
     MessageSender,
     QuotedMessage,
 } from '@/types/chat';
-
-const DAY_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'full' });
-const TIME_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    hour: '2-digit',
-    minute: '2-digit',
-});
 
 /**
  * Two messages group under one avatar when the same person posts again within
@@ -95,10 +101,6 @@ function shouldGroup(
     return gap < GROUPING_WINDOW_MS;
 }
 
-const NAME_LIST_FORMAT = new Intl.ListFormat('nl-NL', {
-    type: 'conjunction',
-});
-
 /**
  * "Jij en Anna reageerden met 👍".
  *
@@ -111,27 +113,37 @@ function reactionLabel(
     reaction: MessageReaction,
     members: ChannelMember[],
     currentUserId: number,
+    // Handed in rather than looked up: this is a plain function, and a hook
+    // cannot be called from one. Passing them keeps it testable too.
+    t: ReturnType<typeof useTranslate>['t'],
+    tChoice: ReturnType<typeof useTranslate>['tChoice'],
+    names: Intl.ListFormat,
 ): string {
     const named = reaction.userIds
         .filter((id) => id !== currentUserId)
         .map((id) => members.find((member) => member.id === id)?.name)
         .filter((name): name is string => name !== undefined);
 
-    const names = reaction.userIds.includes(currentUserId)
-        ? ['Jij', ...named]
+    const namesList = reaction.userIds.includes(currentUserId)
+        ? [t('messages.reaction_you'), ...named]
         : named;
 
-    const unnamed = reaction.userIds.length - names.length;
+    const unnamed = reaction.userIds.length - namesList.length;
 
     if (unnamed > 0) {
-        names.push(unnamed === 1 ? 'iemand anders' : `${unnamed} anderen`);
+        namesList.push(
+            unnamed === 1
+                ? t('messages.reaction_someone')
+                : t('messages.reaction_others', { count: unnamed }),
+        );
     }
 
     // Agreement follows the number of reactors, not the number of list items:
     // "3 anderen" is one item but still takes the plural.
-    return `${NAME_LIST_FORMAT.format(names)} ${
-        reaction.userIds.length === 1 ? 'reageerde' : 'reageerden'
-    } met ${reaction.emoji}`;
+    return tChoice('messages.reaction', reaction.userIds.length, {
+        names: names.format(namesList),
+        emoji: reaction.emoji,
+    });
 }
 
 function dayKey(iso: string | null): string {
@@ -139,6 +151,8 @@ function dayKey(iso: string | null): string {
 }
 
 function DayDivider({ iso }: { iso: string | null }) {
+    const formats = useFormats();
+
     if (!iso) {
         return null;
     }
@@ -147,7 +161,7 @@ function DayDivider({ iso }: { iso: string | null }) {
         <div className="my-4 flex items-center gap-3">
             <span className="h-px flex-1 bg-border" />
             <span className="rounded-full border bg-background px-3 py-0.5 text-xs font-medium text-muted-foreground">
-                {DAY_FORMAT.format(new Date(iso))}
+                {formats.day.format(new Date(iso))}
             </span>
             <span className="h-px flex-1 bg-border" />
         </div>
@@ -189,6 +203,8 @@ export function jumpToMessage(id: string): boolean {
  * the channel read twice as long as it is.
  */
 function QuoteBlock({ quoted }: { quoted: QuotedMessage }) {
+    const { t } = useTranslate();
+
     return (
         <button
             type="button"
@@ -200,7 +216,7 @@ function QuoteBlock({ quoted }: { quoted: QuotedMessage }) {
             </span>
             <span className="line-clamp-2 min-w-0 flex-1">
                 {quoted.deleted ? (
-                    <span className="italic">Dit bericht is verwijderd</span>
+                    <span className="italic">{t('messages.deleted')}</span>
                 ) : (
                     quoted.snippet
                 )}
@@ -227,6 +243,8 @@ function MessageEditor({
     onSave: (body: string) => void;
     onCancel: () => void;
 }) {
+    const { t } = useTranslate();
+
     const [draft, setDraft] = useState(body);
     const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -286,7 +304,7 @@ function MessageEditor({
                     onClick={save}
                     className="font-medium text-primary hover:underline"
                 >
-                    Opslaan
+                    {t('messages.editor.save')}
                 </button>
                 {' · '}
                 <button
@@ -294,11 +312,11 @@ function MessageEditor({
                     onClick={onCancel}
                     className="hover:underline"
                 >
-                    Annuleren
+                    {t('messages.editor.cancel')}
                 </button>
                 {' · '}
                 <kbd className="rounded bg-muted px-1 font-mono">Esc</kbd>{' '}
-                annuleert
+                {t('messages.editor.escape_hint')}
             </p>
         </div>
     );
@@ -324,6 +342,9 @@ export function MessageReactions({
     /** Omitted where reacting is not allowed, which also disables the pills. */
     onReact?: (message: ChatMessage, emoji: string) => void;
 }) {
+    const { t, tChoice } = useTranslate();
+    const formats = useFormats();
+
     if (message.reactions.length === 0) {
         return null;
     }
@@ -359,7 +380,14 @@ export function MessageReactions({
                             </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            {reactionLabel(reaction, members, currentUserId)}
+                            {reactionLabel(
+                                reaction,
+                                members,
+                                currentUserId,
+                                t,
+                                tChoice,
+                                formats.names,
+                            )}
                             {onReact && (
                                 <span className="text-muted-foreground">
                                     {reacted
@@ -379,6 +407,7 @@ function MessageRow({
     message,
     grouped,
     workspace,
+    channelId,
     members,
     channels,
     ticketChannelId,
@@ -398,6 +427,8 @@ function MessageRow({
 }: {
     message: ChatMessage;
     grouped: boolean;
+    /** Which conversation this row is in, so a link to it can be built. */
+    channelId: number;
     workspace: ChatWorkspace;
     members: ChannelMember[];
     channels: ChannelSummary[];
@@ -432,6 +463,9 @@ function MessageRow({
     /** Carrying it into another conversation. Absent where there is nowhere to. */
     onForward?: (message: ChatMessage) => void;
 }) {
+    const { t } = useTranslate();
+    const formats = useFormats();
+
     const getInitials = useInitials();
     const [confirming, setConfirming] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -445,6 +479,25 @@ function MessageRow({
     const status = members.find((member) => member.id === message.author.id);
 
     const deleted = message.deletedAt !== null;
+
+    const [copied, copy] = useClipboard();
+
+    /*
+     * Null for a webhook, and narrowed here rather than at the link: a bot's id
+     * is null, so checking isBot tells the type checker nothing about the id it
+     * would have to pass.
+     */
+    const authorId = message.author.isBot ? null : message.author.id;
+
+    /*
+     * Absolute, because the point of copying it is to paste it somewhere this
+     * app is not — a mail, another chat. A path alone would arrive as text
+     * nobody can click.
+     */
+    const permalink = `${window.location.origin}${show.url({
+        workspace: workspace.slug,
+        channel: channelId,
+    })}#message-${message.id}`;
     // Your own words are yours; a tombstone has nothing left to remove.
     const canDelete =
         onDelete !== undefined &&
@@ -476,8 +529,19 @@ function MessageRow({
         d: canDelete ? () => setConfirming(true) : undefined,
     });
 
+    /**
+     * Een bericht dat alleen uit 🎉 bestaat is een felicitatie, en die wordt
+     * gevierd zodra je hem leest — niet zodra hij binnenkomt. Wie een uur later
+     * terugkomt in het kanaal krijgt het feest alsnog, en wie er nooit langs
+     * scrollt krijgt het niet.
+     */
+    const confettiRef = useConfettiOnView<HTMLDivElement>(
+        !deleted && isCelebration(message.body),
+    );
+
     return (
         <div
+            ref={confettiRef}
             // The anchor a quote block scrolls to.
             id={`message-${message.id}`}
             onMouseEnter={() => setHovered(true)}
@@ -491,11 +555,20 @@ function MessageRow({
             {grouped ? (
                 <span className="w-9 shrink-0 pt-0.5 text-right text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100">
                     {message.createdAt
-                        ? TIME_FORMAT.format(new Date(message.createdAt))
+                        ? formats.time.format(new Date(message.createdAt))
                         : ''}
                 </span>
             ) : (
-                <div className="relative mt-0.5 shrink-0">
+                /*
+                 * self-start is what keeps the availability dot on the face.
+                 * The row is a flex container with no alignment of its own, so
+                 * a flex item stretches to the row's full height — and on a
+                 * message of several lines that box is far taller than the
+                 * avatar inside it. The dot is positioned against that box, so
+                 * without this it drifts further down the longer the message
+                 * gets, which is exactly what it was doing.
+                 */
+                <div className="relative mt-0.5 shrink-0 self-start">
                     <Avatar className="size-9 rounded-md">
                         {/*
                             The image sits above the fallback rather than
@@ -546,19 +619,40 @@ function MessageRow({
                     <p className="mb-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Pin className="size-3" aria-hidden />
                         {message.pinnedBy
-                            ? `Vastgepind door ${message.pinnedBy}`
-                            : 'Vastgepind'}
+                            ? t('messages.pinned_by', {
+                                  name: message.pinnedBy,
+                              })
+                            : t('messages.pinned')}
                     </p>
                 )}
 
                 {!grouped && (
                     <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-semibold">
-                            {message.author.name}
-                        </span>
+                        {/*
+                            A link for a person, plain text for a bot. A webhook
+                            has no page to go to — it carries a name it chose
+                            for itself and no member behind it — and a name that
+                            looks clickable and is not is worse than one that
+                            never offered.
+                        */}
+                        {authorId === null ? (
+                            <span className="text-sm font-semibold">
+                                {message.author.name}
+                            </span>
+                        ) : (
+                            <Link
+                                href={memberProfile({
+                                    workspace: workspace.slug,
+                                    member: authorId,
+                                })}
+                                className="text-sm font-semibold hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                {message.author.name}
+                            </Link>
+                        )}
                         {message.author.isBot && (
                             <span className="rounded-sm bg-muted px-1 py-px text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                                Bot
+                                {t('messages.bot')}
                             </span>
                         )}
                         {message.author.isGuest && <GuestBadge />}
@@ -570,7 +664,7 @@ function MessageRow({
                         )}
                         <span className="text-xs text-muted-foreground">
                             {message.createdAt
-                                ? TIME_FORMAT.format(
+                                ? formats.time.format(
                                       new Date(message.createdAt),
                                   )
                                 : ''}
@@ -581,7 +675,7 @@ function MessageRow({
                 {message.forwardedFrom && !deleted && (
                     <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Forward className="size-3" />
-                        Doorgestuurd — oorspronkelijk van{' '}
+                        {t('messages.forwarded_from')}{' '}
                         <span className="font-medium text-foreground/70">
                             {message.forwardedFrom}
                         </span>
@@ -594,7 +688,7 @@ function MessageRow({
 
                 {deleted ? (
                     <p className="text-sm text-muted-foreground italic">
-                        Dit bericht is verwijderd
+                        {t('messages.deleted')}
                     </p>
                 ) : editing ? (
                     <MessageEditor
@@ -632,7 +726,7 @@ function MessageRow({
                         />
                         {message.editedAt && (
                             <span className="ml-1 text-xs text-muted-foreground">
-                                (bewerkt)
+                                ({t('messages.edited')})
                             </span>
                         )}
                     </p>
@@ -658,6 +752,14 @@ function MessageRow({
                 {!deleted && message.pollCard && (
                     <PollCard
                         card={message.pollCard}
+                        workspaceSlug={workspace.slug}
+                        currentUserId={currentUserId}
+                    />
+                )}
+
+                {!deleted && message.sentSecretCard && (
+                    <SentSecretCard
+                        card={message.sentSecretCard}
                         workspaceSlug={workspace.slug}
                         currentUserId={currentUserId}
                     />
@@ -697,192 +799,224 @@ function MessageRow({
                 )}
             </div>
 
-            {!message.pending &&
-                !deleted &&
-                (onReact ||
-                    onOpenThread ||
-                    onQuote ||
-                    onPromote ||
-                    onPin ||
-                    canEdit) && (
-                    <MessageToolbar>
-                        {onReact && (
-                            <ReactionPicker
-                                onSelect={(emoji) => {
-                                    // Picking an emoji means "add this one". Only a
-                                    // click on the pill itself takes one away, so
-                                    // reaching for 👍 twice can't quietly undo it.
-                                    const mine = message.reactions.some(
-                                        (reaction) =>
-                                            reaction.emoji === emoji &&
-                                            reaction.userIds.includes(
-                                                currentUserId,
-                                            ),
-                                    );
+            {/*
+                No condition beyond the message being real: copying is offered
+                on every message, so the toolbar always has something in it.
+            */}
+            {!message.pending && !deleted && (
+                <MessageToolbar>
+                    {onReact && (
+                        <ReactionPicker
+                            onSelect={(emoji) => {
+                                // Picking an emoji means "add this one". Only a
+                                // click on the pill itself takes one away, so
+                                // reaching for 👍 twice can't quietly undo it.
+                                const mine = message.reactions.some(
+                                    (reaction) =>
+                                        reaction.emoji === emoji &&
+                                        reaction.userIds.includes(
+                                            currentUserId,
+                                        ),
+                                );
 
-                                    if (!mine) {
-                                        onReact(message, emoji);
-                                    }
-                                }}
+                                if (!mine) {
+                                    onReact(message, emoji);
+                                }
+                            }}
+                        />
+                    )}
+
+                    {/*
+                            Two ways to take a message with you. The text is for
+                            pasting it somewhere else; the link is for pointing
+                            a colleague at it, and it lands on the message
+                            rather than at the bottom of the channel — the same
+                            anchor the inbox uses.
+                        */}
+                    <button
+                        type="button"
+                        onClick={() => void copy(message.body)}
+                        title={t('messages.actions.copy_text')}
+                        aria-label={t('messages.actions.copy_text')}
+                        className={messageToolbarButton()}
+                    >
+                        {copied === message.body ? (
+                            <Check className="size-3.5" />
+                        ) : (
+                            <Copy className="size-3.5" />
+                        )}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => void copy(permalink)}
+                        title={t('messages.actions.copy_link')}
+                        aria-label={t('messages.actions.copy_link')}
+                        className={messageToolbarButton()}
+                    >
+                        {copied === permalink ? (
+                            <Check className="size-3.5" />
+                        ) : (
+                            <LinkIcon className="size-3.5" />
+                        )}
+                    </button>
+
+                    {onQuote && (
+                        <button
+                            type="button"
+                            onClick={() => onQuote(message)}
+                            title={t('messages.actions.quote_key')}
+                            aria-label={t('messages.actions.quote')}
+                            className={messageToolbarButton()}
+                        >
+                            <Quote className="size-3.5" />
+                        </button>
+                    )}
+
+                    {onPromote && (
+                        <button
+                            type="button"
+                            onClick={() => onPromote(message)}
+                            title={t('messages.actions.ticket')}
+                            aria-label={t('messages.actions.ticket')}
+                            className={messageToolbarButton()}
+                        >
+                            <TicketIcon className="size-3.5" />
+                        </button>
+                    )}
+
+                    {onForward && !message.pending && !deleted && (
+                        <button
+                            type="button"
+                            onClick={() => onForward(message)}
+                            title={t('messages.actions.forward')}
+                            aria-label={t('messages.actions.forward')}
+                            className={messageToolbarButton()}
+                        >
+                            <Forward className="size-3.5" />
+                        </button>
+                    )}
+
+                    {onToggleBookmark && !message.pending && (
+                        <button
+                            type="button"
+                            onClick={() =>
+                                onToggleBookmark(message, bookmarked)
+                            }
+                            title={
+                                bookmarked
+                                    ? t('messages.actions.unsave')
+                                    : t('messages.actions.save')
+                            }
+                            aria-label={
+                                bookmarked
+                                    ? t('messages.actions.unsave')
+                                    : t('messages.actions.save')
+                            }
+                            aria-pressed={bookmarked}
+                            className={messageToolbarButton(
+                                bookmarked
+                                    ? 'text-amber-500 hover:text-amber-600'
+                                    : undefined,
+                            )}
+                        >
+                            <Bookmark
+                                className={cn(
+                                    'size-3.5',
+                                    bookmarked && 'fill-current',
+                                )}
                             />
-                        )}
+                        </button>
+                    )}
 
-                        {onQuote && (
-                            <button
-                                type="button"
-                                onClick={() => onQuote(message)}
-                                title="Citeren (R)"
-                                aria-label="Citeren"
-                                className={messageToolbarButton()}
-                            >
-                                <Quote className="size-3.5" />
-                            </button>
-                        )}
+                    {onPin && (
+                        <button
+                            type="button"
+                            onClick={() => onPin(message)}
+                            title={
+                                message.pinnedAt
+                                    ? t('messages.actions.unpin')
+                                    : t('messages.actions.pin')
+                            }
+                            aria-label={
+                                message.pinnedAt
+                                    ? t('messages.actions.unpin')
+                                    : t('messages.actions.pin')
+                            }
+                            aria-pressed={message.pinnedAt !== null}
+                            className={messageToolbarButton(
+                                message.pinnedAt ? 'text-primary' : undefined,
+                            )}
+                        >
+                            {message.pinnedAt ? (
+                                <PinOff className="size-3.5" />
+                            ) : (
+                                <Pin className="size-3.5" />
+                            )}
+                        </button>
+                    )}
 
-                        {onPromote && (
-                            <button
-                                type="button"
-                                onClick={() => onPromote(message)}
-                                title="Ticket van dit bericht"
-                                aria-label="Ticket van dit bericht"
-                                className={messageToolbarButton()}
-                            >
-                                <TicketIcon className="size-3.5" />
-                            </button>
-                        )}
+                    {canEdit && (
+                        <button
+                            type="button"
+                            onClick={() => setEditing(true)}
+                            title={t('messages.actions.edit_key')}
+                            aria-label={t('messages.actions.edit')}
+                            className={messageToolbarButton()}
+                        >
+                            <Pencil className="size-3.5" />
+                        </button>
+                    )}
 
-                        {onForward && !message.pending && !deleted && (
-                            <button
-                                type="button"
-                                onClick={() => onForward(message)}
-                                title="Doorsturen naar een ander kanaal"
-                                aria-label="Doorsturen naar een ander kanaal"
-                                className={messageToolbarButton()}
-                            >
-                                <Forward className="size-3.5" />
-                            </button>
-                        )}
+                    {onOpenThread && (
+                        <button
+                            type="button"
+                            onClick={() => onOpenThread(message)}
+                            title={t('messages.actions.reply_key')}
+                            aria-label={t('messages.actions.reply')}
+                            className={messageToolbarButton()}
+                        >
+                            <MessageSquareText className="size-3.5" />
+                        </button>
+                    )}
 
-                        {onToggleBookmark && !message.pending && (
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    onToggleBookmark(message, bookmarked)
-                                }
-                                title={
-                                    bookmarked
-                                        ? 'Niet meer bewaren'
-                                        : 'Bewaren voor later'
-                                }
-                                aria-label={
-                                    bookmarked
-                                        ? 'Niet meer bewaren'
-                                        : 'Bewaren voor later'
-                                }
-                                aria-pressed={bookmarked}
-                                className={messageToolbarButton(
-                                    bookmarked
-                                        ? 'text-amber-500 hover:text-amber-600'
-                                        : undefined,
-                                )}
-                            >
-                                <Bookmark
-                                    className={cn(
-                                        'size-3.5',
-                                        bookmarked && 'fill-current',
-                                    )}
-                                />
-                            </button>
-                        )}
-
-                        {onPin && (
-                            <button
-                                type="button"
-                                onClick={() => onPin(message)}
-                                title={
-                                    message.pinnedAt
-                                        ? 'Losmaken'
-                                        : 'Vastpinnen in dit kanaal'
-                                }
-                                aria-label={
-                                    message.pinnedAt
-                                        ? 'Losmaken'
-                                        : 'Vastpinnen in dit kanaal'
-                                }
-                                aria-pressed={message.pinnedAt !== null}
-                                className={messageToolbarButton(
-                                    message.pinnedAt
-                                        ? 'text-primary'
-                                        : undefined,
-                                )}
-                            >
-                                {message.pinnedAt ? (
-                                    <PinOff className="size-3.5" />
-                                ) : (
-                                    <Pin className="size-3.5" />
-                                )}
-                            </button>
-                        )}
-
-                        {canEdit && (
-                            <button
-                                type="button"
-                                onClick={() => setEditing(true)}
-                                title="Bericht bewerken (E)"
-                                aria-label="Bericht bewerken"
-                                className={messageToolbarButton()}
-                            >
-                                <Pencil className="size-3.5" />
-                            </button>
-                        )}
-
-                        {onOpenThread && (
-                            <button
-                                type="button"
-                                onClick={() => onOpenThread(message)}
-                                title="Antwoord in thread (T)"
-                                aria-label="Antwoord in thread"
-                                className={messageToolbarButton()}
-                            >
-                                <MessageSquareText className="size-3.5" />
-                            </button>
-                        )}
-
-                        {canDelete && (
-                            <button
-                                type="button"
-                                onClick={() => setConfirming(true)}
-                                title="Bericht verwijderen (D)"
-                                aria-label="Bericht verwijderen"
-                                className={messageToolbarButton(
-                                    'hover:text-destructive',
-                                )}
-                            >
-                                <Trash2 className="size-3.5" />
-                            </button>
-                        )}
-                    </MessageToolbar>
-                )}
+                    {canDelete && (
+                        <button
+                            type="button"
+                            onClick={() => setConfirming(true)}
+                            title={t('messages.actions.delete_key')}
+                            aria-label={t('messages.actions.delete')}
+                            className={messageToolbarButton(
+                                'hover:text-destructive',
+                            )}
+                        >
+                            <Trash2 className="size-3.5" />
+                        </button>
+                    )}
+                </MessageToolbar>
+            )}
 
             {confirming && (
                 <AlertDialog open onOpenChange={setConfirming}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>
-                                Dit bericht verwijderen?
+                                {t('messages.delete.question')}
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                                 {message.replyCount > 0
-                                    ? 'De antwoorden in de thread blijven staan; op deze plek komt "Dit bericht is verwijderd".'
-                                    : 'Het bericht verdwijnt voor iedereen in dit kanaal. Je kunt dit niet terugdraaien.'}
+                                    ? t('messages.delete.with_replies')
+                                    : t('messages.delete.for_everyone')}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogCancel>
+                                {t('messages.delete.cancel')}
+                            </AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={() => onDelete?.(message)}
                             >
-                                Verwijderen
+                                {t('messages.delete.confirm')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -895,6 +1029,7 @@ function MessageRow({
 export function MessageList({
     messages,
     workspace,
+    channelId,
     members,
     channels,
     ticketChannelId = null,
@@ -914,6 +1049,8 @@ export function MessageList({
 }: {
     messages: ChatMessage[];
     workspace: ChatWorkspace;
+    /** Which conversation these rows are in, so a link to one can be built. */
+    channelId: number;
     members: ChannelMember[];
     channels: ChannelSummary[];
     /**
@@ -946,6 +1083,7 @@ export function MessageList({
     onPin?: (message: ChatMessage) => void;
 }) {
     const bottomRef = useRef<HTMLDivElement>(null);
+    const { t } = useTranslate();
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ block: 'end' });
@@ -955,7 +1093,7 @@ export function MessageList({
         return (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <MessageSquareText className="size-8 opacity-40" />
-                Nog geen berichten. Begin het gesprek.
+                {t('messages.empty')}
             </div>
         );
     }
@@ -979,6 +1117,7 @@ export function MessageList({
                             {newDay && <DayDivider iso={message.createdAt} />}
                             <MessageRow
                                 message={message}
+                                channelId={channelId}
                                 grouped={
                                     !newDay && shouldGroup(message, previous)
                                 }

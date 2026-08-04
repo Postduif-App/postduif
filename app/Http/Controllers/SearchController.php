@@ -27,11 +27,47 @@ class SearchController extends Controller
 
         abort_unless($workspace->hasMember($user), 403);
 
+        /*
+         * The channel arrives as its own parameter rather than inside the
+         * query. What somebody typed — "in:algemeen" — is a convenience the
+         * field offers them, not a protocol: the frontend takes it apart and
+         * says plainly which channel it means, so nothing here has to parse
+         * user text into an authorisation decision.
+         *
+         * Looked up by name within this workspace, and left null when it does
+         * not resolve. SearchMessages already ignores a channel the member
+         * cannot read, so an invented name searches everything they may see
+         * rather than refusing.
+         */
+        $channel = $request->filled('in')
+            ? $workspace->channels()
+                ->whereRaw('lower(name) = ?', [mb_strtolower($request->string('in')->value())])
+                ->first()
+            : null;
+
+        /*
+         * The author, by handle, and only among members of this workspace.
+         * Unlike the channel, a name that resolves to nobody stops the search:
+         * "from:fena" turning into everything Fenna's colleagues wrote is a
+         * worse answer than nothing, because it looks like a result.
+         */
+        $from = $request->filled('from')
+            ? $workspace->members()
+                ->whereRaw('lower(username) = ?', [mb_strtolower($request->string('from')->value())])
+                ->first()
+            : null;
+
+        if ($request->filled('from') && $from === null) {
+            return response()->json(['results' => []]);
+        }
+
         return response()->json([
             'results' => $this->searchMessages->handle(
                 $workspace,
                 $user,
                 $request->string('q')->value(),
+                $channel,
+                $from,
             ),
         ]);
     }

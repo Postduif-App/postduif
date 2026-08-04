@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\AuthenticateMcpToken;
+use App\Http\Middleware\AuthenticateApiToken;
 use App\Mcp\Servers\ChatServer;
 use Laravel\Mcp\Facades\Mcp;
 
@@ -13,4 +13,4 @@ use Laravel\Mcp\Facades\Mcp;
  * messages before anybody noticed.
  */
 Mcp::web('/mcp/chat', ChatServer::class)
-    ->middleware([AuthenticateMcpToken::class, 'throttle:60,1']);
+    ->middleware([AuthenticateApiToken::class, 'throttle:60,1']);

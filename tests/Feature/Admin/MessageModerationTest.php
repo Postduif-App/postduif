@@ -1,11 +1,12 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Enums\InboxItemType;
 use App\Events\MessageDeleted;
 use App\Filament\Resources\Messages\MessageResource;
 use App\Filament\Resources\Messages\Pages\ListMessages;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -71,7 +72,8 @@ test('it deletes a message through the chat action so the channel hears about it
     Event::fake([MessageDeleted::class]);
 
     $message = moderatedMessage();
-    Mention::create([
+    InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => $message->id,
         'user_id' => User::factory()->create()->id,
         'channel_id' => $message->channel_id,
@@ -81,7 +83,7 @@ test('it deletes a message through the chat action so the channel hears about it
         ->callAction(TestAction::make(DeleteAction::class)->table($message));
 
     expect($message->fresh()->deleted_at)->not->toBeNull()
-        ->and(Mention::where('message_id', $message->id)->exists())->toBeFalse();
+        ->and(InboxItem::where('message_id', $message->id)->exists())->toBeFalse();
 
     Event::assertDispatched(MessageDeleted::class);
 });

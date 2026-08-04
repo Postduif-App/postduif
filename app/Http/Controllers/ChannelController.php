@@ -7,6 +7,7 @@ use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\ChannelType;
+use App\Events\ChannelMemberJoined;
 use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Models\Channel;
@@ -104,7 +105,7 @@ class ChannelController extends Controller
             ] : [],
         ]);
 
-        return back()->with('status', 'Kanaalinstellingen opgeslagen.');
+        return back()->with('status', __('flashes.channel.saved'));
     }
 
     /**
@@ -133,7 +134,7 @@ class ChannelController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => '#'.$name.' is verwijderd.',
+            'message' => __('flashes.channel.deleted', ['name' => $name]),
         ]);
 
         /*
@@ -167,9 +168,10 @@ class ChannelController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => $archiving
-                ? '#'.$channel->name.' is gearchiveerd.'
-                : '#'.$channel->name.' is weer open.',
+            'message' => __(
+                $archiving ? 'flashes.channel.archived' : 'flashes.channel.reopened',
+                ['name' => $channel->name],
+            ),
         ]);
 
         /*
@@ -191,9 +193,21 @@ class ChannelController extends Controller
         abort_unless($channel->workspace_id === $workspace->id, 404);
         $this->authorize('join', $channel);
 
+        $already = $channel->members()->whereKey($request->user()->id)->exists();
+
         $channel->members()->syncWithoutDetaching([
             $request->user()->id => ['joined_at' => now()],
         ]);
+
+        /*
+         * Only when it is actually an arrival. syncWithoutDetaching is happy to
+         * be called for somebody who is already in, and a welcome message every
+         * time they press a button they have already pressed is the reason this
+         * is asked first.
+         */
+        if (! $already) {
+            ChannelMemberJoined::dispatch($channel, $request->user());
+        }
 
         return back();
     }

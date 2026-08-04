@@ -150,6 +150,6 @@ class WorkspacePermissionController extends Controller
                 : [],
         ]);
 
-        return back()->with('status', 'Rechten opgeslagen.');
+        return back()->with('status', __('flashes.settings.permissions_saved'));
     }
 }

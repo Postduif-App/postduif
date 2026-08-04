@@ -5,7 +5,7 @@ use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelType;
 use App\Enums\WorkspaceRole;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -335,7 +335,7 @@ it('keeps a broadcast mention by a guest inside their own channel', function () 
 
     $message = app(SendMessage::class)->handle($invited, $guest, 'Even iedereen: @everyone');
 
-    expect(Mention::where('message_id', $message->id)->pluck('user_id')->all())
+    expect(InboxItem::where('message_id', $message->id)->pluck('user_id')->all())
         ->toBe([$roommate->id]);
 });
 
@@ -350,7 +350,7 @@ it('cannot address somebody outside the channel by name', function () {
 
     $message = app(SendMessage::class)->handle($invited, $guest, 'Vraagje @stranger');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0);
 });
 
 it('still lets a regular member see, join and create public channels', function () {

@@ -11,20 +11,15 @@ import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dia
 import { PollDialog } from '@/components/chat/poll-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
 import { SecretRequestDialog } from '@/components/chat/secret-request-dialog';
+import { SendSecretDialog } from '@/components/chat/send-secret-dialog';
 import { TransferDialog } from '@/components/chat/transfer-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { UserMenuContent } from '@/components/user-menu-content';
+import { UserMenu } from '@/components/user-menu-content';
 import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
-import { useInitials } from '@/hooks/use-initials';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { useSidebarActivity } from '@/hooks/use-sidebar-activity';
 import { useStatusActivity } from '@/hooks/use-status-activity';
 import { useThreadActivity } from '@/hooks/use-thread-activity';
+import { withFilter } from '@/lib/search-filters';
 import type { Auth } from '@/types';
 import type {
     ActiveChannel,
@@ -36,11 +31,13 @@ import type {
     ChannelView,
     ChatMessage,
     ChatWorkspace,
+    ScheduledBroadcast,
     OpenThread,
     OpenTicket,
     PinnedMessage,
     ScheduledMessage,
     TicketBoard,
+    WorkspaceOption,
 } from '@/types/chat';
 
 interface ChatShowProps {
@@ -65,6 +62,12 @@ interface ChatShowProps {
     archivedChannels: ArchivedChannel[];
     /** The groups this member arranged for themselves. */
     sections: ChannelSectionRow[];
+    /** Unread inbox rows of every kind, counted by the server. */
+    inboxUnread: number;
+    /** Announcements this member has waiting, for the broadcast dialog. */
+    scheduledBroadcasts: ScheduledBroadcast[];
+    /** Every workspace this member belongs to, for the switcher up top. */
+    workspaces: WorkspaceOption[];
     /** Everybody in the workspace, or empty when this member is not shown them. */
     workspaceMembers: ChannelMember[];
     /** Whether the panel was left open, remembered in a cookie. */
@@ -90,14 +93,23 @@ export default function ChatShow({
     workspaceTags,
     archivedChannels,
     sections,
+    inboxUnread,
+    scheduledBroadcasts,
+    workspaces,
     workspaceMembers,
     memberPanelOpen,
     bookmarkedIds,
     scheduled,
 }: ChatShowProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const getInitials = useInitials();
     const [searchOpen, setSearchOpen] = useState(false);
+
+    /*
+     * What the palette starts with when the channel header opens it. Cleared
+     * when it is opened any other way, so ⌘K never inherits a filter from the
+     * last time somebody used the button.
+     */
+    const [searchPrefill, setSearchPrefill] = useState<string | undefined>();
     const [createOpen, setCreateOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
@@ -188,6 +200,7 @@ export default function ChatShow({
      */
     const [sendingFiles, setSendingFiles] = useState(false);
     const [askingSecret, setAskingSecret] = useState(false);
+    const [sendingSecret, setSendingSecret] = useState(false);
     const [askingPoll, setAskingPoll] = useState(false);
 
     /*
@@ -197,38 +210,7 @@ export default function ChatShow({
         name and your status, which is what makes a status worth setting — you
         see your own the whole time.
     */
-    const userMenu = (
-        <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
-                <Avatar className="size-8 shrink-0">
-                    {/*
-                        Above the fallback rather than instead of it: Radix
-                        draws the initials until the picture has loaded, and
-                        keeps them if it never does.
-                    */}
-                    {auth.avatarUrl && (
-                        <AvatarImage src={auth.avatarUrl} alt="" />
-                    )}
-                    <AvatarFallback className="text-xs font-semibold">
-                        {getInitials(auth.user.name)}
-                    </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                        {auth.user.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                        {auth.user.status_text
-                            ? `${auth.user.status_emoji ?? ''} ${auth.user.status_text}`.trim()
-                            : 'Status instellen'}
-                    </span>
-                </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56">
-                <UserMenuContent user={auth.user} />
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+    const userMenu = <UserMenu />;
 
     return (
         <div className="flex h-screen overflow-hidden bg-background">
@@ -236,13 +218,18 @@ export default function ChatShow({
 
             <ChannelSidebar
                 workspace={workspace}
+                inboxUnread={inboxUnread}
+                workspaces={workspaces}
                 channels={withActivity(channels)}
                 directMessages={withActivity(directMessages)}
                 activeThreads={activeThreads}
                 activeChannelId={channel.id}
                 archivedChannels={archivedChannels}
                 sections={sections}
-                onOpenSearch={() => setSearchOpen(true)}
+                onOpenSearch={() => {
+                    setSearchPrefill(undefined);
+                    setSearchOpen(true);
+                }}
                 onCreateChannel={() => setCreateOpen(true)}
                 userMenu={userMenu}
                 onStartDirectMessage={() => setDirectOpen(true)}
@@ -259,6 +246,10 @@ export default function ChatShow({
                 key={channel.id}
                 workspace={workspace}
                 channel={liveChannel}
+                onSearchChannel={() => {
+                    setSearchPrefill(withFilter('', 'in', channel.label));
+                    setSearchOpen(true);
+                }}
                 messages={messages}
                 thread={thread}
                 pins={pins}
@@ -275,6 +266,9 @@ export default function ChatShow({
                 }
                 onAskSecret={
                     workspace.secrets ? () => setAskingSecret(true) : undefined
+                }
+                onSendSecret={
+                    workspace.secrets ? () => setSendingSecret(true) : undefined
                 }
                 onAskPoll={
                     workspace.polls ? () => setAskingPoll(true) : undefined
@@ -305,6 +299,7 @@ export default function ChatShow({
             <BroadcastDialog
                 workspace={workspace}
                 channels={channels}
+                scheduledBroadcasts={scheduledBroadcasts}
                 tags={workspaceTags}
                 open={broadcastOpen}
                 onOpenChange={setBroadcastOpen}
@@ -330,6 +325,18 @@ export default function ChatShow({
                 />
             )}
 
+            {workspace.secrets && (
+                <SendSecretDialog
+                    workspaceSlug={workspace.slug}
+                    channelId={channel.id}
+                    people={channel.members.filter(
+                        (member) => member.id !== auth.user.id,
+                    )}
+                    open={sendingSecret}
+                    onOpenChange={setSendingSecret}
+                />
+            )}
+
             {workspace.polls && (
                 <PollDialog
                     workspaceSlug={workspace.slug}
@@ -340,6 +347,8 @@ export default function ChatShow({
             )}
 
             <SearchDialog
+                prefill={searchPrefill}
+                workspaceMembers={workspaceMembers}
                 workspace={workspace}
                 channels={channels}
                 directMessages={directMessages}
@@ -366,6 +375,9 @@ export default function ChatShow({
                         : undefined,
                     onAskSecret: workspace.secrets
                         ? () => setAskingSecret(true)
+                        : undefined,
+                    onSendSecret: workspace.secrets
+                        ? () => setSendingSecret(true)
                         : undefined,
                     onAskPoll: workspace.polls
                         ? () => setAskingPoll(true)

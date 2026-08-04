@@ -35,9 +35,9 @@ class StoreChannelLinkRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'label.required' => 'Geef de knop een naam.',
-            'url.required' => 'Geef een adres op.',
-            'url.url' => 'Dit moet een adres zijn dat met http:// of https:// begint.',
+            'label.required' => __('requests.channel_link.label_required'),
+            'url.required' => __('requests.channel_link.url_required'),
+            'url.url' => __('requests.channel_link.url_scheme'),
         ];
     }
 }

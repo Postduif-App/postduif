@@ -93,9 +93,9 @@ class StoreMessageRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'parent_id.exists' => 'Je kunt alleen antwoorden op een bericht in dit kanaal.',
-            'quoted_message_id.exists' => 'Je kunt alleen een bericht uit dit kanaal citeren.',
-            'body.required_without' => 'Typ iets, of stuur een bestand mee.',
+            'parent_id.exists' => __('requests.message.parent_not_here'),
+            'quoted_message_id.exists' => __('requests.message.quote_not_here'),
+            'body.required_without' => __('requests.message.empty'),
             ...$this->attachmentMessages(),
         ];
     }

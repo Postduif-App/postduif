@@ -51,6 +51,18 @@ class FindActiveThreads
                 ->whereColumn('thread_user.closed_at', '>=', 'messages.last_reply_at'))
             ->visible()
             ->with('author')
+            /*
+             * Muted-ness answered in this same statement rather than per thread
+             * in the sidebar, and as a boolean rather than as a loaded pivot: a
+             * pivot is not a property of User, so reading it back would be a
+             * lookup the type checker cannot follow.
+             */
+            ->withExists(['closedBy as muted' => fn ($members) => $members
+                ->whereKey($user->id)
+                // The pivot column by name: inside withExists the closure gets
+                // an ordinary builder over the related model, so the
+                // wherePivot* helpers are not on it.
+                ->whereNotNull('thread_user.muted_at')])
             ->orderByRaw('coalesce(messages.last_reply_at, messages.created_at) desc')
             ->limit((int) config('chat.thread_limit'))
             ->get();

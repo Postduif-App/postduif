@@ -21,8 +21,8 @@ enum ChannelLayout: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Chat => 'Gesprek',
-            self::Feed => 'Feed',
+            self::Chat => __('enums.channel-layout.getLabel.Chat'),
+            self::Feed => __('enums.channel-layout.getLabel.Feed'),
         };
     }
 
@@ -38,8 +38,8 @@ enum ChannelLayout: string implements HasLabel
     public function description(): string
     {
         return match ($this) {
-            self::Chat => 'Berichten onder elkaar, zoals een gewoon gesprek.',
-            self::Feed => 'Langere berichten met meer ruimte, zoals een nieuwsbrief of blog.',
+            self::Chat => __('enums.channel-layout.description.Chat'),
+            self::Feed => __('enums.channel-layout.description.Feed'),
         };
     }
 }

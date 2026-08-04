@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, setLayoutProps } from '@inertiajs/react';
 import { Hash, Lock } from 'lucide-react';
 
 import InputError from '@/components/input-error';
@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { login, logout } from '@/routes';
 import { accept } from '@/routes/invitations';
+import type { TranslationKey } from '@/types/translations';
 
 type State = 'pending' | 'expired' | 'accepted' | 'unknown';
 
@@ -36,22 +38,32 @@ interface InvitationProps {
     } | null;
 }
 
-const DEAD_END: Record<string, { title: string; body: string }> = {
+/**
+ * Which words each dead end gets, named rather than spelled out: the lines
+ * themselves live in lang/nl and lang/en, because whoever opens a stale
+ * invitation may have no account here and therefore no language preference.
+ */
+const DEAD_END: Record<
+    string,
+    { title: TranslationKey; body: TranslationKey }
+> = {
     expired: {
-        title: 'Deze uitnodiging is verlopen',
-        body: 'Vraag degene die je uitnodigde om een nieuwe link te sturen. Die is daarna weer twee weken geldig.',
+        title: 'auth_screens.invitation.expired_title',
+        body: 'auth_screens.invitation.expired_body',
     },
     accepted: {
-        title: 'Deze uitnodiging is al gebruikt',
-        body: 'Er is al een account mee aangemaakt. Log in met het e-mailadres waarop je de uitnodiging kreeg.',
+        title: 'auth_screens.invitation.accepted_title',
+        body: 'auth_screens.invitation.accepted_body',
     },
     unknown: {
-        title: 'Deze link werkt niet',
-        body: 'Mogelijk is de uitnodiging ingetrokken of is de link onderweg afgekapt. Vraag om een nieuwe.',
+        title: 'auth_screens.invitation.unknown_title',
+        body: 'auth_screens.invitation.unknown_body',
     },
 };
 
 function ChannelList({ channels }: { channels: string[] }) {
+    const { t } = useTranslate();
+
     if (channels.length === 0) {
         return null;
     }
@@ -59,7 +71,7 @@ function ChannelList({ channels }: { channels: string[] }) {
     return (
         <div className="space-y-1.5 rounded-lg border p-3">
             <p className="text-xs font-medium text-muted-foreground">
-                Je krijgt toegang tot
+                {t('auth_screens.invite.channels_intro')}
             </p>
             <ul className="flex flex-wrap gap-1.5">
                 {channels.map((name) => (
@@ -84,19 +96,28 @@ export default function InvitationPage({
     passwordRules,
     invitation,
 }: InvitationProps) {
+    const { t } = useTranslate();
+
+    setLayoutProps({
+        title: t('auth_screens.invite.title'),
+        description: t('auth_screens.invite.description'),
+    });
+
     if (state !== 'pending' || invitation === null || token === undefined) {
         const message = DEAD_END[state] ?? DEAD_END.unknown;
 
         return (
             <>
-                <Head title="Uitnodiging" />
+                <Head title={t('auth_screens.invitation.head')} />
                 <div className="space-y-4 text-center">
-                    <h2 className="text-lg font-medium">{message.title}</h2>
+                    <h2 className="text-lg font-medium">{t(message.title)}</h2>
                     <p className="text-sm text-muted-foreground">
-                        {message.body}
+                        {t(message.body)}
                     </p>
                     <Button asChild variant="outline" className="w-full">
-                        <Link href={login()}>Naar het inlogscherm</Link>
+                        <Link href={login()}>
+                            {t('auth_screens.invite.to_login')}
+                        </Link>
                     </Button>
                 </div>
             </>
@@ -105,12 +126,14 @@ export default function InvitationPage({
 
     return (
         <>
-            <Head title="Uitnodiging" />
+            <Head title={t('auth_screens.invitation.head')} />
 
             <div className="flex flex-col gap-6">
                 <div className="space-y-1 text-center">
                     <p className="text-sm text-muted-foreground">
-                        {invitation.invitedBy} nodigt je uit voor
+                        {t('auth_screens.invite.invited_by', {
+                            name: invitation.invitedBy,
+                        })}
                     </p>
                     <p className="text-lg font-medium">
                         {invitation.workspaceName}
@@ -118,15 +141,16 @@ export default function InvitationPage({
                     {invitation.isGuest && (
                         <p className="inline-flex items-center gap-1 rounded border border-amber-500/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                             <Lock className="size-3" />
-                            Als gast
+                            {t('auth_screens.invite.as_guest')}
                         </p>
                     )}
                 </div>
 
                 {invitation.isGuest && (
                     <p className="text-center text-sm text-muted-foreground">
-                        Je ziet alleen de kanalen hieronder. De rest van{' '}
-                        {invitation.workspaceName} blijft buiten beeld.
+                        {t('auth_screens.invite.guest_note', {
+                            workspace: invitation.workspaceName,
+                        })}
                     </p>
                 )}
 
@@ -135,16 +159,17 @@ export default function InvitationPage({
                 {mode === 'mismatch' ? (
                     <div className="space-y-3 text-center">
                         <p className="text-sm text-muted-foreground">
-                            Deze uitnodiging is voor{' '}
+                            {t('auth_screens.invitation.mismatch_intro')}{' '}
                             <span className="font-medium text-foreground">
                                 {invitation.email}
                             </span>
-                            , maar je bent ingelogd als {currentEmail}. Log uit
-                            en open de link opnieuw.
+                            {t('auth_screens.invitation.mismatch_rest', {
+                                email: currentEmail ?? '',
+                            })}
                         </p>
                         <Button asChild variant="outline" className="w-full">
                             <Link href={logout()} as="button">
-                                Uitloggen
+                                {t('auth_screens.invitation.log_out')}
                             </Link>
                         </Button>
                     </div>
@@ -160,7 +185,7 @@ export default function InvitationPage({
                                     <div className="grid gap-6">
                                         <div className="grid gap-2">
                                             <Label htmlFor="email">
-                                                E-mailadres
+                                                {t('auth_screens.fields.email')}
                                             </Label>
                                             {/* Fixed: the invitation was sent
                                                 to this address, and it is what
@@ -175,7 +200,9 @@ export default function InvitationPage({
                                         </div>
 
                                         <div className="grid gap-2">
-                                            <Label htmlFor="name">Naam</Label>
+                                            <Label htmlFor="name">
+                                                {t('auth_screens.fields.name')}
+                                            </Label>
                                             <Input
                                                 id="name"
                                                 name="name"
@@ -183,21 +210,27 @@ export default function InvitationPage({
                                                 required
                                                 autoFocus
                                                 autoComplete="name"
-                                                placeholder="Voor- en achternaam"
+                                                placeholder={t(
+                                                    'auth_screens.fields.name_placeholder',
+                                                )}
                                             />
                                             <InputError message={errors.name} />
                                         </div>
 
                                         <div className="grid gap-2">
                                             <Label htmlFor="password">
-                                                Wachtwoord
+                                                {t(
+                                                    'auth_screens.fields.password',
+                                                )}
                                             </Label>
                                             <PasswordInput
                                                 id="password"
                                                 name="password"
                                                 required
                                                 autoComplete="new-password"
-                                                placeholder="Wachtwoord"
+                                                placeholder={t(
+                                                    'auth_screens.fields.password',
+                                                )}
                                                 passwordrules={passwordRules}
                                             />
                                             <InputError
@@ -207,14 +240,18 @@ export default function InvitationPage({
 
                                         <div className="grid gap-2">
                                             <Label htmlFor="password_confirmation">
-                                                Wachtwoord bevestigen
+                                                {t(
+                                                    'auth_screens.fields.password_confirm',
+                                                )}
                                             </Label>
                                             <PasswordInput
                                                 id="password_confirmation"
                                                 name="password_confirmation"
                                                 required
                                                 autoComplete="new-password"
-                                                placeholder="Wachtwoord bevestigen"
+                                                placeholder={t(
+                                                    'auth_screens.fields.password_confirm',
+                                                )}
                                                 passwordrules={passwordRules}
                                             />
                                             <InputError
@@ -228,19 +265,27 @@ export default function InvitationPage({
 
                                 {mode === 'login' && (
                                     <p className="text-center text-sm text-muted-foreground">
-                                        Er bestaat al een account voor{' '}
+                                        {t(
+                                            'auth_screens.invitation.account_exists_intro',
+                                        )}{' '}
                                         <span className="font-medium text-foreground">
                                             {invitation.email}
                                         </span>
-                                        . Log in en je staat er meteen in.
+                                        {t(
+                                            'auth_screens.invitation.account_exists_rest',
+                                        )}
                                     </p>
                                 )}
 
                                 <Button type="submit" className="w-full">
                                     {processing && <Spinner />}
                                     {mode === 'login'
-                                        ? 'Inloggen en deelnemen'
-                                        : 'Uitnodiging accepteren'}
+                                        ? t(
+                                              'auth_screens.invitation.submit_login',
+                                          )
+                                        : t(
+                                              'auth_screens.invitation.submit_accept',
+                                          )}
                                 </Button>
                             </>
                         )}
@@ -250,8 +295,3 @@ export default function InvitationPage({
         </>
     );
 }
-
-InvitationPage.layout = {
-    title: 'Je bent uitgenodigd',
-    description: 'Nog één stap en je zit erin',
-};

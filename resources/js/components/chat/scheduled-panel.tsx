@@ -13,6 +13,8 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { fromLocalInput, toLocalInput } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 import {
@@ -24,14 +26,6 @@ import type {
     ChatWorkspace,
     ScheduledMessage,
 } from '@/types/chat';
-
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-});
 
 interface ScheduledPanelProps {
     workspace: ChatWorkspace;
@@ -53,15 +47,17 @@ export function ScheduledPanel({
     messages,
     onClose,
 }: ScheduledPanelProps) {
+    const { t, tChoice } = useTranslate();
+
     return (
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0">
-                    <h2 className="text-sm font-semibold">Ingepland</h2>
+                    <h2 className="text-sm font-semibold">
+                        {t('panelen.scheduled.title')}
+                    </h2>
                     <p className="truncate text-xs text-muted-foreground">
-                        {messages.length === 1
-                            ? '1 bericht wacht nog'
-                            : `${messages.length} berichten wachten nog`}
+                        {tChoice('panelen.scheduled.waiting', messages.length)}
                     </p>
                 </div>
                 <Button
@@ -69,7 +65,7 @@ export function ScheduledPanel({
                     size="icon"
                     className="ml-auto"
                     onClick={onClose}
-                    aria-label="Sluiten"
+                    aria-label={t('panelen.scheduled.close')}
                 >
                     <X className="size-4" />
                 </Button>
@@ -78,7 +74,7 @@ export function ScheduledPanel({
             <div className="min-h-0 flex-1 overflow-y-auto">
                 {messages.length === 0 ? (
                     <p className="p-8 text-center text-sm text-muted-foreground">
-                        Niets staat klaar voor dit kanaal.
+                        {t('panelen.scheduled.empty')}
                     </p>
                 ) : (
                     <ul className="divide-y">
@@ -106,6 +102,8 @@ function ScheduledRow({
     channel: ActiveChannel;
     scheduled: ScheduledMessage;
 }) {
+    const formats = useFormats();
+    const { t } = useTranslate();
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [body, setBody] = useState(scheduled.body);
@@ -135,7 +133,7 @@ function ScheduledRow({
                             : 'text-muted-foreground',
                     )}
                 >
-                    {MOMENT_FORMAT.format(new Date(scheduled.sendAt))}
+                    {formats.moment.format(new Date(scheduled.sendAt))}
                 </span>
             </div>
 
@@ -149,7 +147,7 @@ function ScheduledRow({
                     <AlertTriangle className="mt-0.5 size-3 shrink-0" />
                     <span>
                         {scheduled.failureReason ??
-                            'Dit bericht kon niet verstuurd worden.'}
+                            t('panelen.scheduled.failed')}
                     </span>
                 </p>
             )}
@@ -160,14 +158,14 @@ function ScheduledRow({
                         value={body}
                         rows={3}
                         maxLength={4000}
-                        aria-label="Bericht"
+                        aria-label={t('panelen.scheduled.body_field')}
                         onChange={(event) => setBody(event.target.value)}
                         className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                     />
                     <input
                         type="datetime-local"
                         value={sendAt}
-                        aria-label="Versturen op"
+                        aria-label={t('panelen.scheduled.send_at_field')}
                         onChange={(event) => setSendAt(event.target.value)}
                         className="rounded-md border bg-background px-2 py-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
                     />
@@ -187,7 +185,7 @@ function ScheduledRow({
                                 );
                             }}
                         >
-                            Opslaan
+                            {t('panelen.save')}
                         </Button>
                         <Button
                             size="sm"
@@ -200,7 +198,7 @@ function ScheduledRow({
                                 setEditing(false);
                             }}
                         >
-                            Annuleren
+                            {t('panelen.cancel')}
                         </Button>
                     </div>
                 </div>
@@ -216,8 +214,8 @@ function ScheduledRow({
                     <button
                         type="button"
                         onClick={() => setConfirming(true)}
-                        aria-label="Intrekken"
-                        title="Intrekken"
+                        aria-label={t('panelen.scheduled.withdraw')}
+                        title={t('panelen.scheduled.withdraw')}
                         className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
                     >
                         <Trash2 className="size-3.5" />
@@ -242,15 +240,16 @@ function ScheduledRow({
                 <AlertDialogContent className="sm:max-w-md">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Dit ingeplande bericht intrekken?
+                            {t('panelen.scheduled.confirm_title')}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Het gaat niet meer uit en de tekst is weg. Het is
-                            nog nergens gezegd, dus er blijft niets van over.
+                            {t('panelen.scheduled.confirm_body')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('panelen.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -261,7 +260,7 @@ function ScheduledRow({
                                 })
                             }
                         >
-                            Intrekken
+                            {t('panelen.scheduled.withdraw')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

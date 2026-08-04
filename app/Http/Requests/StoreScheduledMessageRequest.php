@@ -46,8 +46,8 @@ class StoreScheduledMessageRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'body.required' => 'Schrijf eerst een bericht.',
-            'send_at.after' => 'Kies een moment dat nog moet komen.',
+            'body.required' => __('requests.scheduled_message.body_required'),
+            'send_at.after' => __('requests.scheduled_message.send_at_past'),
         ];
     }
 }

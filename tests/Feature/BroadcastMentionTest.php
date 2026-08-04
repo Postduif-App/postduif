@@ -5,7 +5,7 @@ use App\Actions\Chat\SendMessage;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\WorkspaceRole;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
@@ -47,7 +47,7 @@ function mentionedBy(Channel $channel, User $author, string $body): array
 {
     $message = app(SendMessage::class)->handle($channel, $author, $body);
 
-    return Mention::where('message_id', $message->id)->pluck('user_id')->sort()->values()->all();
+    return InboxItem::where('message_id', $message->id)->pluck('user_id')->sort()->values()->all();
 }
 
 it('reaches every other channel member with everyone', function () {
@@ -99,7 +99,7 @@ it('notifies nobody when the author may not broadcast', function () {
 
     $message = app(SendMessage::class)->handle($channel, $author, 'Toch maar @everyone');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0)
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0)
         ->and($message->body)->toBe('Toch maar @everyone');
 });
 
@@ -118,8 +118,8 @@ it('combines a broadcast with a personal mention without duplicating anyone', fu
 
     $message = app(SendMessage::class)->handle($channel, $author, '@one en ook @everyone');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(2)
-        ->and(Mention::where('message_id', $message->id)->pluck('user_id')->sort()->values()->all())
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(2)
+        ->and(InboxItem::where('message_id', $message->id)->pluck('user_id')->sort()->values()->all())
         ->toBe(collect([$one->id, $two->id])->sort()->values()->all());
 });
 

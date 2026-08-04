@@ -77,7 +77,29 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-:root {
+/*
+ * The application's tokens, and the public site pinned to the light set.
+ *
+ * .postduif joins the selector rather than copying the values: the marketing
+ * shell commits to one look on purpose — dark is the app, light is the web —
+ * but it is still a descendant of html.dark, so anything shared it renders
+ * would otherwise come out in the app's dark palette on a paper-coloured page.
+ * Custom properties inherit, so re-declaring them on the shell is enough; the
+ * nearer element wins without any specificity argument.
+ */
+:root,
+.postduif {
+    /*
+     * Tells the browser which way round its own widgets go: scrollbars, the
+     * autofill wash on a password field, date pickers, the caret. Without it a
+     * visitor whose system is dark gets those in dark on top of our light page
+     * — a handful of unreadable controls in an otherwise pale layout, which is
+     * exactly the shape the bug report described. It is set here and flipped in
+     * .dark rather than left to the media query, so it follows the class the
+     * rest of the theme follows.
+     */
+    color-scheme: light;
+
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -114,6 +136,8 @@
 }
 
 .dark {
+    color-scheme: dark;
+
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.145 0 0);
@@ -203,9 +227,20 @@
     /* Errors and destructive actions, and nothing else. */
     --pd-baksteen: #b4442e;
 
-    --pd-mono:
-        'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --pd-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --pd-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /*
+     * The two colours of the wordmark's tile, as roles rather than values.
+     *
+     * On paper the mark is an ink tile with a yellow dove beside ink lettering.
+     * On a dark surface the tile disappears and the dove carries the yellow
+     * itself — the arrangement the Wordmark's `on="ink"` prop already spells
+     * out. These exist so that switch can also be made in CSS, by a shell that
+     * does not know at render time which way the theme will land.
+     */
+    --pd-mark-tile: var(--pd-inkt);
+    --pd-mark-word: var(--pd-inkt);
 }
 
 /** Wearing the house style, rather than merely knowing its names. */
@@ -230,7 +265,8 @@
 .postduif a {
     color: var(--pd-cyaan);
     text-decoration: none;
-    border-bottom: 1px solid color-mix(in oklab, var(--pd-cyaan) 35%, transparent);
+    border-bottom: 1px solid
+        color-mix(in oklab, var(--pd-cyaan) 35%, transparent);
 }
 
 .postduif a:hover {
@@ -291,4 +327,104 @@
 
     /* Components 6px, cards 10px — the huisstijl's own two radii. */
     --radius: 0.375rem;
+}
+
+/*
+ * The house style after dark.
+ *
+ * Only for shells that ask for it with .pd-themed, which today means the
+ * external application screens: logging in, accepting an invitation,
+ * downloading a transfer, filling in or reading back a request for secrets.
+ * Those are application screens that happen to wear the brand, and somebody who
+ * has chosen dark has chosen it for the application — handing them a sheet of
+ * paper at full brightness is the bug this fixes.
+ *
+ * The public site deliberately does not opt in. "Dark is de app, licht is het
+ * web" is the huisstijl's own line, and marketing/home.tsx is composed against
+ * it: it alternates paper and ink sections on purpose.
+ *
+ * Three classes deep, so it outranks the .postduif block above without an
+ * !important anywhere. Nothing here is a component override — every value is a
+ * token the existing Button, Input, Card and Label already read.
+ */
+.dark .postduif.pd-themed {
+    color-scheme: dark;
+
+    background: var(--pd-inkt);
+    color: var(--pd-papier);
+
+    /*
+     * Three brand colours re-toned rather than replaced. Stone, cyan and brick
+     * were picked to carry against paper; at their paper values they sit at
+     * roughly 3:1 on ink, which is under the floor for the body text, links and
+     * error lines they are used for. Same roles, same names, lifted until they
+     * read. Yellow and ink are untouched: they are the palette.
+     */
+    --pd-steen: #a5a396;
+    --pd-cyaan: #58c2ce;
+    --pd-baksteen: #e28a73;
+
+    /* The tile drops away and the dove carries the yellow on its own. */
+    --pd-mark-tile: transparent;
+    --pd-mark-word: var(--pd-papier);
+
+    --background: var(--pd-inkt);
+    --foreground: var(--pd-papier);
+
+    /* Cards sat on paper and were white; on ink they are a shade of soot. */
+    --card: #1f1f17;
+    --card-foreground: var(--pd-papier);
+    --popover: #1f1f17;
+    --popover-foreground: var(--pd-papier);
+
+    /*
+     * The primary inverts to sand on ink. Not yellow — the huisstijl's rule
+     * that yellow is never a fill behind text holds in both directions, and it
+     * keeps its one job here as the focus ring.
+     */
+    --primary: var(--pd-zand);
+    --primary-foreground: var(--pd-inkt);
+
+    --secondary: #26251d;
+    --secondary-foreground: var(--pd-papier);
+
+    --muted: #26251d;
+    --muted-foreground: var(--pd-steen);
+
+    --accent: #26251d;
+    --accent-foreground: var(--pd-papier);
+
+    --destructive: var(--pd-baksteen);
+    --destructive-foreground: var(--pd-baksteen);
+
+    --border: #33322a;
+    --input: #4a4940;
+
+    --ring: var(--pd-geel);
+}
+
+/* On paper a link darkens to ink on hover; on ink it lifts to paper. */
+.dark .postduif.pd-themed a:hover {
+    color: var(--pd-papier);
+    border-bottom-color: var(--pd-papier);
+}
+
+/*
+ * Syntax highlighting in a code block.
+ *
+ * Shiki hands every token both colours at once — --shiki-light and --shiki-dark
+ * — rather than one resolved against a theme it was told about. The choice is
+ * made here, which is what lets a code block follow the theme switch without any
+ * JavaScript re-running: no highlighter to rebuild, no tokens to recompute, no
+ * flash of the wrong palette on a message that has been on screen for an hour.
+ *
+ * A block whose language we do not carry has no tokens and no custom properties,
+ * so it simply inherits the message's own colour — see lib/highlight.ts.
+ */
+.pd-code span {
+    color: var(--shiki-light);
+}
+
+.dark .pd-code span {
+    color: var(--shiki-dark);
 }

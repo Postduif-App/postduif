@@ -8,6 +8,8 @@ import type {
 } from '@/components/invite-links-section';
 import { InviteLinksSection } from '@/components/invite-links-section';
 import { Button } from '@/components/ui/button';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, resend } from '@/routes/chat/invitations';
 
@@ -33,11 +35,6 @@ interface InvitationsProps {
     channels: InvitableChannel[];
 }
 
-const EXPIRY_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-});
-
 export default function WorkspaceInvitations({
     workspaceName,
     workspaceSlug,
@@ -46,26 +43,30 @@ export default function WorkspaceInvitations({
     inviteLinks,
     channels,
 }: InvitationsProps) {
+    const { t } = useTranslate();
+    const formats = useFormats();
+
     return (
         <>
-            <Head title="Workspace — uitnodigingen" />
+            <Head title={t('settings.invitations.head')} />
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Uitnodigingen"
-                    description={`Verstuurd voor ${workspaceName} en nog niet gebruikt`}
+                    title={t('settings.invitations.title')}
+                    description={t('settings.invitations.description', {
+                        workspace: workspaceName,
+                    })}
                 />
 
                 {invitations.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <MailPlus className="mx-auto size-6 text-muted-foreground" />
                         <p className="mt-3 text-sm font-medium">
-                            Er staan geen uitnodigingen open
+                            {t('settings.invitations.empty')}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Iemand uitnodigen doe je in de chat: klik op de naam
-                            van de workspace, links bovenin.
+                            {t('settings.invitations.empty_hint')}
                         </p>
                     </div>
                 ) : (
@@ -80,8 +81,10 @@ export default function WorkspaceInvitations({
                                         {invitation.email}
                                     </span>
                                     <span className="block truncate text-xs text-muted-foreground">
-                                        {invitation.roleLabel} · uitgenodigd
-                                        door {invitation.invitedBy}
+                                        {t('settings.invitations.invited_by', {
+                                            role: invitation.roleLabel,
+                                            name: invitation.invitedBy,
+                                        })}
                                         {invitation.channels.length > 0 &&
                                             ' · ' +
                                                 invitation.channels
@@ -99,10 +102,17 @@ export default function WorkspaceInvitations({
                                     )}
                                 >
                                     {invitation.hasExpired
-                                        ? 'verlopen'
-                                        : `geldig tot ${EXPIRY_FORMAT.format(
-                                              new Date(invitation.expiresAt),
-                                          )}`}
+                                        ? t('settings.invitations.expired')
+                                        : t(
+                                              'settings.invitations.valid_until',
+                                              {
+                                                  date: formats.date.format(
+                                                      new Date(
+                                                          invitation.expiresAt,
+                                                      ),
+                                                  ),
+                                              },
+                                          )}
                                 </span>
 
                                 <Button
@@ -119,10 +129,12 @@ export default function WorkspaceInvitations({
                                             { preserveScroll: true },
                                         )
                                     }
-                                    title="Stuurt een nieuwe link; de vorige werkt daarna niet meer"
+                                    title={t(
+                                        'settings.invitations.resend_hint',
+                                    )}
                                 >
                                     <RotateCw className="size-3.5" />
-                                    Opnieuw sturen
+                                    {t('settings.invitations.resend')}
                                 </Button>
 
                                 <button
@@ -136,8 +148,11 @@ export default function WorkspaceInvitations({
                                             { preserveScroll: true },
                                         )
                                     }
-                                    aria-label={`Uitnodiging voor ${invitation.email} intrekken`}
-                                    title="Intrekken"
+                                    aria-label={t(
+                                        'settings.invitations.revoke_named',
+                                        { email: invitation.email },
+                                    )}
+                                    title={t('settings.invitations.revoke')}
                                     className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                 >
                                     <X className="size-4" />
@@ -156,8 +171,10 @@ export default function WorkspaceInvitations({
                     <>
                         <Heading
                             variant="small"
-                            title="Uitnodigingslinks"
-                            description="Voor wie je uitnodigt zonder hun adres te kennen"
+                            title={t('settings.invitations.links')}
+                            description={t(
+                                'settings.invitations.links_description',
+                            )}
                         />
 
                         <InviteLinksSection

@@ -61,7 +61,10 @@ function BrandButton({
  * and auth.workspace are both null. Here that is the normal case.
  */
 export default function MarketingLayout({ children }: PropsWithChildren) {
-    const { auth } = usePage<{ auth: Auth }>().props;
+    const { auth, registrationOpen } = usePage<{
+        auth: Auth;
+        registrationOpen: boolean;
+    }>().props;
 
     return (
         <div className="postduif flex min-h-screen flex-col">
@@ -90,12 +93,27 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                             </BrandButton>
                         ) : (
                             <>
-                                <BrandButton href={login()} tone="outline">
+                                {/*
+                                    An installation that has closed registration
+                                    answers the sign-up page with a 404, so the
+                                    call to action becomes the login button —
+                                    inviting somebody to begin and then telling
+                                    them the page does not exist is worse than
+                                    not inviting them.
+                                */}
+                                <BrandButton
+                                    href={login()}
+                                    tone={
+                                        registrationOpen ? 'outline' : 'solid'
+                                    }
+                                >
                                     Inloggen
                                 </BrandButton>
-                                <BrandButton href={register()}>
-                                    Beginnen
-                                </BrandButton>
+                                {registrationOpen && (
+                                    <BrandButton href={register()}>
+                                        Beginnen
+                                    </BrandButton>
+                                )}
                             </>
                         )}
                     </div>

@@ -51,9 +51,9 @@ enum MemberPanelVisibility: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Off => 'Uit',
-            self::Everyone => 'Iedereen in de workspace',
-            self::Admins => 'Alleen beheerders en de eigenaar',
+            self::Off => __('enums.member-panel-visibility.label.Off'),
+            self::Everyone => __('enums.member-panel-visibility.label.Everyone'),
+            self::Admins => __('enums.member-panel-visibility.label.Admins'),
         };
     }
 }

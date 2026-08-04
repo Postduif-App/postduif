@@ -19,8 +19,11 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, store } from '@/routes/chat/invite-links';
+import type { TranslationKey } from '@/types/translations';
 
 /** A channel a link may be pointed at. */
 export interface InvitableChannel {
@@ -45,21 +48,26 @@ export interface InviteLink {
     channels: string[];
 }
 
-const EXPIRY_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-});
-
-const ROLES: { value: 'guest' | 'member'; label: string; hint: string }[] = [
+/*
+ * The wording of these three lists is looked up rather than written down: a
+ * module constant is built before anything renders, so it cannot call the hook
+ * that knows which language the reader asked for. Keys survive that; words do
+ * not.
+ */
+const ROLES: {
+    value: 'guest' | 'member';
+    label: TranslationKey;
+    hint: TranslationKey;
+}[] = [
     {
         value: 'member',
-        label: 'Lid',
-        hint: 'Hoort erbij. Vindt de openbare kanalen zelf en ziet wie er in de workspace zitten.',
+        label: 'panels.invites.role_member',
+        hint: 'panels.invites.role_member_hint',
     },
     {
         value: 'guest',
-        label: 'Gast',
-        hint: 'Iemand van buiten. Ziet alleen de kanalen die je aanvinkt.',
+        label: 'panels.invites.role_guest',
+        hint: 'panels.invites.role_guest_hint',
     },
 ];
 
@@ -68,21 +76,22 @@ const ROLES: { value: 'guest' | 'member'; label: string; hint: string }[] = [
  * deciding is how long it may circulate, and a dropdown of that is one choice
  * instead of a date picker and a calculation.
  */
-const VALIDITY: { value: string; label: string }[] = [
-    { value: '1', label: '1 dag' },
-    { value: '7', label: '7 dagen' },
-    { value: '30', label: '30 dagen' },
-    { value: '', label: 'Onbeperkt' },
+const VALIDITY: { value: string; label: TranslationKey }[] = [
+    { value: '1', label: 'panels.invites.validity_one_day' },
+    { value: '7', label: 'panels.invites.validity_seven_days' },
+    { value: '30', label: 'panels.invites.validity_thirty_days' },
+    { value: '', label: 'panels.invites.validity_unlimited' },
 ];
 
 /** Why a link is on the list but no longer lets anybody in. */
-const DEAD: Record<string, string> = {
-    expired: 'verlopen',
-    revoked: 'ingetrokken',
-    exhausted: 'opgebruikt',
+const DEAD: Record<string, TranslationKey> = {
+    expired: 'panels.invites.dead_expired',
+    revoked: 'panels.invites.dead_revoked',
+    exhausted: 'panels.invites.dead_exhausted',
 };
 
 function CopyButton({ url }: { url: string }) {
+    const { t } = useTranslate();
     const [copied, copy] = useClipboard();
     const isCopied = copied === url;
 
@@ -92,15 +101,15 @@ function CopyButton({ url }: { url: string }) {
             variant="ghost"
             size="sm"
             onClick={() => void copy(url)}
-            aria-label="Link kopiëren"
-            title="Link kopiëren"
+            aria-label={t('panels.invites.copy_link')}
+            title={t('panels.invites.copy_link')}
         >
             {isCopied ? (
                 <Check className="size-3.5 text-emerald-600" />
             ) : (
                 <Copy className="size-3.5" />
             )}
-            {isCopied ? 'Gekopieerd' : 'Kopiëren'}
+            {isCopied ? t('panels.invites.copied') : t('panels.invites.copy')}
         </Button>
     );
 }
@@ -121,6 +130,9 @@ export function InviteLinksSection({
     links: InviteLink[];
     channels: InvitableChannel[];
 }) {
+    const formats = useFormats();
+    const { t } = useTranslate();
+
     const [role, setRole] = useState<'guest' | 'member'>('member');
     const [picked, setPicked] = useState<number[]>([]);
 
@@ -168,7 +180,7 @@ export function InviteLinksSection({
 
                         <fieldset className="grid gap-2">
                             <legend className="mb-2 text-sm font-medium">
-                                Wie er via deze link binnenkomt
+                                {t('panels.invites.role_legend')}
                             </legend>
                             {ROLES.map((option) => (
                                 <label
@@ -190,10 +202,10 @@ export function InviteLinksSection({
                                     />
                                     <span className="min-w-0">
                                         <span className="block font-medium">
-                                            {option.label}
+                                            {t(option.label)}
                                         </span>
                                         <span className="block text-xs text-muted-foreground">
-                                            {option.hint}
+                                            {t(option.hint)}
                                         </span>
                                     </span>
                                 </label>
@@ -204,13 +216,12 @@ export function InviteLinksSection({
                         {role === 'guest' && (
                             <fieldset className="grid gap-2">
                                 <legend className="mb-2 text-sm font-medium">
-                                    Kanalen voor deze gast
+                                    {t('panels.invites.channels_legend')}
                                 </legend>
 
                                 {channels.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        Er zijn nog geen kanalen om iemand voor
-                                        uit te nodigen.
+                                        {t('panels.invites.no_channels')}
                                     </p>
                                 ) : (
                                     <ScrollArea className="max-h-44 rounded-lg border">
@@ -250,7 +261,7 @@ export function InviteLinksSection({
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="max_uses">
-                                    Maximaal aantal keer te gebruiken
+                                    {t('panels.invites.max_uses_label')}
                                 </Label>
                                 <Input
                                     id="max_uses"
@@ -258,14 +269,16 @@ export function InviteLinksSection({
                                     type="number"
                                     min={1}
                                     max={1000}
-                                    placeholder="Onbeperkt"
+                                    placeholder={t(
+                                        'panels.invites.max_uses_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.max_uses} />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="valid_for_days">
-                                    Geldig gedurende
+                                    {t('panels.invites.validity_label')}
                                 </Label>
                                 <select
                                     id="valid_for_days"
@@ -278,7 +291,7 @@ export function InviteLinksSection({
                                             key={option.label}
                                             value={option.value}
                                         >
-                                            {option.label}
+                                            {t(option.label)}
                                         </option>
                                     ))}
                                 </select>
@@ -289,7 +302,7 @@ export function InviteLinksSection({
                         <Button type="submit">
                             {processing && <Spinner />}
                             <Link2 className="size-4" />
-                            Link aanmaken
+                            {t('panels.invites.submit')}
                         </Button>
                     </>
                 )}
@@ -299,11 +312,10 @@ export function InviteLinksSection({
                 <div className="rounded-lg border border-dashed p-8 text-center">
                     <Link2 className="mx-auto size-6 text-muted-foreground" />
                     <p className="mt-3 text-sm font-medium">
-                        Er zijn nog geen uitnodigingslinks
+                        {t('panels.invites.empty_title')}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Handig als je niet weet wie er precies binnenkomt — een
-                        groep tegelijk, of een adres dat je niet hebt.
+                        {t('panels.invites.empty_hint')}
                     </p>
                 </div>
             ) : (
@@ -326,7 +338,7 @@ export function InviteLinksSection({
                                 <span className="block truncate text-xs text-muted-foreground">
                                     {link.roleLabel}
                                     {link.createdBy &&
-                                        ` · gemaakt door ${link.createdBy}`}
+                                        ` · ${t('panels.invites.created_by', { name: link.createdBy })}`}
                                     {link.channels.length > 0 &&
                                         ' · ' +
                                             link.channels
@@ -336,10 +348,14 @@ export function InviteLinksSection({
                             </span>
 
                             <span className="shrink-0 text-xs text-muted-foreground">
-                                {link.uses}
                                 {link.maxUses === null
-                                    ? 'x gebruikt'
-                                    : ` van ${link.maxUses} gebruikt`}
+                                    ? t('panels.invites.uses_open', {
+                                          count: link.uses,
+                                      })
+                                    : t('panels.invites.uses_capped', {
+                                          count: link.uses,
+                                          max: link.maxUses,
+                                      })}
                             </span>
 
                             <span
@@ -351,12 +367,14 @@ export function InviteLinksSection({
                                 )}
                             >
                                 {link.state !== 'usable'
-                                    ? DEAD[link.state]
+                                    ? t(DEAD[link.state])
                                     : link.expiresAt === null
-                                      ? 'onbeperkt geldig'
-                                      : `geldig tot ${EXPIRY_FORMAT.format(
-                                            new Date(link.expiresAt),
-                                        )}`}
+                                      ? t('panels.invites.unlimited_validity')
+                                      : t('panels.invites.valid_until', {
+                                            date: formats.date.format(
+                                                new Date(link.expiresAt),
+                                            ),
+                                        })}
                             </span>
 
                             {link.state === 'usable' && (
@@ -367,8 +385,8 @@ export function InviteLinksSection({
                                 <button
                                     type="button"
                                     onClick={() => setPendingRevoke(link)}
-                                    aria-label="Uitnodigingslink intrekken"
-                                    title="Intrekken"
+                                    aria-label={t('panels.invites.revoke')}
+                                    title={t('panels.invites.revoke_short')}
                                     className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                 >
                                     <X className="size-4" />
@@ -390,16 +408,16 @@ export function InviteLinksSection({
                 <AlertDialogContent className="sm:max-w-md">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Deze uitnodigingslink intrekken?
+                            {t('panels.invites.revoke_title')}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            De link werkt daarna niet meer, ook niet voor wie
-                            hem al heeft. Wie er eerder mee binnenkwam, blijft
-                            gewoon lid.
+                            {t('panels.invites.revoke_description')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('panels.invites.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -418,7 +436,7 @@ export function InviteLinksSection({
                                 }
                             }}
                         >
-                            Intrekken
+                            {t('panels.invites.revoke_confirm')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

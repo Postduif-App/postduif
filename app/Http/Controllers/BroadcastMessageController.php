@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Actions\Chat\BroadcastToChannels;
 use App\Http\Requests\BroadcastMessageRequest;
 use App\Models\Channel;
+use App\Models\ScheduledBroadcast;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
  * One message, several channels.
@@ -44,11 +46,36 @@ class BroadcastMessageController extends Controller
                 ))
             ->get();
 
-        $sent = $broadcastToChannels->handle($user, $channels, $request->string('body')->trim()->value());
+        $body = $request->string('body')->trim()->value();
+
+        /*
+         * Scheduled rather than sent, with the channels as they were chosen.
+         * Deliberately after the visibility filter above and before the posting
+         * check: which channels were meant is settled now, whether this member
+         * may write in them is asked when it goes out — see
+         * DispatchScheduledBroadcasts.
+         */
+        if ($request->filled('send_at')) {
+            $broadcast = ScheduledBroadcast::create([
+                'workspace_id' => $workspace->id,
+                'created_by' => $user->id,
+                'body' => $body,
+                'send_at' => $request->date('send_at'),
+            ]);
+
+            $broadcast->channels()->sync($channels->pluck('id'));
+
+            return back()->with('status', trans_choice(
+                'chat.broadcast_scheduled',
+                $channels->count(),
+            ));
+        }
+
+        $sent = $broadcastToChannels->handle($user, $channels, $body);
 
         if ($sent === []) {
             return back()->withErrors([
-                'channels' => 'In geen van die kanalen mag je posten.',
+                'channels' => __('chat.broadcast_none_allowed'),
             ]);
         }
 
@@ -58,8 +85,31 @@ class BroadcastMessageController extends Controller
         // rather than being told it did.
         return redirect()
             ->route('chat.show', [$workspace, $first])
-            ->with('status', count($sent) === 1
-                ? 'Bericht geplaatst in 1 kanaal.'
-                : 'Bericht geplaatst in '.count($sent).' kanalen.');
+            ->with('status', trans_choice('chat.broadcast_posted', count($sent)));
+    }
+
+    /**
+     * Stop one before it goes out.
+     *
+     * Only your own, and only while it is still pending: an announcement that
+     * has already landed in six channels cannot be taken back, and pretending
+     * otherwise would be worse than saying so.
+     */
+    public function destroy(
+        Request $request,
+        Workspace $workspace,
+        ScheduledBroadcast $scheduledBroadcast,
+    ): RedirectResponse {
+        abort_unless(
+            $scheduledBroadcast->workspace_id === $workspace->id
+                && $scheduledBroadcast->created_by === $request->user()->id,
+            404,
+        );
+
+        abort_unless($scheduledBroadcast->isPending(), 409, __('chat.already_sent'));
+
+        $scheduledBroadcast->delete();
+
+        return back()->with('status', __('chat.broadcast_withdrawn'));
     }
 }

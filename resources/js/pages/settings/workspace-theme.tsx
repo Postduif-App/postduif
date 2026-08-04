@@ -6,6 +6,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { update } from '@/routes/workspace/theme';
 
@@ -44,6 +45,7 @@ export default function WorkspaceThemeSettings({
     // something only the DOM knows.
     const [accent, setAccent] = useState(workspace.accent);
     const [font, setFont] = useState(workspace.font);
+    const { t } = useTranslate();
 
     const chosenFont =
         fontOptions.find((option) => option.value === font)?.stack ?? undefined;
@@ -53,13 +55,15 @@ export default function WorkspaceThemeSettings({
 
     return (
         <>
-            <Head title="Workspace — thema" />
+            <Head title={t('settings.theme.head')} />
 
             <div className="space-y-8">
                 <Heading
                     variant="small"
-                    title="Thema"
-                    description={`Hoe ${workspace.name} eruitziet voor iedereen`}
+                    title={t('settings.theme.title')}
+                    description={t('settings.theme.description', {
+                        workspace: workspace.name,
+                    })}
                 />
 
                 <Form {...update.form()} options={{ preserveScroll: true }}>
@@ -68,11 +72,10 @@ export default function WorkspaceThemeSettings({
                             <fieldset className="grid gap-2">
                                 <legend className="flex items-center gap-1.5 text-sm font-medium">
                                     <Palette className="size-4 text-muted-foreground" />
-                                    Accentkleur
+                                    {t('settings.theme.accent')}
                                 </legend>
                                 <p className="text-sm text-muted-foreground">
-                                    De kleur van knoppen, het actieve kanaal en
-                                    alles wat om aandacht vraagt.
+                                    {t('settings.theme.accent_hint')}
                                 </p>
 
                                 <div className="flex flex-wrap gap-2">
@@ -116,11 +119,10 @@ export default function WorkspaceThemeSettings({
                             <fieldset className="grid gap-2">
                                 <legend className="flex items-center gap-1.5 text-sm font-medium">
                                     <Type className="size-4 text-muted-foreground" />
-                                    Lettertype
+                                    {t('settings.theme.font')}
                                 </legend>
                                 <p className="text-sm text-muted-foreground">
-                                    Elke optie staat in zijn eigen letter, zodat
-                                    je ziet wat je kiest.
+                                    {t('settings.theme.font_hint')}
                                 </p>
 
                                 {fontOptions.map((option) => (
@@ -159,9 +161,13 @@ export default function WorkspaceThemeSettings({
                                 className="max-w-sm rounded-lg border p-4"
                                 style={{ fontFamily: chosenFont }}
                             >
-                                <p className="text-sm font-medium">Voorbeeld</p>
+                                <p className="text-sm font-medium">
+                                    {t('settings.theme.preview')}
+                                </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Zo leest {workspace.name} straks.
+                                    {t('settings.theme.preview_hint', {
+                                        workspace: workspace.name,
+                                    })}
                                 </p>
                                 <span
                                     className="mt-3 inline-flex rounded-md px-3 py-1.5 text-sm font-medium"
@@ -170,18 +176,18 @@ export default function WorkspaceThemeSettings({
                                         color: chosenAccent?.foreground,
                                     }}
                                 >
-                                    Knop
+                                    {t('settings.theme.preview_button')}
                                 </span>
                             </div>
 
                             <div className="flex items-center gap-3">
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
-                                    Opslaan
+                                    {t('settings.actions.save')}
                                 </Button>
                                 {recentlySuccessful && (
                                     <p className="text-sm text-muted-foreground">
-                                        Opgeslagen.
+                                        {t('settings.actions.saved')}
                                     </p>
                                 )}
                             </div>

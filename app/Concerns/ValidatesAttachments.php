@@ -72,10 +72,10 @@ trait ValidatesAttachments
     protected function attachmentMessages(string $field = 'attachments', int $max = 10): array
     {
         return [
-            $field.'.prohibited' => 'Bestanden delen staat uit in deze workspace.',
-            $field.'.max' => 'Je kunt maximaal '.$max.' bestanden meesturen.',
-            $field.'.*.max' => 'Dit bestand is groter dan in deze workspace is toegestaan.',
-            $field.'.*.mimetypes' => 'Dit bestandstype is niet toegestaan in deze workspace.',
+            $field.'.prohibited' => __('requests.attachments.uploads_off'),
+            $field.'.max' => __('requests.attachments.too_many', ['count' => $max]),
+            $field.'.*.max' => __('requests.attachments.too_large'),
+            $field.'.*.mimetypes' => __('requests.attachments.type_not_allowed'),
         ];
     }
 }

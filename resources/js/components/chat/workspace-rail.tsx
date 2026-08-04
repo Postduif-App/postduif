@@ -1,5 +1,14 @@
 import { Link } from '@inertiajs/react';
-import { AtSign, Bookmark, Megaphone, TicketIcon } from 'lucide-react';
+import type { AtSign } from 'lucide-react';
+import {
+    Bookmark,
+    Inbox,
+    KeyRound,
+    Megaphone,
+    Pin,
+    Send,
+    TicketIcon,
+} from 'lucide-react';
 
 import type { ComponentProps } from 'react';
 import { DoveMark } from '@/components/marketing/logo';
@@ -9,10 +18,14 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import { index as mentionsIndex } from '@/routes/chat/mentions';
+import { index as boardIndex } from '@/routes/chat/board';
+import { index as inboxIndex } from '@/routes/chat/inbox';
 import { index as savedIndex } from '@/routes/chat/saved';
+import { index as secretsIndex } from '@/routes/chat/sent-secrets';
 import { index as ticketsIndex } from '@/routes/chat/tickets';
+import { index as transfersIndex } from '@/routes/chat/transfers';
 import type { ChatWorkspace } from '@/types/chat';
 
 /**
@@ -88,26 +101,37 @@ function RailButton({
 
 export function WorkspaceRail({
     workspace,
-    mentionTotal,
+    inboxTotal,
     hasTickets,
+    hasTransfers,
+    boardActive = false,
+    secretsActive = false,
     mentionsActive = false,
     savedActive = false,
+    transfersActive = false,
     ticketsActive = false,
     onBroadcast,
 }: {
     workspace: ChatWorkspace;
-    /** Summed from the same rows the channel badges come from. */
-    mentionTotal: number;
+    /** Everything unread in the inbox, of every kind. */
+    inboxTotal: number;
     /** Whether any channel this member sees actually keeps tickets. */
     hasTickets: boolean;
+    /** Whether this workspace has file sending switched on at all. */
+    hasTransfers: boolean;
+    boardActive?: boolean;
+    secretsActive?: boolean;
     mentionsActive?: boolean;
     savedActive?: boolean;
+    transfersActive?: boolean;
     ticketsActive?: boolean;
     onBroadcast?: () => void;
 }) {
+    const { t } = useTranslate();
+
     return (
         <nav
-            aria-label="Werkbalk"
+            aria-label={t('sidebar.toolbar')}
             className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-sidebar-border bg-sidebar py-2"
         >
             {/*
@@ -122,13 +146,19 @@ export function WorkspaceRail({
             */}
             <span
                 aria-hidden
-                className="mb-1 flex size-10 items-center justify-center rounded-md"
-                style={{
-                    background: 'var(--pd-inkt)',
-                    color: 'var(--pd-geel)',
-                }}
+                /*
+                    The bird on its own, in the theme's accent — no tile behind
+                    it. It used to sit on a block of huisstijl ink with the
+                    yellow dove on top, which made the rail's first element the
+                    heaviest thing on the screen and, being a fixed palette,
+                    the one element ignoring the accent a beheerder picked.
+                    --primary is what BuildThemeStyles rewrites per workspace,
+                    so the mark now follows along without knowing a theme
+                    exists.
+                */
+                className="mb-1 flex size-10 items-center justify-center text-primary"
             >
-                <DoveMark size={20} />
+                <DoveMark size={24} />
             </span>
 
             {/*
@@ -137,16 +167,51 @@ export function WorkspaceRail({
                 answers the question it was opened with.
             */}
             <RailButton
-                label="Vermeldingen"
-                icon={AtSign}
-                href={mentionsIndex(workspace.slug)}
+                label={t('sidebar.rail.inbox')}
+                icon={Inbox}
+                href={inboxIndex(workspace.slug)}
                 active={mentionsActive}
-                badge={mentionTotal}
+                badge={inboxTotal}
             />
+
+            {/*
+                One condition, unlike the two tickets needs below, and not
+                because the board is simpler: workspace.board already carries
+                both halves — the feature and this member's role. It has to,
+                because the second half is a guest, and a guest is exactly the
+                reader who must not be handed the parts and trusted to combine
+                them.
+            */}
+            {workspace.board && (
+                <RailButton
+                    label={t('sidebar.rail.board')}
+                    icon={Pin}
+                    href={boardIndex(workspace.slug)}
+                    active={boardActive}
+                />
+            )}
+
+            {/*
+                Alongside the board rather than only inside a channel: a link
+                made here belongs to no conversation, and the list behind it is
+                where somebody checks whether one was ever picked up.
+
+                One condition, because workspace.secrets already carries both
+                halves — the workspace has the feature, and this member may use
+                it. See BuildChatShell.
+            */}
+            {workspace.secrets && (
+                <RailButton
+                    label={t('sidebar.rail.secrets')}
+                    icon={KeyRound}
+                    href={secretsIndex(workspace.slug)}
+                    active={secretsActive}
+                />
+            )}
 
             {workspace.features['saved-messages'] && (
                 <RailButton
-                    label="Bewaard"
+                    label={t('sidebar.rail.saved')}
                     icon={Bookmark}
                     href={savedIndex(workspace.slug)}
                     active={savedActive}
@@ -160,7 +225,7 @@ export function WorkspaceRail({
             */}
             {workspace.features.tickets && hasTickets && (
                 <RailButton
-                    label="Tickets"
+                    label={t('sidebar.rail.tickets')}
                     icon={TicketIcon}
                     href={ticketsIndex(workspace.slug)}
                     active={ticketsActive}
@@ -168,14 +233,28 @@ export function WorkspaceRail({
             )}
 
             {/*
-                Pushed to the bottom: the three above are places you go, this is
+                One condition rather than the two tickets needs: an empty list
+                here is still worth opening, because the screen is also where a
+                transfer is made. Tickets are only ever read on that screen.
+            */}
+            {hasTransfers && (
+                <RailButton
+                    label={t('sidebar.rail.transfers')}
+                    icon={Send}
+                    href={transfersIndex(workspace.slug)}
+                    active={transfersActive}
+                />
+            )}
+
+            {/*
+                Pushed to the bottom: the ones above are places you go, this is
                 a thing you do. Grouping by that rather than by how often it is
                 used keeps the rail readable as it grows.
             */}
             {onBroadcast && workspace.canBroadcastToChannels && (
                 <div className="mt-auto">
                     <RailButton
-                        label="Rondsturen"
+                        label={t('sidebar.rail.broadcast')}
                         icon={Megaphone}
                         onClick={onBroadcast}
                     />

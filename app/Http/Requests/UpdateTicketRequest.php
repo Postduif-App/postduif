@@ -62,7 +62,7 @@ class UpdateTicketRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'assigned_to.exists' => 'Die persoon zit niet in dit kanaal.',
+            'assigned_to.exists' => __('requests.ticket.assignee_not_here'),
         ];
     }
 }

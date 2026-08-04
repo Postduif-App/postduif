@@ -73,7 +73,7 @@ class WebhooksRelationManager extends RelationManager
                     ->searchable(),
 
                 TextColumn::make('bot_name')
-                    ->label('Postte als')
+                    ->label('Post als')
                     ->description('De naam die bij de berichten staat')
                     ->searchable(),
 
@@ -126,7 +126,7 @@ class WebhooksRelationManager extends RelationManager
                     ->maxLength(80),
 
                 TextInput::make('bot_name')
-                    ->label('Postte als')
+                    ->label('Post als')
                     ->helperText('De naam bij de berichten. Er staat altijd BOT naast.')
                     ->required()
                     ->maxLength(80),

@@ -55,8 +55,8 @@ class FindChannelsTool extends Tool
             return Response::text($search === ''
                 // Says nothing about why. A workspace that switched AI access
                 // off has not told this client that it exists.
-                ? 'Deze gebruiker zit in geen enkel kanaal.'
-                : 'Geen kanaal gevonden voor "'.$search.'".');
+                ? __('mcp.channels.none')
+                : __('mcp.channels.no_match', ['search' => $search]));
         }
 
         return Response::json([

@@ -6,11 +6,11 @@ class ScheduledMessages extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Geplande berichten';
+        return __('features.scheduled-messages.label');
     }
 
     public static function description(): string
     {
-        return 'Leden kunnen een bericht klaarzetten dat later vanzelf verstuurd wordt.';
+        return __('features.scheduled-messages.description');
     }
 }

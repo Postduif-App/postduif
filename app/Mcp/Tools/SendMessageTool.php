@@ -38,7 +38,7 @@ class SendMessageTool extends Tool
         $body = trim((string) $request->get('body', ''));
 
         if ($body === '') {
-            return Response::error('Een leeg bericht is geen bericht.');
+            return Response::error(__('mcp.send.empty'));
         }
 
         $channel = Channel::query()->whereKey((int) $request->get('channel_id'))->first();
@@ -48,7 +48,7 @@ class SendMessageTool extends Tool
          * would let a client probe for which ids exist.
          */
         if ($channel === null || ! $user->can('view', $channel)) {
-            return Response::error('Kanaal niet gevonden.');
+            return Response::error(__('mcp.send.no_channel'));
         }
 
         /*
@@ -57,15 +57,15 @@ class SendMessageTool extends Tool
          * channel exists, which is exactly what the line above refuses to do.
          */
         if (! $user->workspacesOpenToAi()->contains('id', $channel->workspace_id)) {
-            return Response::error('Kanaal niet gevonden.');
+            return Response::error(__('mcp.send.no_channel'));
         }
 
         if (! $user->can('post', $channel)) {
             return Response::error(
-                'Deze gebruiker mag niet posten in dit kanaal.'
-                .($channel->members()->whereKey($user->id)->exists()
-                    ? ' Alleen beheerders plaatsen hier berichten.'
-                    : ' Ze zijn nog geen lid van dit kanaal.')
+                __('mcp.send.not_allowed')
+                .' '.($channel->members()->whereKey($user->id)->exists()
+                    ? __('mcp.send.admins_only')
+                    : __('mcp.send.not_a_member'))
             );
         }
 

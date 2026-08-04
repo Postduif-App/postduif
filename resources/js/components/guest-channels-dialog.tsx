@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { update as updateChannels } from '@/routes/workspace/members/channels';
 
 export interface ChannelOption {
@@ -47,14 +48,19 @@ export function GuestChannelsDialog({
     channels,
     onOpenChange,
 }: GuestChannelsDialogProps) {
+    const { t } = useTranslate();
+
     return (
         <Dialog open={guest !== null} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Kanalen van {guest?.name}</DialogTitle>
+                    <DialogTitle>
+                        {t('components.guest_channels.title', {
+                            name: guest?.name ?? '',
+                        })}
+                    </DialogTitle>
                     <DialogDescription>
-                        Een gast ziet alleen wat hier is aangevinkt — openbare
-                        kanalen vindt hij niet zelf.
+                        {t('components.guest_channels.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -79,6 +85,7 @@ function GuestChannelsForm({
     channels,
     onOpenChange,
 }: GuestChannelsDialogProps & { guest: Guest }) {
+    const { t } = useTranslate();
     const [picked, setPicked] = useState<number[]>(guest.channelIds);
 
     const toggle = (id: number) =>
@@ -112,8 +119,7 @@ function GuestChannelsForm({
 
                     {channels.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                            Er zijn nog geen kanalen om deze gast aan te
-                            koppelen.
+                            {t('components.guest_channels.empty')}
                         </p>
                     ) : (
                         <ScrollArea className="max-h-60 rounded-lg border">
@@ -152,11 +158,11 @@ function GuestChannelsForm({
                             variant="ghost"
                             onClick={() => onOpenChange(false)}
                         >
-                            Annuleren
+                            {t('settings.actions.cancel')}
                         </Button>
                         <Button type="submit" disabled={processing}>
                             {processing && <Spinner />}
-                            Opslaan
+                            {t('settings.actions.save')}
                         </Button>
                     </DialogFooter>
                 </>

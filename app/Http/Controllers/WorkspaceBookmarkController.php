@@ -31,7 +31,7 @@ class WorkspaceBookmarkController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($workspace->hasMember($user), 403, 'Je bent geen lid van deze workspace.');
+        abort_unless($workspace->hasMember($user), 403, __('chat.not_a_member'));
 
         /*
          * Scoped to the channels the sidebar shows. Somebody who saved a

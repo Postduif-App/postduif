@@ -52,10 +52,10 @@ class ScheduledMessageController extends Controller
          */
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Bericht ingepland.',
+            'message' => __('flashes.message.scheduled'),
         ]);
 
-        return back()->with('status', 'Bericht ingepland.');
+        return back()->with('status', __('flashes.message.scheduled'));
     }
 
     /**
@@ -72,14 +72,14 @@ class ScheduledMessageController extends Controller
         ScheduledMessage $scheduledMessage,
     ): RedirectResponse {
         $this->authorizeOwn($request, $workspace, $channel, $scheduledMessage);
-        abort_unless($scheduledMessage->isPending(), 409, 'Dit bericht is al verstuurd.');
+        abort_unless($scheduledMessage->isPending(), 409, __('chat.already_sent'));
 
         $scheduledMessage->update([
             'body' => $request->string('body')->trim()->value(),
             'send_at' => $request->date('send_at')?->utc(),
         ]);
 
-        return back()->with('status', 'Bericht aangepast.');
+        return back()->with('status', __('flashes.message.updated'));
     }
 
     /**
@@ -96,11 +96,11 @@ class ScheduledMessageController extends Controller
         ScheduledMessage $scheduledMessage,
     ): RedirectResponse {
         $this->authorizeOwn($request, $workspace, $channel, $scheduledMessage);
-        abort_unless($scheduledMessage->isPending(), 409, 'Dit bericht is al verstuurd.');
+        abort_unless($scheduledMessage->isPending(), 409, __('chat.already_sent'));
 
         $scheduledMessage->delete();
 
-        return back()->with('status', 'Bericht ingetrokken.');
+        return back()->with('status', __('flashes.message.withdrawn'));
     }
 
     /**

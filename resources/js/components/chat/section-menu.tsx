@@ -26,6 +26,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTranslate } from '@/hooks/use-translate';
 import { store, update } from '@/routes/chat/sections';
 import type {
     ActiveChannel,
@@ -50,6 +51,7 @@ export function SectionMenu({
     channel: ActiveChannel;
     sections: ChannelSection[];
 }) {
+    const { t } = useTranslate();
     const [naming, setNaming] = useState(false);
     const [name, setName] = useState('');
 
@@ -70,7 +72,7 @@ export function SectionMenu({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <DropdownMenuTrigger
-                            aria-label="In een groep zetten"
+                            aria-label={t('panelen.section.file')}
                             className="rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         >
                             <FolderPlus className="size-3.5" />
@@ -78,14 +80,16 @@ export function SectionMenu({
                     </TooltipTrigger>
                     <TooltipContent>
                         {current
-                            ? `In de groep ${current.name}`
-                            : 'In een groep zetten'}
+                            ? t('panelen.section.filed_in', {
+                                  name: current.name,
+                              })
+                            : t('panelen.section.file')}
                     </TooltipContent>
                 </Tooltip>
 
                 <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel className="font-normal text-muted-foreground">
-                        Jouw groepen — alleen jij ziet ze
+                        {t('panelen.section.yours_alone')}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
 
@@ -122,7 +126,7 @@ export function SectionMenu({
                         }}
                     >
                         <Plus className="size-4" />
-                        Nieuwe groep…
+                        {t('panelen.section.new_menu')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -130,21 +134,21 @@ export function SectionMenu({
             <Dialog open={naming} onOpenChange={setNaming}>
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
-                        <DialogTitle>Nieuwe groep</DialogTitle>
+                        <DialogTitle>{t('panelen.section.new')}</DialogTitle>
                         <DialogDescription>
-                            Een kop in jouw zijbalk. Je collega&apos;s zien er
-                            niets van — anders dan een label op het kanaal, dat
-                            wél voor iedereen geldt.
+                            {t('panelen.section.intro')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="section-name">Naam</Label>
+                        <Label htmlFor="section-name">
+                            {t('panelen.section.name_field')}
+                        </Label>
                         <Input
                             id="section-name"
                             value={name}
                             maxLength={40}
-                            placeholder="Bijvoorbeeld: Klanten"
+                            placeholder={t('panelen.section.name_placeholder')}
                             onChange={(event) => setName(event.target.value)}
                         />
                     </div>
@@ -154,7 +158,7 @@ export function SectionMenu({
                             variant="outline"
                             onClick={() => setNaming(false)}
                         >
-                            Annuleren
+                            {t('panelen.cancel')}
                         </Button>
                         <Button
                             disabled={name.trim() === ''}
@@ -172,7 +176,7 @@ export function SectionMenu({
                                 )
                             }
                         >
-                            Groep maken
+                            {t('panelen.section.create')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

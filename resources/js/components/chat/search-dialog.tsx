@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import {
+    AtSign,
     BarChart3,
     Hash,
     KeyRound,
@@ -9,6 +10,7 @@ import {
     Plus,
     Send,
     UserPlus,
+    X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -20,9 +22,20 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { useTranslate } from '@/hooks/use-translate';
 import { matchChannels } from '@/lib/channel-search';
+import {
+    parseSearchQuery,
+    trailingFilter,
+    withFilter,
+} from '@/lib/search-filters';
 import { search, show } from '@/routes/chat';
-import type { ChannelSummary, ChatWorkspace, SearchHit } from '@/types/chat';
+import type {
+    ChannelMember,
+    ChannelSummary,
+    ChatWorkspace,
+    SearchHit,
+} from '@/types/chat';
 
 interface SearchDialogProps {
     workspace: ChatWorkspace;
@@ -33,7 +46,23 @@ interface SearchDialogProps {
      */
     channels: ChannelSummary[];
     directMessages: ChannelSummary[];
+    /**
+     * Everybody in the workspace, for completing "from:".
+     *
+     * Optional, and empty where the member panel is switched off — completion
+     * follows the same rule as the directory, because a dropdown listing every
+     * colleague is a directory. Typing a handle by hand still works: the filter
+     * itself is not gated, only the offer to fill it in.
+     */
+    workspaceMembers?: ChannelMember[];
     open: boolean;
+    /**
+     * What the field starts with when it opens, or nothing.
+     *
+     * Used by the channel header's search button, which opens this with
+     * "in:algemeen " already typed so the reader can go straight on.
+     */
+    prefill?: string;
     onOpenChange: (open: boolean) => void;
     /**
      * The things the palette can do besides going somewhere.
@@ -58,13 +87,52 @@ interface SearchDialogProps {
          */
         onSendFiles?: () => void;
         onAskSecret?: () => void;
+        /** The mirror of onAskSecret: handing one over instead of asking. */
+        onSendSecret?: () => void;
         onAskPoll?: () => void;
     };
 }
 
 const DEBOUNCE_MS = 200;
 
+/**
+ * One recognised filter, shown above the field.
+ *
+ * There so that "in:algemeen" visibly stops being three words and becomes a
+ * setting: without it there is nothing to tell somebody whether their filter
+ * was understood or is simply being searched for as text.
+ *
+ * Clicking it takes the filter back out, which is quicker than finding the
+ * right spot in the field and deleting exactly the right characters.
+ */
+function FilterChip({
+    icon: Icon,
+    label,
+    onRemove,
+}: {
+    icon: typeof Hash;
+    label: string;
+    onRemove: () => void;
+}) {
+    const { t } = useTranslate();
+
+    return (
+        <button
+            type="button"
+            onClick={onRemove}
+            className="flex items-center gap-1 rounded-full border bg-muted/60 py-0.5 pr-1.5 pl-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+            aria-label={t('search.palette.remove_filter', { label })}
+        >
+            <Icon className="size-3 shrink-0" />
+            <span className="max-w-40 truncate">{label}</span>
+            <X className="size-3 shrink-0 opacity-60" />
+        </button>
+    );
+}
+
 export function SearchDialog({
+    prefill,
+    workspaceMembers = [],
     workspace,
     channels,
     directMessages,
@@ -72,11 +140,40 @@ export function SearchDialog({
     onOpenChange,
     actions = {},
 }: SearchDialogProps) {
+    const { t, tChoice } = useTranslate();
     const [query, setQuery] = useState('');
+
+    /*
+     * Seeded on the rising edge of `open`, not in an effect: an effect would
+     * paint the empty field first and then fill it, which is a visible flicker
+     * on a dialog that appears under the caret. Adjusting state during render
+     * is React's own answer for state that follows a prop.
+     *
+     * Tracked rather than keyed off `open` alone so that closing and reopening
+     * seeds again, while typing inside an open dialog does not.
+     */
+    const [wasOpen, setWasOpen] = useState(open);
+
+    if (open !== wasOpen) {
+        setWasOpen(open);
+
+        if (open) {
+            setQuery(prefill ?? '');
+        }
+    }
+
     const [hits, setHits] = useState<SearchHit[]>([]);
     const [loading, setLoading] = useState(false);
 
     const trimmed = query.trim();
+
+    /*
+     * The filters come out here rather than on the server. What gets sent is a
+     * channel name in its own parameter and the words in another — user text
+     * never becomes something the backend has to take apart to decide what may
+     * be read.
+     */
+    const filters = parseSearchQuery(trimmed);
 
     /*
      * Where somebody could jump to. Worked out on every keystroke and thrown
@@ -109,8 +206,44 @@ export function SearchDialog({
         })
         .slice(0, 5);
 
-    const jumps =
-        trimmed === '' ? suggested : matchChannels(everywhere, trimmed);
+    /*
+     * A filter being typed right now. While there is one, the palette stops
+     * offering places to go and starts offering values to complete it —
+     * "in:alge" is not somebody trying to reach a channel, it is somebody
+     * telling the search where to look.
+     */
+    const completing = trailingFilter(query);
+
+    const completions =
+        completing?.name === 'in'
+            ? matchChannels(
+                  everywhere.filter((row) => row.type !== 'dm'),
+                  completing.value,
+              ).slice(0, 8)
+            : [];
+
+    /*
+     * Matched on the handle, which is what "from:" takes, and on the name,
+     * which is what somebody remembers. Typing "fenna" should find @fdv.
+     */
+    const people =
+        completing?.name === 'from'
+            ? workspaceMembers
+                  .filter(
+                      (member) =>
+                          member.username
+                              .toLowerCase()
+                              .includes(completing.value) ||
+                          member.name.toLowerCase().includes(completing.value),
+                  )
+                  .slice(0, 8)
+            : [];
+
+    const jumps = completing
+        ? []
+        : trimmed === ''
+          ? suggested
+          : matchChannels(everywhere, trimmed);
 
     /*
      * What this member can do from here. Built as a list so the filtering below
@@ -120,43 +253,52 @@ export function SearchDialog({
     const commands = [
         {
             key: 'create-channel',
-            label: 'Nieuw kanaal',
+            label: t('search.commands.new_channel'),
             icon: Plus,
             run: actions.onCreateChannel,
         },
         {
             key: 'direct-message',
-            label: 'Bericht aan iemand',
+            label: t('search.commands.direct_message'),
             icon: MessageSquare,
             run: actions.onStartDirectMessage,
         },
         {
             key: 'send-files',
-            label: 'Bestanden versturen',
+            label: t('search.commands.send_files'),
             icon: Send,
             run: actions.onSendFiles,
         },
         {
             key: 'ask-secret',
-            label: 'Om een wachtwoord vragen',
+            label: t('search.commands.ask_secret'),
             icon: KeyRound,
             run: actions.onAskSecret,
         },
         {
+            key: 'send-secret',
+            // Next to asking rather than next to sending files, because the two
+            // secret actions are each other's mirror and somebody looking for
+            // one will read past the other on the way.
+            label: t('search.commands.send_secret'),
+            icon: KeyRound,
+            run: actions.onSendSecret,
+        },
+        {
             key: 'ask-poll',
-            label: 'Een vraag stellen',
+            label: t('search.commands.ask_poll'),
             icon: BarChart3,
             run: actions.onAskPoll,
         },
         {
             key: 'broadcast',
-            label: 'Rondsturen',
+            label: t('search.commands.broadcast'),
             icon: Megaphone,
             run: actions.onBroadcast,
         },
         {
             key: 'invite',
-            label: 'Iemand uitnodigen',
+            label: t('search.commands.invite'),
             icon: UserPlus,
             run: actions.onInvitePeople,
         },
@@ -176,7 +318,10 @@ export function SearchDialog({
     useEffect(() => {
         // Nothing typed, nothing asked: the empty palette is built entirely
         // from what the page already has, so it costs no request at all.
-        if (!open || trimmed === '') {
+        // A query that is nothing but "in:algemeen" has no words to look for
+        // yet; searching on it would return the channel's most recent fifty
+        // messages, which is not what somebody halfway through typing meant.
+        if (!open || filters.terms === '') {
             return;
         }
 
@@ -188,7 +333,13 @@ export function SearchDialog({
 
             try {
                 const response = await fetch(
-                    search.url(workspace.slug, { query: { q: trimmed } }),
+                    search.url(workspace.slug, {
+                        query: {
+                            q: filters.terms,
+                            ...(filters.channel ? { in: filters.channel } : {}),
+                            ...(filters.from ? { from: filters.from } : {}),
+                        },
+                    }),
                     {
                         signal: controller.signal,
                         headers: { Accept: 'application/json' },
@@ -211,28 +362,59 @@ export function SearchDialog({
             controller.abort();
             window.clearTimeout(timer);
         };
-    }, [open, trimmed, workspace.slug]);
+        // The two values rather than the object they came in: parseSearchQuery
+        // hands back a fresh object every render, and depending on that would
+        // re-fire the search on every keystroke that changed nothing.
+    }, [open, filters.terms, filters.channel, filters.from, workspace.slug]);
 
     return (
         <CommandDialog
             open={open}
             onOpenChange={onOpenChange}
-            title="Zoeken of springen"
-            description="Spring naar een gesprek, start iets, of zoek door alle berichten die je mag lezen"
+            title={t('search.palette.title')}
+            description={t('search.palette.description')}
             shouldFilter={false}
         >
             <CommandInput
-                placeholder="Ga naar een kanaal, of zoek in berichten…"
+                placeholder={t('search.palette.placeholder')}
                 value={query}
                 onValueChange={setQuery}
             />
+
+            {/*
+                Under the field rather than inside it: a chip that sat between
+                the caret and the text would move while somebody types, and
+                this row appears and disappears as filters come and go.
+            */}
+            {(filters.channel || filters.from) && (
+                <div className="flex flex-wrap items-center gap-1.5 border-b px-3 pb-2">
+                    {filters.channel && (
+                        <FilterChip
+                            icon={Hash}
+                            label={filters.channel}
+                            onRemove={() =>
+                                setQuery(withFilter(query, 'in', null))
+                            }
+                        />
+                    )}
+                    {filters.from && (
+                        <FilterChip
+                            icon={AtSign}
+                            label={filters.from}
+                            onRemove={() =>
+                                setQuery(withFilter(query, 'from', null))
+                            }
+                        />
+                    )}
+                </div>
+            )}
             <CommandList>
                 {!loading &&
                     trimmed !== '' &&
                     results.length === 0 &&
                     jumps.length === 0 &&
                     commands.length === 0 && (
-                        <CommandEmpty>Niets gevonden.</CommandEmpty>
+                        <CommandEmpty>{t('search.palette.empty')}</CommandEmpty>
                     )}
 
                 {/*
@@ -241,9 +423,60 @@ export function SearchDialog({
                     instantly. Search results arrive a moment later and must not
                     push the jumps around when they do.
                 */}
+                {completions.length > 0 && (
+                    <CommandGroup heading={t('search.headings.searching_in')}>
+                        {completions.map((channel) => (
+                            <CommandItem
+                                key={`in-${channel.id}`}
+                                value={`in-${channel.id}`}
+                                onSelect={() =>
+                                    setQuery(
+                                        withFilter(query, 'in', channel.label),
+                                    )
+                                }
+                            >
+                                <Hash className="mr-2 size-4 text-muted-foreground" />
+                                <span className="truncate">
+                                    {channel.label}
+                                </span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
+
+                {people.length > 0 && (
+                    <CommandGroup heading={t('search.headings.from')}>
+                        {people.map((member) => (
+                            <CommandItem
+                                key={`from-${member.id}`}
+                                value={`from-${member.id}`}
+                                onSelect={() =>
+                                    setQuery(
+                                        withFilter(
+                                            query,
+                                            'from',
+                                            member.username,
+                                        ),
+                                    )
+                                }
+                            >
+                                <AtSign className="mr-2 size-4 text-muted-foreground" />
+                                <span className="truncate">{member.name}</span>
+                                <span className="ml-1 truncate text-xs text-muted-foreground">
+                                    @{member.username}
+                                </span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
+
                 {jumps.length > 0 && (
                     <CommandGroup
-                        heading={trimmed === '' ? 'Snel naar' : 'Springen naar'}
+                        heading={
+                            trimmed === ''
+                                ? t('search.headings.quick')
+                                : t('search.headings.jump')
+                        }
                     >
                         {jumps.map((channel) => (
                             <CommandItem
@@ -280,7 +513,7 @@ export function SearchDialog({
                 )}
 
                 {commands.length > 0 && (
-                    <CommandGroup heading="Acties">
+                    <CommandGroup heading={t('search.headings.actions')}>
                         {commands.map((command) => (
                             <CommandItem
                                 key={command.key}
@@ -306,7 +539,10 @@ export function SearchDialog({
 
                 {results.length > 0 && (
                     <CommandGroup
-                        heading={`${results.length} ${results.length === 1 ? 'bericht' : 'berichten'}`}
+                        heading={tChoice(
+                            'search.palette.results',
+                            results.length,
+                        )}
                     >
                         {results.map((hit) => (
                             <CommandItem
@@ -344,11 +580,12 @@ export function SearchDialog({
                                     ) : (
                                         <Hash className="size-3" />
                                     )}
-                                    {hit.channel.name ?? 'Direct bericht'} ·{' '}
-                                    {hit.author}
+                                    {hit.channel.name ??
+                                        t('search.palette.direct_message')}{' '}
+                                    · {hit.author}
                                     {hit.authorIsBot && (
                                         <span className="rounded-sm bg-muted px-1 py-px text-[10px] font-semibold tracking-wide uppercase">
-                                            Bot
+                                            {t('search.palette.bot')}
                                         </span>
                                     )}
                                 </span>

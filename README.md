@@ -46,11 +46,83 @@ messages, attachments, tickets and users.
 | Admin | Filament v5 |
 | Database | PostgreSQL |
 | Cache / sessions | Redis |
+| Containers | Docker, FrankenPHP |
 | Tests | Pest 5 |
 | Static analysis | Larastan, PHPStan |
 | Formatting | Pint (PHP), Prettier + ESLint (TS) |
 
 ## Getting started
+
+### With Docker
+
+Requirements: Docker with Compose v2. Nothing else — no PHP, no Node, no
+database on your machine.
+
+```bash
+git clone git@github.com:SebastiaanKloos/postduif.git pcom && cd pcom
+docker compose up
+```
+
+That builds the image, starts PostgreSQL, Redis, the app, Reverb, a queue
+listener, the scheduler and Vite, installs the dependencies, migrates and seeds.
+The first run takes a few minutes; the ones after it take seconds.
+
+Then open <http://localhost:8000> and sign in as `test@example.com` with the
+password `password`. Three colleagues (`fenna@`, `joris@`, `amara@`) are seeded
+along with a workspace that already has conversations in it, and the login page
+offers one-click sign-in for all of them.
+
+The source is bind-mounted, so editing a file changes what the container serves.
+Artisan and the rest run inside:
+
+```bash
+docker compose exec app php artisan tinker
+docker compose exec app php artisan test
+docker compose exec app composer lint
+```
+
+| Service | Port | What it is |
+| --- | --- | --- |
+| app | 8000 | The application |
+| vite | 5173 | The dev server for the frontend |
+| reverb | 8080 | WebSockets |
+| postgres | 5432 | Database |
+| redis | 6379 | Cache and sessions |
+
+Every one of those is overridable — see [Ports are taken](#ports-are-taken).
+
+`docker compose down` stops it all; add `-v` to throw away the database and
+start from a clean seed.
+
+#### Production
+
+A different arrangement of the same image: assets built in, no Vite, no bind
+mount, and the worker and scheduler as processes of their own.
+
+```bash
+cp .env.example .env    # set APP_KEY, DB_PASSWORD and the REVERB_* values
+docker compose -f compose.prod.yaml up -d --build
+```
+
+Two things worth knowing before you deploy it:
+
+- **TLS is not in here.** Put a reverse proxy in front and give Reverb a route
+  of its own — a browser on an https page will not open a plain `ws://` socket.
+- **`REVERB_APP_KEY` and `REVERB_HOST` are baked into the frontend bundle**, so
+  they are build arguments rather than runtime settings. Change one and rebuild
+  with `--build`; the compose file reads both from your `.env`.
+- **Pages are server-rendered by a second image.** Inertia's renderer needs
+  Node, and the container that answers requests deliberately has none, so it
+  runs as its own `ssr` service: a Node process with the page bundle in it and
+  nothing else — no PHP, no source, no credentials, no published port. Stop it
+  and the app keeps working; pages are then rendered in the browser instead.
+
+Migrations run in a one-shot `migrate` service that everything else waits for,
+so four containers starting at once do not all try to migrate. Uploads live in
+the `storage` volume — attachments and transfers are on the private disk, and
+without that volume a deployment would take them with it.
+
+### On your own machine
 
 Requirements: PHP 8.3 or newer, Composer, Node 22+, PostgreSQL, Redis.
 
@@ -73,6 +145,59 @@ assumes the app itself is served by Valet at `https://pcom.test`.
 
 Outside production, `routes/dev.php` adds a quick-login endpoint so you can hop
 between seeded users without typing a password.
+
+### When it does not work
+
+#### Ports are taken
+
+The likeliest reason `docker compose up` refuses to start, and the one nobody
+can guess: something on your machine is already listening. A local PostgreSQL on
+5432 and a Homebrew Redis on 6379 are the usual suspects, and if you also run
+this app outside Docker, Reverb is already on 8080.
+
+Find out what is holding a port with `lsof -nP -iTCP:5432 -sTCP:LISTEN`, then
+either stop it or move the container's side of it — every published port is a
+variable, and compose reads them from your `.env` as well as your shell:
+
+```bash
+APP_PORT=8001 REVERB_PORT=8081 FORWARD_DB_PORT=55432 FORWARD_REDIS_PORT=56379 \
+  docker compose up
+```
+
+`VITE_PORT` moves the dev server. Only the app's own port needs to end up in
+`APP_URL` — the rest are told to the browser by the compose file.
+
+#### Reverb does not connect
+
+The websocket is where the chat lives, so this one is visible: messages arrive
+only after a reload, and the browser console says the connection to
+`ws://localhost:8080/app/...` failed.
+
+- **Is it running?** `docker compose ps reverb` should say healthy, and
+  `docker compose logs reverb` should end in `Starting server on 0.0.0.0:8080`.
+  If it says *secure* server instead, it is expecting TLS: `REVERB_TLS_CERT`
+  names a certificate. The compose file blanks that variable, because a path to
+  a certificate on your own machine means nothing inside a container.
+- **Is the browser looking in the right place?** The bundle is told
+  `VITE_REVERB_HOST=localhost` and the published Reverb port. If you moved that
+  port with `REVERB_PORT`, restart the `vite` service so it picks the new one
+  up; in production the value is compiled in, so change it and rebuild.
+- **Nothing arrives, but the socket is open.** Then it is not Reverb. Check
+  `docker compose logs queue` — broadcasts are queued, so a stopped worker looks
+  exactly like a broken websocket.
+
+#### The page loads without styling
+
+Vite is not running, or it stopped without cleaning up after itself. Check
+`docker compose logs vite`, and if `public/hot` still exists while the container
+is down, delete it: it points the app at a dev server that is no longer there.
+
+#### `npm ci` says the lock file is out of sync
+
+Somebody added a dependency without updating `package-lock.json`. That is
+deliberate: the container will not silently rewrite a lock file in your working
+copy with a different npm than yours. Run `npm install --package-lock-only` on
+your own machine and commit the result.
 
 ### Environment notes
 
@@ -143,6 +268,20 @@ composer ci:check                             # everything CI runs
 Tests are Pest 5 and run against a real PostgreSQL database (`pcom_testing`,
 see `phpunit.xml`). Coverage is feature-first: over a hundred feature test files
 exercise the HTTP surface, and unit tests are reserved for logic worth isolating.
+
+Two suites at once — a second person, or an agent working alongside you — will
+deadlock on that one database: both truncate the same tables between tests, and
+Postgres reports `SQLSTATE[40P01]: Deadlock detected` in whichever run lost.
+Give the second one its own:
+
+```bash
+createdb pcom_testing_b
+PCOM_TEST_DB=pcom_testing_b php artisan test --compact
+```
+
+`tests/bootstrap.php` picks that variable up after `phpunit.xml` has had its
+say, which is the only point at which it can. The database has to exist —
+nothing here creates it.
 
 ## Code style
 

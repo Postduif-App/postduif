@@ -1,58 +1,47 @@
+import {
+    TICKET_PRIORITY_KEY,
+    TICKET_STATUS_KEY,
+} from '@/components/chat/ticket-panel';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import type { TicketPriority, TicketStatus } from '@/types/chat';
 
 /**
- * The labels live here rather than travelling with every payload: they describe
- * a fixed set of values that the server validates against the same enum, and a
- * board of thirty rows would otherwise carry thirty copies of the same words.
+ * What a status looks like. The words it is spelled with come out of
+ * enums.php through TICKET_STATUS_KEY, so the badge and the panel that changes
+ * it never disagree about what "waiting" is called.
  *
  * Colour carries meaning here, so it is never the only signal — every badge
  * spells out its status, and the palette only makes the three open ones easier
  * to tell apart at a glance.
  */
-export const TICKET_STATUS: Record<
-    TicketStatus,
-    { label: string; description: string; className: string }
-> = {
+export const TICKET_STATUS: Record<TicketStatus, { className: string }> = {
     open: {
-        label: 'Open',
-        description: 'Binnengekomen, nog niemand opgepakt.',
         className:
             'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
     },
     in_progress: {
-        label: 'In behandeling',
-        description: 'Iemand is hiermee bezig.',
         className:
             'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-400',
     },
     waiting: {
-        label: 'Wacht op klant',
-        description: 'De bal ligt bij de klant.',
         className:
             'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-400',
     },
     resolved: {
-        label: 'Opgelost',
-        description: 'Afgehandeld, wacht op bevestiging.',
         className:
             'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
     },
     closed: {
-        label: 'Gesloten',
-        description: 'Definitief afgerond.',
         className: 'border-border bg-muted text-muted-foreground',
     },
 };
 
-export const TICKET_PRIORITY: Record<
-    TicketPriority,
-    { label: string; className: string }
-> = {
-    low: { label: 'Laag', className: 'text-muted-foreground' },
-    normal: { label: 'Normaal', className: 'text-muted-foreground' },
-    high: { label: 'Hoog', className: 'text-amber-600 dark:text-amber-400' },
-    urgent: { label: 'Urgent', className: 'text-red-600 dark:text-red-400' },
+export const TICKET_PRIORITY: Record<TicketPriority, { className: string }> = {
+    low: { className: 'text-muted-foreground' },
+    normal: { className: 'text-muted-foreground' },
+    high: { className: 'text-amber-600 dark:text-amber-400' },
+    urgent: { className: 'text-red-600 dark:text-red-400' },
 };
 
 /** The three statuses that still count as outstanding, in board order. */
@@ -71,6 +60,8 @@ export function TicketStatusBadge({
     status: TicketStatus;
     className?: string;
 }) {
+    const { t } = useTranslate();
+
     return (
         <span
             className={cn(
@@ -79,7 +70,7 @@ export function TicketStatusBadge({
                 className,
             )}
         >
-            {TICKET_STATUS[status].label}
+            {t(TICKET_STATUS_KEY[status])}
         </span>
     );
 }
@@ -94,6 +85,8 @@ export function TicketPriorityLabel({
 }: {
     priority: TicketPriority;
 }) {
+    const { t } = useTranslate();
+
     if (priority === 'normal' || priority === 'low') {
         return null;
     }
@@ -105,7 +98,7 @@ export function TicketPriorityLabel({
                 TICKET_PRIORITY[priority].className,
             )}
         >
-            {TICKET_PRIORITY[priority].label}
+            {t(TICKET_PRIORITY_KEY[priority])}
         </span>
     );
 }

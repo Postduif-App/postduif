@@ -42,12 +42,12 @@ enum WorkspaceFont: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::InstrumentSans => 'Instrument Sans',
-            self::Inter => 'Inter',
-            self::Figtree => 'Figtree',
-            self::Ubuntu => 'Ubuntu',
-            self::JetBrainsMono => 'JetBrains Mono',
-            self::System => 'Systeemlettertype',
+            self::InstrumentSans => __('enums.workspace-font.label.InstrumentSans'),
+            self::Inter => __('enums.workspace-font.label.Inter'),
+            self::Figtree => __('enums.workspace-font.label.Figtree'),
+            self::Ubuntu => __('enums.workspace-font.label.Ubuntu'),
+            self::JetBrainsMono => __('enums.workspace-font.label.JetBrainsMono'),
+            self::System => __('enums.workspace-font.label.System'),
         };
     }
 

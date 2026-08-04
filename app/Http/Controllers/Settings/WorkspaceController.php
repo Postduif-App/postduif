@@ -49,7 +49,7 @@ class WorkspaceController extends Controller
         // have already shared.
         $workspace->update($validated);
 
-        return back()->with('status', 'Instellingen opgeslagen.');
+        return back()->with('status', __('flashes.settings.saved'));
     }
 
     /**
@@ -76,12 +76,12 @@ class WorkspaceController extends Controller
                 'mimetypes:'.implode(',', AttachmentType::Images->mimeTypes()),
             ],
         ], [
-            'avatar.mimetypes' => 'Kies een gewone afbeelding: png, jpg, gif of webp.',
+            'avatar.mimetypes' => __('requests.image.type'),
         ]);
 
         $storeAvatar->handle($workspace, $request->file('avatar'));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logo opgeslagen.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.logo_saved')]);
 
         return back();
     }
@@ -90,7 +90,7 @@ class WorkspaceController extends Controller
     {
         $storeAvatar->remove($this->currentWorkspace($request, 'manage'));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logo verwijderd.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.logo_removed')]);
 
         return back();
     }

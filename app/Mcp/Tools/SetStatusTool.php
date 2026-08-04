@@ -41,7 +41,7 @@ class SetStatusTool extends Tool
          * switch that says no.
          */
         if ($user->workspacesOpenToAi()->isEmpty()) {
-            return Response::error('AI-toegang staat niet aan in een workspace van deze gebruiker.');
+            return Response::error(__('mcp.status.closed'));
         }
 
         $availability = Availability::tryFrom((string) $request->get('availability', ''))

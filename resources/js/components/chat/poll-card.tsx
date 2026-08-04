@@ -3,6 +3,7 @@ import { BarChart3, Check, Lock } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import {
     close as closePoll,
@@ -35,6 +36,7 @@ export function PollCard({
      */
     currentUserId: number;
 }) {
+    const { t, tChoice } = useTranslate();
     const total = card.voterCount;
     const askedByMe = card.askedBy === currentUserId;
 
@@ -49,7 +51,9 @@ export function PollCard({
                     <Lock
                         className="size-3.5 shrink-0 text-muted-foreground"
                         aria-label={
-                            card.state === 'closed' ? 'Gesloten' : 'Verlopen'
+                            card.state === 'closed'
+                                ? t('chat_ui.poll.closed')
+                                : t('chat_ui.poll.expired')
                         }
                     />
                 )}
@@ -129,17 +133,19 @@ export function PollCard({
 
             <p className="mt-2 text-xs text-muted-foreground">
                 {total === 0
-                    ? 'Nog niemand heeft gestemd'
-                    : `${total} ${total === 1 ? 'persoon heeft' : 'mensen hebben'} gestemd`}
-                {card.allowsMultiple && ' · meerdere antwoorden mogen'}
-                {card.state === 'closed' && ' · gesloten'}
-                {card.state === 'expired' && ' · verlopen'}
+                    ? t('chat_ui.poll.no_votes')
+                    : tChoice('chat_ui.poll.votes', total)}
+                {card.allowsMultiple && ` · ${t('chat_ui.poll.multiple')}`}
+                {card.state === 'closed' &&
+                    ` · ${t('chat_ui.poll.state_closed')}`}
+                {card.state === 'expired' &&
+                    ` · ${t('chat_ui.poll.state_expired')}`}
                 {/*
                     Said while it still matters. Somebody who finds out
                     afterwards that their vote was public has been told too
                     late.
                 */}
-                {!card.isClosed && ' · iedereen ziet wat je stemt'}
+                {!card.isClosed && ` · ${t('chat_ui.poll.public_note')}`}
             </p>
 
             {/*
@@ -165,7 +171,7 @@ export function PollCard({
                         }
                         className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
                     >
-                        Poll heropenen
+                        {t('chat_ui.poll.reopen')}
                     </button>
                 ) : (
                     <button
@@ -181,7 +187,7 @@ export function PollCard({
                         }
                         className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
                     >
-                        Poll sluiten
+                        {t('chat_ui.poll.close')}
                     </button>
                 ))}
         </div>

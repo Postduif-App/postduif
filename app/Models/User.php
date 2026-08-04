@@ -5,9 +5,11 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\Availability;
 use App\Features\AiAccess;
+use App\Http\Middleware\HandleLocale;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +29,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $username
  * @property string $email
  * @property string $timezone
+ * @property string|null $locale
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $admin_at
  * @property Carbon|null $suspended_at
@@ -52,9 +55,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'username', 'email', 'timezone', 'password'])]
+#[Fillable(['name', 'username', 'email', 'timezone', 'locale', 'bio', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'pushover_user_key'])]
-class User extends Authenticatable implements FilamentUser, PasskeyUser
+class User extends Authenticatable implements FilamentUser, HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -146,6 +149,31 @@ class User extends Authenticatable implements FilamentUser, PasskeyUser
             // so it must be readable — just not by reading the table.
             'pushover_user_key' => 'encrypted',
         ];
+    }
+
+    /**
+     * The language anything sent to this member should be written in.
+     *
+     * The name is Laravel's: implementing HasLocalePreference makes the
+     * notification sender and the mailer switch to this locale for the whole of
+     * building the message, per recipient.
+     *
+     * That is not a nicety here but the only correct answer. A summary is
+     * assembled by a scheduled command with no request behind it, and a
+     * notification caused by somebody else is built while the application is
+     * still in *their* language. App::getLocale() at that moment is the sender's
+     * choice, or the last reader's, or the default — never reliably the
+     * recipient's.
+     *
+     * Null when nothing was chosen, or when what was chosen is no longer a
+     * language this application has: null lets Laravel leave the locale alone
+     * rather than switching to something that would fall back key by key.
+     */
+    public function preferredLocale(): ?string
+    {
+        return in_array($this->locale, HandleLocale::SUPPORTED, true)
+            ? $this->locale
+            : null;
     }
 
     /**

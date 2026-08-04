@@ -41,8 +41,8 @@ class ChannelMuteController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => $until === null
-                ? 'Meldingen voor dit kanaal staan uit.'
-                : 'Meldingen voor dit kanaal staan uit tot '.$until->format('H:i').'.',
+                ? __('flashes.channel.muted')
+                : __('flashes.channel.muted_until', ['time' => $until->format('H:i')]),
         ]);
 
         return back();
@@ -67,7 +67,7 @@ class ChannelMuteController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Meldingen voor dit kanaal staan weer aan.',
+            'message' => __('flashes.channel.unmuted'),
         ]);
 
         return back();

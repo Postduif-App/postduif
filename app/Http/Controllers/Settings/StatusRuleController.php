@@ -46,7 +46,7 @@ class StatusRuleController extends Controller
         abort_if(
             $user->statusRules()->count() >= self::MAX_RULES,
             422,
-            'Je hebt al '.self::MAX_RULES.' regels.',
+            __('chat.too_many_status_rules', ['count' => self::MAX_RULES]),
         );
 
         $user->statusRules()->create([
@@ -56,7 +56,7 @@ class StatusRuleController extends Controller
             'position' => ($user->statusRules()->max('position') ?? -1) + 1,
         ]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Regel toegevoegd.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.rule.added')]);
 
         return back();
     }
@@ -67,7 +67,7 @@ class StatusRuleController extends Controller
 
         $statusRule->update($this->validated($request));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Regel bijgewerkt.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.rule.updated')]);
 
         return back();
     }
@@ -78,7 +78,7 @@ class StatusRuleController extends Controller
 
         $statusRule->delete();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Regel verwijderd.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.rule.removed')]);
 
         return back();
     }

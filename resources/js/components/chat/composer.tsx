@@ -1,13 +1,10 @@
 import {
-    BarChart3,
     CalendarClock,
     Hash,
     Lock,
     Megaphone,
     Mic,
     Paperclip,
-    KeyRound,
-    Send,
     SendHorizonal,
     Slash,
     Square,
@@ -24,7 +21,9 @@ import {
 
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { Button } from '@/components/ui/button';
+import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import {
     readDraft,
@@ -35,6 +34,7 @@ import {
 import type { ActiveTrigger } from '@/lib/composer-triggers';
 import { FRAGMENT, triggerAt } from '@/lib/composer-triggers';
 import { EMOJI_GROUPS } from '@/lib/emoji';
+import { readableSize } from '@/lib/file-size';
 import { cn } from '@/lib/utils';
 import type {
     ChannelMember,
@@ -88,20 +88,6 @@ interface ComposerProps {
      * one is what to do with the file that will not fit in one.
      */
     /**
-     * Opens the dialog for sending files by link, or absent where that is not
-     * on offer here.
-     *
-     * A callback rather than the dialog's own configuration: the dialog itself
-     * lives one level up, so the button beside this field, the "/versturen"
-     * command and the palette all open the same one. Two dialogs for one job is
-     * two things that can be open at once.
-     */
-    onSendFiles?: () => void;
-    /** The same, for asking somebody for a password or a key. */
-    onAskSecret?: () => void;
-    /** The same, for putting a question to the channel. */
-    onAskPoll?: () => void;
-    /**
      * What "/" offers, or absent for a field that has nothing to offer.
      *
      * The caller decides the list, because what is on it depends on what this
@@ -133,19 +119,6 @@ const MAX_ROWS_HEIGHT = 200;
 
 /** What one message carries. The endpoint refuses more — see StoreMessageRequest. */
 const MAX_ATTACHMENTS = 10;
-
-/** Bytes as somebody reads them: "1,4 MB", not "1468006". */
-function readableSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    const kb = bytes / 1024;
-
-    return kb < 1024
-        ? `${Math.round(kb)} KB`
-        : `${(kb / 1024).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} MB`;
-}
 
 /**
  * What the date field opens on: ten minutes from now, in the shape a
@@ -278,9 +251,6 @@ export function Composer({
     memberCount = 0,
     triggers = TRIGGERS,
     attachments,
-    onSendFiles,
-    onAskSecret,
-    onAskPoll,
     commands,
     draftKey,
     onSend,
@@ -289,6 +259,9 @@ export function Composer({
     onCancelQuote,
     onTyping,
 }: ComposerProps) {
+    const { t } = useTranslate();
+    const formats = useFormats();
+
     /*
      * The draft is the field.
      *
@@ -428,14 +401,16 @@ export function Composer({
                           key: 'broadcast-here',
                           insert: 'here',
                           primary: '@here',
-                          secondary: 'wie dit kanaal nu open heeft',
+                          secondary: t('composer.suggestions.here'),
                           icon: 'broadcast' as const,
                       },
                       {
                           key: 'broadcast-everyone',
                           insert: 'everyone',
                           primary: '@everyone',
-                          secondary: `alle ${memberCount} leden`,
+                          secondary: t('composer.suggestions.everyone', {
+                              count: memberCount,
+                          }),
                           icon: 'broadcast' as const,
                       },
                   ].filter((option) => option.insert.startsWith(active.query))
@@ -597,11 +572,20 @@ export function Composer({
                 <ul
                     role="listbox"
                     aria-label={
-                        active?.char === '#'
-                            ? 'Verwijs naar een kanaal'
-                            : 'Vermeld een lid'
+                        active?.char === '/'
+                            ? t('composer.suggestions.command')
+                            : active?.char === '#'
+                              ? t('composer.suggestions.channel')
+                              : t('composer.suggestions.member')
                     }
-                    className="absolute bottom-full left-4 z-10 mb-1 w-72 overflow-hidden rounded-lg border bg-popover shadow-md"
+                    /*
+                        Wide enough for a command and what it does, and capped
+                        against the field rather than at a fixed width: 18rem
+                        cut "/versturen" off halfway through its description,
+                        and anything wider than the composer would hang off the
+                        side of a phone.
+                    */
+                    className="absolute bottom-full left-4 z-10 mb-1 w-[min(26rem,calc(100%-2rem))] overflow-hidden rounded-lg border bg-popover shadow-md"
                 >
                     {suggestions.map((suggestion, index) => (
                         <li key={suggestion.key}>
@@ -624,14 +608,23 @@ export function Composer({
                                     icon={suggestion.icon}
                                     name={suggestion.primary}
                                 />
-                                <span className="truncate font-medium">
-                                    {suggestion.primary}
-                                </span>
-                                {suggestion.secondary && (
-                                    <span className="truncate text-xs text-muted-foreground">
-                                        {suggestion.secondary}
+                                {/*
+                                    Stacked rather than side by side, because
+                                    the two used to share one line and truncate
+                                    against each other — the name is what is
+                                    being typed, so it is the one thing that
+                                    must never be cut off.
+                                */}
+                                <span className="flex min-w-0 flex-col">
+                                    <span className="truncate font-medium">
+                                        {suggestion.primary}
                                     </span>
-                                )}
+                                    {suggestion.secondary && (
+                                        <span className="truncate text-xs text-muted-foreground">
+                                            {suggestion.secondary}
+                                        </span>
+                                    )}
+                                </span>
                             </button>
                         </li>
                     ))}
@@ -649,8 +642,8 @@ export function Composer({
                     <button
                         type="button"
                         onClick={onCancelQuote}
-                        title="Citaat weghalen"
-                        aria-label="Citaat weghalen"
+                        title={t('composer.quote.cancel')}
+                        aria-label={t('composer.quote.cancel')}
                         className="shrink-0 rounded p-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
                     >
                         <X className="size-3.5" />
@@ -670,7 +663,7 @@ export function Composer({
                         htmlFor="composer-send-at"
                         className="text-muted-foreground"
                     >
-                        Versturen op
+                        {t('composer.schedule.at')}
                     </label>
                     <input
                         id="composer-send-at"
@@ -682,8 +675,8 @@ export function Composer({
                     <button
                         type="button"
                         onClick={() => setSendAt(null)}
-                        title="Toch nu versturen"
-                        aria-label="Toch nu versturen"
+                        title={t('composer.schedule.send_now')}
+                        aria-label={t('composer.schedule.send_now')}
                         className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
                     >
                         <X className="size-3.5" />
@@ -706,7 +699,7 @@ export function Composer({
                             <Paperclip className="size-3 shrink-0 text-muted-foreground" />
                             <span className="truncate">{file.name}</span>
                             <span className="shrink-0 text-muted-foreground">
-                                {readableSize(file.size)}
+                                {readableSize(file.size, formats.number)}
                             </span>
                             <button
                                 type="button"
@@ -731,7 +724,9 @@ export function Composer({
                         aria-hidden
                         className="size-2 animate-pulse rounded-full bg-red-500"
                     />
-                    <span className="font-medium">Aan het opnemen…</span>
+                    <span className="font-medium">
+                        {t('composer.recording.in_progress')}
+                    </span>
                     <span className="font-mono text-muted-foreground">
                         {Math.floor(recorder.seconds / 60)}:
                         {String(recorder.seconds % 60).padStart(2, '0')}
@@ -740,8 +735,8 @@ export function Composer({
                         type="button"
                         onClick={recorder.cancel}
                         className="ml-auto rounded p-0.5 text-muted-foreground hover:text-destructive"
-                        aria-label="Opname weggooien"
-                        title="Opname weggooien"
+                        aria-label={t('composer.recording.discard')}
+                        title={t('composer.recording.discard')}
                     >
                         <X className="size-3" />
                     </button>
@@ -750,20 +745,24 @@ export function Composer({
 
             {tooLarge.length > 0 && (
                 <p className="px-1 pb-1 text-xs text-destructive">
-                    Te groot om mee te sturen: {tooLarge.join(', ')}. Het
-                    maximum is {readableSize((attachments?.maxKb ?? 0) * 1024)}.
+                    {t('composer.attachment.too_large', {
+                        files: tooLarge.join(', '),
+                        max: readableSize(
+                            (attachments?.maxKb ?? 0) * 1024,
+                            formats.number,
+                        ),
+                    })}
                     {/*
                         Points at the way out rather than leaving somebody
                         stuck: this is the exact moment the other feature is
-                        the answer, and the only moment it is obvious.
+                        the answer, and the only moment it is obvious. Read off
+                        the command list rather than off a callback, so the
+                        sentence cannot promise something the field does not
+                        actually offer.
                     */}
-                    {onSendFiles && (
-                        <>
-                            {' '}
-                            Groter versturen kan met de knop ernaast — dan komt
-                            er een downloadlink in het kanaal.
-                        </>
-                    )}
+                    {(commands ?? []).some(
+                        (command) => command.name === 'versturen',
+                    ) && <> {t('composer.attachment.use_transfer')}</>}
                 </p>
             )}
 
@@ -876,6 +875,25 @@ export function Composer({
                             }
                         }
 
+                        /*
+                         * Escape steps back out of one layer at a time. The
+                         * suggestion list is handled above and returns there,
+                         * so this only ever runs once the list is closed —
+                         * pressing it with both open would otherwise throw the
+                         * quote away while somebody was only dismissing a
+                         * dropdown they did not mean to open.
+                         */
+                        if (
+                            event.key === 'Escape' &&
+                            quoting &&
+                            onCancelQuote
+                        ) {
+                            event.preventDefault();
+                            onCancelQuote();
+
+                            return;
+                        }
+
                         // Enter sends, Shift+Enter starts a new line.
                         if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
@@ -917,13 +935,13 @@ export function Composer({
                         }}
                         title={
                             recorder.state === 'recording'
-                                ? 'Opname stoppen en meesturen'
-                                : 'Spraakbericht opnemen'
+                                ? t('composer.recording.stop')
+                                : t('composer.recording.start')
                         }
                         aria-label={
                             recorder.state === 'recording'
-                                ? 'Opname stoppen en meesturen'
-                                : 'Spraakbericht opnemen'
+                                ? t('composer.recording.stop')
+                                : t('composer.recording.start')
                         }
                     >
                         {recorder.state === 'recording' ? (
@@ -957,54 +975,17 @@ export function Composer({
                             onClick={() => fileInputRef.current?.click()}
                             title={
                                 sendAt === null
-                                    ? 'Bestand meesturen'
-                                    : 'Een ingepland bericht kan geen bestand meesturen'
+                                    ? t('composer.attachment.add')
+                                    : t(
+                                          'composer.attachment.not_when_scheduled',
+                                      )
                             }
-                            aria-label="Bestand meesturen"
+                            aria-label={t('composer.attachment.add')}
                         >
                             <Paperclip className="size-4" />
                         </Button>
                     </>
                 )}
-                {onAskPoll && (
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={disabled || sendAt !== null}
-                        onClick={onAskPoll}
-                        title="Een vraag aan het kanaal stellen"
-                        aria-label="Een vraag aan het kanaal stellen"
-                    >
-                        <BarChart3 className="size-4" />
-                    </Button>
-                )}
-
-                {onAskSecret && (
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={disabled || sendAt !== null}
-                        onClick={onAskSecret}
-                        title="Om een wachtwoord of sleutel vragen"
-                        aria-label="Om een wachtwoord of sleutel vragen"
-                    >
-                        <KeyRound className="size-4" />
-                    </Button>
-                )}
-
-                {onSendFiles && (
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={disabled || sendAt !== null}
-                        onClick={onSendFiles}
-                        title="Grote bestanden versturen via een link"
-                        aria-label="Grote bestanden versturen via een link"
-                    >
-                        <Send className="size-4" />
-                    </Button>
-                )}
-
                 {/*
                     Not offered while files are waiting: only the words would go
                     out later, and a paperclip that quietly drops its file is
@@ -1019,8 +1000,8 @@ export function Composer({
                         // moment that is already valid, so picking a time is a
                         // correction instead of a requirement.
                         onClick={() => setSendAt(defaultSendAt())}
-                        title="Later versturen"
-                        aria-label="Later versturen"
+                        title={t('composer.schedule.later')}
+                        aria-label={t('composer.schedule.later')}
                     >
                         <CalendarClock className="size-4" />
                     </Button>
@@ -1031,8 +1012,8 @@ export function Composer({
                     disabled={disabled || !canSend}
                     aria-label={
                         sendAt === null
-                            ? 'Verstuur bericht'
-                            : 'Bericht inplannen'
+                            ? t('composer.schedule.send')
+                            : t('composer.schedule.plan')
                     }
                 >
                     {sendAt === null ? (
@@ -1044,27 +1025,43 @@ export function Composer({
             </div>
             <p className="mt-1.5 px-1 text-xs text-muted-foreground">
                 <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd>{' '}
-                verstuurt ·{' '}
+                {t('composer.hints.send')} ·{' '}
                 <kbd className="rounded bg-muted px-1 font-mono">
                     Shift+Enter
                 </kbd>{' '}
-                nieuwe regel ·{' '}
+                {t('composer.hints.newline')} ·{' '}
                 {triggers.includes('@') && (
                     <>
                         <kbd className="rounded bg-muted px-1 font-mono">@</kbd>{' '}
-                        lid ·{' '}
+                        {t('composer.hints.member')} ·{' '}
                     </>
                 )}
                 {triggers.includes('#') && (
                     <>
                         <kbd className="rounded bg-muted px-1 font-mono">#</kbd>{' '}
-                        kanaal ·{' '}
+                        {t('composer.hints.channel')} ·{' '}
                     </>
                 )}
-                <kbd className="rounded bg-muted px-1 font-mono">**vet**</kbd>{' '}
-                <kbd className="rounded bg-muted px-1 font-mono">*cursief*</kbd>{' '}
                 <kbd className="rounded bg-muted px-1 font-mono">
-                    ~~doorhalen~~
+                    {t('composer.hints.bold')}
+                </kbd>{' '}
+                <kbd className="rounded bg-muted px-1 font-mono">
+                    {t('composer.hints.italic')}
+                </kbd>{' '}
+                <kbd className="rounded bg-muted px-1 font-mono">
+                    {t('composer.hints.strike')}
+                </kbd>{' '}
+                {/*
+                    Last, and the only one showing two forms. A code block is
+                    the one piece of syntax here nobody guesses from seeing the
+                    result — the others announce themselves once you have read a
+                    message that used them, and ``` does not.
+                */}
+                <kbd className="rounded bg-muted px-1 font-mono">
+                    {t('composer.hints.code')}
+                </kbd>{' '}
+                <kbd className="rounded bg-muted px-1 font-mono">
+                    {t('composer.hints.code_block')}
                 </kbd>
             </p>
         </div>

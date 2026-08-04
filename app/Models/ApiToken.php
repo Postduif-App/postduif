@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Database\Factories\McpTokenFactory;
+use Database\Factories\ApiTokenFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +11,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * A token that lets an AI client act as one member.
+ * A token that lets something outside the app act as one member.
+ *
+ * It was built for MCP clients and now opens the plain HTTP API as well, which
+ * is what the name says and the old one (McpToken) did not.
  *
  * The same shape as a webhook token, and deliberately so — but where a webhook
  * posts as a bot into one channel, this acts as a person across everything that
@@ -27,9 +30,9 @@ use Illuminate\Support\Str;
  * @property Carbon|null $revoked_at
  */
 #[Fillable(['user_id', 'name'])]
-class McpToken extends Model
+class ApiToken extends Model
 {
-    /** @use HasFactory<McpTokenFactory> */
+    /** @use HasFactory<ApiTokenFactory> */
     use HasFactory;
 
     /** Prefixed so a token that turns up somewhere is recognisable for what it is. */

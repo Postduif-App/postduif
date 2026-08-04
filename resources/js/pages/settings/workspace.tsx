@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { update } from '@/routes/workspace';
 import {
     destroy as destroyAvatar,
@@ -25,15 +26,19 @@ interface WorkspaceSettingsProps {
 export default function WorkspaceSettings({
     workspace,
 }: WorkspaceSettingsProps) {
+    const { t } = useTranslate();
+
     return (
         <>
-            <Head title="Workspace — algemeen" />
+            <Head title={t('settings.workspace.head')} />
 
             <div className="space-y-8">
                 <Heading
                     variant="small"
-                    title="Algemeen"
-                    description={`Geldt voor iedereen in ${workspace.name}`}
+                    title={t('settings.workspace.title')}
+                    description={t('settings.workspace.description', {
+                        workspace: workspace.name,
+                    })}
                 />
 
                 <AvatarField
@@ -41,14 +46,16 @@ export default function WorkspaceSettings({
                     avatarUrl={workspace.avatarUrl}
                     uploadUrl={storeAvatar.url()}
                     removeUrl={destroyAvatar.url()}
-                    hint="Het logo van deze workspace, zichtbaar voor iedereen die erin zit."
+                    hint={t('settings.workspace.logo_hint')}
                 />
 
                 <Form {...update.form()} options={{ preserveScroll: true }}>
                     {({ processing, errors, recentlySuccessful }) => (
                         <div className="space-y-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="workspace-name">Naam</Label>
+                                <Label htmlFor="workspace-name">
+                                    {t('settings.workspace.name')}
+                                </Label>
                                 <Input
                                     id="workspace-name"
                                     name="name"
@@ -57,12 +64,11 @@ export default function WorkspaceSettings({
                                     className="max-w-sm"
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Het webadres blijft{' '}
+                                    {t('settings.workspace.address_lead')}{' '}
                                     <code className="rounded bg-muted px-1 font-mono">
-                                        /app/{workspace.slug}
+                                        {`/app/${workspace.slug}`}
                                     </code>{' '}
-                                    — dat verandert niet mee, zodat gedeelde
-                                    links blijven werken.
+                                    {t('settings.workspace.address_tail')}
                                 </p>
                                 <InputError message={errors.name} />
                             </div>
@@ -70,11 +76,11 @@ export default function WorkspaceSettings({
                             <div className="flex items-center gap-3">
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
-                                    Opslaan
+                                    {t('settings.actions.save')}
                                 </Button>
                                 {recentlySuccessful && (
                                     <p className="text-sm text-muted-foreground">
-                                        Opgeslagen.
+                                        {t('settings.actions.saved')}
                                     </p>
                                 )}
                             </div>

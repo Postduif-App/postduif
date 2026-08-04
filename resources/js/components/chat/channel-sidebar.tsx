@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     Archive,
     ArchiveRestore,
@@ -7,6 +7,7 @@ import {
     Hash,
     Lock,
     MessageSquare,
+    Pencil,
     Plus,
     Search,
     Settings,
@@ -35,27 +36,42 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCollapsedSection } from '@/hooks/use-collapsed-section';
+import { useInboxActivity } from '@/hooks/use-inbox-activity';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import { show } from '@/routes/chat';
+import { index as chatIndex, show } from '@/routes/chat';
 import { archive as archiveChannel } from '@/routes/chat/channels';
 import { destroy as destroyDirect } from '@/routes/chat/directs';
-import { close as closeThread } from '@/routes/chat/threads';
+import { rename as renameSection } from '@/routes/chat/sections';
+import {
+    close as closeThread,
+    mute as muteThread,
+    unmute as unmuteThread,
+} from '@/routes/chat/threads';
 import { edit as workspaceSettings } from '@/routes/workspace';
 import { index as workspaceMembers } from '@/routes/workspace/members';
+import type { Auth } from '@/types';
 import type {
     ActiveThread,
     ArchivedChannel,
     ChannelSection as ChannelSectionRow,
     ChannelSummary,
     ChatWorkspace,
+    WorkspaceOption,
 } from '@/types/chat';
 
 interface ChannelSidebarProps {
     workspace: ChatWorkspace;
+    /** Every workspace this member belongs to, for the switcher up top. */
+    workspaces: WorkspaceOption[];
+    /** Unread inbox rows of every kind, as the server last counted them. */
+    inboxUnread: number;
     channels: ChannelSummary[];
     directMessages: ChannelSummary[];
     /** Threads with recent activity, across every channel this member sees. */
@@ -66,12 +82,17 @@ interface ChannelSidebarProps {
     onOpenSearch: () => void;
     /** Opens the dialog that sends one message into several channels. */
     onBroadcast?: () => void;
+    /** True on the prikbord, so its rail entry reads as current. */
+    boardActive?: boolean;
+    /** True on the secrets page, so its rail entry reads as current. */
+    secretsActive?: boolean;
     /** True on the workspace-wide ticket page, so its row reads as current. */
     ticketsActive?: boolean;
     /** Marks the mentions row, the same way ticketsActive marks its own. */
     mentionsActive?: boolean;
     /** Marks the saved row. */
     savedActive?: boolean;
+    transfersActive?: boolean;
     /**
      * Channels that were put away, for whoever may take them back out. Empty
      * for everybody else, so the section simply does not appear.
@@ -113,6 +134,8 @@ function ChannelLink({
     channel: ChannelSummary;
     active: boolean;
 }) {
+    const { t, tChoice } = useTranslate();
+
     return (
         <Link
             href={show({ workspace: workspaceSlug, channel: channel.id })}
@@ -165,7 +188,7 @@ function ChannelLink({
             {channel.mutedUntil !== null && (
                 <BellOff
                     className="size-3 shrink-0 text-muted-foreground"
-                    aria-label="Meldingen staan uit"
+                    aria-label={t('sidebar.channel.muted')}
                 />
             )}
 
@@ -190,7 +213,10 @@ function ChannelLink({
                 */}
                 {channel.openTicketCount > 0 && (
                     <span
-                        title={`${channel.openTicketCount} openstaande tickets`}
+                        title={tChoice(
+                            'sidebar.channel.open_tickets',
+                            channel.openTicketCount,
+                        )}
                         className="flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
                     >
                         <TicketIcon className="size-2.5" />
@@ -214,18 +240,26 @@ function ChannelLink({
 }
 
 /**
- * The workspace name, and everything you can do to the workspace as a whole.
+ * The workspace name, everything you can do to the workspace as a whole, and
+ * the way across to another one.
  *
- * A plain heading for anybody who runs nothing: a menu with a single disabled
- * item is worse than no menu, and the chevron would promise something.
+ * A plain heading only for somebody who runs nothing and belongs to nothing
+ * else: a menu with a single disabled item is worse than no menu, and the
+ * chevron would promise something. Belonging to a second workspace is enough on
+ * its own, though — switching is the one thing in here that needs no
+ * permission.
  */
 function WorkspaceMenu({
     workspace,
+    workspaces,
     onInvite,
 }: {
     workspace: ChatWorkspace;
+    workspaces: WorkspaceOption[];
     onInvite: () => void;
 }) {
+    const { t } = useTranslate();
+
     /*
         The logo when there is one, the first two letters otherwise. Same square
         either way, so the row does not shift the moment somebody uploads one.
@@ -242,7 +276,13 @@ function WorkspaceMenu({
         </div>
     );
 
-    if (!workspace.canInvite && !workspace.canManage) {
+    const elsewhere = workspaces.filter((option) => !option.isCurrent);
+
+    if (
+        !workspace.canInvite &&
+        !workspace.canManage &&
+        elsewhere.length === 0
+    ) {
         return (
             <div className="flex items-center gap-2 px-2">
                 {badge}
@@ -262,7 +302,7 @@ function WorkspaceMenu({
                 {workspace.canInvite && (
                     <DropdownMenuItem onSelect={onInvite}>
                         <UserPlus className="mr-2 size-4" />
-                        Mensen uitnodigen
+                        {t('sidebar.workspace.invite')}
                     </DropdownMenuItem>
                 )}
                 {workspace.canManage && (
@@ -270,15 +310,55 @@ function WorkspaceMenu({
                         <DropdownMenuItem asChild>
                             <Link href={workspaceMembers()}>
                                 <Users className="mr-2 size-4" />
-                                Leden
+                                {t('sidebar.workspace.members')}
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                             <Link href={workspaceSettings()}>
                                 <Settings className="mr-2 size-4" />
-                                Workspace-instellingen
+                                {t('sidebar.workspace.settings')}
                             </Link>
                         </DropdownMenuItem>
+                    </>
+                )}
+
+                {/*
+                    Below the rest and behind a separator, because it leaves
+                    rather than does something here. The current workspace is
+                    left out of the list — it is already the name on the button
+                    above, and a row that lands you where you are is a row that
+                    reads as broken.
+                */}
+                {elsewhere.length > 0 && (
+                    <>
+                        {(workspace.canInvite || workspace.canManage) && (
+                            <DropdownMenuSeparator />
+                        )}
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                            {t('sidebar.workspace.switch')}
+                        </DropdownMenuLabel>
+                        {elsewhere.map((option) => (
+                            <DropdownMenuItem key={option.id} asChild>
+                                <Link href={chatIndex(option.slug)}>
+                                    {option.avatarUrl ? (
+                                        <img
+                                            src={option.avatarUrl}
+                                            alt=""
+                                            className="mr-2 size-4 rounded object-cover"
+                                        />
+                                    ) : (
+                                        <span className="mr-2 flex size-4 items-center justify-center rounded bg-primary text-[9px] font-bold text-primary-foreground">
+                                            {option.name
+                                                .slice(0, 1)
+                                                .toUpperCase()}
+                                        </span>
+                                    )}
+                                    <span className="truncate">
+                                        {option.name}
+                                    </span>
+                                </Link>
+                            </DropdownMenuItem>
+                        ))}
                     </>
                 )}
             </DropdownMenuContent>
@@ -291,6 +371,112 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
         <h2 className="px-2 pt-4 pb-1 text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
             {children}
         </h2>
+    );
+}
+
+/**
+ * A group's heading, renamable in place.
+ *
+ * In place rather than in a dialog: the name is one short line and it is
+ * already on screen, so a modal to change it would be more chrome than
+ * content. Enter saves and Escape cancels, the same pair MessageEditor uses —
+ * two fields in one screen that answer the same key differently is the kind of
+ * thing you only notice by losing something.
+ */
+function SectionHeadingRow({
+    workspaceSlug,
+    section,
+}: {
+    workspaceSlug: string;
+    section: ChannelSectionRow;
+}) {
+    const { t } = useTranslate();
+
+    const [editing, setEditing] = useState(false);
+    const [name, setName] = useState(section.name);
+
+    const save = () => {
+        const trimmed = name.trim();
+
+        // Nothing to send when it did not change, and an empty name would be
+        // refused by the endpoint anyway — better to simply step back out.
+        if (trimmed === '' || trimmed === section.name) {
+            setName(section.name);
+            setEditing(false);
+
+            return;
+        }
+
+        router.patch(
+            renameSection({ workspace: workspaceSlug, section: section.id }),
+            { name: trimmed },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['sections'],
+                onError: () => setName(section.name),
+            },
+        );
+
+        setEditing(false);
+    };
+
+    if (editing) {
+        return (
+            <div className="min-w-0 px-2 pt-4 pb-1">
+                <input
+                    autoFocus
+                    value={name}
+                    maxLength={40}
+                    /*
+                        size={1} rather than the browser's default of 20. The
+                        sidebar scrolls inside a Radix viewport, whose inner
+                        element is display:table — so its width follows its
+                        content, and an input's intrinsic width is content. With
+                        the default the field pushed the whole column wider than
+                        the panel; at 1 there is nothing to push with and w-full
+                        resolves against the panel, as intended.
+                    */
+                    size={1}
+                    onChange={(event) => setName(event.target.value)}
+                    onBlur={save}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            save();
+                        }
+
+                        if (event.key === 'Escape') {
+                            event.preventDefault();
+                            setName(section.name);
+                            setEditing(false);
+                        }
+                    }}
+                    aria-label={t('sidebar.section.name_field')}
+                    className="w-full min-w-0 rounded border bg-background px-1.5 py-0.5 text-xs font-semibold tracking-wide uppercase focus-visible:ring-2 focus-visible:outline-none"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="group/section flex items-center gap-1 pr-2">
+            <SectionHeading>{section.name}</SectionHeading>
+            <button
+                type="button"
+                onClick={() => setEditing(true)}
+                // Shown on hover and on keyboard focus, like the thread row's
+                // close button: hiding it behind the pointer alone would put it
+                // out of reach without a mouse.
+                className="mt-3 shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover/section:opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+                aria-label={t('sidebar.section.rename_named', {
+                    name: section.name,
+                })}
+                title={t('sidebar.section.rename')}
+            >
+                <Pencil className="size-3" />
+            </button>
+        </div>
     );
 }
 
@@ -310,7 +496,38 @@ function ThreadRow({
     workspaceSlug: string;
     thread: ActiveThread;
 }) {
+    const { t, tChoice } = useTranslate();
+
     const [confirming, setConfirming] = useState(false);
+
+    /*
+     * Both actions send the same visit options for the same reason. The member
+     * is reading a conversation, so the page must not move; the channel lists
+     * ride along because useSidebarActivity drops its unread deltas whenever a
+     * visit finishes, and a response without fresh counts would clear other
+     * channels' badges.
+     */
+    const options = {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['activeThreads', 'channels', 'directMessages'],
+    };
+
+    const toggleMute = () => {
+        const route = {
+            workspace: workspaceSlug,
+            channel: thread.channelId,
+            message: thread.id,
+        };
+
+        if (thread.muted) {
+            router.delete(unmuteThread(route), options);
+        } else {
+            router.post(muteThread(route), {}, options);
+        }
+
+        setConfirming(false);
+    };
 
     const close = () => {
         router.post(
@@ -320,16 +537,7 @@ function ThreadRow({
                 message: thread.id,
             }),
             {},
-            // The member is reading a conversation, so the page itself must not
-            // move. The channel lists ride along with the thread list because
-            // useSidebarActivity drops its unread deltas whenever a visit
-            // finishes — without fresh counts in the response, closing a thread
-            // would clear other channels' badges.
-            {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['activeThreads', 'channels', 'directMessages'],
-            },
+            options,
         );
     };
 
@@ -348,7 +556,7 @@ function ThreadRow({
                     <span className="line-clamp-1 text-xs">
                         {thread.snippet === '' ? (
                             <span className="italic opacity-60">
-                                Bericht verwijderd
+                                {t('sidebar.thread.deleted')}
                             </span>
                         ) : (
                             <>
@@ -361,8 +569,7 @@ function ThreadRow({
                         )}
                     </span>
                     <span className="text-[10px] text-sidebar-foreground/40">
-                        {thread.replyCount}{' '}
-                        {thread.replyCount === 1 ? 'antwoord' : 'antwoorden'}
+                        {tChoice('sidebar.thread.replies', thread.replyCount)}
                     </span>
                 </span>
             </Link>
@@ -373,8 +580,8 @@ function ThreadRow({
                 // Shown on hover and on keyboard focus: hiding it behind the
                 // pointer alone would put it out of reach without a mouse.
                 className="mt-1 shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
-                aria-label="Thread sluiten"
-                title="Thread sluiten"
+                aria-label={t('sidebar.thread.menu')}
+                title={t('sidebar.thread.menu')}
             >
                 <X className="size-3.5" />
             </button>
@@ -384,18 +591,46 @@ function ThreadRow({
                     <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle>
-                                Deze thread sluiten?
+                                {t('sidebar.thread.question')}
                             </AlertDialogTitle>
+                            {/*
+                                Both choices spelled out, because the difference
+                                between them is the whole reason there are two
+                                and it is not guessable from the words alone.
+                            */}
                             <AlertDialogDescription>
-                                De thread verdwijnt uit jouw zijbalk; voor de
-                                anderen blijft hij staan. Zodra er weer iets
-                                gezegd wordt, komt hij terug.
+                                <strong>{t('sidebar.thread.close')}</strong>{' '}
+                                {t('sidebar.thread.explain_close')}
+                                {thread.muted ? (
+                                    <>
+                                        {' '}
+                                        <strong>
+                                            {t('sidebar.thread.unmute')}
+                                        </strong>{' '}
+                                        {t('sidebar.thread.explain_unmute')}
+                                    </>
+                                ) : (
+                                    <>
+                                        {' '}
+                                        <strong>
+                                            {t('sidebar.thread.mute')}
+                                        </strong>{' '}
+                                        {t('sidebar.thread.explain_mute')}
+                                    </>
+                                )}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogCancel>
+                                {t('sidebar.thread.cancel')}
+                            </AlertDialogCancel>
+                            <Button variant="outline" onClick={toggleMute}>
+                                {thread.muted
+                                    ? t('sidebar.thread.unmute')
+                                    : t('sidebar.thread.mute')}
+                            </Button>
                             <AlertDialogAction onClick={close}>
-                                Sluiten
+                                {t('sidebar.thread.close')}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
@@ -424,6 +659,8 @@ function ChannelRow({
     active: boolean;
     threads: ActiveThread[];
 }) {
+    const { t } = useTranslate();
+
     const [collapsed, toggle] = useCollapsedSection(`threads.${channel.id}`);
     const hasThreads = threads.length > 0;
 
@@ -435,7 +672,12 @@ function ChannelRow({
                         type="button"
                         onClick={toggle}
                         aria-expanded={!collapsed}
-                        aria-label={`Threads in ${channel.label} ${collapsed ? 'tonen' : 'verbergen'}`}
+                        aria-label={t(
+                            collapsed
+                                ? 'sidebar.channel.threads_show'
+                                : 'sidebar.channel.threads_hide',
+                            { channel: channel.label },
+                        )}
                         className="shrink-0 rounded p-0.5 text-sidebar-foreground/40 transition-colors hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:outline-none"
                     >
                         <ChevronDown
@@ -466,8 +708,10 @@ function ChannelRow({
                 {channel.type === 'dm' && (
                     <button
                         type="button"
-                        title="Uit je zijbalk halen. De ander merkt er niets van, en een nieuw bericht brengt het gesprek terug."
-                        aria-label={`Gesprek met ${channel.label} uit je zijbalk halen`}
+                        title={t('sidebar.channel.hide_direct_hint')}
+                        aria-label={t('sidebar.channel.hide_direct', {
+                            channel: channel.label,
+                        })}
                         onClick={() =>
                             router.delete(
                                 destroyDirect.url({
@@ -523,15 +767,20 @@ function groupByChannel(threads: ActiveThread[]): Map<number, ActiveThread[]> {
 
 export function ChannelSidebar({
     workspace,
+    workspaces,
+    inboxUnread,
     channels,
     directMessages,
     activeThreads,
     activeChannelId,
     onOpenSearch,
     onBroadcast,
+    boardActive = false,
+    secretsActive = false,
     ticketsActive = false,
     mentionsActive = false,
     savedActive = false,
+    transfersActive = false,
     archivedChannels = [],
     sections = [],
     onCreateChannel,
@@ -539,17 +788,22 @@ export function ChannelSidebar({
     onInvitePeople,
     userMenu,
 }: ChannelSidebarProps) {
+    const { t } = useTranslate();
+
     const threadsByChannel = useMemo(
         () => groupByChannel(activeThreads),
         [activeThreads],
     );
 
-    // Summed over the same rows the badges are drawn from, so the number beside
-    // "Vermeldingen" can never disagree with the ones in the list below it.
-    const mentionTotal = [...channels, ...directMessages].reduce(
-        (total, row) => total + row.mentionCount,
-        0,
-    );
+    /*
+     * The inbox badge counts more than the ones below it — replies and poll
+     * answers as well as mentions — so it cannot be summed from this list the
+     * way it used to be. The server counts it and keeps it moving over the
+     * socket; the prop is the floor it falls back to on every page load.
+     */
+    const { auth } = usePage<{ auth: Auth }>().props;
+
+    const inbox = useInboxActivity(auth.user.id, workspace.id, inboxUnread);
 
     /*
      * Favourites in their own group above the rest, rather than sorted to the
@@ -579,17 +833,22 @@ export function ChannelSidebar({
             */}
             <WorkspaceRail
                 workspace={workspace}
-                mentionTotal={mentionTotal}
+                inboxTotal={inbox}
                 hasTickets={channels.some((row) => row.hasTickets)}
+                hasTransfers={workspace.transfers !== null}
                 mentionsActive={mentionsActive}
                 savedActive={savedActive}
+                transfersActive={transfersActive}
                 ticketsActive={ticketsActive}
+                boardActive={boardActive}
+                secretsActive={secretsActive}
                 onBroadcast={onBroadcast}
             />
 
             <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
                 <div className="flex h-14 items-center border-b border-sidebar-border px-2">
                     <WorkspaceMenu
+                        workspaces={workspaces}
                         workspace={workspace}
                         onInvite={onInvitePeople}
                     />
@@ -603,7 +862,7 @@ export function ChannelSidebar({
                         onClick={onOpenSearch}
                     >
                         <Search className="size-4" />
-                        Zoeken of springen
+                        {t('search.palette.title')}
                         <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                             ⌘K
                         </kbd>
@@ -613,7 +872,9 @@ export function ChannelSidebar({
                 <ScrollArea className="flex-1 px-2 pb-4">
                     {favorites.length > 0 && (
                         <>
-                            <SectionHeading>Favorieten</SectionHeading>
+                            <SectionHeading>
+                                {t('sidebar.headings.favorites')}
+                            </SectionHeading>
                             <div className="mb-2 space-y-0.5">
                                 {favorites.map((channel) => (
                                     <ChannelRow
@@ -640,7 +901,10 @@ export function ChannelSidebar({
 
                         return (
                             <div key={section.id} className="mb-2">
-                                <SectionHeading>{section.name}</SectionHeading>
+                                <SectionHeadingRow
+                                    workspaceSlug={workspace.slug}
+                                    section={section}
+                                />
                                 <div className="space-y-0.5">
                                     {rows.map((channel) => (
                                         <ChannelRow
@@ -664,7 +928,7 @@ export function ChannelSidebar({
                                 */}
                                     {rows.length === 0 && (
                                         <p className="px-2 py-1 text-xs text-sidebar-foreground/50">
-                                            Nog geen kanalen in deze groep.
+                                            {t('sidebar.section.empty')}
                                         </p>
                                     )}
                                 </div>
@@ -672,7 +936,9 @@ export function ChannelSidebar({
                         );
                     })}
 
-                    <SectionHeading>Kanalen</SectionHeading>
+                    <SectionHeading>
+                        {t('sidebar.headings.channels')}
+                    </SectionHeading>
                     <div className="space-y-0.5">
                         {ordinary.map((channel) => (
                             <ChannelRow
@@ -686,7 +952,7 @@ export function ChannelSidebar({
                         {channels.length === 0 &&
                             !workspace.canCreateChannel && (
                                 <p className="px-2 py-1 text-sm text-muted-foreground">
-                                    Geen kanalen
+                                    {t('sidebar.channel.none')}
                                 </p>
                             )}
                         {workspace.canCreateChannel && (
@@ -702,13 +968,15 @@ export function ChannelSidebar({
                                 problem, this row is the way out of it.
                             */}
                                 {channels.length === 0
-                                    ? 'Eerste kanaal maken'
-                                    : 'Kanaal toevoegen'}
+                                    ? t('sidebar.channel.first_channel')
+                                    : t('sidebar.channel.add_channel')}
                             </button>
                         )}
                     </div>
 
-                    <SectionHeading>Directe berichten</SectionHeading>
+                    <SectionHeading>
+                        {t('sidebar.headings.directs')}
+                    </SectionHeading>
                     <div className="space-y-0.5">
                         {directMessages.map((channel) => (
                             <ChannelRow
@@ -722,7 +990,7 @@ export function ChannelSidebar({
                         {directMessages.length === 0 &&
                             !workspace.canStartDirectMessage && (
                                 <p className="px-2 py-1 text-sm text-muted-foreground">
-                                    Nog geen gesprekken
+                                    {t('sidebar.channel.no_directs')}
                                 </p>
                             )}
                         {workspace.canStartDirectMessage && (
@@ -739,8 +1007,8 @@ export function ChannelSidebar({
                                 of it.
                             */}
                                 {directMessages.length === 0
-                                    ? 'Start een gesprek'
-                                    : 'Nieuw gesprek'}
+                                    ? t('sidebar.channel.start_conversation')
+                                    : t('sidebar.channel.new_conversation')}
                             </button>
                         )}
                     </div>
@@ -753,7 +1021,7 @@ export function ChannelSidebar({
                     {archivedChannels.length > 0 && (
                         <div className="mt-4">
                             <p className="px-2 pb-1 text-xs font-medium text-sidebar-foreground/50">
-                                Gearchiveerd
+                                {t('sidebar.headings.archived')}
                             </p>
                             {archivedChannels.map((channel) => (
                                 <div
@@ -776,8 +1044,13 @@ export function ChannelSidebar({
                                                 { preserveScroll: true },
                                             )
                                         }
-                                        title={`${channel.label} heropenen`}
-                                        aria-label={`${channel.label} heropenen`}
+                                        title={t('sidebar.channel.restore', {
+                                            channel: channel.label,
+                                        })}
+                                        aria-label={t(
+                                            'sidebar.channel.restore',
+                                            { channel: channel.label },
+                                        )}
                                         className="ml-auto shrink-0 rounded p-1 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                                     >
                                         <ArchiveRestore className="size-3.5" />

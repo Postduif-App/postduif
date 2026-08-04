@@ -77,7 +77,7 @@ class InviteLinkJoinController extends Controller
 
         return redirect()
             ->route('chat.index', $link->workspace)
-            ->with('status', 'Welkom bij '.$link->workspace->name.'.');
+            ->with('status', __('flashes.invitation.welcome', ['workspace' => $link->workspace->name]));
     }
 
     /**

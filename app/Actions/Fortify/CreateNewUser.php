@@ -22,6 +22,11 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // The endpoint as well as the page. Hiding the form is presentation;
+        // this is the part that decides whether an account can exist, and a
+        // posted form does not go through the view.
+        abort_unless(config('auth.registration_open'), 404);
+
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),

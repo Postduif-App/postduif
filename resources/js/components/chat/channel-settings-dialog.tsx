@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { archive, destroy, update } from '@/routes/chat/channels';
 import { update as updateTags } from '@/routes/chat/channels/tags';
@@ -52,123 +53,107 @@ interface Option<T> {
     description: string;
 }
 
+/** The one line lookup, so the option lists below can be built with it. */
+type Translate = ReturnType<typeof useTranslate>['t'];
+
 /**
  * The panels, in the order they are worth reading.
  *
- * The description travels with the tab rather than sitting fixed in the header:
+ * Only the icon travels with the tab: the label and the description are looked
+ * up per id, so a panel added here cannot be forgotten in the lang file — the
+ * key is spelled out of the id and the type would not accept a missing one.
+ *
+ * The description belongs to the tab rather than sitting fixed in the header:
  * one sentence covering four unrelated panels ends up describing none of them.
  */
 const TABS = [
-    {
-        id: 'general',
-        label: 'Algemeen',
-        icon: Info,
-        description: 'Hoe dit kanaal heet en waar het over gaat.',
-    },
-    {
-        id: 'messages',
-        label: 'Berichten',
-        icon: MessageSquare,
-        description: 'Bepaal wie er berichten mag plaatsen in dit kanaal.',
-    },
-    {
-        id: 'tickets',
-        label: 'Tickets',
-        icon: TicketIcon,
-        description:
-            'Of dit kanaal tickets bijhoudt, wie ze mag aanmaken, en wat daarvan in het gesprek terechtkomt.',
-    },
-    {
-        id: 'links',
-        label: 'Knoppen',
-        icon: Link2,
-        description:
-            'Snelkoppelingen naar plekken buiten de app, in een balk boven het gesprek.',
-    },
-    {
-        id: 'webhooks',
-        label: 'Webhooks',
-        icon: Webhook,
-        description: 'Wat er van buitenaf in dit kanaal mag posten.',
-    },
+    { id: 'general', icon: Info },
+    { id: 'messages', icon: MessageSquare },
+    { id: 'tickets', icon: TicketIcon },
+    { id: 'links', icon: Link2 },
+    { id: 'webhooks', icon: Webhook },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
 /**
- * The labels live here rather than travelling with the page: they describe a
- * fixed set of choices, and the server validates against the same enum. What it
+ * The choices live here rather than travelling with the page: they describe a
+ * fixed set of options, and the server validates against the same enum. What it
  * means for everyone else is spelled out, because "alleen beheerders" alone does
  * not tell you that reacting and threads stay open.
  */
-const POSTING_OPTIONS: Option<ChannelPostingPolicy>[] = [
-    {
-        value: 'everyone',
-        label: 'Iedereen in dit kanaal',
-        description: 'Een gewoon gesprek: elk lid kan berichten plaatsen.',
-    },
-    {
-        value: 'admins',
-        label: 'Alleen beheerders en de kanaalmaker',
-        description:
-            'Een zendkanaal. Anderen kunnen nog wel reageren met een emoji en in threads antwoorden.',
-    },
-];
+function postingOptions(t: Translate): Option<ChannelPostingPolicy>[] {
+    return [
+        {
+            value: 'everyone',
+            label: t('channels.posting.everyone'),
+            description: t('channels.posting.everyone_hint'),
+        },
+        {
+            value: 'admins',
+            label: t('channels.posting.admins'),
+            description: t('channels.posting.admins_hint'),
+        },
+    ];
+}
 
 /**
  * Open or private. A DM is deliberately absent: this dialog never opens for one
  * — manageSettings says no — and it is not a visibility anyway.
  */
-const VISIBILITY_OPTIONS: Option<'public' | 'private'>[] = [
-    {
-        value: 'public',
-        label: 'Openbaar',
-        description:
-            'Iedereen in de workspace kan dit kanaal vinden, lezen en zich aansluiten. Gasten niet: die zien alleen wat voor hen is klaargezet.',
-    },
-    {
-        value: 'private',
-        label: 'Privé',
-        description:
-            'Alleen leden zien dit kanaal. Wie er nu in zit blijft erin; de rest raakt het kwijt.',
-    },
-];
+function visibilityOptions(t: Translate): Option<'public' | 'private'>[] {
+    return [
+        {
+            value: 'public',
+            label: t('channels.visibility.public'),
+            description: t('channels.visibility.public_explained'),
+        },
+        {
+            value: 'private',
+            label: t('channels.visibility.private'),
+            description: t('channels.visibility.private_explained'),
+        },
+    ];
+}
 
 /**
  * How the channel reads. Independent of the visibility above it, and stored in
  * its own column for that reason — see ChannelLayout.
  */
-const LAYOUT_OPTIONS: Option<'chat' | 'feed'>[] = [
-    {
-        value: 'chat',
-        label: 'Gesprek',
-        description: 'Berichten onder elkaar, zoals een gewoon kanaal.',
-    },
-    {
-        value: 'feed',
-        label: 'Feed',
-        description:
-            'Langere berichten met meer ruimte, zoals een nieuwsbrief of blog.',
-    },
-];
+function layoutOptions(t: Translate): Option<'chat' | 'feed'>[] {
+    return [
+        {
+            value: 'chat',
+            label: t('channels.layout.chat'),
+            description: t('channels.layout.chat_hint'),
+        },
+        {
+            value: 'feed',
+            label: t('channels.layout.feed'),
+            description: t('channels.layout.feed_hint'),
+        },
+    ];
+}
 
-const TICKET_OPTIONS: Option<ChannelTicketPolicy>[] = [
-    {
-        value: 'disabled',
-        label: 'Geen tickets',
-        description: 'Dit kanaal is alleen een gesprek.',
-    },
-    {
-        value: 'everyone',
-        label: 'Iedereen in dit kanaal',
-        description: 'Een klantkanaal: de klant kan zelf tickets aanmaken.',
-    },
-    {
-        value: 'members',
-        label: 'Alleen leden, geen gasten',
-        description: 'Gasten lezen de tickets wel, maar maken er geen aan.',
-    },
-];
+function ticketOptions(t: Translate): Option<ChannelTicketPolicy>[] {
+    return [
+        {
+            value: 'disabled',
+            label: t('channels.tickets.disabled'),
+            description: t('channels.tickets.disabled_hint'),
+        },
+        {
+            value: 'everyone',
+            label: t('channels.tickets.everyone'),
+            description: t('channels.tickets.everyone_hint'),
+        },
+        {
+            value: 'members',
+            label: t('channels.tickets.members'),
+            description: t('channels.tickets.members_hint'),
+        },
+    ];
+}
 
 /**
  * One set of mutually exclusive choices.
@@ -249,16 +234,17 @@ function ArchiveChannelSection({
     workspace: ChatWorkspace;
     channel: ActiveChannel;
 }) {
+    const { t } = useTranslate();
     const [archiving, setArchiving] = useState(false);
 
     return (
         <div className="mt-2 flex flex-col gap-3 rounded-lg border p-3">
             <div className="flex flex-col gap-0.5">
-                <h3 className="text-sm font-medium">Kanaal archiveren</h3>
+                <h3 className="text-sm font-medium">
+                    {t('channels.archive.heading')}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                    Alles blijft leesbaar, maar er kan niets meer geplaatst
-                    worden. Het kanaal verdwijnt uit de zijbalk en is terug te
-                    halen onder &quot;Gearchiveerd&quot;.
+                    {t('channels.archive.explanation')}
                 </p>
             </div>
 
@@ -282,7 +268,7 @@ function ArchiveChannelSection({
                 >
                     {archiving && <Spinner />}
                     <Archive className="size-4" />
-                    Archiveren
+                    {t('channels.actions.archive')}
                 </Button>
             </div>
         </div>
@@ -304,6 +290,7 @@ function DeleteChannelSection({
     workspace: ChatWorkspace;
     channel: ActiveChannel;
 }) {
+    const { t } = useTranslate();
     const [confirming, setConfirming] = useState(false);
     const [typed, setTyped] = useState('');
     const [deleting, setDeleting] = useState(false);
@@ -314,19 +301,19 @@ function DeleteChannelSection({
         <div className="mt-2 flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
             <div className="flex flex-col gap-0.5">
                 <h3 className="text-sm font-medium text-destructive">
-                    Kanaal verwijderen
+                    {t('channels.delete.heading')}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                    Alle berichten, threads, tickets en webhooks van dit kanaal
-                    gaan mee. Dit is niet terug te draaien.
+                    {t('channels.delete.explanation')}
                 </p>
             </div>
 
             {confirming ? (
                 <div className="flex flex-col gap-2">
                     <Label htmlFor="confirm-channel-name" className="text-xs">
-                        Typ <span className="font-mono">{channel.label}</span>{' '}
-                        om te bevestigen
+                        {t('channels.delete.confirm_lead')}{' '}
+                        <span className="font-mono">{channel.label}</span>{' '}
+                        {t('channels.delete.confirm_tail')}
                     </Label>
                     <Input
                         id="confirm-channel-name"
@@ -356,7 +343,7 @@ function DeleteChannelSection({
                             }}
                         >
                             {deleting && <Spinner />}
-                            Definitief verwijderen
+                            {t('channels.delete.confirm_button')}
                         </Button>
                         <Button
                             variant="ghost"
@@ -366,7 +353,7 @@ function DeleteChannelSection({
                                 setTyped('');
                             }}
                         >
-                            Annuleren
+                            {t('channels.actions.cancel')}
                         </Button>
                     </div>
                 </div>
@@ -378,7 +365,7 @@ function DeleteChannelSection({
                         onClick={() => setConfirming(true)}
                     >
                         <Trash2 className="size-4" />
-                        Kanaal verwijderen
+                        {t('channels.delete.heading')}
                     </Button>
                 </div>
             )}
@@ -393,6 +380,7 @@ export function ChannelSettingsDialog({
     open,
     onOpenChange,
 }: ChannelSettingsDialogProps) {
+    const { t } = useTranslate();
     const [posting, setPosting] = useState<ChannelPostingPolicy>(
         channel.postingPolicy,
     );
@@ -492,14 +480,18 @@ export function ChannelSettingsDialog({
             */}
             <DialogContent className="flex h-[min(38rem,85vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
                 <DialogHeader className="border-b px-6 py-4">
-                    <DialogTitle>Instellingen van #{channel.label}</DialogTitle>
+                    <DialogTitle>
+                        {t('channels.settings.title', {
+                            channel: channel.label,
+                        })}
+                    </DialogTitle>
                     {/*
                         Two lines are reserved: the descriptions differ in
                         length per tab, and without the floor the panel below
                         starts a line higher on the short ones.
                     */}
                     <DialogDescription className="min-h-10">
-                        {tabs.find((tab) => tab.id === active)?.description}
+                        {t(`channels.settings.tabs.${active}_description`)}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -514,7 +506,7 @@ export function ChannelSettingsDialog({
                     <nav
                         role="tablist"
                         aria-orientation="vertical"
-                        aria-label="Kanaalinstellingen"
+                        aria-label={t('channels.settings.tablist')}
                         className="flex w-48 shrink-0 flex-col gap-1 border-r p-3"
                     >
                         {tabs.map((tab) => (
@@ -534,7 +526,7 @@ export function ChannelSettingsDialog({
                                 )}
                             >
                                 <tab.icon className="size-4 shrink-0" />
-                                {tab.label}
+                                {t(`channels.settings.tabs.${tab.id}`)}
                             </button>
                         ))}
                     </nav>
@@ -554,7 +546,9 @@ export function ChannelSettingsDialog({
                         {active === 'general' && (
                             <section className="flex flex-col gap-4">
                                 <div className="flex flex-col gap-2">
-                                    <Label htmlFor="channel-name">Naam</Label>
+                                    <Label htmlFor="channel-name">
+                                        {t('channels.fields.name')}
+                                    </Label>
                                     {/*
                                         The hash sits in the field rather than in
                                         the value: it is part of how a channel is
@@ -577,51 +571,52 @@ export function ChannelSettingsDialog({
                                         />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        Spaties en hoofdletters worden omgezet
-                                        naar streepjes en kleine letters. Links
-                                        naar dit kanaal blijven werken, maar een{' '}
-                                        <code>#oude-naam</code> in oudere
-                                        berichten wordt gewone tekst.
+                                        {t('channels.settings.name_hint_lead')}{' '}
+                                        <code>
+                                            {t(
+                                                'channels.settings.name_hint_example',
+                                            )}
+                                        </code>{' '}
+                                        {t('channels.settings.name_hint_tail')}
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-2">
                                     <Label htmlFor="channel-topic">
-                                        Onderwerp
+                                        {t('channels.fields.topic')}
                                     </Label>
                                     <Input
                                         id="channel-topic"
                                         value={topic}
                                         maxLength={255}
-                                        placeholder="Waar gaat dit kanaal over?"
+                                        placeholder={t(
+                                            'channels.fields.topic_placeholder',
+                                        )}
                                         onChange={(event) =>
                                             setTopic(event.target.value)
                                         }
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Staat onder de naam bovenaan het
-                                        gesprek.
+                                        {t('channels.settings.topic_hint')}
                                     </p>
                                 </div>
 
                                 <div className="flex flex-col gap-2">
                                     <h3 className="text-sm font-medium">
-                                        Zichtbaarheid
+                                        {t('channels.visibility.heading')}
                                     </h3>
                                     <ChoiceGroup
-                                        label="Zichtbaarheid"
-                                        options={VISIBILITY_OPTIONS}
+                                        label={t('channels.visibility.heading')}
+                                        options={visibilityOptions(t)}
                                         value={visibility}
                                         onChange={setVisibility}
                                     />
 
                                     {openingUp && (
                                         <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
-                                            Let op: alles wat hier eerder is
-                                            gezegd wordt hiermee leesbaar voor
-                                            de hele workspace. Dit is niet terug
-                                            te draaien door het kanaal weer
-                                            privé te maken.
+                                            {t(
+                                                'channels.visibility.opening_up',
+                                            )}
                                         </p>
                                     )}
                                 </div>
@@ -634,11 +629,11 @@ export function ChannelSettingsDialog({
 
                                 <div className="flex flex-col gap-2">
                                     <h3 className="text-sm font-medium">
-                                        Weergave
+                                        {t('channels.layout.heading')}
                                     </h3>
                                     <ChoiceGroup
-                                        label="Weergave"
-                                        options={LAYOUT_OPTIONS}
+                                        label={t('channels.layout.heading')}
+                                        options={layoutOptions(t)}
                                         value={layout}
                                         onChange={setLayout}
                                     />
@@ -663,11 +658,11 @@ export function ChannelSettingsDialog({
                         {active === 'messages' && (
                             <section className="flex flex-col gap-2">
                                 <h3 className="text-sm font-medium">
-                                    Wie mag berichten plaatsen
+                                    {t('channels.posting.heading')}
                                 </h3>
                                 <ChoiceGroup
-                                    label="Wie mag berichten plaatsen"
-                                    options={POSTING_OPTIONS}
+                                    label={t('channels.posting.heading')}
+                                    options={postingOptions(t)}
                                     value={posting}
                                     onChange={setPosting}
                                 />
@@ -693,12 +688,12 @@ export function ChannelSettingsDialog({
                                             htmlFor="replies-open"
                                             className="text-sm font-medium"
                                         >
-                                            Reageren in een thread toestaan
+                                            {t('channels.posting.replies_open')}
                                         </Label>
                                         <p className="text-xs text-muted-foreground">
-                                            Uitzetten maakt dit een kanaal dat
-                                            aankondigt en niet bespreekt.
-                                            Bestaande threads blijven leesbaar.
+                                            {t(
+                                                'channels.posting.replies_open_hint',
+                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -708,11 +703,11 @@ export function ChannelSettingsDialog({
                         {active === 'tickets' && (
                             <section className="flex flex-col gap-2">
                                 <h3 className="text-sm font-medium">
-                                    Wie mag tickets aanmaken
+                                    {t('channels.tickets.heading')}
                                 </h3>
                                 <ChoiceGroup
-                                    label="Wie mag tickets aanmaken"
-                                    options={TICKET_OPTIONS}
+                                    label={t('channels.tickets.heading')}
+                                    options={ticketOptions(t)}
                                     value={tickets}
                                     onChange={setTickets}
                                 />
@@ -739,14 +734,12 @@ export function ChannelSettingsDialog({
                                                 htmlFor="ticket-announcements"
                                                 className="text-sm font-medium"
                                             >
-                                                Meld tickets in het gesprek
+                                                {t('channels.tickets.announce')}
                                             </Label>
                                             <p className="text-xs text-muted-foreground">
-                                                Een kort bericht in het kanaal
-                                                zodra een ticket wordt
-                                                aangemaakt of gesloten, zodat
-                                                wie alleen meeleest het ook
-                                                ziet.
+                                                {t(
+                                                    'channels.tickets.announce_hint',
+                                                )}
                                             </p>
 
                                             {/*
@@ -777,18 +770,14 @@ export function ChannelSettingsDialog({
                                                             htmlFor="ticket-status-announcements"
                                                             className="text-sm font-medium"
                                                         >
-                                                            Ook bij elke
-                                                            statuswijziging
+                                                            {t(
+                                                                'channels.tickets.announce_status',
+                                                            )}
                                                         </Label>
                                                         <p className="text-xs text-muted-foreground">
-                                                            Standaard uit: een
-                                                            kanaal dat elke stap
-                                                            meldt is een kanaal
-                                                            dat mensen dempen.
-                                                            Aanzetten als het
-                                                            werk in het gesprek
-                                                            gebeurt en niet op
-                                                            het bord.
+                                                            {t(
+                                                                'channels.tickets.announce_status_hint',
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -820,7 +809,7 @@ export function ChannelSettingsDialog({
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                     >
-                        Annuleren
+                        {t('channels.actions.cancel')}
                     </Button>
                     <Button
                         disabled={saving || !changed}
@@ -887,7 +876,7 @@ export function ChannelSettingsDialog({
                         }}
                     >
                         {saving && <Spinner />}
-                        Opslaan
+                        {t('channels.actions.save')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

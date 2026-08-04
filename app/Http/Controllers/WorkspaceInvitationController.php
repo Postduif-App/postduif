@@ -40,7 +40,7 @@ class WorkspaceInvitationController extends Controller
             ],
             'channel_ids.*' => ['integer'],
         ], [
-            'channel_ids.required' => 'Kies minstens één kanaal voor deze gast.',
+            'channel_ids.required' => __('requests.invite.channels_required'),
         ]);
 
         $role = WorkspaceRole::from($validated['role']);
@@ -55,7 +55,7 @@ class WorkspaceInvitationController extends Controller
             $validated['channel_ids'] ?? [],
         );
 
-        return back()->with('status', 'Uitnodiging verstuurd naar '.$validated['email'].'.');
+        return back()->with('status', __('flashes.invitation.sent', ['email' => $validated['email']]));
     }
 
     /**
@@ -81,7 +81,7 @@ class WorkspaceInvitationController extends Controller
             $invitation->channels()->pluck('channels.id'),
         );
 
-        return back()->with('status', 'Uitnodiging opnieuw verstuurd naar '.$invitation->email.'.');
+        return back()->with('status', __('flashes.invitation.resent', ['email' => $invitation->email]));
     }
 
     public function destroy(Workspace $workspace, Invitation $invitation): RedirectResponse
@@ -92,7 +92,7 @@ class WorkspaceInvitationController extends Controller
 
         $invitation->delete();
 
-        return back()->with('status', 'Uitnodiging voor '.$invitation->email.' ingetrokken.');
+        return back()->with('status', __('flashes.invitation.withdrawn', ['email' => $invitation->email]));
     }
 
     /**
@@ -105,7 +105,7 @@ class WorkspaceInvitationController extends Controller
             $user = User::where('email', mb_strtolower(trim((string) $value)))->first();
 
             if ($user !== null && $workspace->hasMember($user)) {
-                $fail('Deze persoon zit al in de workspace.');
+                $fail(__('requests.invite.already_member'));
             }
         };
     }

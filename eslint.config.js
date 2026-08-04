@@ -24,6 +24,44 @@ const paddingAroundControl = [
     ]),
 ];
 
+/*
+ * Text that is on the screen but is not a sentence, and so has nothing to
+ * translate: keys people press, the glyphs between two facts, the sigils that
+ * make a handle a handle. Translating "@" or "·" would only mean somebody has
+ * to invent a Dutch and an English version of the same character.
+ */
+const untranslatableStrings = [
+    // Separators and punctuation that sit between two translated pieces.
+    '·',
+    '—',
+    '–',
+    '/',
+    ':',
+    '.',
+    ',',
+    '(',
+    ')',
+    '+',
+    // Sigils. A handle is @name in either language, a channel #name in both.
+    '@',
+    '#',
+    // Keys, as printed on the keyboard the reader is actually using.
+    '⌘K',
+    'Esc',
+    'Enter',
+    'Shift+Enter',
+];
+
+/*
+ * The public site is deliberately monolingual — it has no reader whose language
+ * we know yet — so the same rule there would only be noise.
+ */
+const monolingualMarketing = [
+    'resources/js/pages/marketing/**',
+    'resources/js/layouts/marketing/**',
+    'resources/js/components/marketing/**',
+];
+
 /** @type {import('eslint').Linter.Config[]} */
 export default [
     js.configs.recommended,
@@ -124,6 +162,40 @@ export default [
         rules: {
             curly: ['error', 'all'],
             '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: false }],
+        },
+    },
+    /*
+     * Everything a reader sees goes through t(); nothing is typed straight into
+     * the markup. The check exists because the failure is silent: a dialog with
+     * Dutch in it looks right to whoever wrote it, and only an English reader
+     * ever finds out — by which time it is a page that is half in a language
+     * they cannot read.
+     *
+     * What is already in the tree when this went in is recorded in
+     * eslint-suppressions.json rather than exempted here: those files are debt
+     * with a number on it, and the number can only go down. A literal in a file
+     * that has none, or one more in a file that has some, is an error today.
+     *
+     * A code sample is quoted rather than written, and the rule cannot be told
+     * to leave <code> and <pre> alone — its element overrides only take
+     * components, not plain HTML tags. Write those as an expression,
+     * {'/app/'}, which the rule already reads as deliberate.
+     */
+    {
+        files: ['resources/js/**/*.tsx'],
+        rules: {
+            'react/jsx-no-literals': [
+                'error',
+                {
+                    allowedStrings: untranslatableStrings,
+                },
+            ],
+        },
+    },
+    {
+        files: monolingualMarketing,
+        rules: {
+            'react/jsx-no-literals': 'off',
         },
     },
 ];

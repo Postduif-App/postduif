@@ -53,8 +53,8 @@ class StoreTicketRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.required' => 'Geef het ticket een korte titel.',
-            'source_message_id.exists' => 'Je kunt alleen een bericht uit dit kanaal promoveren.',
+            'title.required' => __('requests.ticket.title_required'),
+            'source_message_id.exists' => __('requests.ticket.source_not_here'),
         ];
     }
 }

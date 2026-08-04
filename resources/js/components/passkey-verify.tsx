@@ -6,6 +6,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 
 type Props = {
     routes?: {
@@ -17,12 +18,27 @@ type Props = {
     separator?: string;
 };
 
+/**
+ * The passkey button, and the "or" line under it.
+ *
+ * The words are optional and default to the login screen's, because that is
+ * what this does when no routes are handed in: it signs somebody in. A screen
+ * that verifies for another reason says so itself — see confirm-password, which
+ * passes its own three lines.
+ *
+ * The defaults come from the translations rather than from English string
+ * literals. They were literals, which left the login screen with one English
+ * sentence in the middle of a translated page — and that page is one of the few
+ * whose reader never set a language, so it was the wrong place of all to leave
+ * it.
+ */
 export default function PasskeyVerify({
     routes,
     label,
     loadingLabel,
     separator,
 }: Props = {}) {
+    const { t } = useTranslate();
     const { verify, isLoading, error, isSupported } = usePasskeyVerify({
         ...(routes && {
             routes: {
@@ -51,8 +67,9 @@ export default function PasskeyVerify({
                 >
                     {isLoading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
                     {isLoading
-                        ? (loadingLabel ?? 'Authenticating...')
-                        : (label ?? 'Sign in with a passkey')}
+                        ? (loadingLabel ??
+                          t('auth_screens.login.passkey_loading'))
+                        : (label ?? t('auth_screens.login.passkey'))}
                 </Button>
                 {error && (
                     <InputError message={error} className="text-center" />
@@ -65,7 +82,7 @@ export default function PasskeyVerify({
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
-                        {separator ?? 'Or continue with email'}
+                        {separator ?? t('auth_screens.login.passkey_separator')}
                     </span>
                 </div>
             </div>

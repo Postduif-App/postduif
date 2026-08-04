@@ -61,6 +61,6 @@ class WorkspaceThemeController extends Controller
             'font' => ['required', new Enum(WorkspaceFont::class)],
         ]));
 
-        return back()->with('status', 'Thema opgeslagen.');
+        return back()->with('status', __('flashes.settings.theme_saved'));
     }
 }

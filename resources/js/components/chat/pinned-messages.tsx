@@ -3,23 +3,28 @@ import { useState } from 'react';
 
 import { jumpToMessage } from '@/components/chat/message-list';
 import { Button } from '@/components/ui/button';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import type { PinnedMessage } from '@/types/chat';
 
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-});
-
-function pinnedLabel(pin: PinnedMessage): string {
+function pinnedLabel(
+    pin: PinnedMessage,
+    // Handed in rather than looked up: this is a plain function, and neither a
+    // formatter nor a line of text can be reached from one without a hook.
+    dateTime: Intl.DateTimeFormat,
+    t: ReturnType<typeof useTranslate>['t'],
+): string {
     const moment = pin.pinnedAt
-        ? MOMENT_FORMAT.format(new Date(pin.pinnedAt))
+        ? dateTime.format(new Date(pin.pinnedAt))
         : null;
 
     if (pin.pinnedBy && moment) {
-        return `Vastgepind door ${pin.pinnedBy} · ${moment}`;
+        return t('panelen.pinned.by', { who: pin.pinnedBy, moment });
     }
 
-    return moment ? `Vastgepind op ${moment}` : 'Vastgepind';
+    return moment
+        ? t('panelen.pinned.at', { moment })
+        : t('panelen.pinned.title');
 }
 
 /**
@@ -40,6 +45,11 @@ export function PinnedBar({
     pins: PinnedMessage[];
     onOpen: () => void;
 }) {
+    // Above the early return, where every hook has to be: React counts them in
+    // order, and one that only runs on the channels with a pin would be a
+    // different count from one render to the next.
+    const { t, tChoice } = useTranslate();
+
     if (pins.length === 0) {
         return null;
     }
@@ -54,9 +64,7 @@ export function PinnedBar({
         >
             <Pin className="size-3.5 shrink-0 text-primary" aria-hidden />
             <span className="shrink-0 font-medium text-foreground">
-                {pins.length === 1
-                    ? '1 vastgepind bericht'
-                    : `${pins.length} vastgepinde berichten`}
+                {tChoice('panelen.pinned.count', pins.length)}
             </span>
             <span className="min-w-0 flex-1 truncate">
                 <span className="font-medium text-foreground/70">
@@ -64,7 +72,9 @@ export function PinnedBar({
                 </span>{' '}
                 {first.snippet}
             </span>
-            <span className="shrink-0 font-medium text-primary">Bekijken</span>
+            <span className="shrink-0 font-medium text-primary">
+                {t('panelen.pinned.view')}
+            </span>
         </button>
     );
 }
@@ -93,16 +103,18 @@ export function PinnedPanel({
      * saying so is better than a click that appears to do nothing.
      */
     const [unreachable, setUnreachable] = useState<string | null>(null);
+    const formats = useFormats();
+    const { t, tChoice } = useTranslate();
 
     return (
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0">
-                    <h2 className="text-sm font-semibold">Vastgepind</h2>
+                    <h2 className="text-sm font-semibold">
+                        {t('panelen.pinned.title')}
+                    </h2>
                     <p className="truncate text-xs text-muted-foreground">
-                        {pins.length === 1
-                            ? '1 bericht'
-                            : `${pins.length} berichten`}
+                        {tChoice('panelen.pinned.messages', pins.length)}
                     </p>
                 </div>
                 <Button
@@ -110,7 +122,7 @@ export function PinnedPanel({
                     size="icon"
                     className="ml-auto"
                     onClick={onClose}
-                    aria-label="Vastgepinde berichten sluiten"
+                    aria-label={t('panelen.pinned.close')}
                 >
                     <X className="size-4" />
                 </Button>
@@ -119,7 +131,7 @@ export function PinnedPanel({
             <div className="flex-1 overflow-y-auto p-3">
                 {pins.length === 0 ? (
                     <p className="px-1 py-6 text-center text-sm text-muted-foreground">
-                        Er is niets vastgepind in dit kanaal.
+                        {t('panelen.pinned.empty')}
                     </p>
                 ) : (
                     <ul className="flex flex-col gap-2">
@@ -135,7 +147,7 @@ export function PinnedPanel({
                                     {pin.snippet}
                                 </p>
                                 <p className="mt-2 text-[11px] text-muted-foreground">
-                                    {pinnedLabel(pin)}
+                                    {pinnedLabel(pin, formats.dateTime, t)}
                                 </p>
 
                                 <div className="mt-2 flex items-center gap-3 text-xs">
@@ -150,7 +162,7 @@ export function PinnedPanel({
                                         }
                                         className="font-medium text-primary hover:underline"
                                     >
-                                        Naar bericht
+                                        {t('panelen.pinned.jump')}
                                     </button>
                                     {canPin && (
                                         <button
@@ -159,16 +171,14 @@ export function PinnedPanel({
                                             className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                                         >
                                             <PinOff className="size-3" />
-                                            Losmaken
+                                            {t('panelen.pinned.unpin')}
                                         </button>
                                     )}
                                 </div>
 
                                 {unreachable === pin.id && (
                                     <p className="mt-2 text-[11px] text-muted-foreground">
-                                        Dit bericht staat buiten het geladen
-                                        deel van het kanaal. Scroll omhoog om
-                                        het op te halen.
+                                        {t('panelen.pinned.unreachable')}
                                     </p>
                                 )}
                             </li>

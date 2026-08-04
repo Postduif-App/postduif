@@ -16,6 +16,7 @@ class SendMessage
 {
     public function __construct(
         private readonly RecordMentions $recordMentions,
+        private readonly RecordThreadInbox $recordThreadInbox,
         private readonly MarkChannelRead $markChannelRead,
         private readonly QueueLinkPreviews $queueLinkPreviews,
     ) {}
@@ -84,10 +85,24 @@ class SendMessage
      * point at. Used where the app has something to say in a channel — a ticket
      * that was opened or closed — which is a bot message in every way that
      * matters to a reader.
+     *
+     * @param  string|null  $parentId  A message in this channel to hang the
+     *                                 reply under. It has to travel through
+     *                                 post() rather than be written on
+     *                                 afterwards: the parent's reply counter,
+     *                                 the thread inbox and the broadcast all
+     *                                 depend on knowing this at the moment the
+     *                                 message is made, and a parent set later
+     *                                 produces a reply that exists in the
+     *                                 database and in no thread anybody can see.
      */
-    public function fromSystem(Channel $channel, string $body, string $botName): Message
-    {
-        return $this->post($channel, ['bot_name' => $botName], null, $body, null, null, null);
+    public function fromSystem(
+        Channel $channel,
+        string $body,
+        string $botName,
+        ?string $parentId = null,
+    ): Message {
+        return $this->post($channel, ['bot_name' => $botName], null, $body, $parentId, null, null);
     }
 
     /**
@@ -149,6 +164,8 @@ class SendMessage
             }
 
             $mentioned = $this->recordMentions->handle($message)->pluck('id');
+
+            $this->recordThreadInbox->handle($message, $mentioned);
 
             // Posting is reading: the author has obviously seen everything up
             // to and including their own message, so never show them a badge

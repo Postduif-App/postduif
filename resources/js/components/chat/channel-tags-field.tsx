@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 
 interface ChannelTagsFieldProps {
@@ -36,6 +37,7 @@ export function ChannelTagsField({
     onChange,
     suggestions,
 }: ChannelTagsFieldProps) {
+    const { t } = useTranslate();
     const [draft, setDraft] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +66,7 @@ export function ChannelTagsField({
 
     return (
         <div className="flex flex-col gap-2">
-            <Label htmlFor="channel-tag">Tags</Label>
+            <Label htmlFor="channel-tag">{t('chat_ui.tags.label')}</Label>
 
             {value.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -81,7 +83,7 @@ export function ChannelTagsField({
                                         value.filter((each) => each !== tag),
                                     )
                                 }
-                                aria-label={`${tag} weghalen`}
+                                aria-label={t('chat_ui.tags.remove', { tag })}
                                 className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
                             >
                                 <X className="size-3" />
@@ -96,7 +98,7 @@ export function ChannelTagsField({
                 ref={inputRef}
                 value={draft}
                 maxLength={40}
-                placeholder="Typ een tag en druk op Enter"
+                placeholder={t('chat_ui.tags.placeholder')}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
                     if (event.key === 'Enter') {
@@ -123,7 +125,7 @@ export function ChannelTagsField({
             {offered.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                     <span className="text-xs text-muted-foreground">
-                        Al in gebruik:
+                        {t('chat_ui.tags.in_use')}
                     </span>
                     {offered.map((suggestion) => (
                         <button
@@ -145,9 +147,7 @@ export function ChannelTagsField({
             )}
 
             <p className="text-xs text-muted-foreground">
-                Tags horen bij de workspace, niet bij dit kanaal: dezelfde tag
-                kan aan meerdere kanalen hangen. Een tag die nergens meer op zit
-                verdwijnt vanzelf.
+                {t('chat_ui.tags.hint')}
             </p>
         </div>
     );

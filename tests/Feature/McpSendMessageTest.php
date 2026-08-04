@@ -7,7 +7,7 @@ use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
 use App\Mcp\Tools\SendMessageTool;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -134,5 +134,5 @@ it('records a mention the same way the app does', function () {
         'body' => 'Kun jij hiernaar kijken @fenna?',
     ]);
 
-    expect(Mention::where('user_id', $colleague->id)->count())->toBe(1);
+    expect(InboxItem::where('user_id', $colleague->id)->count())->toBe(1);
 });

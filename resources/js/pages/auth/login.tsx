@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, setLayoutProps, usePage } from '@inertiajs/react';
 import { DevQuickLogin } from '@/components/dev-quick-login';
 import type { DevAccount } from '@/components/dev-quick-login';
 import InputError from '@/components/input-error';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -26,9 +27,26 @@ export default function Login({
     canResetPassword,
     devAccounts = [],
 }: Props) {
+    const { t } = useTranslate();
+
+    // Shared rather than a page prop: every auth screen may need to know, and
+    // the sign-up page is not the only place a closed door has to be honoured.
+    const { registrationOpen } = usePage<{ registrationOpen: boolean }>().props;
+
+    /*
+     * Set from inside the component rather than on a static `Login.layout`,
+     * which is where the heading and the line under it used to live: the words
+     * come from the translation prop now, and reading that is a hook — which
+     * only a component body may do.
+     */
+    setLayoutProps({
+        title: t('auth_screens.login.title'),
+        description: t('auth_screens.login.description'),
+    });
+
     return (
         <>
-            <Head title="Log in" />
+            <Head title={t('auth_screens.login.head')} />
 
             <PasskeyVerify />
 
@@ -43,7 +61,9 @@ export default function Login({
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="email">
+                                    {t('auth_screens.fields.email')}
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -59,14 +79,18 @@ export default function Login({
 
                             <div className="grid gap-2">
                                 <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
+                                    <Label htmlFor="password">
+                                        {t('auth_screens.fields.password')}
+                                    </Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
                                             className="ml-auto text-sm"
                                             tabIndex={5}
                                         >
-                                            Forgot your password?
+                                            {t(
+                                                'auth_screens.login.forgot_password',
+                                            )}
                                         </TextLink>
                                     )}
                                 </div>
@@ -76,7 +100,9 @@ export default function Login({
                                     required
                                     tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Password"
+                                    placeholder={t(
+                                        'auth_screens.fields.password',
+                                    )}
                                 />
                                 <InputError message={errors.password} />
                             </div>
@@ -87,7 +113,9 @@ export default function Login({
                                     name="remember"
                                     tabIndex={3}
                                 />
-                                <Label htmlFor="remember">Remember me</Label>
+                                <Label htmlFor="remember">
+                                    {t('auth_screens.login.remember')}
+                                </Label>
                             </div>
 
                             <Button
@@ -98,16 +126,24 @@ export default function Login({
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                {t('auth_screens.login.submit')}
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
-                            </TextLink>
-                        </div>
+                        {/*
+                            Left out entirely rather than disabled when the
+                            installation has closed registration: the page it
+                            points at answers with a 404, and an offer that
+                            leads nowhere is worse than no offer.
+                        */}
+                        {registrationOpen && (
+                            <div className="text-center text-sm text-muted-foreground">
+                                {t('auth_screens.login.no_account')}{' '}
+                                <TextLink href={register()} tabIndex={5}>
+                                    {t('auth_screens.login.sign_up')}
+                                </TextLink>
+                            </div>
+                        )}
                     </>
                 )}
             </Form>
@@ -120,8 +156,3 @@ export default function Login({
         </>
     );
 }
-
-Login.layout = {
-    title: 'Log in to your account',
-    description: 'Enter your email and password below to log in',
-};

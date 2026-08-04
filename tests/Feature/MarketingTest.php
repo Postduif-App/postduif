@@ -57,8 +57,13 @@ it('says which features only exist once somebody switches them on', function () 
         ->all();
 
     expect($off)->toContain(Transfers::key())
-        // Three of them, and each one lets something reach past the workspace.
-        ->toHaveCount(3);
+        /*
+         * Four, and each one hands out something a workspace should grant on
+         * purpose rather than find already granted: three that let something
+         * reach past the workspace, and workflows — which stay inside it, but
+         * act on channels with the rights of whoever wrote them.
+         */
+        ->toHaveCount(4);
 });
 
 it('describes the roles as the code defines them', function () {

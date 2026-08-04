@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { candidates as candidatesRoute, store } from '@/routes/chat/directs';
 import type { ChannelMember, ChatWorkspace } from '@/types/chat';
 
@@ -28,6 +29,7 @@ export function NewDirectMessageDialog({
     open,
     onOpenChange,
 }: NewDirectMessageDialogProps) {
+    const { t } = useTranslate();
     const getInitials = useInitials();
     const [query, setQuery] = useState('');
     const [candidates, setCandidates] = useState<ChannelMember[]>([]);
@@ -115,10 +117,9 @@ export function NewDirectMessageDialog({
         >
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Nieuw gesprek</DialogTitle>
+                    <DialogTitle>{t('search.direct.title')}</DialogTitle>
                     <DialogDescription>
-                        Kies met wie je wilt praten. Bestaat het gesprek al, dan
-                        open je het gewoon opnieuw.
+                        {t('search.direct.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -126,7 +127,7 @@ export function NewDirectMessageDialog({
                     <Input
                         autoFocus
                         value={query}
-                        placeholder="Zoek op naam of @gebruikersnaam…"
+                        placeholder={t('search.direct.placeholder')}
                         onChange={(event) => setQuery(event.target.value)}
                     />
                     {/*
@@ -174,8 +175,8 @@ export function NewDirectMessageDialog({
                         {!loading && candidates.length === 0 && (
                             <p className="px-2 py-2 text-sm text-muted-foreground">
                                 {query.trim() === ''
-                                    ? 'Er is nog niemand anders in deze workspace.'
-                                    : 'Niemand gevonden.'}
+                                    ? t('search.direct.nobody_yet')
+                                    : t('search.direct.none_found')}
                             </p>
                         )}
                     </div>

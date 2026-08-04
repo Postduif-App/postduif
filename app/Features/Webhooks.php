@@ -6,11 +6,11 @@ class Webhooks extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Webhooks';
+        return __('features.webhooks.label');
     }
 
     public static function description(): string
     {
-        return 'Andere systemen mogen via een geheime URL in een kanaal posten.';
+        return __('features.webhooks.description');
     }
 }

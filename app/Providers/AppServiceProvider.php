@@ -2,9 +2,32 @@
 
 namespace App\Providers;
 
+use App\Models\ApiToken;
 use App\Models\Webhook;
+use App\Models\Workflow;
 use App\Support\Dns\DnsHostResolver;
 use App\Support\Dns\HostResolver;
+use App\Workflows\Actions\AddChannelMembers;
+use App\Workflows\Actions\AddReaction;
+use App\Workflows\Actions\ArchiveChannel;
+use App\Workflows\Actions\CreateChannel;
+use App\Workflows\Actions\Delay;
+use App\Workflows\Actions\GetChannelInfo;
+use App\Workflows\Actions\HttpRequest;
+use App\Workflows\Actions\PinMessage;
+use App\Workflows\Actions\RemoveReaction;
+use App\Workflows\Actions\ReplyInThread;
+use App\Workflows\Actions\SendChannelMessage;
+use App\Workflows\Actions\SendDirectMessage;
+use App\Workflows\Actions\UnarchiveChannel;
+use App\Workflows\Actions\UnpinMessage;
+use App\Workflows\Triggers\ChannelJoinTrigger;
+use App\Workflows\Triggers\LinkTrigger;
+use App\Workflows\Triggers\MessageKeywordTrigger;
+use App\Workflows\Triggers\ReactionTrigger;
+use App\Workflows\Triggers\ScheduleTrigger;
+use App\Workflows\Triggers\WebhookTrigger;
+use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\DevCommands;
@@ -29,6 +52,57 @@ class AppServiceProvider extends ServiceProvider
          * on a development box points *.test at localhost.
          */
         $this->app->bind(HostResolver::class, DnsHostResolver::class);
+
+        $this->registerWorkflowRegistry();
+    }
+
+    /**
+     * Every trigger and every action a workflow may be built from.
+     *
+     * The order is the order somebody picking one sees, so it is a choice
+     * rather than an accident of the filesystem — the same reasoning as
+     * WorkspaceFeature::ALL, and the register says why it is an object here
+     * instead of a const.
+     *
+     * The triggers run from the ones a workspace sets up for itself to the ones
+     * something outside sets off, because that is the order people think in:
+     * "when somebody says X" is what they came for, and the webhook is what
+     * they find later.
+     */
+    private function registerWorkflowRegistry(): void
+    {
+        $this->app->singleton(WorkflowRegistry::class, fn (): WorkflowRegistry => new WorkflowRegistry(
+            triggers: [
+                MessageKeywordTrigger::class,
+                ChannelJoinTrigger::class,
+                ReactionTrigger::class,
+                LinkTrigger::class,
+                ScheduleTrigger::class,
+                WebhookTrigger::class,
+            ],
+            /*
+             * Grouped the way somebody picking one thinks: saying something
+             * first, then the things you do to a message that already exists,
+             * then the channel itself, and waiting last — it is the only one
+             * that is not a thing done to anything.
+             */
+            actions: [
+                SendChannelMessage::class,
+                SendDirectMessage::class,
+                ReplyInThread::class,
+                AddReaction::class,
+                RemoveReaction::class,
+                PinMessage::class,
+                UnpinMessage::class,
+                CreateChannel::class,
+                AddChannelMembers::class,
+                GetChannelInfo::class,
+                HttpRequest::class,
+                ArchiveChannel::class,
+                UnarchiveChannel::class,
+                Delay::class,
+            ],
+        ));
     }
 
     /**
@@ -56,6 +130,29 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('webhook', fn (Request $request) => Limit::perMinute(60)
             ->by(Webhook::hashToken((string) $request->route('token'))));
+
+        /*
+         * A workflow trigger, on a shorter leash than a message webhook. What
+         * is behind this one is not one message in one channel but a row of
+         * steps that may post in several and put people in them — so twelve a
+         * minute, which is plenty for anything reporting an event and far too
+         * few to fill a workspace with.
+         */
+        RateLimiter::for('workflow-webhook', fn (Request $request) => Limit::perMinute(12)
+            ->by(Workflow::hashWebhookToken((string) $request->route('token'))));
+
+        /*
+         * The token API, keyed per token for the same reason a webhook is: one
+         * script polling too eagerly must not be able to lock out somebody
+         * else's.
+         *
+         * Hashed, so a credential never becomes a cache key. Falls back to the
+         * IP when there is no token at all — that request is going to be
+         * refused anyway, and an unauthenticated caller hammering the endpoint
+         * is exactly what a limit is for.
+         */
+        RateLimiter::for('api-token', fn (Request $request) => Limit::perMinute(60)
+            ->by(ApiToken::hashToken((string) $request->bearerToken()) ?: $request->ip()));
     }
 
     /**

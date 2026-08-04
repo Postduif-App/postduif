@@ -2,21 +2,10 @@ import { Download, FileText, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { ImageLightbox } from '@/components/chat/image-lightbox';
+import { useFormats } from '@/hooks/use-formats';
+import { readableSize } from '@/lib/file-size';
 import { cn } from '@/lib/utils';
 import type { MessageAttachment } from '@/types/chat';
-
-/** Bytes as somebody reads them: "1,4 MB", not "1468006". */
-function readableSize(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    const kb = bytes / 1024;
-
-    return kb < 1024
-        ? `${Math.round(kb)} KB`
-        : `${(kb / 1024).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} MB`;
-}
 
 /**
  * The same file, asked for as a download.
@@ -125,6 +114,8 @@ function ImageAttachment({ attachment }: { attachment: MessageAttachment }) {
  * type and the size, which is what somebody needs to decide whether to open it.
  */
 function FileAttachment({ attachment }: { attachment: MessageAttachment }) {
+    const formats = useFormats();
+
     return (
         <div
             className={cn(
@@ -151,7 +142,7 @@ function FileAttachment({ attachment }: { attachment: MessageAttachment }) {
                         {attachment.name}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                        {readableSize(attachment.size)}
+                        {readableSize(attachment.size, formats.number)}
                     </span>
                 </span>
             </a>

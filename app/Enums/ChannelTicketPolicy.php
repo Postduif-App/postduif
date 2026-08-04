@@ -55,18 +55,18 @@ enum ChannelTicketPolicy: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Disabled => 'Geen tickets',
-            self::Everyone => 'Iedereen in dit kanaal',
-            self::Members => 'Alleen leden, geen gasten',
+            self::Disabled => __('enums.channel-ticket-policy.label.Disabled'),
+            self::Everyone => __('enums.channel-ticket-policy.label.Everyone'),
+            self::Members => __('enums.channel-ticket-policy.label.Members'),
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::Disabled => 'Dit kanaal is alleen een gesprek.',
-            self::Everyone => 'Een klantkanaal: de klant kan zelf tickets aanmaken.',
-            self::Members => 'Gasten lezen de tickets wel, maar maken er geen aan.',
+            self::Disabled => __('enums.channel-ticket-policy.description.Disabled'),
+            self::Everyone => __('enums.channel-ticket-policy.description.Everyone'),
+            self::Members => __('enums.channel-ticket-policy.description.Members'),
         };
     }
 }

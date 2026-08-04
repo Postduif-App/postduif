@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { update } from '@/routes/notifications';
 
 interface Threshold {
@@ -49,20 +50,21 @@ export default function Notifications({
     const [viaMail, setViaMail] = useState(preferences.viaMail);
     const [viaPushover, setViaPushover] = useState(preferences.viaPushover);
     const [editingKey, setEditingKey] = useState(!preferences.hasPushoverKey);
+    const { t } = useTranslate();
 
     const on = after !== OFF;
 
     return (
         <>
-            <Head title="Notificaties" />
+            <Head title={t('settings.notifications.title')} />
 
-            <h1 className="sr-only">Notificaties</h1>
+            <h1 className="sr-only">{t('settings.notifications.title')}</h1>
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Notificaties"
-                    description="Wanneer Pcom je mag bereiken terwijl je er niet bent"
+                    title={t('settings.notifications.title')}
+                    description={t('settings.notifications.description')}
                 />
 
                 <Form
@@ -74,8 +76,7 @@ export default function Notifications({
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="notify-after">
-                                    Laat het weten als ik een kanaal niet heb
-                                    geopend
+                                    {t('settings.notifications.after')}
                                 </Label>
                                 <Select
                                     value={after}
@@ -90,14 +91,20 @@ export default function Notifications({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value={OFF}>
-                                            Nooit
+                                            {t('settings.notifications.never')}
                                         </SelectItem>
                                         {thresholds.map((threshold) => (
                                             <SelectItem
                                                 key={threshold.value}
                                                 value={String(threshold.value)}
                                             >
-                                                langer dan {threshold.label}
+                                                {t(
+                                                    'settings.notifications.longer_than',
+                                                    {
+                                                        duration:
+                                                            threshold.label,
+                                                    },
+                                                )}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -113,8 +120,7 @@ export default function Notifications({
                                     />
                                 )}
                                 <p className="text-xs text-muted-foreground">
-                                    Je krijgt één samenvatting per workspace,
-                                    met alleen de kanalen waar iets gebeurd is.
+                                    {t('settings.notifications.summary_hint')}
                                 </p>
                                 <InputError
                                     message={errors.notify_after_minutes}
@@ -127,7 +133,7 @@ export default function Notifications({
                                 aria-disabled={!on}
                             >
                                 <legend className="text-sm font-medium">
-                                    Waar wil je het horen?
+                                    {t('settings.notifications.where')}
                                 </legend>
 
                                 <label className="flex items-start gap-3 text-sm">
@@ -141,10 +147,12 @@ export default function Notifications({
                                     />
                                     <span>
                                         <span className="block font-medium">
-                                            E-mail
+                                            {t('settings.notifications.mail')}
                                         </span>
                                         <span className="block text-xs text-muted-foreground">
-                                            Naar het adres van je account.
+                                            {t(
+                                                'settings.notifications.mail_hint',
+                                            )}
                                         </span>
                                     </span>
                                 </label>
@@ -161,19 +169,27 @@ export default function Notifications({
                                     />
                                     <span>
                                         <span className="block font-medium">
-                                            Pushover
+                                            {t(
+                                                'settings.notifications.pushover',
+                                            )}
                                         </span>
                                         <span className="block text-xs text-muted-foreground">
                                             {pushoverAvailable
-                                                ? 'Een melding op je eigen telefoon.'
-                                                : 'Niet ingesteld op deze installatie.'}
+                                                ? t(
+                                                      'settings.notifications.pushover_hint',
+                                                  )
+                                                : t(
+                                                      'settings.notifications.pushover_missing',
+                                                  )}
                                         </span>
                                     </span>
                                 </label>
                                 {viaPushover && pushoverAvailable && (
                                     <div className="grid gap-2 pl-7">
                                         <Label htmlFor="pushover-key">
-                                            Je Pushover user key
+                                            {t(
+                                                'settings.notifications.pushover_key',
+                                            )}
                                         </Label>
                                         {editingKey ? (
                                             <Input
@@ -185,7 +201,9 @@ export default function Notifications({
                                         ) : (
                                             <div className="flex items-center gap-3">
                                                 <p className="text-sm text-muted-foreground">
-                                                    Ingesteld.
+                                                    {t(
+                                                        'settings.notifications.pushover_key_set',
+                                                    )}
                                                 </p>
                                                 <Button
                                                     type="button"
@@ -195,13 +213,16 @@ export default function Notifications({
                                                         setEditingKey(true)
                                                     }
                                                 >
-                                                    Vervangen
+                                                    {t(
+                                                        'settings.notifications.pushover_key_replace',
+                                                    )}
                                                 </Button>
                                             </div>
                                         )}
                                         <p className="text-xs text-muted-foreground">
-                                            Te vinden op pushover.net, boven aan
-                                            je dashboard.
+                                            {t(
+                                                'settings.notifications.pushover_key_hint',
+                                            )}
                                         </p>
                                         <InputError
                                             message={errors.pushover_user_key}
@@ -228,7 +249,7 @@ export default function Notifications({
                             <div className="flex justify-start">
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
-                                    Opslaan
+                                    {t('settings.actions.save')}
                                 </Button>
                             </div>
                         </>

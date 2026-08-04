@@ -4,8 +4,9 @@ use App\Actions\Chat\ChannelPresence;
 use App\Actions\Chat\MarkChannelRead;
 use App\Enums\Availability;
 use App\Enums\ChannelType;
+use App\Enums\InboxItemType;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Webhook;
@@ -247,7 +248,8 @@ it('puts the channel that named them first', function () {
     }
 
     $addressed = saySomething($quiet, $colleague, 'Even jij');
-    Mention::create([
+    InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => $addressed->id,
         'user_id' => $member->id,
         'channel_id' => $quiet->id,
@@ -360,7 +362,8 @@ it('counts the mention either way, so it is there when you come back', function 
     ]);
 
     $message = saySomething($channel, $colleague, "Kijk jij even @{$member->username}");
-    Mention::create([
+    InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => $message->id,
         'user_id' => $member->id,
         'channel_id' => $channel->id,
@@ -370,5 +373,5 @@ it('counts the mention either way, so it is there when you come back', function 
     artisan('chat:notify-absent')->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect(Mention::where('user_id', $member->id)->count())->toBe(1);
+    expect(InboxItem::where('user_id', $member->id)->count())->toBe(1);
 });

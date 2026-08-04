@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { login } from '@/routes/dev';
 
 export interface DevAccount {
@@ -21,6 +22,7 @@ export interface DevAccount {
  */
 export function DevQuickLogin({ accounts }: { accounts: DevAccount[] }) {
     const getInitials = useInitials();
+    const { t } = useTranslate();
     const [busyId, setBusyId] = useState<number | null>(null);
 
     if (accounts.length === 0) {
@@ -31,7 +33,7 @@ export function DevQuickLogin({ accounts }: { accounts: DevAccount[] }) {
         <div className="rounded-lg border border-dashed border-amber-500/50 bg-amber-500/5 p-3">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-500">
                 <Zap className="size-3.5" />
-                Alleen in development — direct inloggen
+                {t('components.dev_login.notice')}
             </p>
 
             <div className="grid gap-1.5">

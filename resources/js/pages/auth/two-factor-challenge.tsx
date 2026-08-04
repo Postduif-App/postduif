@@ -1,6 +1,6 @@
 import { Form, Head, setLayoutProps } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,34 +9,32 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from '@/components/ui/input-otp';
+import { useTranslate } from '@/hooks/use-translate';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
 import { store } from '@/routes/two-factor/login';
 
 export default function TwoFactorChallenge() {
+    const { t } = useTranslate();
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
 
-    const authConfigContent = useMemo<{
-        title: string;
-        description: string;
-        toggleText: string;
-    }>(() => {
-        if (showRecoveryInput) {
-            return {
-                title: 'Recovery code',
-                description:
-                    'Please confirm access to your account by entering one of your emergency recovery codes.',
-                toggleText: 'login using an authentication code',
-            };
-        }
-
-        return {
-            title: 'Authentication code',
-            description:
-                'Enter the authentication code provided by your authenticator application.',
-            toggleText: 'login using a recovery code',
-        };
-    }, [showRecoveryInput]);
+    /*
+     * Worked out on every render rather than memoised: the words now come from
+     * the translation prop, so the value depends on t() as much as on which
+     * input is showing, and three lookups are cheaper than a dependency list
+     * that has to be kept honest.
+     */
+    const authConfigContent = showRecoveryInput
+        ? {
+              title: t('auth_screens.two_factor.recovery_title'),
+              description: t('auth_screens.two_factor.recovery_description'),
+              toggleText: t('auth_screens.two_factor.code_toggle'),
+          }
+        : {
+              title: t('auth_screens.two_factor.code_title'),
+              description: t('auth_screens.two_factor.code_description'),
+              toggleText: t('auth_screens.two_factor.recovery_toggle'),
+          };
 
     setLayoutProps({
         title: authConfigContent.title,
@@ -51,7 +49,7 @@ export default function TwoFactorChallenge() {
 
     return (
         <>
-            <Head title="Two-factor authentication" />
+            <Head title={t('auth_screens.two_factor.head')} />
 
             <div className="space-y-6">
                 <Form
@@ -67,7 +65,9 @@ export default function TwoFactorChallenge() {
                                     <Input
                                         name="recovery_code"
                                         type="text"
-                                        placeholder="Enter recovery code"
+                                        placeholder={t(
+                                            'auth_screens.two_factor.recovery_placeholder',
+                                        )}
                                         autoFocus={showRecoveryInput}
                                         required
                                     />
@@ -109,11 +109,15 @@ export default function TwoFactorChallenge() {
                                 className="w-full"
                                 disabled={processing}
                             >
-                                Continue
+                                {t('auth_screens.two_factor.submit')}
                             </Button>
 
                             <div className="text-center text-sm text-muted-foreground">
-                                <span>or you can </span>
+                                <span>
+                                    {t(
+                                        'auth_screens.two_factor.or_you_can',
+                                    )}{' '}
+                                </span>
                                 <button
                                     type="button"
                                     className="cursor-pointer text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"

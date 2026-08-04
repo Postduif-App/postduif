@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Composer } from '@/components/chat/composer';
 import { MessageList } from '@/components/chat/message-list';
 import { Button } from '@/components/ui/button';
+import { useTranslate } from '@/hooks/use-translate';
 import type {
     ActiveChannel,
     ChannelSummary,
@@ -41,11 +42,15 @@ export function ThreadPanel({
     onReply,
     onTyping,
 }: ThreadPanelProps) {
+    const { t } = useTranslate();
+
     return (
         <aside className="flex w-[26rem] shrink-0 flex-col border-l">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0">
-                    <h2 className="text-sm font-semibold">Thread</h2>
+                    <h2 className="text-sm font-semibold">
+                        {t('chat_ui.thread.heading')}
+                    </h2>
                     <p className="truncate text-xs text-muted-foreground">
                         {channel.type === 'dm'
                             ? channel.label
@@ -57,7 +62,7 @@ export function ThreadPanel({
                     size="icon"
                     className="ml-auto"
                     onClick={onClose}
-                    aria-label="Thread sluiten"
+                    aria-label={t('chat_ui.thread.close')}
                 >
                     <X className="size-4" />
                 </Button>
@@ -71,6 +76,7 @@ export function ThreadPanel({
             <MessageList
                 messages={[parent, ...replies]}
                 workspace={workspace}
+                channelId={channel.id}
                 members={channel.members}
                 channels={channels}
                 ticketChannelId={channel.hasTickets ? channel.id : null}
@@ -92,10 +98,10 @@ export function ThreadPanel({
                 */
                 placeholder={
                     !channel.repliesOpen
-                        ? 'Reageren staat uit in dit kanaal'
+                        ? t('chat_ui.thread.replies_closed')
                         : channel.isMember
-                          ? 'Antwoord in thread'
-                          : 'Word lid van dit kanaal om te reageren'
+                          ? t('messages.actions.reply')
+                          : t('chat_ui.thread.join_first')
                 }
                 disabled={!channel.canReply}
                 members={channel.members}

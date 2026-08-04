@@ -2,7 +2,8 @@
 
 namespace App\Actions\Chat;
 
-use App\Models\Mention;
+use App\Enums\InboxItemType;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -22,6 +23,24 @@ class RecordMentions
     private const PATTERN = '/(?:^|\s)@([a-z0-9_-]+(?:\.[a-z0-9_-]+)*)/i';
 
     /**
+     * Code in a message: a fenced block, or a span between backticks.
+     *
+     * Taken out before handles are looked for, and not as a nicety. Code is full
+     * of things shaped like a handle that address nobody — `@media` in a
+     * stylesheet, `@param` in a docblock, `@override`, a Blade `@if`. Without
+     * this, pasting a stylesheet into a channel notifies whoever happens to be
+     * called Media, and the fix a member reaches for — wrapping it in a code
+     * block — is exactly the thing that would not have helped.
+     *
+     * The two alternatives are ordered fence-first so a lone backtick inside a
+     * block cannot close a span that was never opened. Both mirror what
+     * lib/code-blocks.ts and lib/inline-markdown.ts match in the browser: the
+     * interface must not draw a mention the server refuses to send, and it must
+     * not stay quiet about one the server does.
+     */
+    private const CODE_PATTERN = '/```[\s\S]*?```|`[^`\n]+`/';
+
+    /**
      * Handles that address a group rather than a person. Nobody may register
      * them as a username, so there is no ambiguity to resolve.
      */
@@ -29,7 +48,10 @@ class RecordMentions
 
     private const HERE = 'here';
 
-    public function __construct(private readonly ChannelPresence $presence) {}
+    public function __construct(
+        private readonly ChannelPresence $presence,
+        private readonly AnnounceInbox $announceInbox,
+    ) {}
 
     /**
      * Store a row per mentioned member and return the users that were tagged.
@@ -54,13 +76,22 @@ class RecordMentions
             ->values();
 
         foreach ($mentioned as $user) {
-            Mention::firstOrCreate([
+            InboxItem::firstOrCreate([
                 'message_id' => $message->id,
                 'user_id' => $user->id,
+                'type' => InboxItemType::Mention,
             ], [
                 'channel_id' => $message->channel_id,
+                // Null for a webhook: there is no member behind it to name,
+                // and the card says who the bot claims to be anyway.
+                'actor_id' => $message->isFromBot() ? null : $message->user_id,
             ]);
         }
+
+        // Nobody here overlaps with RecordThreadInbox's recipients — being
+        // named takes somebody out of that set — so one announcement each is
+        // one announcement per person.
+        $this->announceInbox->handle($message->workspace_id, $mentioned->pluck('id'));
 
         return $mentioned;
     }
@@ -125,6 +156,13 @@ class RecordMentions
      */
     private function handlesIn(string $body): Collection
     {
+        /*
+         * Replaced with a space rather than removed, so the words either side of
+         * a code span do not fuse into one. "mail @jan `x`@piet" must not become
+         * a single handle that belongs to neither of them.
+         */
+        $body = (string) preg_replace(self::CODE_PATTERN, ' ', $body);
+
         preg_match_all(self::PATTERN, $body, $matches);
 
         $handles = array_map($this->normalise(...), $matches[1]);

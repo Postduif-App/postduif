@@ -39,7 +39,7 @@ class WorkspaceTicketController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($workspace->hasMember($user), 403, 'Je bent geen lid van deze workspace.');
+        abort_unless($workspace->hasMember($user), 403, __('chat.not_a_member'));
 
         $channels = $this->buildChatShell->visibleChannels($workspace, $user)
             ->filter(fn (Channel $channel): bool => $channel->hasTickets());

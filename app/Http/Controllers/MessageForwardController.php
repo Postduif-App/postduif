@@ -60,7 +60,7 @@ class MessageForwardController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Doorgestuurd naar #'.$target->name.'.',
+            'message' => __('flashes.channel.forwarded', ['name' => $target->name]),
         ]);
 
         return back();

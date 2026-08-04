@@ -1,13 +1,14 @@
 <?php
 
+use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\AvatarController;
-use App\Http\Controllers\Settings\McpTokenController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StatusController;
 use App\Http\Controllers\Settings\StatusRuleController;
-use App\Http\Controllers\Settings\TransferController;
+use App\Http\Controllers\Settings\WorkflowController;
+use App\Http\Controllers\Settings\WorkflowRunController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
@@ -70,12 +71,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('app/settings/status-rules/{statusRule}', [StatusRuleController::class, 'destroy'])
         ->name('status-rules.destroy');
 
-    Route::get('app/settings/mcp-tokens', [McpTokenController::class, 'index'])
-        ->name('mcp-tokens.index');
-    Route::post('app/settings/mcp-tokens', [McpTokenController::class, 'store'])
-        ->name('mcp-tokens.store');
-    Route::delete('app/settings/mcp-tokens/{mcpToken}', [McpTokenController::class, 'destroy'])
-        ->name('mcp-tokens.destroy');
+    Route::get('app/settings/api-tokens', [ApiTokenController::class, 'index'])
+        ->name('api-tokens.index');
+    Route::post('app/settings/api-tokens', [ApiTokenController::class, 'store'])
+        ->name('api-tokens.store');
+    Route::delete('app/settings/api-tokens/{apiToken}', [ApiTokenController::class, 'destroy'])
+        ->name('api-tokens.destroy');
 
     Route::get('app/settings/notifications', [NotificationController::class, 'edit'])
         ->name('notifications.edit');
@@ -95,6 +96,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('app/settings/workspace/theme', [WorkspaceThemeController::class, 'update'])
         ->name('workspace.theme.update');
 
+    /*
+     * No workspace in the path, like every other settings route — the current
+     * one is worked out from the member. That also rules out the feature
+     * middleware, which reads {workspace} off the route; here the gate is
+     * WorkspacePolicy::manageWorkflows, which asks about the feature and the
+     * role in one breath.
+     */
+    Route::get('app/settings/workflows', [WorkflowController::class, 'index'])
+        ->name('workflows.index');
+    Route::post('app/settings/workflows', [WorkflowController::class, 'store'])
+        ->name('workflows.store');
+    /*
+     * The builder is a screen of its own rather than a panel that folds open in
+     * the list. A workflow being written is a piece of work with a beginning and
+     * an end — one that takes several sittings — and it deserves an address
+     * somebody can bookmark, reload and send to a colleague.
+     */
+    Route::get('app/settings/workflows/{workflow}/edit', [WorkflowController::class, 'edit'])
+        ->name('workflows.edit');
+    Route::put('app/settings/workflows/{workflow}', [WorkflowController::class, 'update'])
+        ->name('workflows.update');
+    Route::patch('app/settings/workflows/{workflow}/enabled', [WorkflowController::class, 'toggle'])
+        ->name('workflows.toggle');
+    Route::delete('app/settings/workflows/{workflow}', [WorkflowController::class, 'destroy'])
+        ->name('workflows.destroy');
+    Route::get('app/settings/workflows/{workflow}/runs', [WorkflowRunController::class, 'index'])
+        ->name('workflows.runs');
+
     Route::get('app/settings/workspace/members', [WorkspaceMemberController::class, 'index'])
         ->name('workspace.members.index');
     Route::patch('app/settings/workspace/members/{user}', [WorkspaceMemberController::class, 'update'])
@@ -113,8 +142,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * none here — the controller asks the same question and answers with the
      * same 404.
      */
-    Route::get('app/settings/workspace/transfers', [TransferController::class, 'index'])
-        ->name('workspace.transfers.index');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

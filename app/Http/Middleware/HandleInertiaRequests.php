@@ -6,8 +6,9 @@ use App\Actions\Workspace\BuildThemeStyles;
 use App\Enums\Availability;
 use App\Enums\WorkspaceFont;
 use App\Enums\WorkspaceRole;
-use App\Features\Transfers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Lang;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -38,6 +39,31 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
+    /**
+     * Every lang file for the current locale, flattened to "group.key".
+     *
+     * Keyed off the Dutch directory rather than the current one: nl is the
+     * source language, so a group that only exists there should still be
+     * offered — Laravel falls back per line, and a group skipped here would
+     * leave the frontend with nothing to fall back to.
+     *
+     * @return array<string, string>
+     */
+    private function translations(): array
+    {
+        $lines = [];
+
+        foreach (glob(lang_path('nl/*.php')) ?: [] as $file) {
+            $group = basename($file, '.php');
+
+            foreach (Arr::dot(Lang::get($group)) as $key => $line) {
+                $lines["{$group}.{$key}"] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
     public function share(Request $request): array
     {
         $workspace = $request->user()
@@ -50,6 +76,20 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            /*
+             * Every line, flattened, in the language HandleLocale settled on.
+             *
+             * All of them rather than per page: the set is small enough to be
+             * cheaper than working out which page needs which, and a component
+             * that moves between pages would otherwise arrive somewhere its
+             * words are missing.
+             */
+            'translations' => $this->translations(),
+            'locale' => app()->getLocale(),
+
+            // Whether the sign-up page is answering, so the login screen knows
+            // not to offer a way to a door that is shut.
+            'registrationOpen' => (bool) config('auth.registration_open'),
             'auth' => [
                 'user' => $request->user(),
                 /*
@@ -72,14 +112,15 @@ class HandleInertiaRequests extends Middleware
                 'canManageWorkspace' => $role?->canManageWorkspace() ?? false,
                 'canInviteToWorkspace' => $role?->canInviteMembers() ?? false,
                 /*
-                 * Whether the transfers screen is listed at all — the feature,
-                 * not the permission. Anybody in the workspace may open it and
-                 * see what they themselves sent; whether they may send anything
-                 * new is the screen's own question, so that a guest gets a page
-                 * without a form rather than a menu entry that 404s.
+                 * Whether this workspace has workflows at all, so the settings
+                 * navigation can leave the link out rather than offer a screen
+                 * that answers 404. One flag rather than the whole feature set:
+                 * every other feature is decided on the page that needs it, and
+                 * this is the only one that has to be known before a link is
+                 * drawn.
                  */
-                'canSeeTransfers' => $workspace !== null
-                    && $workspace->hasFeature(Transfers::class),
+                'canManageWorkflows' => $workspace !== null
+                    && ($request->user()?->can('manageWorkflows', $workspace) ?? false),
                 // The role itself, so a screen can say "you are here as a
                 // guest" without inferring it from a handful of false flags.
                 // Every actual permission still comes from those flags — this

@@ -43,9 +43,9 @@ enum BroadcastMentionPolicy: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Everyone => 'Iedereen in de workspace',
-            self::Admins => 'Alleen beheerders en de eigenaar',
-            self::Nobody => 'Niemand',
+            self::Everyone => __('enums.broadcast-mention-policy.label.Everyone'),
+            self::Admins => __('enums.broadcast-mention-policy.label.Admins'),
+            self::Nobody => __('enums.broadcast-mention-policy.label.Nobody'),
         };
     }
 }

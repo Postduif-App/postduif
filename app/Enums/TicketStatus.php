@@ -67,11 +67,11 @@ enum TicketStatus: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Open => 'Open',
-            self::InProgress => 'In behandeling',
-            self::Waiting => 'Wacht op klant',
-            self::Resolved => 'Opgelost',
-            self::Closed => 'Gesloten',
+            self::Open => __('enums.ticket-status.label.Open'),
+            self::InProgress => __('enums.ticket-status.label.InProgress'),
+            self::Waiting => __('enums.ticket-status.label.Waiting'),
+            self::Resolved => __('enums.ticket-status.label.Resolved'),
+            self::Closed => __('enums.ticket-status.label.Closed'),
         };
     }
 
@@ -83,11 +83,11 @@ enum TicketStatus: string implements HasLabel
     public function description(): string
     {
         return match ($this) {
-            self::Open => 'Binnengekomen, nog niemand opgepakt.',
-            self::InProgress => 'Iemand is hiermee bezig.',
-            self::Waiting => 'De bal ligt bij de klant.',
-            self::Resolved => 'Afgehandeld, wacht op bevestiging.',
-            self::Closed => 'Definitief afgerond.',
+            self::Open => __('enums.ticket-status.description.Open'),
+            self::InProgress => __('enums.ticket-status.description.InProgress'),
+            self::Waiting => __('enums.ticket-status.description.Waiting'),
+            self::Resolved => __('enums.ticket-status.description.Resolved'),
+            self::Closed => __('enums.ticket-status.description.Closed'),
         };
     }
 }

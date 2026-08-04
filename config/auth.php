@@ -15,6 +15,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Open Registration
+    |--------------------------------------------------------------------------
+    |
+    | Whether anybody may sign themselves up. Turn it off for an installation
+    | that is meant for one company: the sign-up page and the endpoint behind
+    | it stop answering, and the only way in becomes an invitation or an invite
+    | link — both of which create their own accounts and are unaffected.
+    |
+    */
+
+    'registration_open' => (bool) env('REGISTRATION_OPEN', true),
+
     'defaults' => [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),

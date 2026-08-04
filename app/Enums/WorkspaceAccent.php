@@ -31,12 +31,12 @@ enum WorkspaceAccent: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Neutral => 'Neutraal',
-            self::Indigo => 'Indigo',
-            self::Blue => 'Blauw',
-            self::Emerald => 'Groen',
-            self::Amber => 'Amber',
-            self::Rose => 'Roze',
+            self::Neutral => __('enums.workspace-accent.label.Neutral'),
+            self::Indigo => __('enums.workspace-accent.label.Indigo'),
+            self::Blue => __('enums.workspace-accent.label.Blue'),
+            self::Emerald => __('enums.workspace-accent.label.Emerald'),
+            self::Amber => __('enums.workspace-accent.label.Amber'),
+            self::Rose => __('enums.workspace-accent.label.Rose'),
         };
     }
 

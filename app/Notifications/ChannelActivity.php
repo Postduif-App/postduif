@@ -54,18 +54,18 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
     {
         $mail = (new MailMessage)
             ->subject($this->subject())
-            ->greeting('Hoi '.$notifiable->name.',')
-            ->line('Er is gepraat in '.$this->workspace->name.' terwijl je er niet was.');
+            ->greeting(__('notifications.greeting', ['name' => $notifiable->name]))
+            ->line(__('notifications.activity.intro', ['workspace' => $this->workspace->name]));
 
         foreach ($this->channels as $channel) {
             $mail->line('• '.$channel['label'].' — '.$this->countsFor($channel));
         }
 
         return $mail
-            ->action('Openen', route('chat.index', $this->workspace))
+            ->action(__('notifications.activity.open'), route('chat.index', $this->workspace))
             // Where to go when this is not what you wanted. A notification that
             // does not say how to stop is one people mark as spam.
-            ->line('Instellen hoe vaak je dit krijgt kan bij [Notificaties]('.route('notifications.edit').').');
+            ->line(__('notifications.activity.preferences', ['url' => route('notifications.edit')]));
     }
 
     public function toPushover(User $notifiable): PushoverMessage
@@ -78,7 +78,7 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
             title: $this->subject(),
             body: $lines,
             url: route('chat.index', $this->workspace),
-            urlTitle: 'Openen in Pcom',
+            urlTitle: __('notifications.activity.open_in_app'),
         );
     }
 
@@ -91,17 +91,17 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
     {
         $mentions = $this->channels->sum('mentions');
 
+        $workspace = ['workspace' => $this->workspace->name];
+
         if ($mentions > 0) {
-            return $mentions === 1
-                ? 'Iemand noemde je in '.$this->workspace->name
-                : $mentions.' keer genoemd in '.$this->workspace->name;
+            return trans_choice('notifications.activity.subject_mentions', $mentions, $workspace);
         }
 
-        $unread = $this->channels->sum('unread');
-
-        return $unread === 1
-            ? 'Eén nieuw bericht in '.$this->workspace->name
-            : $unread.' nieuwe berichten in '.$this->workspace->name;
+        return trans_choice(
+            'notifications.activity.subject_unread',
+            $this->channels->sum('unread'),
+            $workspace,
+        );
     }
 
     /**
@@ -109,10 +109,10 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
      */
     private function countsFor(array $channel): string
     {
-        $counts = [$channel['unread'].' '.($channel['unread'] === 1 ? 'bericht' : 'berichten')];
+        $counts = [trans_choice('notifications.activity.messages', $channel['unread'])];
 
         if ($channel['mentions'] > 0) {
-            $counts[] = $channel['mentions'].'x genoemd';
+            $counts[] = __('notifications.activity.mentions', ['count' => $channel['mentions']]);
         }
 
         return implode(', ', $counts);

@@ -6,11 +6,11 @@ class MessageForwarding extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Berichten doorsturen';
+        return __('features.message-forwarding.label');
     }
 
     public static function description(): string
     {
-        return 'Een bericht uit het ene kanaal in het andere plaatsen, met de herkomst erbij.';
+        return __('features.message-forwarding.description');
     }
 }

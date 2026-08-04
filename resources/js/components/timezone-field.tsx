@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from 'react';
 
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
+import { useTranslate } from '@/hooks/use-translate';
 
 /** The browser's own zone. A stable string, so React can compare snapshots. */
 function readBrowserTimezone(): string {
@@ -33,6 +34,7 @@ export function TimezoneField({
     value: string;
     error?: string;
 }) {
+    const { t } = useTranslate();
     const [selected, setSelected] = useState(value);
 
     /*
@@ -64,7 +66,7 @@ export function TimezoneField({
 
     return (
         <div className="grid gap-2">
-            <Label htmlFor="timezone">Tijdzone</Label>
+            <Label htmlFor="timezone">{t('components.timezone.label')}</Label>
 
             <select
                 id="timezone"
@@ -85,23 +87,21 @@ export function TimezoneField({
             </select>
 
             <p className="text-xs text-muted-foreground">
-                Waarin herhalende tijden gelezen worden, zoals een status die
-                elke werkdag om negen uur ingaat.
+                {t('components.timezone.hint')}
                 {detected !== null &&
                     timezones.includes(detected) &&
                     detected !== selected && (
                         <>
                             {' '}
-                            Je browser staat op {detected.replace(
-                                /_/g,
-                                ' ',
-                            )}.{' '}
+                            {t('components.timezone.detected', {
+                                zone: detected.replace(/_/g, ' '),
+                            })}{' '}
                             <button
                                 type="button"
                                 onClick={() => setSelected(detected)}
                                 className="underline underline-offset-4"
                             >
-                                Overnemen
+                                {t('components.timezone.adopt')}
                             </button>
                         </>
                     )}

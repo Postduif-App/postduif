@@ -2,8 +2,9 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\InboxItemType;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -139,8 +140,11 @@ class FindMissedActivity
      */
     private function mentionCounts(User $user, Collection $channelIds): array
     {
-        return Mention::query()
+        return InboxItem::query()
             ->where('user_id', $user->id)
+            // Same narrowing as the sidebar badge, and for the same reason:
+            // the mail says "3x genoemd", which only mentions can back up.
+            ->ofType(InboxItemType::Mention)
             ->unread()
             ->whereIn('channel_id', $channelIds)
             ->groupBy('channel_id')

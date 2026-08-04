@@ -2,6 +2,25 @@ import type { Availability } from '@/types/auth';
 
 export type ChannelType = 'public' | 'private' | 'dm';
 
+/** One workspace this member belongs to, as the switcher needs it. */
+export interface WorkspaceOption {
+    id: number;
+    name: string;
+    slug: string;
+    avatarUrl: string | null;
+    /** The one being read now, which the menu marks rather than hides. */
+    isCurrent: boolean;
+}
+
+/** An announcement waiting to go out, as the broadcast dialog lists it. */
+export interface ScheduledBroadcast {
+    id: number;
+    body: string;
+    sendAt: string;
+    /** The channels it is meant for, by the name this member sees. */
+    channels: string[];
+}
+
 export interface ChatWorkspace {
     id: number;
     name: string;
@@ -53,6 +72,12 @@ export interface ChatWorkspace {
     secrets: boolean;
     /** Whether this member may put a question to a channel here. */
     polls: boolean;
+    /**
+     * Whether the prikbord appears in the rail at all. Already worked out
+     * against the feature and this member's role — a guest gets false, and the
+     * browser never sees the two halves separately.
+     */
+    board: boolean;
     uploads: {
         /** Kilobytes, straight from the workspace's own setting. */
         maxKb: number;
@@ -70,6 +95,7 @@ export interface WorkspaceFeatures {
     'scheduled-messages': boolean;
     'saved-messages': boolean;
     'message-forwarding': boolean;
+    'message-board': boolean;
     tickets: boolean;
     webhooks: boolean;
     'invite-links': boolean;
@@ -372,6 +398,8 @@ export interface ChatMessage {
     secretCard: MessageSecretCard | null;
     /** A question put to the channel, with where the votes stand. */
     pollCard: MessagePollCard | null;
+    /** A secret put aside for one person: who it is for, never what. */
+    sentSecretCard: MessageSentSecretCard | null;
     /** Set while the message is only in the browser, awaiting the server echo. */
     pending?: boolean;
 }
@@ -489,6 +517,8 @@ export interface ActiveThread {
     snippet: string;
     replyCount: number;
     lastReplyAt: string | null;
+    /** Whether this member asked to stop hearing about it in their inbox. */
+    muted: boolean;
 }
 
 /**
@@ -627,4 +657,97 @@ export interface SearchHit {
         name: string | null;
         type: ChannelType;
     };
+}
+
+/** Whoever wrote something on the prikbord, or null once they have left. */
+export interface BoardPerson {
+    id: number;
+    name: string;
+    avatarUrl: string | null;
+}
+
+/**
+ * A notice as the board lists it: enough to scan, not enough to read.
+ *
+ * The body arrives cut down to an excerpt and the replies do not arrive at all
+ * — a board with a year of history on it is a list, and dragging every reply
+ * into a payload that draws none of them is how it becomes slow to open.
+ */
+export interface BoardPostSummary {
+    id: string;
+    title: string;
+    excerpt: string;
+    /** Null when the person who wrote it has since left the workspace. */
+    author: BoardPerson | null;
+    pinned: boolean;
+    commentCount: number;
+    createdAt: string | null;
+    /** When it was last corrected, or null — the board says so out loud. */
+    editedAt: string | null;
+}
+
+export interface BoardComment {
+    id: number;
+    author: BoardPerson | null;
+    body: string;
+    createdAt: string | null;
+    editedAt: string | null;
+    canEdit: boolean;
+    canDelete: boolean;
+}
+
+/**
+ * The notice named by ?post= in the URL, with everything the panel beside the
+ * list draws.
+ *
+ * What a person may do travels per notice and per reply rather than once for
+ * the page: "your own" is a different answer for every row, and the browser
+ * must not be the place where that gets worked out.
+ */
+/**
+ * One emoji under a notice, with everybody who left it behind it.
+ *
+ * Counted and grouped by the server, unlike a message reaction: the board is
+ * not a channel and the page holds no member list, so there is nothing here to
+ * look a user id up in. `mine` travels for the same reason — the payload is
+ * built per reader anyway.
+ */
+export interface BoardReaction {
+    emoji: string;
+    count: number;
+    mine: boolean;
+    /** Can be shorter than `count`: whoever has left is not named. */
+    names: string[];
+}
+
+export interface OpenBoardPost extends BoardPostSummary {
+    body: string;
+    canEdit: boolean;
+    canDelete: boolean;
+    canPin: boolean;
+    canComment: boolean;
+    canReact: boolean;
+    reactions: BoardReaction[];
+    comments: BoardComment[];
+}
+
+/**
+ * A secret somebody put aside for one person in this channel.
+ *
+ * Note what cannot be here, however useful it would be: the secret. The server
+ * holds ciphertext it has no key for, so there is nothing to send. `url` is an
+ * announcement rather than a way in — the key rides in the fragment of a link
+ * only the sender's browser ever had.
+ */
+export interface MessageSentSecretCard {
+    id: string;
+    /** Said in the open by the sender, so safe for the whole channel to read. */
+    label: string;
+    recipientName: string;
+    /** Whose it is, so only they are offered the way to withdraw it. */
+    senderId: number;
+    expiresAt: string;
+    revealedAt: string | null;
+    state: 'pending' | 'revealed' | 'expired';
+    url: string;
 }

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Chat;
 
+use App\Events\ChannelMemberJoined;
 use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -34,6 +35,12 @@ class AddChannelMembers
 
         foreach ($toAdd as $user) {
             $channel->members()->attach($user->id, ['joined_at' => now()]);
+
+            // Said out loud so a workflow can hang a welcome off it. Inside the
+            // loop rather than after it: one arrival is one event, and a
+            // workflow that greeted four people in one message would be reading
+            // a list nobody wrote.
+            ChannelMemberJoined::dispatch($channel, $user);
         }
 
         return $toAdd;

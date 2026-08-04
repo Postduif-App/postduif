@@ -2,9 +2,10 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\InboxItemType;
 use App\Events\ChannelActivity;
 use App\Events\MessageEdited;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use Illuminate\Support\Facades\DB;
 
@@ -46,17 +47,24 @@ class EditMessage
      * already had — read state and all. Deleting everything first and starting
      * over would mark a mention somebody read this morning as new again on every
      * typo fix.
+     *
+     * Both queries are narrowed to mentions, and that narrowing is load-bearing
+     * rather than tidiness: a thread's replies hang their inbox rows off this
+     * same message id, so an unscoped prune would let fixing a typo in the
+     * opening post quietly empty everyone else's inbox.
      */
     private function resyncMentions(Message $message): void
     {
-        $before = Mention::query()
+        $before = InboxItem::query()
             ->where('message_id', $message->id)
+            ->ofType(InboxItemType::Mention)
             ->pluck('user_id');
 
         $mentioned = $this->recordMentions->handle($message)->pluck('id');
 
-        Mention::query()
+        InboxItem::query()
             ->where('message_id', $message->id)
+            ->ofType(InboxItemType::Mention)
             ->whereNotIn('user_id', $mentioned)
             ->delete();
 

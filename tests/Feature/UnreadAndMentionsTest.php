@@ -3,7 +3,7 @@
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\SendMessage;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -138,7 +138,7 @@ it('records a mention for a channel member', function () {
 
     $message = app(SendMessage::class)->handle($channel, $writer, 'Hoi @reader, kun je kijken?');
 
-    expect(Mention::where('message_id', $message->id)->pluck('user_id')->all())
+    expect(InboxItem::where('message_id', $message->id)->pluck('user_id')->all())
         ->toBe([$reader->id]);
 });
 
@@ -148,7 +148,7 @@ it('does not mention someone who is not in the channel', function () {
 
     $message = app(SendMessage::class)->handle($channel, $writer, 'Hallo @outsider');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0)
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0)
         ->and($workspace->exists)->toBeTrue();
 });
 
@@ -157,7 +157,7 @@ it('does not mention the author of the message', function () {
 
     $message = app(SendMessage::class)->handle($channel, $writer, 'Ik ben @writer');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0);
 });
 
 it('treats an email address as plain text', function () {
@@ -165,7 +165,7 @@ it('treats an email address as plain text', function () {
 
     $message = app(SendMessage::class)->handle($channel, $writer, 'Mail naar hallo@reader.nl');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0);
 });
 
 it('surfaces unread mentions in the sidebar and clears them on open', function () {
@@ -254,7 +254,7 @@ it('keeps a private channel out of the unread counts entirely', function () {
 it('only treats an at sign at the start of a word as a mention', function () {
     [$reader, $writer, , $channel] = channelWithTwoMembers();
 
-    $mentions = fn (string $body) => Mention::where(
+    $mentions = fn (string $body) => InboxItem::where(
         'message_id',
         app(SendMessage::class)->handle($channel, $writer, $body)->id
     )->count();
@@ -278,5 +278,5 @@ it('does not treat a channel reference as a mention', function () {
     );
 
     // A channel reference notifies nobody, so there is nothing to record.
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0);
 });

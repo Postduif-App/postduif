@@ -51,11 +51,11 @@ enum AttachmentType: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Images => 'Afbeeldingen',
-            self::Video => "Video's",
-            self::Audio => 'Audio',
-            self::Documents => 'Documenten',
-            self::Archives => 'Archieven',
+            self::Images => __('enums.attachment-type.label.Images'),
+            self::Video => __('enums.attachment-type.label.Video'),
+            self::Audio => __('enums.attachment-type.label.Audio'),
+            self::Documents => __('enums.attachment-type.label.Documents'),
+            self::Archives => __('enums.attachment-type.label.Archives'),
         };
     }
 
@@ -63,11 +63,11 @@ enum AttachmentType: string implements HasLabel
     public function hint(): string
     {
         return match ($this) {
-            self::Images => 'png, jpg, gif, webp — worden in het gesprek getoond',
-            self::Video => 'mp4, webm, mov — spelen af in het gesprek',
-            self::Audio => 'mp3, m4a, ogg, wav',
-            self::Documents => 'pdf, Word, Excel, PowerPoint, txt, csv',
-            self::Archives => 'zip, 7z, tar, gz',
+            self::Images => __('enums.attachment-type.hint.Images'),
+            self::Video => __('enums.attachment-type.hint.Video'),
+            self::Audio => __('enums.attachment-type.hint.Audio'),
+            self::Documents => __('enums.attachment-type.hint.Documents'),
+            self::Archives => __('enums.attachment-type.hint.Archives'),
         };
     }
 

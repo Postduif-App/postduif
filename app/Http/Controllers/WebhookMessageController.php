@@ -33,12 +33,12 @@ class WebhookMessageController extends Controller
         // 404 rather than 401, and the same answer for unknown as for revoked:
         // a caller holding a dead token learns nothing about whether it was
         // ever alive.
-        abort_if($webhook === null, 404, 'Onbekende webhook.');
+        abort_if($webhook === null, 404, __('chat.unknown_webhook'));
 
         abort_if(
             $webhook->channel === null || $webhook->channel->archived_at !== null,
             422,
-            'Dit kanaal is gearchiveerd.',
+            __('chat.channel_archived'),
         );
 
         /*
@@ -49,7 +49,7 @@ class WebhookMessageController extends Controller
         abort_unless(
             $webhook->channel->workspace?->hasFeature(Webhooks::class) ?? false,
             404,
-            'Onbekende webhook.',
+            __('chat.unknown_webhook'),
         );
 
         // ChannelPostingPolicy is deliberately not consulted. It narrows who

@@ -45,7 +45,7 @@ class StoreTicketCommentRequest extends FormRequest
     {
         return [
             ...$this->attachmentMessages(max: 5),
-            'body.required_without' => 'Schrijf iets, of stuur een bestand mee.',
+            'body.required_without' => __('requests.ticket.comment_empty'),
         ];
     }
 }

@@ -19,10 +19,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import { destroy, store } from '@/routes/mcp-tokens';
+import { destroy, store } from '@/routes/api-tokens';
 
-interface McpToken {
+interface ApiToken {
     id: number;
     name: string;
     /** Readable again on purpose; null once revoked. */
@@ -32,18 +34,13 @@ interface McpToken {
     createdAt: string | null;
 }
 
-interface McpTokensProps {
+interface ApiTokensProps {
     /** Where an MCP client connects. */
     endpoint: string;
-    tokens: McpToken[];
+    /** Where the plain HTTP API lives; the same token opens it. */
+    apiEndpoint: string;
+    tokens: ApiToken[];
 }
-
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-});
 
 function CopyButton({ value, label }: { value: string; label: string }) {
     const [copied, copy] = useClipboard();
@@ -73,32 +70,39 @@ function CopyButton({ value, label }: { value: string; label: string }) {
  * go. That is a bigger key than a webhook — which posts as a bot into one
  * channel — and the screen should say so rather than let somebody find out.
  */
-export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
-    const [revoking, setRevoking] = useState<McpToken | null>(null);
+export default function ApiTokens({
+    endpoint,
+    apiEndpoint,
+    tokens,
+}: ApiTokensProps) {
+    const [revoking, setRevoking] = useState<ApiToken | null>(null);
+    const { t } = useTranslate();
+    const formats = useFormats();
 
     return (
         <>
-            <Head title="AI-toegang" />
+            <Head title={t('settings.api_tokens.title')} />
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="AI-toegang"
-                    description="Laat een AI-client meelezen en meepraten namens jou"
+                    title={t('settings.api_tokens.title')}
+                    description={t('settings.api_tokens.description')}
                 />
 
                 <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
-                    <p className="font-medium">Wat een token kan</p>
+                    <p className="font-medium">
+                        {t('settings.api_tokens.warning_title')}
+                    </p>
                     <p className="mt-1 text-muted-foreground">
-                        Een token handelt als jij: het ziet elk kanaal dat jij
-                        kunt zien en kan berichten plaatsen waar jij dat kunt.
-                        Het geldt voor al je workspaces. Deel er dus geen, en
-                        trek er een in zodra je hem niet meer gebruikt.
+                        {t('settings.api_tokens.warning')}
                     </p>
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="mcp-endpoint">Adres van de server</Label>
+                    <Label htmlFor="mcp-endpoint">
+                        {t('settings.api_tokens.endpoint')}
+                    </Label>
                     <div className="flex items-center gap-2">
                         <Input
                             id="mcp-endpoint"
@@ -106,7 +110,33 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                             readOnly
                             className="font-mono text-xs"
                         />
-                        <CopyButton value={endpoint} label="Adres kopiëren" />
+                        <CopyButton
+                            value={endpoint}
+                            label={t('settings.api_tokens.copy_endpoint')}
+                        />
+                    </div>
+                </div>
+
+                {/*
+                    Beside the MCP address rather than on a page of its own: it
+                    is the same credential, and somebody who has just made a
+                    token is exactly who needs to know where to point it.
+                */}
+                <div className="grid gap-2">
+                    <Label htmlFor="api-endpoint">
+                        {t('settings.api_tokens.api_endpoint')}
+                    </Label>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            id="api-endpoint"
+                            value={apiEndpoint}
+                            readOnly
+                            className="font-mono text-xs"
+                        />
+                        <CopyButton
+                            value={apiEndpoint}
+                            label={t('settings.api_tokens.copy_api_endpoint')}
+                        />
                     </div>
                 </div>
 
@@ -120,7 +150,9 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                 >
                     {({ processing, errors }) => (
                         <>
-                            <Label htmlFor="token-name">Nieuw token</Label>
+                            <Label htmlFor="token-name">
+                                {t('settings.api_tokens.new_token')}
+                            </Label>
                             <div className="flex items-start gap-2">
                                 <span className="grid flex-1 gap-1">
                                     <Input
@@ -128,13 +160,15 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                                         name="name"
                                         maxLength={60}
                                         required
-                                        placeholder="Waar ga je hem gebruiken? Bijvoorbeeld: Claude op mijn laptop"
+                                        placeholder={t(
+                                            'settings.api_tokens.name_placeholder',
+                                        )}
                                     />
                                     <InputError message={errors.name} />
                                 </span>
                                 <Button type="submit">
                                     {processing && <Spinner />}
-                                    Aanmaken
+                                    {t('settings.api_tokens.create')}
                                 </Button>
                             </div>
                         </>
@@ -145,10 +179,10 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <Bot className="mx-auto size-6 text-muted-foreground" />
                         <p className="mt-3 text-sm font-medium">
-                            Nog geen tokens
+                            {t('settings.api_tokens.empty')}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Maak er een aan en plak hem in je MCP-client.
+                            {t('settings.api_tokens.empty_hint')}
                         </p>
                     </div>
                 ) : (
@@ -163,7 +197,8 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                                         {token.name}
                                     </span>
                                     <span className="block truncate font-mono text-xs text-muted-foreground">
-                                        {token.token ?? '— ingetrokken —'}
+                                        {token.token ??
+                                            t('settings.api_tokens.hidden')}
                                     </span>
                                 </span>
 
@@ -176,18 +211,22 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                                     )}
                                 >
                                     {token.revokedAt
-                                        ? 'ingetrokken'
+                                        ? t('settings.api_tokens.revoked')
                                         : token.lastUsedAt
-                                          ? `laatst gebruikt ${MOMENT_FORMAT.format(
-                                                new Date(token.lastUsedAt),
-                                            )}`
-                                          : 'nog niet gebruikt'}
+                                          ? t('settings.api_tokens.last_used', {
+                                                moment: formats.dateTime.format(
+                                                    new Date(token.lastUsedAt),
+                                                ),
+                                            })
+                                          : t('settings.api_tokens.never_used')}
                                 </span>
 
                                 {token.token && (
                                     <CopyButton
                                         value={token.token}
-                                        label="Token kopiëren"
+                                        label={t(
+                                            'settings.api_tokens.copy_token',
+                                        )}
                                     />
                                 )}
 
@@ -195,8 +234,11 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                                     <button
                                         type="button"
                                         onClick={() => setRevoking(token)}
-                                        aria-label={`${token.name} intrekken`}
-                                        title="Intrekken"
+                                        aria-label={t(
+                                            'settings.api_tokens.revoke_named',
+                                            { name: token.name },
+                                        )}
+                                        title={t('settings.api_tokens.revoke')}
                                         className="shrink-0 rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                     >
                                         <X className="size-4" />
@@ -219,16 +261,18 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                 <AlertDialogContent className="sm:max-w-md">
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {revoking?.name} intrekken?
+                            {t('settings.api_tokens.revoke_question', {
+                                name: revoking?.name ?? '',
+                            })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            De client die hem gebruikt verliest direct toegang.
-                            Wat er met dit token is gezegd blijft staan — dat
-                            zijn gewone berichten van jou.
+                            {t('settings.api_tokens.revoke_explanation')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogCancel>
+                            {t('settings.actions.cancel')}
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className={buttonVariants({
                                 variant: 'destructive',
@@ -241,7 +285,7 @@ export default function McpTokens({ endpoint, tokens }: McpTokensProps) {
                                 }
                             }}
                         >
-                            Intrekken
+                            {t('settings.api_tokens.revoke')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

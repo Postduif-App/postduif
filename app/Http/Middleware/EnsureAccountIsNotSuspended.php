@@ -26,8 +26,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureAccountIsNotSuspended
 {
-    private const MESSAGE = 'Dit account is geschorst. Neem contact op met een beheerder.';
-
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -44,7 +42,7 @@ class EnsureAccountIsNotSuspended
         $request->session()->regenerateToken();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => self::MESSAGE], Response::HTTP_UNAUTHORIZED);
+            return response()->json(['message' => __('auth_screens.login.suspended')], Response::HTTP_UNAUTHORIZED);
         }
 
         /**
@@ -52,7 +50,7 @@ class EnsureAccountIsNotSuspended
          * login screen renders a status in green, and this is not good news.
          */
         return redirect()->route('login')->withErrors([
-            Fortify::username() => self::MESSAGE,
+            Fortify::username() => __('auth_screens.login.suspended'),
         ]);
     }
 }

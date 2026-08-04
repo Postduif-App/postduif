@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { destroy, store } from '@/routes/avatar';
 
 /**
@@ -21,15 +22,17 @@ export function AvatarField({
     avatarUrl,
     uploadUrl,
     removeUrl,
-    hint = 'png, jpg, gif of webp, tot 2 MB. Wordt bijgesneden tot een vierkant.',
+    hint,
 }: {
     name: string;
     avatarUrl: string | null;
     /** Defaults to the signed-in member's own; a workspace passes its own. */
     uploadUrl?: string;
     removeUrl?: string;
+    /** Overrides the default line under the buttons; a workspace says its own. */
     hint?: string;
 }) {
+    const { t } = useTranslate();
     const getInitials = useInitials();
     const inputRef = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
@@ -81,7 +84,9 @@ export function AvatarField({
                         onClick={() => inputRef.current?.click()}
                     >
                         {busy ? <Spinner /> : <Upload className="size-4" />}
-                        {avatarUrl ? 'Andere foto' : 'Foto kiezen'}
+                        {avatarUrl
+                            ? t('components.avatar.replace')
+                            : t('components.avatar.choose')}
                     </Button>
 
                     {avatarUrl && (
@@ -99,12 +104,14 @@ export function AvatarField({
                             }}
                         >
                             <Trash2 className="size-4" />
-                            Verwijderen
+                            {t('components.avatar.remove')}
                         </Button>
                     )}
                 </div>
 
-                <p className="text-xs text-muted-foreground">{hint}</p>
+                <p className="text-xs text-muted-foreground">
+                    {hint ?? t('components.avatar.hint')}
+                </p>
             </div>
         </div>
     );

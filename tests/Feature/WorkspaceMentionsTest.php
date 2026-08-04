@@ -1,8 +1,9 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Enums\InboxItemType;
 use App\Models\Channel;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Workspace;
@@ -31,7 +32,8 @@ function mentionFixture(): array
         'body' => 'Kun jij hier even naar kijken?',
     ]);
 
-    $mention = Mention::create([
+    $mention = InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => $message->id,
         'user_id' => $user->id,
         'channel_id' => $channel->id,
@@ -47,19 +49,20 @@ it('lists everywhere this member was named', function () {
         ->get(route('chat.mentions.index', $workspace))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('chat/mentions')
-            ->has('mentions', 1)
-            ->where('mentions.0.id', $mention->id)
-            ->where('mentions.0.snippet', 'Kun jij hier even naar kijken?')
-            ->where('mentions.0.channel.id', $channel->id)
-            ->where('mentions.0.readAt', null));
+            ->component('chat/inbox')
+            ->has('items', 1)
+            ->where('items.0.id', $mention->id)
+            ->where('items.0.snippet', 'Kun jij hier even naar kijken?')
+            ->where('items.0.channel.id', $channel->id)
+            ->where('items.0.readAt', null));
 });
 
 it('puts what still wants an answer above what has had one', function () {
     [$user, $workspace, $channel] = mentionFixture();
 
     // An older mention that was already read, and a newer one that was not.
-    $read = Mention::create([
+    $read = InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => Message::factory()->create([
             'workspace_id' => $workspace->id,
             'channel_id' => $channel->id,
@@ -72,9 +75,9 @@ it('puts what still wants an answer above what has had one', function () {
     actingAs($user)
         ->get(route('chat.mentions.index', $workspace))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('mentions', 2)
-            ->where('mentions.0.readAt', null)
-            ->where('mentions.1.id', $read->id));
+            ->has('items', 2)
+            ->where('items.0.readAt', null)
+            ->where('items.1.id', $read->id));
 });
 
 /**
@@ -88,7 +91,8 @@ it('leaves out a mention from a channel this member can no longer see', function
         'type' => ChannelType::Private,
     ]);
 
-    Mention::create([
+    InboxItem::create([
+        'type' => InboxItemType::Mention,
         'message_id' => Message::factory()->create([
             'workspace_id' => $workspace->id,
             'channel_id' => $elsewhere->id,
@@ -99,7 +103,7 @@ it('leaves out a mention from a channel this member can no longer see', function
 
     actingAs($user)
         ->get(route('chat.mentions.index', $workspace))
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('mentions', 1));
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('items', 1));
 });
 
 it('leaves out a mention whose message was taken back', function () {
@@ -109,7 +113,7 @@ it('leaves out a mention whose message was taken back', function () {
 
     actingAs($user)
         ->get(route('chat.mentions.index', $workspace))
-        ->assertInertia(fn (AssertableInertia $page) => $page->has('mentions', 0));
+        ->assertInertia(fn (AssertableInertia $page) => $page->has('items', 0));
 });
 
 it('refuses somebody who is not in the workspace', function () {

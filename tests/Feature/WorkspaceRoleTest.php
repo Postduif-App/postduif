@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * In Feature rather than Unit since the enum labels became translations: a
+ * label now goes through the translator, and the translator needs a booted
+ * application. The rest of what these check is still pure — the move costs a
+ * little speed and buys the assertion being able to run at all.
+ */
+
 use App\Enums\WorkspaceRole;
 
 it('labels every role', function (WorkspaceRole $role, string $label) {

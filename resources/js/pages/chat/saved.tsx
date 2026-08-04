@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Bookmark, Hash, Lock, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
@@ -8,19 +8,13 @@ import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { UserMenuContent } from '@/components/user-menu-content';
+import { UserMenu } from '@/components/user-menu-content';
 import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
-import { useInitials } from '@/hooks/use-initials';
+import { useFormats } from '@/hooks/use-formats';
 import { useSessionGuard } from '@/hooks/use-session-guard';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
-import type { Auth } from '@/types';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -28,15 +22,9 @@ import type {
     ChannelSummary,
     ChannelType,
     ChatWorkspace,
+    ScheduledBroadcast,
+    WorkspaceOption,
 } from '@/types/chat';
-
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-});
 
 /** One message this member set aside. */
 interface SavedRow {
@@ -65,6 +53,12 @@ interface SavedProps {
     archivedChannels: ArchivedChannel[];
     /** The groups this member arranged for themselves. */
     sections: ChannelSectionRow[];
+    /** Unread inbox rows of every kind, counted by the server. */
+    inboxUnread: number;
+    /** Announcements this member has waiting, for the broadcast dialog. */
+    scheduledBroadcasts: ScheduledBroadcast[];
+    /** Every workspace this member belongs to, for the switcher up top. */
+    workspaces: WorkspaceOption[];
     saved: SavedRow[];
 }
 
@@ -101,12 +95,15 @@ export default function WorkspaceSaved({
     workspaceTags,
     archivedChannels,
     sections,
+    inboxUnread,
+    scheduledBroadcasts,
+    workspaces,
     saved,
 }: SavedProps) {
-    useSessionGuard();
+    const { t } = useTranslate();
+    const formats = useFormats();
 
-    const { auth } = usePage<{ auth: Auth }>().props;
-    const getInitials = useInitials();
+    useSessionGuard();
 
     const [searchOpen, setSearchOpen] = useState(false);
 
@@ -116,38 +113,7 @@ export default function WorkspaceSaved({
     const [inviteOpen, setInviteOpen] = useState(false);
     const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-    const userMenu = (
-        <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
-                <Avatar className="size-8 shrink-0">
-                    {/*
-                        Above the fallback rather than instead of it: Radix
-                        draws the initials until the picture has loaded, and
-                        keeps them if it never does.
-                    */}
-                    {auth.avatarUrl && (
-                        <AvatarImage src={auth.avatarUrl} alt="" />
-                    )}
-                    <AvatarFallback className="text-xs font-semibold">
-                        {getInitials(auth.user.name)}
-                    </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                        {auth.user.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                        {auth.user.status_text
-                            ? `${auth.user.status_emoji ?? ''} ${auth.user.status_text}`.trim()
-                            : 'Status instellen'}
-                    </span>
-                </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56">
-                <UserMenuContent user={auth.user} />
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+    const userMenu = <UserMenu />;
 
     return (
         <div className="flex h-screen overflow-hidden bg-background">
@@ -155,6 +121,8 @@ export default function WorkspaceSaved({
 
             <ChannelSidebar
                 workspace={workspace}
+                inboxUnread={inboxUnread}
+                workspaces={workspaces}
                 channels={channels}
                 directMessages={directMessages}
                 activeThreads={activeThreads}
@@ -175,7 +143,7 @@ export default function WorkspaceSaved({
                     <Bookmark className="size-4 text-muted-foreground" />
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-semibold">
-                            Bewaard
+                            {t('screens.saved.title')}
                         </h1>
                         <p className="truncate text-xs text-muted-foreground">
                             {saved.length === 1
@@ -190,11 +158,10 @@ export default function WorkspaceSaved({
                         <div className="mx-auto mt-12 max-w-md rounded-lg border border-dashed p-8 text-center">
                             <Bookmark className="mx-auto size-6 text-muted-foreground" />
                             <p className="mt-3 text-sm font-medium">
-                                Je hebt nog niets bewaard
+                                {t('screens.saved.empty')}
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Zweef over een bericht en klik op het
-                                bladwijzertje. Alleen jij ziet wat hier staat.
+                                {t('screens.saved.empty_hint')}
                             </p>
                         </div>
                     ) : (
@@ -233,12 +200,13 @@ export default function WorkspaceSaved({
                                                 <>
                                                     <span aria-hidden>·</span>
                                                     <span className="shrink-0">
-                                                        bewaard{' '}
-                                                        {MOMENT_FORMAT.format(
-                                                            new Date(
-                                                                mention.savedAt,
+                                                        {t('screens.saved.at', {
+                                                            moment: formats.moment.format(
+                                                                new Date(
+                                                                    mention.savedAt,
+                                                                ),
                                                             ),
-                                                        )}
+                                                        })}
                                                     </span>
                                                 </>
                                             )}
@@ -294,6 +262,7 @@ export default function WorkspaceSaved({
             <BroadcastDialog
                 workspace={workspace}
                 channels={channels}
+                scheduledBroadcasts={scheduledBroadcasts}
                 tags={workspaceTags}
                 open={broadcastOpen}
                 onOpenChange={setBroadcastOpen}

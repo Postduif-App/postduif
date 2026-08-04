@@ -69,9 +69,25 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/register', [
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
+        /*
+         * Closed registration is a 404 rather than a 403 or a friendly notice.
+         * An installation that has shut the door is usually one that would
+         * rather not advertise itself at all, and "this page does not exist" is
+         * the only answer that says nothing about what is behind it.
+         *
+         * The route stays registered either way, deliberately: taking
+         * Features::registration() out of the config would also take the route
+         * out of Wayfinder's output, and the frontend imports register() at the
+         * top of the login page — so the build would break on exactly the
+         * installations that turned it off.
+         */
+        Fortify::registerView(function () {
+            abort_unless(config('auth.registration_open'), 404);
+
+            return Inertia::render('auth/register', [
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            ]);
+        });
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 

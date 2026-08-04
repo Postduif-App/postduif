@@ -1,9 +1,12 @@
+import { Link } from '@inertiajs/react';
 import { X } from 'lucide-react';
 
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { useWorkspacePresence } from '@/hooks/use-workspace-presence';
 import { cn } from '@/lib/utils';
+import { show as memberProfile } from '@/routes/chat/members';
 import type { ChannelMember } from '@/types/chat';
 
 /**
@@ -25,6 +28,7 @@ export function MemberPanel({
     onClose: () => void;
 }) {
     const getInitials = useInitials();
+    const { t } = useTranslate();
     const present = useWorkspacePresence(workspaceSlug);
 
     if (members.length === 0) {
@@ -52,15 +56,15 @@ export function MemberPanel({
                 is the one people already know.
             */}
             <div className="flex items-center gap-2 border-b px-3 py-3 text-sm font-medium text-sidebar-foreground/80">
-                <span>Leden</span>
+                <span>{t('chat_ui.members.heading')}</span>
                 <span className="text-xs text-muted-foreground">
                     {members.length}
                 </span>
                 <button
                     type="button"
                     onClick={onClose}
-                    title="Ledenlijst sluiten"
-                    aria-label="Ledenlijst sluiten"
+                    title={t('conversation.members.close')}
+                    aria-label={t('conversation.members.close')}
                     className="ml-auto text-muted-foreground transition-colors hover:text-sidebar-foreground"
                 >
                     <X className="size-4" />
@@ -96,7 +100,7 @@ export function MemberPanel({
                             {present.has(member.id) &&
                             member.availability === 'available' ? (
                                 <span
-                                    title="Nu online"
+                                    title={t('chat_ui.members.online')}
                                     className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-sidebar bg-emerald-500"
                                 />
                             ) : (
@@ -116,10 +120,21 @@ export function MemberPanel({
                                 !present.has(member.id) && 'opacity-55',
                             )}
                         >
-                            <span className="flex items-center gap-1.5">
-                                <span className="truncate text-sm">
+                            <span className="flex min-w-0 items-center gap-1.5">
+                                {/*
+                                    The name is the way to somebody's page here
+                                    too, so that clicking a name means the same
+                                    thing wherever it appears.
+                                */}
+                                <Link
+                                    href={memberProfile({
+                                        workspace: workspaceSlug,
+                                        member: member.id,
+                                    })}
+                                    className="truncate text-sm hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                                >
                                     {member.name}
-                                </span>
+                                </Link>
                                 {/*
                                         Nothing marks you out in the list except
                                         this. Leaving yourself out instead would
@@ -128,7 +143,7 @@ export function MemberPanel({
                                     */}
                                 {member.id === currentUserId && (
                                     <span className="shrink-0 text-xs text-muted-foreground">
-                                        jij
+                                        {t('chat_ui.members.you')}
                                     </span>
                                 )}
                                 <MemberStatus

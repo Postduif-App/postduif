@@ -31,6 +31,7 @@ class EditWorkspaceFeatures extends EditRecord
     {
         return $schema->components([
             Section::make()
+                ->columnSpanFull()
                 ->description('Wat deze workspace aanbiedt. Uitzetten laat bestaande gegevens staan — een uitgezette feature is onbereikbaar, niet weg.')
                 ->schema(array_map(
                     fn (string $feature) => Toggle::make($feature::key())

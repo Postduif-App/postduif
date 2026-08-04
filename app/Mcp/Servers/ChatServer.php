@@ -17,7 +17,7 @@ use Laravel\Mcp\Server\Tool;
  * The chat, as an AI client sees it.
  *
  * Every tool runs as the member whose token was presented — see
- * AuthenticateMcpToken — and asks the same policies the web application does.
+ * AuthenticateApiToken — and asks the same policies the web application does.
  * That is the whole design: this server adds a way in, never a way around. A
  * private channel the member cannot open in the browser does not exist here
  * either.

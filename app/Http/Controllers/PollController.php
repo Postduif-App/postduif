@@ -118,7 +118,7 @@ class PollController extends Controller
             $poll->forceFill(['closed_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Poll gesloten.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.poll.closed')]);
 
         return back();
     }
@@ -147,7 +147,7 @@ class PollController extends Controller
             'closes_at' => $poll->closes_at?->isPast() ? null : $poll->closes_at,
         ])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Poll heropend.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.poll.reopened')]);
 
         return back();
     }

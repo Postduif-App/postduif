@@ -50,7 +50,7 @@ class InviteLinkController extends Controller
             'max_uses' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_VALID_DAYS],
         ], [
-            'channel_ids.required' => 'Kies minstens één kanaal voor deze gast.',
+            'channel_ids.required' => __('requests.invite.channels_required'),
         ]);
 
         $role = WorkspaceRole::from($validated['role']);
@@ -66,7 +66,7 @@ class InviteLinkController extends Controller
             $validated['channel_ids'] ?? [],
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Uitnodigingslink aangemaakt.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.invitation.link_created')]);
 
         return back();
     }
@@ -91,7 +91,7 @@ class InviteLinkController extends Controller
             $inviteLink->forceFill(['revoked_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Uitnodigingslink ingetrokken.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.invitation.link_withdrawn')]);
 
         return back();
     }

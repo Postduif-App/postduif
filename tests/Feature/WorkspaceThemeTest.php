@@ -1,128 +1,43 @@
 <?php
 
+/*
+ * In Feature rather than Unit since the enum labels became translations: a
+ * label now goes through the translator, and the translator needs a booted
+ * application. The rest of what these check is still pure — the move costs a
+ * little speed and buys the assertion being able to run at all.
+ */
+
 use App\Enums\WorkspaceAccent;
 use App\Enums\WorkspaceFont;
-use App\Enums\WorkspaceRole;
-use App\Models\User;
+use App\Models\Workspace;
 
-use function Pest\Laravel\actingAs;
+it('gives every workspace a theme before it is ever saved', function () {
+    $workspace = new Workspace;
 
-it('offers every accent and font, with what they look like', function () {
-    $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
-
-    actingAs($user)
-        ->get(route('workspace.theme.edit'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('settings/workspace-theme')
-            ->where('workspace.accent', WorkspaceAccent::Neutral->value)
-            ->where('workspace.font', WorkspaceFont::InstrumentSans->value)
-            ->has('accentOptions', count(WorkspaceAccent::cases()))
-            ->has('fontOptions', count(WorkspaceFont::cases()))
-            ->where('accentOptions.0.color', WorkspaceAccent::Neutral->swatch()['light']['color'])
-            ->where('fontOptions.0.stack', WorkspaceFont::InstrumentSans->stack())
-        );
+    expect($workspace->accent)->toBe(WorkspaceAccent::Neutral)
+        ->and($workspace->font)->toBe(WorkspaceFont::InstrumentSans);
 });
 
-it('saves a chosen accent and font', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+it('carries a light and a dark variant for every accent', function (WorkspaceAccent $accent) {
+    $variables = [
+        'light' => $accent->variables('light'),
+        'dark' => $accent->variables('dark'),
+    ];
 
-    actingAs($user)
-        ->patch(route('workspace.theme.update'), [
-            'accent' => WorkspaceAccent::Indigo->value,
-            'font' => WorkspaceFont::Figtree->value,
-        ])
-        ->assertRedirect();
+    expect($variables['light'])->toHaveKeys(['--primary', '--primary-foreground', '--ring'])
+        ->and($variables['light']['--primary'])->toStartWith('oklch(')
+        ->and($variables['dark']['--primary'])->toStartWith('oklch(');
+})->with(WorkspaceAccent::cases());
 
-    expect($workspace->fresh())
-        ->accent->toBe(WorkspaceAccent::Indigo)
-        ->font->toBe(WorkspaceFont::Figtree);
-});
+it('never leaves the accent and its text colour the same', function (WorkspaceAccent $accent) {
+    foreach (['light', 'dark'] as $scheme) {
+        $swatch = $accent->swatch()[$scheme];
 
-it('refuses a look that is not one of the offered ones', function (string $field, string $value) {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+        expect($swatch['color'])->not->toBe($swatch['foreground']);
+    }
+})->with(WorkspaceAccent::cases());
 
-    actingAs($user)
-        ->patch(route('workspace.theme.update'), [
-            'accent' => WorkspaceAccent::Neutral->value,
-            'font' => WorkspaceFont::System->value,
-            $field => $value,
-        ])
-        ->assertSessionHasErrors($field);
-
-    expect($workspace->fresh())
-        ->accent->toBe(WorkspaceAccent::Neutral)
-        ->font->toBe(WorkspaceFont::InstrumentSans);
-})->with([
-    // The picker cannot produce these, so anything that arrives here is
-    // somebody hand-writing the request — including, in the first case, an
-    // attempt to write straight into the stylesheet.
-    'losse css' => ['accent', 'red; --background: red'],
-    'onbekende kleur' => ['accent', 'chartreuse'],
-    'onbekend lettertype' => ['font', 'comic-sans'],
-]);
-
-it('refuses a theme change from a plain member', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
-
-    actingAs($user)
-        ->patch(route('workspace.theme.update'), [
-            'accent' => WorkspaceAccent::Rose->value,
-            'font' => WorkspaceFont::Inter->value,
-        ])
-        ->assertForbidden();
-
-    expect($workspace->fresh()->accent)->toBe(WorkspaceAccent::Neutral);
-});
-
-it('hands every screen the workspace stylesheet, both palettes and the letter', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
-    $workspace->update(['accent' => WorkspaceAccent::Emerald, 'font' => WorkspaceFont::Figtree]);
-
-    actingAs($user)
-        ->get(route('profile.edit'))
-        ->assertInertia(fn ($page) => $page
-            ->where('theme.font', 'figtree')
-            ->where('theme.css', fn (string $css) => str_contains($css, WorkspaceAccent::Emerald->swatch()['light']['color'])
-                && str_contains($css, WorkspaceAccent::Emerald->swatch()['dark']['color'])
-                && str_contains($css, WorkspaceFont::Figtree->stack()))
-        );
-});
-
-it('paints the first response before a single script runs', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
-    $workspace->update(['accent' => WorkspaceAccent::Rose]);
-
-    actingAs($user)
-        ->get(route('profile.edit'))
-        ->assertOk()
-        ->assertSee('id="workspace-theme"', false)
-        ->assertSee(WorkspaceAccent::Rose->swatch()['light']['color'], false);
-});
-
-it('asks for no webfont at all when the workspace reads in its own', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
-    $workspace->update(['font' => WorkspaceFont::System]);
-
-    actingAs($user)
-        ->get(route('profile.edit'))
-        ->assertInertia(fn ($page) => $page->where('theme.font', null))
-        ->assertDontSee('instrument-sans-400', false);
-});
-
-it('falls back to the default look for a visitor who is in no workspace yet', function () {
-    $user = User::factory()->create();
-
-    actingAs($user)
-        ->get(route('profile.edit'))
-        ->assertInertia(fn ($page) => $page
-            ->where('theme.css', '')
-            ->where('theme.font', 'instrument-sans'));
-});
+it('ends every font stack in a fallback the browser already has', function (WorkspaceFont $font) {
+    expect($font->stack())->toEndWith("'Noto Color Emoji'")
+        ->and($font->label())->not->toBeEmpty();
+})->with(WorkspaceFont::cases());

@@ -16,9 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { store } from '@/routes/chat/invitations';
 import type { ChannelSummary, ChatWorkspace } from '@/types/chat';
+import type { TranslationKey } from '@/types/translations';
 
 interface InvitePeopleDialogProps {
     workspace: ChatWorkspace;
@@ -30,16 +32,21 @@ interface InvitePeopleDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-const ROLES: { value: 'guest' | 'member'; label: string; hint: string }[] = [
+/** What each role is called and what it means, looked up when the dialog draws. */
+const ROLES: {
+    value: 'guest' | 'member';
+    label: TranslationKey;
+    hint: TranslationKey;
+}[] = [
     {
         value: 'guest',
-        label: 'Gast',
-        hint: 'Iemand van buiten. Ziet alleen de kanalen die je hieronder aanvinkt.',
+        label: 'actions.invite.guest',
+        hint: 'actions.invite.guest_hint',
     },
     {
         value: 'member',
-        label: 'Lid',
-        hint: 'Hoort erbij. Vindt de openbare kanalen zelf en ziet wie er in de workspace zitten.',
+        label: 'actions.invite.member',
+        hint: 'actions.invite.member_hint',
     },
 ];
 
@@ -50,6 +57,7 @@ export function InvitePeopleDialog({
     open,
     onOpenChange,
 }: InvitePeopleDialogProps) {
+    const { t } = useTranslate();
     const [role, setRole] = useState<'guest' | 'member'>('guest');
     const [picked, setPicked] = useState<number[]>(() =>
         initialChannelId === undefined ? [] : [initialChannelId],
@@ -80,10 +88,13 @@ export function InvitePeopleDialog({
         >
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Uitnodigen voor {workspace.name}</DialogTitle>
+                    <DialogTitle>
+                        {t('actions.invite.title', {
+                            workspace: workspace.name,
+                        })}
+                    </DialogTitle>
                     <DialogDescription>
-                        De genodigde krijgt een mail met een link die twee weken
-                        geldig is.
+                        {t('actions.invite.intro')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -113,7 +124,7 @@ export function InvitePeopleDialog({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="invite-email">
-                                    E-mailadres
+                                    {t('actions.invite.email_field')}
                                 </Label>
                                 <Input
                                     id="invite-email"
@@ -121,14 +132,16 @@ export function InvitePeopleDialog({
                                     type="email"
                                     autoFocus
                                     required
-                                    placeholder="naam@voorbeeld.nl"
+                                    placeholder={t(
+                                        'actions.invite.email_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.email} />
                             </div>
 
                             <fieldset className="grid gap-2">
                                 <legend className="mb-2 text-sm font-medium">
-                                    Wat wordt het?
+                                    {t('actions.invite.role_question')}
                                 </legend>
                                 {ROLES.map((option) => (
                                     <label
@@ -152,10 +165,10 @@ export function InvitePeopleDialog({
                                         />
                                         <span>
                                             <span className="block text-sm font-medium">
-                                                {option.label}
+                                                {t(option.label)}
                                             </span>
                                             <span className="block text-xs text-muted-foreground">
-                                                {option.hint}
+                                                {t(option.hint)}
                                             </span>
                                         </span>
                                     </label>
@@ -166,13 +179,12 @@ export function InvitePeopleDialog({
                             {role === 'guest' && (
                                 <fieldset className="grid gap-2">
                                     <legend className="mb-2 text-sm font-medium">
-                                        Kanalen voor deze gast
+                                        {t('actions.invite.guest_channels')}
                                     </legend>
 
                                     {channels.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
-                                            Er zijn nog geen kanalen om iemand
-                                            voor uit te nodigen.
+                                            {t('actions.invite.no_channels')}
                                         </p>
                                     ) : (
                                         <ScrollArea className="max-h-44 rounded-lg border">
@@ -218,11 +230,11 @@ export function InvitePeopleDialog({
                                     variant="ghost"
                                     onClick={() => onOpenChange(false)}
                                 >
-                                    Annuleren
+                                    {t('actions.cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
-                                    Uitnodiging sturen
+                                    {t('actions.invite.submit')}
                                 </Button>
                             </DialogFooter>
                         </>

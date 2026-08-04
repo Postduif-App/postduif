@@ -9,26 +9,23 @@ import { CreateTicketDialog } from '@/components/chat/create-ticket-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
-import { TicketPanel } from '@/components/chat/ticket-panel';
+import {
+    TICKET_PRIORITY_KEY,
+    TICKET_STATUS_KEY,
+    TicketPanel,
+} from '@/components/chat/ticket-panel';
 import {
     ALL_STATUSES,
     OPEN_STATUSES,
-    TICKET_PRIORITY,
-    TICKET_STATUS,
     TicketPriorityLabel,
     TicketStatusBadge,
 } from '@/components/chat/ticket-status';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { UserMenuContent } from '@/components/user-menu-content';
+import { UserMenu } from '@/components/user-menu-content';
 import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
-import { useInitials } from '@/hooks/use-initials';
+import { useFormats } from '@/hooks/use-formats';
 import { useSessionGuard } from '@/hooks/use-session-guard';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
 import { index as ticketsIndex } from '@/routes/chat/tickets';
@@ -40,13 +37,13 @@ import type {
     ChannelMember,
     ChannelSummary,
     ChatWorkspace,
+    ScheduledBroadcast,
     OpenTicket,
     TicketPriority,
     TicketStatus,
     TicketSummary,
+    WorkspaceOption,
 } from '@/types/chat';
-
-const DATE_FORMAT = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short' });
 
 /** A row here is a board row plus the channel it came from. */
 interface WorkspaceTicket extends TicketSummary {
@@ -83,6 +80,12 @@ interface WorkspaceTicketsProps {
     archivedChannels: ArchivedChannel[];
     /** The groups this member arranged for themselves. */
     sections: ChannelSectionRow[];
+    /** Unread inbox rows of every kind, counted by the server. */
+    inboxUnread: number;
+    /** Announcements this member has waiting, for the broadcast dialog. */
+    scheduledBroadcasts: ScheduledBroadcast[];
+    /** Every workspace this member belongs to, for the switcher up top. */
+    workspaces: WorkspaceOption[];
     filters: Filters;
     /** The ticket named by ?ticket= in the URL, or null. */
     ticket: OpenWorkspaceTicket | null;
@@ -109,9 +112,13 @@ export default function WorkspaceTickets({
     workspaceTags,
     archivedChannels,
     sections,
+    inboxUnread,
+    scheduledBroadcasts,
+    workspaces,
 }: WorkspaceTicketsProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const getInitials = useInitials();
+    const formats = useFormats();
+    const { t } = useTranslate();
     const [searchOpen, setSearchOpen] = useState(false);
 
     useCommandPaletteShortcut(setSearchOpen);
@@ -187,38 +194,7 @@ export default function WorkspaceTickets({
         0,
     );
 
-    const userMenu = (
-        <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
-                <Avatar className="size-8 shrink-0">
-                    {/*
-                        Above the fallback rather than instead of it: Radix
-                        draws the initials until the picture has loaded, and
-                        keeps them if it never does.
-                    */}
-                    {auth.avatarUrl && (
-                        <AvatarImage src={auth.avatarUrl} alt="" />
-                    )}
-                    <AvatarFallback className="text-xs font-semibold">
-                        {getInitials(auth.user.name)}
-                    </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                        {auth.user.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                        {auth.user.status_text
-                            ? `${auth.user.status_emoji ?? ''} ${auth.user.status_text}`.trim()
-                            : 'Status instellen'}
-                    </span>
-                </span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56">
-                <UserMenuContent user={auth.user} />
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+    const userMenu = <UserMenu />;
 
     return (
         <div className="flex h-screen overflow-hidden bg-background">
@@ -226,6 +202,8 @@ export default function WorkspaceTickets({
 
             <ChannelSidebar
                 workspace={workspace}
+                inboxUnread={inboxUnread}
+                workspaces={workspaces}
                 channels={channels}
                 directMessages={directMessages}
                 activeThreads={activeThreads}
@@ -246,10 +224,10 @@ export default function WorkspaceTickets({
                     <TicketIcon className="size-4 text-muted-foreground" />
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-semibold">
-                            Tickets
+                            {t('panelen.tickets.title')}
                         </h1>
                         <p className="truncate text-xs text-muted-foreground">
-                            Alles uit de kanalen die je kunt zien
+                            {t('panelen.tickets.intro')}
                         </p>
                     </div>
 
@@ -263,7 +241,7 @@ export default function WorkspaceTickets({
                             }}
                         >
                             <Plus className="size-4" />
-                            Nieuw ticket
+                            {t('panelen.tickets.new')}
                         </Button>
                     )}
                 </header>
@@ -273,7 +251,7 @@ export default function WorkspaceTickets({
                         selected={filters.open && filters.status === null}
                         onClick={() => go({ open: true, status: null })}
                     >
-                        Openstaand
+                        {t('panelen.tickets.outstanding')}
                         <Total value={outstanding} />
                     </FilterPill>
 
@@ -290,7 +268,7 @@ export default function WorkspaceTickets({
                                 })
                             }
                         >
-                            {TICKET_STATUS[status].label}
+                            {t(TICKET_STATUS_KEY[status])}
                             <Total value={count(status)} />
                         </FilterPill>
                     ))}
@@ -299,27 +277,29 @@ export default function WorkspaceTickets({
                         selected={!filters.open && filters.status === null}
                         onClick={() => go({ open: false, status: null })}
                     >
-                        Alles
+                        {t('panelen.tickets.everything')}
                     </FilterPill>
 
                     <div className="ml-auto flex items-center gap-2">
                         <Select
-                            label="Prioriteit"
+                            label={t('panelen.tickets.priority_filter')}
                             value={filters.priority ?? ''}
                             onChange={(value) =>
                                 go({
                                     priority: (value as TicketPriority) || null,
                                 })
                             }
-                            options={Object.entries(TICKET_PRIORITY).map(
-                                ([value, meta]) => ({
-                                    value,
-                                    label: meta.label,
-                                }),
-                            )}
+                            options={(
+                                Object.keys(
+                                    TICKET_PRIORITY_KEY,
+                                ) as TicketPriority[]
+                            ).map((value) => ({
+                                value,
+                                label: t(TICKET_PRIORITY_KEY[value]),
+                            }))}
                         />
                         <Select
-                            label="Kanaal"
+                            label={t('panelen.tickets.channel_filter')}
                             value={
                                 filters.channel ? String(filters.channel) : ''
                             }
@@ -337,12 +317,11 @@ export default function WorkspaceTickets({
                 <div className="min-h-0 flex-1 overflow-y-auto">
                     {ticketChannels.length === 0 ? (
                         <p className="p-8 text-center text-sm text-muted-foreground">
-                            Nog geen enkel kanaal houdt tickets bij. Zet tickets
-                            aan in de instellingen van een kanaal.
+                            {t('panelen.tickets.no_channels')}
                         </p>
                     ) : rows.length === 0 ? (
                         <p className="p-8 text-center text-sm text-muted-foreground">
-                            Geen tickets die hieraan voldoen.
+                            {t('panelen.tickets.none')}
                         </p>
                     ) : (
                         <ul className="divide-y">
@@ -391,9 +370,11 @@ export default function WorkspaceTickets({
                                                 )}
                                                 <span className="truncate">
                                                     {row.opener?.name ??
-                                                        'Onbekend'}
+                                                        t(
+                                                            'panelen.ticket.unknown',
+                                                        )}
                                                     {row.createdAt &&
-                                                        ` · ${DATE_FORMAT.format(new Date(row.createdAt))}`}
+                                                        ` · ${formats.shortDate.format(new Date(row.createdAt))}`}
                                                 </span>
                                                 {row.commentCount > 0 && (
                                                     <span className="flex shrink-0 items-center gap-1">
@@ -442,10 +423,14 @@ export default function WorkspaceTickets({
                             )}
                             className="font-medium text-primary hover:underline"
                         >
-                            Open #{ticket.number} in
                             {ticket.channelLabel
-                                ? ` #${ticket.channelLabel}`
-                                : ' het kanaal'}
+                                ? t('panelen.tickets.open_in', {
+                                      number: ticket.number,
+                                      channel: ticket.channelLabel,
+                                  })
+                                : t('panelen.tickets.open_in_its_channel', {
+                                      number: ticket.number,
+                                  })}
                         </Link>
                     </div>
                 )}
@@ -466,6 +451,7 @@ export default function WorkspaceTickets({
             <BroadcastDialog
                 workspace={workspace}
                 channels={channels}
+                scheduledBroadcasts={scheduledBroadcasts}
                 tags={workspaceTags}
                 open={broadcastOpen}
                 onOpenChange={setBroadcastOpen}
@@ -579,6 +565,8 @@ function Select({
     onChange: (value: string) => void;
     options: { value: string; label: string }[];
 }) {
+    const { t } = useTranslate();
+
     return (
         <select
             aria-label={label}
@@ -586,7 +574,7 @@ function Select({
             onChange={(event) => onChange(event.target.value)}
             className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground focus-visible:ring-2 focus-visible:outline-none"
         >
-            <option value="">{label}: alle</option>
+            <option value="">{t('panelen.tickets.any', { label })}</option>
             {options.map((option) => (
                 <option key={option.value} value={option.value}>
                     {option.label}

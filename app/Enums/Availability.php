@@ -27,18 +27,18 @@ enum Availability: string implements HasLabel
     public function label(): string
     {
         return match ($this) {
-            self::Available => 'Beschikbaar',
-            self::Away => 'Afwezig',
-            self::DoNotDisturb => 'Niet storen',
+            self::Available => __('enums.availability.label.Available'),
+            self::Away => __('enums.availability.label.Away'),
+            self::DoNotDisturb => __('enums.availability.label.DoNotDisturb'),
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::Available => 'Gewoon bereikbaar.',
-            self::Away => 'Je bent er even niet; meldingen komen wel gewoon binnen.',
-            self::DoNotDisturb => 'Er gaan geen meldingen uit. Vermeldingen blijven staan tot je terug bent.',
+            self::Available => __('enums.availability.description.Available'),
+            self::Away => __('enums.availability.description.Away'),
+            self::DoNotDisturb => __('enums.availability.description.DoNotDisturb'),
         };
     }
 

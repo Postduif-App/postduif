@@ -6,11 +6,11 @@ class InviteLinks extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Uitnodigingslinks';
+        return __('features.invite-links.label');
     }
 
     public static function description(): string
     {
-        return 'Meedoen via een deelbare link, naast een uitnodiging op naam.';
+        return __('features.invite-links.description');
     }
 }

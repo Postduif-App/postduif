@@ -36,7 +36,7 @@ class AvatarController extends Controller
                 'mimetypes:'.implode(',', AttachmentType::Images->mimeTypes()),
             ],
         ], [
-            'avatar.mimetypes' => 'Kies een gewone afbeelding: png, jpg, gif of webp.',
+            'avatar.mimetypes' => __('requests.image.type'),
         ]);
 
         /** @var User $user */
@@ -44,7 +44,7 @@ class AvatarController extends Controller
 
         $this->storeAvatar->handle($user, $request->file('avatar'));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Foto opgeslagen.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.avatar_saved')]);
 
         return back();
     }
@@ -56,7 +56,7 @@ class AvatarController extends Controller
 
         $this->storeAvatar->remove($user);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Foto verwijderd.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.avatar_removed')]);
 
         return back();
     }

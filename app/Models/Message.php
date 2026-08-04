@@ -34,6 +34,12 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property Carbon|null $last_reply_at
  * @property Carbon|null $edited_at
  * @property Carbon|null $created_at
+ *
+ * Only present when the query asked for it — see FindActiveThreads, which adds
+ * it with withExists so the sidebar can answer "did this member mute this
+ * thread" for twenty threads in one statement. Null everywhere else, which is
+ * why every reader casts.
+ * @property-read bool|null $muted
  */
 #[Fillable(['id', 'workspace_id', 'channel_id', 'user_id', 'webhook_id', 'bot_name', 'forwarded_from', 'parent_id', 'quoted_message_id', 'body'])]
 class Message extends Model implements HasMedia
@@ -165,7 +171,7 @@ class Message extends Model implements HasMedia
     public function closedBy(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'thread_user')
-            ->withPivot('closed_at')
+            ->withPivot(['closed_at', 'muted_at'])
             ->withTimestamps();
     }
 
@@ -183,7 +189,65 @@ class Message extends Model implements HasMedia
 
     public function reopenFor(User $user): void
     {
-        $this->closedBy()->detach($user->id);
+        /*
+         * Only the closing is undone. A member who both closed and muted this
+         * thread said two things, and putting it back in the sidebar is not a
+         * request to be told about it again — detaching the row would quietly
+         * grant one.
+         */
+        $this->closedBy()->updateExistingPivot($user->id, ['closed_at' => null]);
+
+        $this->closedBy()->newPivotQuery()
+            ->where('user_id', $user->id)
+            ->whereNull('closed_at')
+            ->whereNull('muted_at')
+            ->delete();
+    }
+
+    /**
+     * Stop hearing about this thread, however much is said in it.
+     *
+     * The difference with closing is the whole point of there being two. Closing
+     * says "done with this as it stands" and a new reply undoes it — that is
+     * what keeps a revived conversation in the sidebar. Muting says "not again",
+     * and nothing said afterwards changes it. Only the inbox obeys it: the
+     * sidebar still lists the thread, because being quiet about something is not
+     * the same as hiding it.
+     */
+    public function muteFor(User $user): void
+    {
+        $this->closedBy()->syncWithoutDetaching([
+            $user->id => ['muted_at' => now()],
+        ]);
+    }
+
+    /**
+     * Whether this member asked to stop hearing about this thread.
+     *
+     * One query, and meant for one thread. The sidebar asks it of twenty at a
+     * time and does not call this: FindActiveThreads answers it in the same
+     * statement that fetches them, with withExists. Reading the pivot off a
+     * loaded relation would have done too, but a pivot is untyped — it is not a
+     * property of User — and the query-level answer is both faster and
+     * something the type checker can follow.
+     */
+    public function isMutedFor(User $user): bool
+    {
+        return $this->closedBy()
+            ->wherePivotNotNull('muted_at')
+            ->whereKey($user->id)
+            ->exists();
+    }
+
+    public function unmuteFor(User $user): void
+    {
+        $this->closedBy()->updateExistingPivot($user->id, ['muted_at' => null]);
+
+        $this->closedBy()->newPivotQuery()
+            ->where('user_id', $user->id)
+            ->whereNull('closed_at')
+            ->whereNull('muted_at')
+            ->delete();
     }
 
     /**

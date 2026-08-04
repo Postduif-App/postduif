@@ -14,28 +14,28 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { mute, unmute } from '@/routes/chat/channels';
 import type { ActiveChannel, ChatWorkspace } from '@/types/chat';
+import type { TranslationKey } from '@/types/translations';
 
 /**
  * How long quiet lasts. Hours rather than a moment to pick: what somebody is
  * deciding is "leave me alone for a bit", and a date picker turns that into a
  * small chore.
+ *
+ * Keys rather than words: this is a module constant, and a hook cannot be
+ * called from one — so the lookup happens where t() is in reach.
  */
-const DURATIONS: { hours: number | null; label: string }[] = [
-    { hours: 1, label: 'Een uur' },
-    { hours: 8, label: 'De rest van de werkdag' },
-    { hours: 24, label: 'Tot morgen' },
-    { hours: 168, label: 'Een week' },
-    { hours: null, label: 'Tot ik het weer aanzet' },
+const DURATIONS: { hours: number | null; label: TranslationKey }[] = [
+    { hours: 1, label: 'chat_ui.mute.duration.hour' },
+    { hours: 8, label: 'chat_ui.mute.duration.workday' },
+    { hours: 24, label: 'chat_ui.mute.duration.tomorrow' },
+    { hours: 168, label: 'chat_ui.mute.duration.week' },
+    { hours: null, label: 'chat_ui.mute.duration.forever' },
 ];
-
-const UNTIL_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-});
 
 /**
  * Turning a channel's notifications off, for yourself.
@@ -52,14 +52,20 @@ export function MuteMenu({
     workspace: ChatWorkspace;
     channel: ActiveChannel;
 }) {
+    const formats = useFormats();
+    const { t } = useTranslate();
     const muted = channel.mutedUntil !== null;
     const target = { workspace: workspace.slug, channel: channel.id };
 
     const label = !muted
-        ? 'Meldingen dempen'
+        ? t('chat_ui.mute.action')
         : channel.mutedUntil === 'forever'
-          ? 'Gedempt totdat je het weer aanzet'
-          : `Gedempt tot ${UNTIL_FORMAT.format(new Date(channel.mutedUntil as string))}`;
+          ? t('chat_ui.mute.until_forever')
+          : t('chat_ui.mute.until', {
+                moment: formats.dayTime.format(
+                    new Date(channel.mutedUntil as string),
+                ),
+            });
 
     return (
         <DropdownMenu>
@@ -103,13 +109,13 @@ export function MuteMenu({
                             }
                         >
                             <Bell className="size-4" />
-                            Meldingen weer aanzetten
+                            {t('chat_ui.mute.unmute')}
                         </DropdownMenuItem>
                     </>
                 ) : (
                     <>
                         <DropdownMenuLabel className="font-normal text-muted-foreground">
-                            Dit kanaal stil houden
+                            {t('chat_ui.mute.heading')}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {DURATIONS.map((duration) => (
@@ -128,7 +134,7 @@ export function MuteMenu({
                                     )
                                 }
                             >
-                                {duration.label}
+                                {t(duration.label)}
                             </DropdownMenuItem>
                         ))}
                     </>

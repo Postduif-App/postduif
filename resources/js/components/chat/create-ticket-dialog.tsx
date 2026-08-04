@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { TICKET_PRIORITY_KEY } from '@/components/chat/ticket-panel';
 import { TICKET_PRIORITY } from '@/components/chat/ticket-status';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +22,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { store } from '@/routes/chat/tickets';
 import type { ChatMessage, ChatWorkspace, TicketPriority } from '@/types/chat';
 
@@ -73,6 +75,8 @@ export function CreateTicketDialog({
     open,
     onOpenChange,
 }: CreateTicketDialogProps) {
+    const { t } = useTranslate();
+
     // Preselected only when there is nothing to choose. With several channels
     // on offer the field starts empty on purpose: a ticket filed in the wrong
     // channel is worse than one nobody filed, and a default is what makes that
@@ -115,21 +119,27 @@ export function CreateTicketDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>
-                        {source ? 'Ticket van dit bericht' : 'Nieuw ticket'}
+                        {source
+                            ? t('actions.ticket.title_from_message')
+                            : t('actions.ticket.title')}
                     </DialogTitle>
                     <DialogDescription>
                         {source
-                            ? `Het bericht blijft staan waar het staat; dit ticket verwijst ernaar terug.`
+                            ? t('actions.ticket.intro_from_message')
                             : picking
-                              ? 'Kies waar dit ticket bijgehouden wordt; alleen kanalen waar jij tickets mag aanmaken staan erbij.'
-                              : `Wordt bijgehouden in #${channels[0].label}, zodat iedereen ziet wat er nog openstaat.`}
+                              ? t('actions.ticket.intro_picking')
+                              : t('actions.ticket.intro_channel', {
+                                    channel: channels[0].label,
+                                })}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">
                     {picking && (
                         <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="ticket-channel">Kanaal</Label>
+                            <Label htmlFor="ticket-channel">
+                                {t('actions.ticket.channel_field')}
+                            </Label>
                             <Select
                                 value={
                                     channelId === null ? '' : String(channelId)
@@ -139,7 +149,11 @@ export function CreateTicketDialog({
                                 }
                             >
                                 <SelectTrigger id="ticket-channel">
-                                    <SelectValue placeholder="Kies een kanaal" />
+                                    <SelectValue
+                                        placeholder={t(
+                                            'actions.ticket.channel_placeholder',
+                                        )}
+                                    />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {channels.map((target) => (
@@ -156,13 +170,15 @@ export function CreateTicketDialog({
                     )}
 
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="ticket-title">Titel</Label>
+                        <Label htmlFor="ticket-title">
+                            {t('actions.ticket.title_field')}
+                        </Label>
                         <Input
                             id="ticket-title"
                             value={title}
                             maxLength={160}
                             onChange={(event) => setTitle(event.target.value)}
-                            placeholder="Waar gaat het over?"
+                            placeholder={t('actions.ticket.title_placeholder')}
                         />
                         {errors.title && (
                             <p className="text-xs text-destructive">
@@ -172,13 +188,15 @@ export function CreateTicketDialog({
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="ticket-body">Omschrijving</Label>
+                        <Label htmlFor="ticket-body">
+                            {t('actions.ticket.body_field')}
+                        </Label>
                         <textarea
                             id="ticket-body"
                             value={body}
                             rows={5}
                             onChange={(event) => setBody(event.target.value)}
-                            placeholder="Wat is er aan de hand, en wat heb je al geprobeerd?"
+                            placeholder={t('actions.ticket.body_placeholder')}
                             className="w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                         />
                         {errors.body && (
@@ -190,7 +208,9 @@ export function CreateTicketDialog({
 
                     {canPrioritise && (
                         <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="ticket-priority">Prioriteit</Label>
+                            <Label htmlFor="ticket-priority">
+                                {t('actions.ticket.priority_field')}
+                            </Label>
                             <Select
                                 value={priority}
                                 onValueChange={(value) =>
@@ -207,7 +227,7 @@ export function CreateTicketDialog({
                                         ) as TicketPriority[]
                                     ).map((value) => (
                                         <SelectItem key={value} value={value}>
-                                            {TICKET_PRIORITY[value].label}
+                                            {t(TICKET_PRIORITY_KEY[value])}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -221,7 +241,7 @@ export function CreateTicketDialog({
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                     >
-                        Annuleren
+                        {t('actions.cancel')}
                     </Button>
                     <Button
                         disabled={
@@ -233,7 +253,7 @@ export function CreateTicketDialog({
                         onClick={submit}
                     >
                         {saving && <Spinner />}
-                        Ticket aanmaken
+                        {t('actions.ticket.submit')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

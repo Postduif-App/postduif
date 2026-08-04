@@ -106,15 +106,15 @@ class UpdateChannelRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Geef het kanaal een naam.',
-            'name.unique' => 'Er bestaat al een kanaal met deze naam.',
-            'name.prohibited' => 'Een direct bericht heeft geen naam.',
-            'topic.prohibited' => 'Een direct bericht heeft geen onderwerp.',
-            'type.prohibited' => 'De zichtbaarheid van een direct bericht ligt vast.',
-            'layout.prohibited' => 'Een direct bericht heeft geen andere weergave.',
-            'type.not_in' => 'Een direct bericht maak je niet van een kanaal.',
-            'posting_policy.enum' => 'Kies een geldige instelling.',
-            'ticket_policy.enum' => 'Kies een geldige instelling.',
+            'name.required' => __('requests.channel.name_required'),
+            'name.unique' => __('requests.channel.name_taken'),
+            'name.prohibited' => __('requests.channel.direct_has_no_name'),
+            'topic.prohibited' => __('requests.channel.direct_has_no_topic'),
+            'type.prohibited' => __('requests.channel.direct_visibility_fixed'),
+            'layout.prohibited' => __('requests.channel.direct_has_no_layout'),
+            'type.not_in' => __('requests.channel.not_made_from_channel'),
+            'posting_policy.enum' => __('requests.channel.invalid_setting'),
+            'ticket_policy.enum' => __('requests.channel.invalid_setting'),
         ];
     }
 }

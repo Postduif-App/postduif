@@ -17,6 +17,12 @@ import type { AuthLayoutProps } from '@/types';
  * Input on these pages come out in ink and sand without a single component
  * being rewritten.
  *
+ * The `pd-themed` beside it is what separates this shell from the public site:
+ * these are application screens in brand clothing, so they follow the light or
+ * dark somebody chose for the application. The marketing shell wears the same
+ * huisstijl and deliberately does not follow — see the block at the bottom of
+ * app.css.
+ *
  * Note it stops here. Everything behind the login is themed per workspace with
  * an accent a beheerder picks, and that is a different job from carrying a
  * brand.
@@ -28,7 +34,7 @@ export default function AuthSimpleLayout({
     wide = false,
 }: AuthLayoutProps) {
     return (
-        <div className="postduif flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <div className="postduif pd-themed flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-sm'}>
                 <div className="flex flex-col gap-8">
                     <div className="flex flex-col items-center gap-5">

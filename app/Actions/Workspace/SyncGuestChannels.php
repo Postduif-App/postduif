@@ -3,6 +3,7 @@
 namespace App\Actions\Workspace;
 
 use App\Enums\ChannelType;
+use App\Events\ChannelMemberJoined;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -50,6 +51,16 @@ class SyncGuestChannels
 
             if ($toAdd->isNotEmpty()) {
                 $guest->channels()->attach($toAdd->all(), ['joined_at' => now()]);
+
+                /*
+                 * A guest being given an extra channel later is a join in every
+                 * sense — unlike the onboarding paths, where the same guest
+                 * lands in everything at once and a welcome per channel would
+                 * be four messages in one second.
+                 */
+                foreach (Channel::query()->whereKey($toAdd->all())->get() as $channel) {
+                    ChannelMemberJoined::dispatch($channel, $guest);
+                }
             }
 
             return ['added' => $toAdd->count(), 'removed' => $toRemove->count()];

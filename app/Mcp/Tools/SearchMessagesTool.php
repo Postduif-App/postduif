@@ -37,14 +37,14 @@ class SearchMessagesTool extends Tool
         $terms = trim((string) $request->get('query', ''));
 
         if ($terms === '') {
-            return Response::error('Geef iets om op te zoeken.');
+            return Response::error(__('mcp.search.empty'));
         }
 
         $channel = $this->channel($request, $user);
         $results = $this->search($user, $terms, $channel);
 
         if ($results === []) {
-            return Response::text('Niets gevonden voor "'.$terms.'".');
+            return Response::text(__('mcp.search.no_results', ['terms' => $terms]));
         }
 
         return Response::json(['results' => $results]);
@@ -76,7 +76,16 @@ class SearchMessagesTool extends Tool
                 continue;
             }
 
-            foreach ($this->searchMessages->handle($workspace, $user, $terms, $channel, self::LIMIT) as $hit) {
+            foreach ($this->searchMessages->handle(
+                $workspace,
+                $user,
+                $terms,
+                $channel,
+                // Named, because the signature grew a $from between the channel
+                // and the limit: positional here would quietly have started
+                // passing a number where an author was expected.
+                limit: self::LIMIT,
+            ) as $hit) {
                 $results[] = [...$hit, 'workspace' => $workspace->name];
             }
         }

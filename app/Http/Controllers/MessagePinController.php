@@ -77,7 +77,7 @@ class MessagePinController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'pin' => 'Er kunnen maximaal '.self::MAX_PINS.' berichten vastgepind zijn. Maak er eerst een los.',
+            'pin' => __('requests.message.too_many_pinned', ['count' => self::MAX_PINS]),
         ]);
     }
 }

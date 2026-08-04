@@ -36,6 +36,11 @@ export function Wordmark({
      * dove; on ink the tile disappears and the dove carries the yellow itself.
      * Two arrangements rather than one, because the huisstijl allows yellow on
      * ink and ink on yellow — but never yellow on white.
+     *
+     * 'paper' reads the arrangement from --pd-mark-tile and --pd-mark-word
+     * rather than naming the colours, so a shell that follows light and dark
+     * can flip it in CSS. 'ink' stays absolute: a section that is ink whatever
+     * the theme says needs the mark that goes with it.
      */
     on?: 'paper' | 'ink';
 }) {
@@ -50,7 +55,7 @@ export function Wordmark({
                     width: large ? 52 : 30,
                     height: large ? 52 : 30,
                     color: 'var(--pd-geel)',
-                    ...(onInk ? {} : { background: 'var(--pd-inkt)' }),
+                    ...(onInk ? {} : { background: 'var(--pd-mark-tile)' }),
                 }}
             >
                 <DoveMark size={large ? 36 : 20} />
@@ -61,7 +66,7 @@ export function Wordmark({
                     fontWeight: 600,
                     fontSize: large ? 28 : 16,
                     letterSpacing: '-0.045em',
-                    color: onInk ? 'var(--pd-papier)' : 'var(--pd-inkt)',
+                    color: onInk ? 'var(--pd-papier)' : 'var(--pd-mark-word)',
                 }}
             >
                 postduif

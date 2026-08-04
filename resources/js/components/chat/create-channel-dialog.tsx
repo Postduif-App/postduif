@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { store } from '@/routes/chat/channels';
 import type { ChannelType, ChatWorkspace } from '@/types/chat';
@@ -25,59 +26,69 @@ interface CreateChannelDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-const VISIBILITY: {
-    value: Extract<ChannelType, 'public' | 'private'>;
+/** The one line lookup, so the option lists below can be built with it. */
+type Translate = ReturnType<typeof useTranslate>['t'];
+
+interface Choice<T> {
+    value: T;
     label: string;
     hint: string;
     icon: typeof Globe;
-}[] = [
-    {
-        value: 'public',
-        label: 'Openbaar',
-        hint: 'Iedereen in de workspace kan meelezen en zich aansluiten.',
-        icon: Globe,
-    },
-    {
-        value: 'private',
-        label: 'Privé',
-        hint: 'Alleen wie je toevoegt ziet dit kanaal bestaan.',
-        icon: Lock,
-    },
-];
+}
+
+function visibilityChoices(
+    t: Translate,
+): Choice<Extract<ChannelType, 'public' | 'private'>>[] {
+    return [
+        {
+            value: 'public',
+            label: t('channels.visibility.public'),
+            hint: t('channels.visibility.public_hint'),
+            icon: Globe,
+        },
+        {
+            value: 'private',
+            label: t('channels.visibility.private'),
+            hint: t('channels.visibility.private_hint'),
+            icon: Lock,
+        },
+    ];
+}
 
 /**
  * How the channel reads. A separate question from the visibility above it: an
  * internal newsletter is exactly the kind of feed that belongs behind a private
  * channel, so the two choices do not constrain each other.
  */
-const LAYOUTS: {
-    value: 'chat' | 'feed';
-    label: string;
-    hint: string;
-    icon: typeof Globe;
-}[] = [
-    {
-        value: 'chat',
-        label: 'Gesprek',
-        hint: 'Berichten onder elkaar, zoals een gewoon kanaal.',
-        icon: MessageSquare,
-    },
-    {
-        value: 'feed',
-        label: 'Feed',
-        hint: 'Langere berichten met meer ruimte, zoals een nieuwsbrief of blog.',
-        icon: Newspaper,
-    },
-];
+function layoutChoices(t: Translate): Choice<'chat' | 'feed'>[] {
+    return [
+        {
+            value: 'chat',
+            label: t('channels.layout.chat'),
+            hint: t('channels.layout.chat_hint'),
+            icon: MessageSquare,
+        },
+        {
+            value: 'feed',
+            label: t('channels.layout.feed'),
+            hint: t('channels.layout.feed_hint'),
+            icon: Newspaper,
+        },
+    ];
+}
 
 export function CreateChannelDialog({
     workspace,
     open,
     onOpenChange,
 }: CreateChannelDialogProps) {
+    const { t } = useTranslate();
     const [name, setName] = useState('');
     const [type, setType] = useState<'public' | 'private'>('public');
     const [layout, setLayout] = useState<'chat' | 'feed'>('chat');
+
+    const visibility = visibilityChoices(t);
+    const layouts = layoutChoices(t);
 
     // Preview the slug the server will store, so nobody is surprised that
     // "Nieuwe Klanten" becomes #nieuwe-klanten after saving.
@@ -100,10 +111,9 @@ export function CreateChannelDialog({
         >
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Kanaal aanmaken</DialogTitle>
+                    <DialogTitle>{t('channels.create.title')}</DialogTitle>
                     <DialogDescription>
-                        Kanalen gaan meestal over één onderwerp, project of
-                        team.
+                        {t('channels.create.description')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -118,31 +128,37 @@ export function CreateChannelDialog({
                             <input type="hidden" name="layout" value={layout} />
 
                             <div className="grid gap-2">
-                                <Label htmlFor="channel-name">Naam</Label>
+                                <Label htmlFor="channel-name">
+                                    {t('channels.fields.name')}
+                                </Label>
                                 <Input
                                     id="channel-name"
                                     name="name"
                                     value={name}
                                     autoFocus
                                     maxLength={80}
-                                    placeholder="bijv. marketing"
+                                    placeholder={t(
+                                        'channels.create.name_placeholder',
+                                    )}
                                     onChange={(event) =>
                                         setName(event.target.value)
                                     }
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     {slug === ''
-                                        ? 'Kleine letters en streepjes.'
-                                        : `Wordt #${slug}`}
+                                        ? t('channels.create.slug_hint')
+                                        : t('channels.create.slug_preview', {
+                                              slug,
+                                          })}
                                 </p>
                                 <InputError message={errors.name} />
                             </div>
 
                             <fieldset className="grid gap-2">
                                 <legend className="mb-2 text-sm font-medium">
-                                    Zichtbaarheid
+                                    {t('channels.visibility.heading')}
                                 </legend>
-                                {VISIBILITY.map((option) => (
+                                {visibility.map((option) => (
                                     <label
                                         key={option.value}
                                         className={cn(
@@ -178,9 +194,9 @@ export function CreateChannelDialog({
 
                             <fieldset className="grid gap-2">
                                 <legend className="mb-2 text-sm font-medium">
-                                    Weergave
+                                    {t('channels.layout.heading')}
                                 </legend>
-                                {LAYOUTS.map((option) => (
+                                {layouts.map((option) => (
                                     <label
                                         key={option.value}
                                         className={cn(
@@ -216,16 +232,18 @@ export function CreateChannelDialog({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="channel-topic">
-                                    Onderwerp{' '}
+                                    {t('channels.fields.topic')}{' '}
                                     <span className="font-normal text-muted-foreground">
-                                        (optioneel)
+                                        {t('channels.fields.topic_optional')}
                                     </span>
                                 </Label>
                                 <Input
                                     id="channel-topic"
                                     name="topic"
                                     maxLength={255}
-                                    placeholder="Waar gaat dit kanaal over?"
+                                    placeholder={t(
+                                        'channels.fields.topic_placeholder',
+                                    )}
                                 />
                                 <InputError message={errors.topic} />
                             </div>
@@ -236,14 +254,14 @@ export function CreateChannelDialog({
                                     variant="ghost"
                                     onClick={() => onOpenChange(false)}
                                 >
-                                    Annuleren
+                                    {t('channels.actions.cancel')}
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={processing || slug === ''}
                                 >
                                     {processing && <Spinner />}
-                                    Aanmaken
+                                    {t('channels.actions.create')}
                                 </Button>
                             </DialogFooter>
                         </>

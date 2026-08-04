@@ -49,8 +49,8 @@ class StartDirectMessageRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'user_id.required' => 'Kies met wie je wilt praten.',
-            'user_id.exists' => 'Deze persoon hoort niet bij deze workspace.',
+            'user_id.required' => __('requests.direct_message.recipient_required'),
+            'user_id.exists' => __('requests.direct_message.not_a_member'),
         ];
     }
 }

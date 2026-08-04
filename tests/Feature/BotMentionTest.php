@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\SendMessage;
 use App\Enums\BroadcastMentionPolicy;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\User;
 use App\Models\Webhook;
 
@@ -38,7 +38,7 @@ it('records no mention for a message naming a bot', function () {
 
     $message = app(SendMessage::class)->handle($channel, $user, 'Hoi @buildbot, hoe staat het?');
 
-    expect(Mention::where('message_id', $message->id)->exists())->toBeFalse();
+    expect(InboxItem::where('message_id', $message->id)->exists())->toBeFalse();
 });
 
 /**
@@ -60,7 +60,7 @@ it('resolves a handle to the member even when a bot shares the name', function (
 
     $message = app(SendMessage::class)->handle($channel, $writer, 'Kijk even @fenna');
 
-    expect(Mention::where('message_id', $message->id)->pluck('user_id')->all())
+    expect(InboxItem::where('message_id', $message->id)->pluck('user_id')->all())
         ->toBe([$fenna->id]);
 });
 
@@ -71,7 +71,7 @@ it('lets a bot mention a member without being mentionable itself', function () {
 
     $message = app(SendMessage::class)->fromWebhook($webhook, 'De build faalt, @fenna');
 
-    expect(Mention::where('message_id', $message->id)->pluck('user_id')->all())
+    expect(InboxItem::where('message_id', $message->id)->pluck('user_id')->all())
         ->toBe([$user->id]);
 });
 
@@ -90,7 +90,7 @@ it('refuses @everyone from a bot even when the workspace allows it', function ()
 
     $message = app(SendMessage::class)->fromWebhook($webhook, 'Let op @everyone');
 
-    expect(Mention::where('message_id', $message->id)->exists())->toBeFalse();
+    expect(InboxItem::where('message_id', $message->id)->exists())->toBeFalse();
 });
 
 it('refuses @here from a bot', function () {
@@ -100,5 +100,5 @@ it('refuses @here from a bot', function () {
 
     $message = app(SendMessage::class)->fromWebhook($webhook, 'Even kijken @here');
 
-    expect(Mention::where('message_id', $message->id)->exists())->toBeFalse();
+    expect(InboxItem::where('message_id', $message->id)->exists())->toBeFalse();
 });

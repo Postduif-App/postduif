@@ -8,7 +8,6 @@ import { MessageBody } from '@/components/chat/message-body';
 import {
     ALL_STATUSES,
     TICKET_PRIORITY,
-    TICKET_STATUS,
     TicketStatusBadge,
 } from '@/components/chat/ticket-status';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,8 @@ import {
     SelectItem,
     SelectTrigger,
 } from '@/components/ui/select';
+import { useFormats } from '@/hooks/use-formats';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
 import { update } from '@/routes/chat/tickets';
@@ -31,11 +32,42 @@ import type {
     TicketStatus,
     TicketTimelineEntry,
 } from '@/types/chat';
+import type { TranslationKey } from '@/types/translations';
 
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-});
+/**
+ * The enum case behind a status, so the panel can read its words out of
+ * enums.php instead of spelling them a second time. PascalCase because that is
+ * how PHP spells the case, and the key is the case.
+ *
+ * Exported because the workspace-wide ticket list needs the same lookup, and
+ * two copies of it would drift the day a status is added.
+ */
+export const TICKET_STATUS_KEY: Record<TicketStatus, TranslationKey> = {
+    open: 'enums.ticket-status.label.Open',
+    in_progress: 'enums.ticket-status.label.InProgress',
+    waiting: 'enums.ticket-status.label.Waiting',
+    resolved: 'enums.ticket-status.label.Resolved',
+    closed: 'enums.ticket-status.label.Closed',
+};
+
+/** What a status says about who is expected to act next. */
+export const TICKET_STATUS_DESCRIPTION_KEY: Record<
+    TicketStatus,
+    TranslationKey
+> = {
+    open: 'enums.ticket-status.description.Open',
+    in_progress: 'enums.ticket-status.description.InProgress',
+    waiting: 'enums.ticket-status.description.Waiting',
+    resolved: 'enums.ticket-status.description.Resolved',
+    closed: 'enums.ticket-status.description.Closed',
+};
+
+export const TICKET_PRIORITY_KEY: Record<TicketPriority, TranslationKey> = {
+    low: 'enums.ticket-priority.label.Low',
+    normal: 'enums.ticket-priority.label.Normal',
+    high: 'enums.ticket-priority.label.High',
+    urgent: 'enums.ticket-priority.label.Urgent',
+};
 
 /**
  * What the panel needs of the channel a ticket sits in: where to send the
@@ -65,31 +97,51 @@ interface TicketPanelProps {
  * holds what changed, and a phrasing baked in at write time would still be the
  * old phrasing years later — and untranslatable.
  */
-function describe(entry: Extract<TicketTimelineEntry, { kind: 'event' }>) {
-    const who = entry.author?.name ?? 'Systeem';
-    const status = (value: unknown) =>
-        TICKET_STATUS[value as TicketStatus]?.label ?? String(value);
+function describe(
+    entry: Extract<TicketTimelineEntry, { kind: 'event' }>,
+    // Handed in rather than looked up: this is a plain function, and a hook
+    // cannot be called from one.
+    t: ReturnType<typeof useTranslate>['t'],
+) {
+    const who = entry.author?.name ?? t('panelen.ticket.event.system');
+
+    /**
+     * A value out of the payload, in words. It was written by an older version
+     * of the app and may name a case that no longer exists — showing the raw
+     * value beats showing nothing.
+     */
+    const named = (
+        keys: Record<string, TranslationKey>,
+        value: unknown,
+    ): string => {
+        const key = keys[String(value)];
+
+        return key ? t(key) : String(value);
+    };
 
     switch (entry.type) {
         case 'created':
-            return `${who} maakte dit ticket aan`;
+            return t('panelen.ticket.event.created', { who });
         case 'status_changed':
-            return `${who} zette de status op ${status(entry.payload.to)}`;
+            return t('panelen.ticket.event.status_changed', {
+                who,
+                status: named(TICKET_STATUS_KEY, entry.payload.to),
+            });
         case 'priority_changed':
-            return `${who} zette de prioriteit op ${
-                TICKET_PRIORITY[entry.payload.to as TicketPriority]?.label ??
-                entry.payload.to
-            }`;
+            return t('panelen.ticket.event.priority_changed', {
+                who,
+                priority: named(TICKET_PRIORITY_KEY, entry.payload.to),
+            });
         case 'assigned':
-            return `${who} wees dit ticket toe`;
+            return t('panelen.ticket.event.assigned', { who });
         case 'unassigned':
-            return `${who} haalde de toewijzing weg`;
+            return t('panelen.ticket.event.unassigned', { who });
         case 'due_date_changed':
             return entry.payload.to
-                ? `${who} zette een streefdatum`
-                : `${who} haalde de streefdatum weg`;
+                ? t('panelen.ticket.event.due_date_set', { who })
+                : t('panelen.ticket.event.due_date_cleared', { who });
         default:
-            return `${who} wijzigde iets`;
+            return t('panelen.ticket.event.other', { who });
     }
 }
 
@@ -149,6 +201,7 @@ function TicketTitleEditor({
     onSave: (title: string) => void;
     onCancel: () => void;
 }) {
+    const { t } = useTranslate();
     const [draft, setDraft] = useState(title);
     const ref = useRef<HTMLInputElement>(null);
 
@@ -182,7 +235,7 @@ function TicketTitleEditor({
                 ref={ref}
                 value={draft}
                 maxLength={160}
-                aria-label="Titel"
+                aria-label={t('panelen.ticket.title_field')}
                 onChange={(event) => setDraft(event.target.value)}
                 onBlur={save}
                 onKeyDown={(event) => {
@@ -222,6 +275,7 @@ function TicketDescriptionEditor({
     onSave: (body: string) => void;
     onCancel: () => void;
 }) {
+    const { t } = useTranslate();
     const [draftBody, setDraftBody] = useState(body);
     const bodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -249,7 +303,7 @@ function TicketDescriptionEditor({
                 value={draftBody}
                 rows={5}
                 maxLength={4000}
-                aria-label="Omschrijving"
+                aria-label={t('panelen.ticket.body_field')}
                 onChange={(event) => setDraftBody(event.target.value)}
                 className="w-full resize-y rounded-md border bg-background px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:outline-none"
             />
@@ -259,14 +313,14 @@ function TicketDescriptionEditor({
                     disabled={trimmedBody === ''}
                     onClick={() => onSave(trimmedBody)}
                 >
-                    Opslaan
+                    {t('panelen.save')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onCancel}>
-                    Annuleren
+                    {t('panelen.cancel')}
                 </Button>
                 <span className="ml-auto text-xs text-muted-foreground">
                     <kbd className="rounded bg-muted px-1 font-mono">Esc</kbd>{' '}
-                    annuleert
+                    {t('panelen.ticket.escape_cancels')}
                 </span>
             </div>
         </div>
@@ -279,6 +333,9 @@ export function TicketPanel({
     ticket,
     onClose,
 }: TicketPanelProps) {
+    const formats = useFormats();
+    const { t } = useTranslate();
+
     const [sending, setSending] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
@@ -351,7 +408,7 @@ export function TicketPanel({
                                 <button
                                     type="button"
                                     onClick={() => setEditingTitle(true)}
-                                    aria-label="Titel aanpassen"
+                                    aria-label={t('panelen.ticket.edit_title')}
                                     className="shrink-0 opacity-0 transition-opacity group-hover/title:opacity-60 hover:opacity-100 focus-visible:opacity-100"
                                 >
                                     <Pencil className="size-3" />
@@ -360,9 +417,9 @@ export function TicketPanel({
                         </h2>
                     )}
                     <p className="truncate text-xs text-muted-foreground">
-                        {ticket.opener?.name ?? 'Onbekend'}
+                        {ticket.opener?.name ?? t('panelen.ticket.unknown')}
                         {ticket.createdAt &&
-                            ` · ${MOMENT_FORMAT.format(new Date(ticket.createdAt))}`}
+                            ` · ${formats.shortDateTime.format(new Date(ticket.createdAt))}`}
                     </p>
                 </div>
                 <Button
@@ -370,7 +427,7 @@ export function TicketPanel({
                     size="icon"
                     className="ml-auto"
                     onClick={onClose}
-                    aria-label="Ticket sluiten"
+                    aria-label={t('panelen.ticket.close')}
                 >
                     <X className="size-4" />
                 </Button>
@@ -380,7 +437,7 @@ export function TicketPanel({
                 <div className="flex flex-col gap-3 border-b px-4 py-3">
                     {ticket.canManage ? (
                         <dl className="-mx-2 flex flex-col gap-0.5">
-                            <Property label="Status">
+                            <Property label={t('panelen.ticket.status')}>
                                 <Select
                                     value={ticket.status}
                                     onValueChange={(status) =>
@@ -388,7 +445,7 @@ export function TicketPanel({
                                     }
                                 >
                                     <SelectTrigger
-                                        aria-label="Status"
+                                        aria-label={t('panelen.ticket.status')}
                                         className={PROPERTY_TRIGGER}
                                     >
                                         {/*
@@ -408,14 +465,14 @@ export function TicketPanel({
                                                 key={status}
                                                 value={status}
                                             >
-                                                {TICKET_STATUS[status].label}
+                                                {t(TICKET_STATUS_KEY[status])}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </Property>
 
-                            <Property label="Prioriteit">
+                            <Property label={t('panelen.ticket.priority')}>
                                 <Select
                                     value={ticket.priority}
                                     onValueChange={(priority) =>
@@ -423,7 +480,9 @@ export function TicketPanel({
                                     }
                                 >
                                     <SelectTrigger
-                                        aria-label="Prioriteit"
+                                        aria-label={t(
+                                            'panelen.ticket.priority',
+                                        )}
                                         className={PROPERTY_TRIGGER}
                                     >
                                         <span
@@ -433,10 +492,11 @@ export function TicketPanel({
                                                     .className,
                                             )}
                                         >
-                                            {
-                                                TICKET_PRIORITY[ticket.priority]
-                                                    .label
-                                            }
+                                            {t(
+                                                TICKET_PRIORITY_KEY[
+                                                    ticket.priority
+                                                ],
+                                            )}
                                         </span>
                                     </SelectTrigger>
                                     <SelectContent>
@@ -449,10 +509,11 @@ export function TicketPanel({
                                                 key={priority}
                                                 value={priority}
                                             >
-                                                {
-                                                    TICKET_PRIORITY[priority]
-                                                        .label
-                                                }
+                                                {t(
+                                                    TICKET_PRIORITY_KEY[
+                                                        priority
+                                                    ],
+                                                )}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -465,7 +526,7 @@ export function TicketPanel({
                                 rather than an empty string: a Select cannot
                                 hold "" as a value.
                             */}
-                            <Property label="Toegewezen aan">
+                            <Property label={t('panelen.ticket.assignee')}>
                                 <Select
                                     value={
                                         ticket.assignee
@@ -482,7 +543,9 @@ export function TicketPanel({
                                     }
                                 >
                                     <SelectTrigger
-                                        aria-label="Toegewezen aan"
+                                        aria-label={t(
+                                            'panelen.ticket.assignee',
+                                        )}
                                         className={PROPERTY_TRIGGER}
                                     >
                                         {/*
@@ -497,12 +560,13 @@ export function TicketPanel({
                                                     'text-muted-foreground',
                                             )}
                                         >
-                                            {ticket.assignee?.name ?? 'Niemand'}
+                                            {ticket.assignee?.name ??
+                                                t('panelen.ticket.nobody')}
                                         </span>
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="none">
-                                            Niemand
+                                            {t('panelen.ticket.nobody')}
                                         </SelectItem>
                                         {channel.members.map((member) => (
                                             <SelectItem
@@ -526,7 +590,11 @@ export function TicketPanel({
                         <div className="flex flex-wrap items-center gap-2">
                             <TicketStatusBadge status={ticket.status} />
                             <span className="text-xs text-muted-foreground">
-                                {TICKET_STATUS[ticket.status].description}
+                                {t(
+                                    TICKET_STATUS_DESCRIPTION_KEY[
+                                        ticket.status
+                                    ],
+                                )}
                             </span>
 
                             {ticket.canConfirm && (
@@ -539,7 +607,7 @@ export function TicketPanel({
                                                 patch({ status: 'closed' })
                                             }
                                         >
-                                            Dit is opgelost
+                                            {t('panelen.ticket.solved')}
                                         </Button>
                                     )}
                                     {ticket.status !== 'open' && (
@@ -550,7 +618,7 @@ export function TicketPanel({
                                                 patch({ status: 'open' })
                                             }
                                         >
-                                            Toch niet opgelost
+                                            {t('panelen.ticket.not_solved')}
                                         </Button>
                                     )}
                                 </div>
@@ -587,7 +655,7 @@ export function TicketPanel({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    aria-label="Omschrijving aanpassen"
+                                    aria-label={t('panelen.ticket.edit_body')}
                                     onClick={() => setEditing(true)}
                                     className="size-7 shrink-0 opacity-0 transition-opacity group-hover/body:opacity-60 focus-visible:opacity-100"
                                 >
@@ -620,11 +688,13 @@ export function TicketPanel({
                             <CornerUpLeft className="mt-0.5 size-3 shrink-0" />
                             <span className="min-w-0">
                                 <span className="block font-medium">
-                                    Uit een bericht van {ticket.source.author}
+                                    {t('panelen.ticket.from_message', {
+                                        author: ticket.source.author,
+                                    })}
                                 </span>
                                 <span className="block truncate">
                                     {ticket.source.deleted
-                                        ? 'Dit bericht is verwijderd'
+                                        ? t('panelen.ticket.source_deleted')
                                         : ticket.source.snippet}
                                 </span>
                             </span>
@@ -641,12 +711,15 @@ export function TicketPanel({
                             >
                                 <p className="text-xs text-muted-foreground">
                                     <span className="font-medium text-foreground">
-                                        {entry.author?.name ?? 'Onbekend'}
+                                        {entry.author?.name ??
+                                            t('panelen.ticket.unknown')}
                                     </span>
-                                    {entry.author?.isGuest && ' · gast'}
+                                    {entry.author?.isGuest &&
+                                        ` · ${t('panelen.ticket.guest')}`}
                                     {entry.createdAt &&
-                                        ` · ${MOMENT_FORMAT.format(new Date(entry.createdAt))}`}
-                                    {entry.editedAt && ' · bewerkt'}
+                                        ` · ${formats.shortDateTime.format(new Date(entry.createdAt))}`}
+                                    {entry.editedAt &&
+                                        ` · ${t('panelen.ticket.edited')}`}
                                 </p>
                                 {/*
                                     Through MessageBody with nothing to resolve
@@ -658,7 +731,9 @@ export function TicketPanel({
                                 <p className="mt-1 text-sm whitespace-pre-wrap">
                                     {entry.deleted ? (
                                         <span className="text-muted-foreground italic">
-                                            Deze reactie is ingetrokken
+                                            {t(
+                                                'panelen.ticket.comment_withdrawn',
+                                            )}
                                         </span>
                                     ) : (
                                         <MessageBody
@@ -687,9 +762,9 @@ export function TicketPanel({
                                 key={entry.id}
                                 className="px-4 py-1.5 text-xs text-muted-foreground"
                             >
-                                {describe(entry)}
+                                {describe(entry, t)}
                                 {entry.createdAt &&
-                                    ` · ${MOMENT_FORMAT.format(new Date(entry.createdAt))}`}
+                                    ` · ${formats.shortDateTime.format(new Date(entry.createdAt))}`}
                             </li>
                         ),
                     )}
@@ -705,7 +780,7 @@ export function TicketPanel({
             */}
             <div className="shrink-0 border-t">
                 <Composer
-                    placeholder="Reageer op dit ticket"
+                    placeholder={t('panelen.ticket.comment_placeholder')}
                     disabled={sending}
                     workspace={workspace}
                     triggers=""

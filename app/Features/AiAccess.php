@@ -6,12 +6,12 @@ class AiAccess extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'AI-toegang';
+        return __('features.ai-access.label');
     }
 
     public static function description(): string
     {
-        return 'AI-clients mogen met een token meelezen en meepraten in deze workspace.';
+        return __('features.ai-access.description');
     }
 
     /**

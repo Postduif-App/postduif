@@ -217,10 +217,30 @@ class Workspace extends Model
         return $this->hasMany(Channel::class);
     }
 
+    /** @return HasMany<Workflow, $this> */
+    public function workflows(): HasMany
+    {
+        return $this->hasMany(Workflow::class);
+    }
+
     /** @return HasMany<Invitation, $this> */
     public function invitations(): HasMany
     {
         return $this->hasMany(Invitation::class);
+    }
+
+    /**
+     * The prikbord.
+     *
+     * Here so the routes can scope a notice to its workspace by binding rather
+     * than by a check every method has to remember — a post id from another
+     * workspace is then a 404 before any controller runs.
+     *
+     * @return HasMany<BoardPost, $this>
+     */
+    public function boardPosts(): HasMany
+    {
+        return $this->hasMany(BoardPost::class);
     }
 
     /**

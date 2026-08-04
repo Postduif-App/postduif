@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\McpToken;
+use App\Models\ApiToken;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
  * same thing every token check must — that a revoked token is refused, and that
  * everything behind it runs as a real user so the policies apply.
  */
-class AuthenticateMcpToken
+class AuthenticateApiToken
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -26,8 +26,8 @@ class AuthenticateMcpToken
             return $this->refuse();
         }
 
-        $record = McpToken::query()
-            ->where('token_hash', McpToken::hashToken($token))
+        $record = ApiToken::query()
+            ->where('token_hash', ApiToken::hashToken($token))
             ->whereNull('revoked_at')
             ->with('user')
             ->first();
@@ -73,7 +73,7 @@ class AuthenticateMcpToken
     private function refuse(): Response
     {
         return response()->json([
-            'error' => 'Ongeldig of ontbrekend MCP-token.',
+            'error' => __('mcp.token.invalid'),
         ], 401);
     }
 }

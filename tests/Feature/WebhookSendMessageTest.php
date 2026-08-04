@@ -4,7 +4,7 @@ use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\SendMessage;
 use App\Events\ChannelActivity;
 use App\Events\MessageSent;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\User;
 use App\Models\Webhook;
 use Illuminate\Support\Facades\Event;
@@ -118,7 +118,7 @@ it('lets a bot mention a member', function () {
 
     $message = app(SendMessage::class)->fromWebhook($webhook, 'Kijk even @fenna');
 
-    expect(Mention::where('message_id', $message->id)->pluck('user_id')->all())
+    expect(InboxItem::where('message_id', $message->id)->pluck('user_id')->all())
         ->toBe([$first->id]);
 });
 
@@ -127,7 +127,7 @@ it('refuses to let a bot summon the whole channel', function () {
 
     $message = app(SendMessage::class)->fromWebhook($webhook, 'Let op @everyone');
 
-    expect(Mention::where('message_id', $message->id)->exists())->toBeFalse();
+    expect(InboxItem::where('message_id', $message->id)->exists())->toBeFalse();
 });
 
 it('bumps the channel and the thread counters like any other message', function () {

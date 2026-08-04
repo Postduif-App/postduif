@@ -36,7 +36,7 @@ class StoreReactionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'emoji.not_regex' => 'Een reactie moet een emoji zijn.',
+            'emoji.not_regex' => __('requests.reaction.emoji_only'),
         ];
     }
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { join } from '@/routes/chat/channels';
 import type { ActiveChannel, ChatWorkspace } from '@/types/chat';
 
@@ -19,16 +20,17 @@ export function JoinChannelNotice({
     workspace,
     channel,
 }: JoinChannelNoticeProps) {
+    const { t } = useTranslate();
     const [joining, setJoining] = useState(false);
 
     return (
         <div className="mx-4 mb-4 flex items-center gap-3 rounded-lg border bg-muted/40 p-3">
             <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-                Je leest mee in{' '}
+                {t('chat_ui.join.lead')}{' '}
                 <span className="font-medium text-foreground">
                     #{channel.label}
                 </span>
-                . Word lid om te kunnen reageren.
+                {t('chat_ui.join.tail')}
             </p>
             <Button
                 size="sm"
@@ -49,7 +51,7 @@ export function JoinChannelNotice({
                 }}
             >
                 {joining && <Spinner />}
-                Word lid
+                {t('chat_ui.join.submit')}
             </Button>
         </div>
     );

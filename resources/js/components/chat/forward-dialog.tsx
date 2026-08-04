@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { forward } from '@/routes/chat/messages';
 import type { ChannelSummary, ChatMessage, ChatWorkspace } from '@/types/chat';
@@ -41,6 +42,7 @@ export function ForwardDialog({
     message: ChatMessage | null;
     onClose: () => void;
 }) {
+    const { t, tChoice } = useTranslate();
     const [target, setTarget] = useState<number | null>(null);
     const [note, setNote] = useState('');
     const [sending, setSending] = useState(false);
@@ -63,11 +65,9 @@ export function ForwardDialog({
         >
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Bericht doorsturen</DialogTitle>
+                    <DialogTitle>{t('actions.forward.title')}</DialogTitle>
                     <DialogDescription>
-                        De tekst gaat mee, met de naam van wie het
-                        oorspronkelijk zei. Bestanden blijven achter — die horen
-                        bij het oorspronkelijke bericht.
+                        {t('actions.forward.intro')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -77,21 +77,23 @@ export function ForwardDialog({
                         {message.attachments.length > 0 && (
                             <p className="mt-1 flex items-center gap-1.5 text-xs">
                                 <Paperclip className="size-3" />
-                                {message.attachments.length === 1
-                                    ? '1 bestand gaat mee'
-                                    : `${message.attachments.length} bestanden gaan mee`}
+                                {tChoice(
+                                    'actions.forward.attachments',
+                                    message.attachments.length,
+                                )}
                             </p>
                         )}
                     </div>
                 )}
 
                 <div className="grid gap-2">
-                    <p className="text-sm font-medium">Naar welk kanaal?</p>
+                    <p className="text-sm font-medium">
+                        {t('actions.forward.target')}
+                    </p>
 
                     {options.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                            Je zit nog in geen enkel ander kanaal om iets
-                            naartoe te sturen.
+                            {t('actions.forward.no_channels')}
                         </p>
                     ) : (
                         <ScrollArea className="max-h-52 rounded-lg border">
@@ -127,19 +129,21 @@ export function ForwardDialog({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="forward-note">Iets erbij zeggen?</Label>
+                    <Label htmlFor="forward-note">
+                        {t('actions.forward.note_field')}
+                    </Label>
                     <Input
                         id="forward-note"
                         value={note}
                         maxLength={4000}
-                        placeholder="Optioneel"
+                        placeholder={t('actions.forward.note_placeholder')}
                         onChange={(event) => setNote(event.target.value)}
                     />
                 </div>
 
                 <DialogFooter>
                     <Button variant="outline" onClick={close}>
-                        Annuleren
+                        {t('actions.cancel')}
                     </Button>
                     <Button
                         disabled={target === null || sending || !message}
@@ -167,7 +171,7 @@ export function ForwardDialog({
                     >
                         {sending && <Spinner />}
                         <Forward className="size-4" />
-                        Doorsturen
+                        {t('actions.forward.submit')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

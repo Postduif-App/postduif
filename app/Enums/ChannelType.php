@@ -13,9 +13,9 @@ enum ChannelType: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Public => 'Openbaar',
-            self::Private => 'Privé',
-            self::Direct => 'DM',
+            self::Public => __('enums.channel-type.getLabel.Public'),
+            self::Private => __('enums.channel-type.getLabel.Private'),
+            self::Direct => __('enums.channel-type.getLabel.Direct'),
         };
     }
 

@@ -6,12 +6,12 @@ class Polls extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Polls';
+        return __('features.polls.label');
     }
 
     public static function description(): string
     {
-        return 'Een vraag met antwoorden in een kanaal zetten, waar iedereen op kan stemmen.';
+        return __('features.polls.description');
     }
 
     /*

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Models\McpToken;
+use App\Models\ApiToken;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,15 +16,23 @@ use Inertia\Response;
  * person, across every workspace they belong to, so it is theirs to make and
  * theirs to withdraw — and nobody else's to see.
  */
-class McpTokenController extends Controller
+class ApiTokenController extends Controller
 {
     /** Enough for a laptop, a desktop and a spare. */
     private const MAX_TOKENS = 10;
 
     public function index(Request $request): Response
     {
-        return Inertia::render('settings/mcp-tokens', [
+        return Inertia::render('settings/api-tokens', [
             'endpoint' => url('/mcp/chat'),
+
+            /*
+             * The same token opens the plain HTTP API — see the note on
+             * ApiToken's name, which no longer says what it does. Handed over
+             * because a credential you cannot find the address for is a
+             * credential nobody uses.
+             */
+            'apiEndpoint' => url('/api/v1'),
             'tokens' => $this->tokensFor($request),
         ]);
     }
@@ -38,18 +46,18 @@ class McpTokenController extends Controller
         ]);
 
         abort_if(
-            McpToken::query()->where('user_id', $user->id)->whereNull('revoked_at')->count() >= self::MAX_TOKENS,
+            ApiToken::query()->where('user_id', $user->id)->whereNull('revoked_at')->count() >= self::MAX_TOKENS,
             422,
-            'Je hebt al '.self::MAX_TOKENS.' actieve tokens.',
+            __('chat.too_many_api_tokens', ['count' => self::MAX_TOKENS]),
         );
 
-        $token = new McpToken(['user_id' => $user->id, 'name' => $validated['name']]);
+        $token = new ApiToken(['user_id' => $user->id, 'name' => $validated['name']]);
         $token->regenerateToken();
         $token->save();
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Token aangemaakt. Plak hem in je MCP-client.',
+            'message' => __('settings.api_tokens.created_toast'),
         ]);
 
         return back();
@@ -63,15 +71,15 @@ class McpTokenController extends Controller
      * when it was last used — which is exactly what somebody wants to see
      * after they revoke one in a hurry.
      */
-    public function destroy(Request $request, McpToken $mcpToken): RedirectResponse
+    public function destroy(Request $request, ApiToken $apiToken): RedirectResponse
     {
-        abort_unless($mcpToken->user_id === $request->user()->id, 404);
+        abort_unless($apiToken->user_id === $request->user()->id, 404);
 
-        if (! $mcpToken->isRevoked()) {
-            $mcpToken->forceFill(['revoked_at' => now()])->save();
+        if (! $apiToken->isRevoked()) {
+            $apiToken->forceFill(['revoked_at' => now()])->save();
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Token ingetrokken.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('settings.api_tokens.revoked_toast')]);
 
         return back();
     }
@@ -81,11 +89,11 @@ class McpTokenController extends Controller
      */
     private function tokensFor(Request $request): array
     {
-        return McpToken::query()
+        return ApiToken::query()
             ->where('user_id', $request->user()->id)
             ->orderByDesc('id')
             ->get()
-            ->map(fn (McpToken $token): array => [
+            ->map(fn (ApiToken $token): array => [
                 'id' => $token->id,
                 'name' => $token->name,
                 // Shown again on purpose: this is meant to be pasted into a

@@ -1,0 +1,232 @@
+##
+# Development.
+#
+#   docker compose up
+#
+# Clones to a running app: Postgres, Redis, the app itself, Reverb, a queue
+# listener, the scheduler and Vite. The source is bind-mounted, so editing a
+# file changes what the container serves — no rebuild.
+#
+# The production arrangement is a different file (compose.prod.yaml) rather than
+# an override of this one: it wants the opposite of nearly everything here.
+##
+
+name: postduif
+
+# The variables every PHP process needs. They are passed as environment rather
+# than written into .env because Laravel's dotenv does not overwrite what the
+# environment already says — so these win, and your .env stays yours.
+x-app-env: &app-env
+  APP_ENV: local
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:8000
+
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: postduif
+  DB_USERNAME: postduif
+  DB_PASSWORD: secret
+
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "null"
+
+  SESSION_DRIVER: redis
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+
+  # The whole chat leans on this, so it is on by default here — .env.example
+  # ships with `log` for people running without a websocket server.
+  BROADCAST_CONNECTION: reverb
+  REVERB_APP_ID: postduif
+  REVERB_APP_KEY: postduif-key
+  REVERB_APP_SECRET: postduif-secret
+  # What the *server* dials when it broadcasts: the container next door. What
+  # the *browser* dials is set on the vite service, and is not the same name.
+  REVERB_HOST: reverb
+  REVERB_PORT: "8080"
+  REVERB_SCHEME: http
+
+  MAIL_MAILER: log
+
+  # The Inertia SSR renderer is part of the Vite dev server, and Inertia finds
+  # it by reading public/hot — which holds the address the browser uses. From
+  # in here that address is this container. With the vite service stopped there
+  # is no hot file, Inertia notices, and the page renders in the browser.
+  INERTIA_SSR_HOT_URL: http://vite:5173
+
+x-app: &app
+  build:
+    context: .
+    target: development
+  image: postduif/app:dev
+  volumes:
+    - .:/app
+    # Named volumes, not the host's copies: vendor and node_modules are built
+    # for the platform that built them, and macOS binaries do not run here.
+    - vendor:/app/vendor
+    - node_modules:/app/node_modules
+  environment: *app-env
+  depends_on:
+    setup:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: postduif
+      POSTGRES_USER: postduif
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-testing-database.sql:ro
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postduif -d postduif"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    volumes:
+      - redis:/data
+    ports:
+      - "${FORWARD_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Runs once and exits; everything else waits for it. This is the container
+  # equivalent of `composer setup` — dependencies, a database with something in
+  # it, and the generated translation types the frontend compiles against.
+  setup:
+    build:
+      context: .
+      target: development
+    image: postduif/app:dev
+    volumes:
+      - .:/app
+      - vendor:/app/vendor
+      - node_modules:/app/node_modules
+    environment: *app-env
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        composer install --no-interaction
+        # `ci`, not `install`: the source is bind-mounted, so `install` would
+        # rewrite the lock file in your working copy — with the npm that lives
+        # in this image, against the platform this image runs on. Add a
+        # dependency on your own machine and this will tell you the lock file
+        # needs updating, which is the right moment to hear it.
+        npm ci --no-audit --no-fund
+        php artisan migrate --force
+        # Seeded only into an empty database. This service runs again on every
+        # `up` — every other service waits for it — and the seeder creates
+        # accounts with fixed addresses, so a second unconditional run would
+        # fail on a unique constraint and take the whole stack down with it.
+        accounts=$$(php artisan tinker --execute 'echo \App\Models\User::count();' 2>/dev/null | tr -dc '0-9')
+        if [ "$${accounts:-0}" = "0" ]; then
+          php artisan db:seed --force
+        fi
+        php artisan translations:types
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    ports:
+      - "${APP_PORT:-8000}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  reverb:
+    <<: *app
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "${REVERB_PORT:-8080}:8080"
+    environment:
+      <<: *app-env
+      # Empty on purpose: reverb.apps.hostname decides which Host header an app
+      # answers to, and the browser arrives saying "localhost" while the server
+      # arrives saying "reverb". Unset, it answers to both.
+      REVERB_HOST: ""
+      # No certificate, so no TLS: config/reverb.php reads the certificate as
+      # the switch. TLS belongs in front of this container, not in it.
+      REVERB_TLS_CERT: ""
+    # Any answer at all means the server is accepting connections; the root
+    # path returns a 404 by design, which is why this check does not use -f.
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # `listen` rather than `work`: a worker holds the code it booted with, so a
+  # long-running one would keep running the job you just edited.
+  queue:
+    <<: *app
+    command: php artisan queue:listen --tries=3 --timeout=90
+    # The base image ships a healthcheck that curls Caddy's admin endpoint.
+    # This process is not a web server, so the check would report a container
+    # that is doing its job perfectly well as unhealthy.
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    # The base image ships a healthcheck that curls Caddy's admin endpoint.
+    # This process is not a web server, so the check would report a container
+    # that is doing its job perfectly well as unhealthy.
+    healthcheck:
+      disable: true
+
+  vite:
+    <<: *app
+    # Its own config, which listens on every interface and still tells the
+    # browser to come back to localhost — see vite.config.docker.ts.
+    # Vite is started directly rather than through npm, so that it is this
+    # process which receives the stop signal: laravel-vite-plugin removes
+    # public/hot when it is interrupted, and a public/hot left behind points
+    # the app at a dev server that is no longer there.
+    command: node node_modules/vite/bin/vite.js --config vite.config.docker.ts
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    environment:
+      <<: *app-env
+      # Where the browser reaches the dev server, if you published it somewhere
+      # other than 5173.
+      VITE_CLIENT_PORT: "${VITE_PORT:-5173}"
+      # What the browser connects to for websockets, which is the published
+      # port on your machine and not the service name the server uses.
+      VITE_REVERB_APP_KEY: postduif-key
+      VITE_REVERB_HOST: localhost
+      VITE_REVERB_PORT: "${REVERB_PORT:-8080}"
+      VITE_REVERB_SCHEME: http
+    # Vite reports its own readiness in the log; the image's Caddy check has
+    # nothing to do with it.
+    healthcheck:
+      disable: true
+
+volumes:
+  postgres:
+  redis:
+  vendor:
+  node_modules:

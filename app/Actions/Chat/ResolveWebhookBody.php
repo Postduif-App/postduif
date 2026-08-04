@@ -47,7 +47,7 @@ class ResolveWebhookBody
 
         if (! is_string($text)) {
             throw ValidationException::withMessages([
-                'text' => 'Stuur een "text" mee met de inhoud van het bericht.',
+                'text' => __('requests.webhook.text_required'),
             ]);
         }
 
@@ -69,7 +69,7 @@ class ResolveWebhookBody
 
         if ($value === null) {
             throw ValidationException::withMessages([
-                'body' => 'Op het pad "'.$path.'" stond niets in wat je stuurde.',
+                'body' => __('requests.webhook.path_empty', ['path' => $path]),
             ]);
         }
 
@@ -82,7 +82,7 @@ class ResolveWebhookBody
          */
         if (is_array($value)) {
             throw ValidationException::withMessages([
-                'body' => 'Het pad "'.$path.'" wijst naar een lijst of een object, niet naar tekst.',
+                'body' => __('requests.webhook.path_not_text', ['path' => $path]),
             ]);
         }
 
@@ -99,13 +99,13 @@ class ResolveWebhookBody
 
         if ($text === '') {
             throw ValidationException::withMessages([
-                $field => 'Het bericht is leeg.',
+                $field => __('requests.webhook.message_empty'),
             ]);
         }
 
         if (Str::length($text) > self::MAX_LENGTH) {
             throw ValidationException::withMessages([
-                $field => 'Het bericht is langer dan '.self::MAX_LENGTH.' tekens.',
+                $field => __('requests.webhook.message_too_long', ['count' => self::MAX_LENGTH]),
             ]);
         }
 

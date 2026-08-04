@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\McpToken;
+use App\Models\ApiToken;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
@@ -10,13 +10,13 @@ use function Pest\Laravel\postJson;
 /**
  * A member with a usable token.
  *
- * @return array{0: User, 1: McpToken, 2: string}
+ * @return array{0: User, 1: ApiToken, 2: string}
  */
 function memberWithToken(): array
 {
     $user = User::factory()->create();
 
-    $record = new McpToken(['user_id' => $user->id, 'name' => 'Claude op mijn laptop']);
+    $record = new ApiToken(['user_id' => $user->id, 'name' => 'Claude op mijn laptop']);
     $plain = $record->regenerateToken();
     $record->save();
 
@@ -27,10 +27,10 @@ it('makes a token and shows it back', function () {
     $user = User::factory()->create();
 
     actingAs($user)
-        ->post(route('mcp-tokens.store'), ['name' => 'Claude op mijn laptop'])
+        ->post(route('api-tokens.store'), ['name' => 'Claude op mijn laptop'])
         ->assertRedirect();
 
-    $token = McpToken::sole();
+    $token = ApiToken::sole();
 
     expect($token->user_id)->toBe($user->id)
         ->and($token->name)->toBe('Claude op mijn laptop')
@@ -43,10 +43,10 @@ it('never puts the hash in the page', function () {
     [$user] = memberWithToken();
 
     actingAs($user)
-        ->get(route('mcp-tokens.index'))
+        ->get(route('api-tokens.index'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('settings/mcp-tokens')
+            ->component('settings/api-tokens')
             ->has('tokens', 1)
             ->missing('tokens.0.token_hash'));
 });
@@ -55,10 +55,10 @@ it('shows only your own tokens', function () {
     [, $theirs] = memberWithToken();
 
     actingAs(User::factory()->create())
-        ->get(route('mcp-tokens.index'))
+        ->get(route('api-tokens.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page->has('tokens', 0));
 
-    expect(McpToken::whereKey($theirs->id)->exists())->toBeTrue();
+    expect(ApiToken::whereKey($theirs->id)->exists())->toBeTrue();
 });
 
 it('signs an MCP request in as the member who owns the token', function () {
@@ -72,7 +72,7 @@ it('signs an MCP request in as the member who owns the token', function () {
         'method' => 'ping',
     ], ['Authorization' => 'Bearer '.$plain])->assertOk();
 
-    expect(McpToken::sole()->last_used_at)->not->toBeNull()
+    expect(ApiToken::sole()->last_used_at)->not->toBeNull()
         ->and($user->fresh())->not->toBeNull();
 });
 
@@ -92,7 +92,7 @@ it('refuses a token nobody has', function () {
 it('refuses a token that was withdrawn', function () {
     [$user, $record, $plain] = memberWithToken();
 
-    actingAs($user)->delete(route('mcp-tokens.destroy', $record))->assertRedirect();
+    actingAs($user)->delete(route('api-tokens.destroy', $record))->assertRedirect();
 
     postJson('/mcp/chat', [
         'jsonrpc' => '2.0',
@@ -108,7 +108,7 @@ it('does not let somebody withdraw a token that is not theirs', function () {
     [, $theirs] = memberWithToken();
 
     actingAs(User::factory()->create())
-        ->delete(route('mcp-tokens.destroy', $theirs))
+        ->delete(route('api-tokens.destroy', $theirs))
         ->assertNotFound();
 
     expect($theirs->fresh()->isRevoked())->toBeFalse();
@@ -122,4 +122,38 @@ it('reads the header whatever case the client sends it in', function () {
         'id' => 1,
         'method' => 'ping',
     ], ['Authorization' => 'bearer '.$plain])->assertOk();
+});
+
+it('refuses an eleventh token, and says so in words', function () {
+    $user = User::factory()->create();
+
+    ApiToken::factory()->count(10)->create(['user_id' => $user->id]);
+
+    /*
+     * The message is asserted, not just the status. A missing key does not
+     * throw — __() hands back the key itself — so a rename can leave the reader
+     * staring at "chat.too_many_api_tokens" while every test still passes. That
+     * is exactly what happened when this model lost its old name.
+     */
+    actingAs($user)
+        ->post(route('api-tokens.store'), ['name' => 'Nummer elf'])
+        ->assertStatus(422);
+
+    expect(__('chat.too_many_api_tokens', ['count' => 10]))
+        ->not->toContain('chat.too_many')
+        ->toContain('10');
+});
+
+it('does not count a withdrawn token towards the limit', function () {
+    $user = User::factory()->create();
+
+    ApiToken::factory()->count(10)->create(['user_id' => $user->id, 'revoked_at' => now()]);
+
+    // Otherwise somebody who cleaned up properly would be locked out by tokens
+    // that no longer open anything.
+    actingAs($user)
+        ->post(route('api-tokens.store'), ['name' => 'Na het opruimen'])
+        ->assertRedirect();
+
+    expect(ApiToken::query()->whereNull('revoked_at')->count())->toBe(1);
 });

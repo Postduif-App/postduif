@@ -11,11 +11,17 @@ import type { InlineNode } from './inline-markdown';
  */
 function shape(nodes: InlineNode[]): string {
     return nodes
-        .map((node) =>
-            node.type === 'text'
-                ? JSON.stringify(node.value)
-                : `${node.type}(${shape(node.children)})`,
-        )
+        .map((node) => {
+            if (node.type === 'text') {
+                return JSON.stringify(node.value);
+            }
+
+            if (node.type === 'code') {
+                return `code(${JSON.stringify(node.value)})`;
+            }
+
+            return `${node.type}(${shape(node.children)})`;
+        })
         .join('+');
 }
 
@@ -89,6 +95,48 @@ describe('parseInline', () => {
 
     it('gives back nothing for an empty message', () => {
         expect(parseInline('')).toEqual([]);
+    });
+
+    it('reads a code span', () => {
+        expect(shape(parseInline('Hello `code`'))).toBe(
+            '"Hello "+code("code")',
+        );
+    });
+
+    /*
+     * The point of a code span: nothing inside it means anything. Each case
+     * below is text that would come out rewritten without this, and the middle
+     * one is why the server strips code before looking for mentions too.
+     */
+    it.each([
+        ['`2 * 3 * 4`', 'code("2 * 3 * 4")', 'sterretjes'],
+        ['`@media`', 'code("@media")', 'een at-regel'],
+        ['`**vet**`', 'code("**vet**")', 'markers'],
+        ['`snake_case`', 'code("snake_case")', 'underscores'],
+    ])('leaves %s alone as %s (%s)', (input, expected) => {
+        expect(shape(parseInline(input))).toBe(expected);
+    });
+
+    it('keeps a code span inside a marked phrase', () => {
+        expect(shape(parseInline('**kijk naar `$user`**'))).toBe(
+            'strong("kijk naar "+code("$user"))',
+        );
+    });
+
+    it('leaves an unclosed backtick alone', () => {
+        expect(shape(parseInline('een ` losse backtick'))).toBe(
+            '"een ` losse backtick"',
+        );
+    });
+
+    it('does not let a code span cross a line', () => {
+        const input = 'open `hier\nen dicht` daar';
+
+        expect(shape(parseInline(input))).toBe(JSON.stringify(input));
+    });
+
+    it('leaves an empty pair of backticks as text', () => {
+        expect(shape(parseInline('`` leeg'))).toBe('"`` leeg"');
     });
 
     it('stops nesting rather than recursing without end', () => {

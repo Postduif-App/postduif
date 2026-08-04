@@ -17,7 +17,18 @@ return [
 
     'ssr' => [
         'enabled' => true,
-        'url' => 'http://127.0.0.1:13714',
+        /*
+         * Loopback when the renderer runs beside the application, which is what
+         * `composer dev` does. In Docker it does not: 127.0.0.1 in the app
+         * container is a different machine as far as the renderer is concerned.
+         */
+        'url' => env('INERTIA_SSR_URL', 'http://127.0.0.1:13714'),
+        /*
+         * While Vite is hot, the renderer is part of the dev server and Inertia
+         * finds it by reading public/hot. That file holds the address the
+         * *browser* uses — under Docker the app has to be told the other one.
+         */
+        'hot_url' => env('INERTIA_SSR_HOT_URL'),
         // 'bundle' => base_path('bootstrap/ssr/ssr.mjs'),
 
     ],

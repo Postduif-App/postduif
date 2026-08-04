@@ -3,7 +3,7 @@
 use App\Actions\Chat\SendMessage;
 use App\Events\ChannelActivity;
 use App\Events\MessageEdited;
-use App\Models\Mention;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Webhook;
@@ -174,7 +174,7 @@ it('records a mention the edit adds', function () {
         ])
         ->assertRedirect();
 
-    expect(Mention::where('message_id', $message->id)->where('user_id', $mentioned->id)->exists())
+    expect(InboxItem::where('message_id', $message->id)->where('user_id', $mentioned->id)->exists())
         ->toBeTrue();
 
     Event::assertDispatched(ChannelActivity::class, fn (ChannelActivity $event) => $event->userId === $mentioned->id && $event->mentioned);
@@ -190,7 +190,7 @@ it('drops the mention when the edit takes the handle out', function () {
 
     $message = app(SendMessage::class)->handle($channel, $author, 'Kijk jij even @fenna');
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(1);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(1);
 
     actingAs($author)
         ->patch(route('chat.messages.update', [$workspace, $channel, $message]), [
@@ -198,7 +198,7 @@ it('drops the mention when the edit takes the handle out', function () {
         ])
         ->assertRedirect();
 
-    expect(Mention::where('message_id', $message->id)->count())->toBe(0);
+    expect(InboxItem::where('message_id', $message->id)->count())->toBe(0);
 });
 
 it('leaves an unchanged mention alone rather than notifying again', function () {
@@ -210,7 +210,7 @@ it('leaves an unchanged mention alone rather than notifying again', function () 
     $channel->members()->attach($mentioned->id, ['joined_at' => now()]);
 
     $message = app(SendMessage::class)->handle($channel, $author, 'Kijk jij even @fenna');
-    $before = Mention::where('message_id', $message->id)->firstOrFail();
+    $before = InboxItem::where('message_id', $message->id)->firstOrFail();
 
     // Faked only now: sending the original legitimately notified Fenna, and it
     // is the edit that must stay quiet.
@@ -222,7 +222,7 @@ it('leaves an unchanged mention alone rather than notifying again', function () 
         ])
         ->assertRedirect();
 
-    $after = Mention::where('message_id', $message->id)->firstOrFail();
+    $after = InboxItem::where('message_id', $message->id)->firstOrFail();
 
     // Same row, so whatever read state it carried survived the edit.
     expect($after->id)->toBe($before->id);

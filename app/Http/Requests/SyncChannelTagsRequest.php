@@ -38,7 +38,7 @@ class SyncChannelTagsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tags.max' => 'Twintig tags op een kanaal is meer dan een label nog onderscheidt.',
+            'tags.max' => __('requests.channel_tags.too_many'),
         ];
     }
 }

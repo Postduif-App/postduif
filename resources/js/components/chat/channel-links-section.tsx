@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslate } from '@/hooks/use-translate';
 import { destroy, reorder, store, update } from '@/routes/chat/channels/links';
 import type { ActiveChannel, ChannelLink, ChatWorkspace } from '@/types/chat';
 
@@ -32,6 +33,7 @@ export function ChannelLinksSection({
     workspace,
     channel,
 }: ChannelLinksSectionProps) {
+    const { t } = useTranslate();
     const [label, setLabel] = useState('');
     const [url, setUrl] = useState('');
     const [busy, setBusy] = useState(false);
@@ -87,16 +89,17 @@ export function ChannelLinksSection({
     return (
         <section className="flex flex-col gap-4">
             <div>
-                <h3 className="text-sm font-medium">Knoppen</h3>
+                <h3 className="text-sm font-medium">
+                    {t('channels.settings.tabs.links')}
+                </h3>
                 <p className="text-xs text-muted-foreground">
-                    Verschijnen in een balk boven het gesprek, voor iedereen die
-                    het kanaal kan zien — gasten dus ook.
+                    {t('chat_ui.links.explanation')}
                 </p>
             </div>
 
             {links.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    Nog geen knoppen. Voeg er hieronder een toe.
+                    {t('chat_ui.links.empty')}
                 </p>
             ) : (
                 <ul className="flex flex-col gap-2">
@@ -128,14 +131,14 @@ export function ChannelLinksSection({
 
             <div className="flex flex-col gap-2 rounded-lg border p-3">
                 <Label htmlFor="new-link-label" className="text-xs">
-                    Nieuwe knop
+                    {t('chat_ui.links.new')}
                 </Label>
                 <div className="flex gap-2">
                     <Input
                         id="new-link-label"
                         value={label}
                         maxLength={40}
-                        placeholder="Naam"
+                        placeholder={t('channels.fields.name')}
                         onChange={(event) => setLabel(event.target.value)}
                         className="w-40 shrink-0"
                     />
@@ -144,7 +147,7 @@ export function ChannelLinksSection({
                         type="url"
                         placeholder="https://"
                         onChange={(event) => setUrl(event.target.value)}
-                        aria-label="Adres"
+                        aria-label={t('chat_ui.links.address')}
                     />
                     <Button
                         size="icon"
@@ -153,7 +156,7 @@ export function ChannelLinksSection({
                             busy || label.trim() === '' || url.trim() === ''
                         }
                         onClick={add}
-                        aria-label="Knop toevoegen"
+                        aria-label={t('chat_ui.links.add')}
                     >
                         <Plus className="size-4" />
                     </Button>
@@ -187,6 +190,7 @@ function LinkRow({
     onSave: (label: string, url: string) => void;
     onDelete: () => void;
 }) {
+    const { t } = useTranslate();
     const [label, setLabel] = useState(link.label);
     const [url, setUrl] = useState(link.url);
 
@@ -215,7 +219,9 @@ function LinkRow({
                     type="button"
                     disabled={first}
                     onClick={onMoveUp}
-                    aria-label={`${link.label} naar voren`}
+                    aria-label={t('chat_ui.links.move_up', {
+                        label: link.label,
+                    })}
                     className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:outline-none disabled:opacity-25"
                 >
                     <ChevronUp className="size-3.5" />
@@ -224,7 +230,9 @@ function LinkRow({
                     type="button"
                     disabled={last}
                     onClick={onMoveDown}
-                    aria-label={`${link.label} naar achteren`}
+                    aria-label={t('chat_ui.links.move_down', {
+                        label: link.label,
+                    })}
                     className="rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:outline-none disabled:opacity-25"
                 >
                     <ChevronDown className="size-3.5" />
@@ -234,7 +242,7 @@ function LinkRow({
             <Input
                 value={label}
                 maxLength={40}
-                aria-label="Naam"
+                aria-label={t('channels.fields.name')}
                 onChange={(event) => setLabel(event.target.value)}
                 onBlur={save}
                 onKeyDown={(event) => event.key === 'Enter' && save()}
@@ -243,7 +251,7 @@ function LinkRow({
             <Input
                 value={url}
                 type="url"
-                aria-label="Adres"
+                aria-label={t('chat_ui.links.address')}
                 onChange={(event) => setUrl(event.target.value)}
                 onBlur={save}
                 onKeyDown={(event) => event.key === 'Enter' && save()}
@@ -253,8 +261,10 @@ function LinkRow({
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Openen"
-                aria-label={`${link.label} openen`}
+                title={t('chat_ui.links.open')}
+                aria-label={t('chat_ui.links.open_named', {
+                    label: link.label,
+                })}
                 className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
             >
                 <ExternalLink className="size-3.5" />
@@ -262,7 +272,7 @@ function LinkRow({
             <button
                 type="button"
                 onClick={onDelete}
-                aria-label={`${link.label} verwijderen`}
+                aria-label={t('chat_ui.links.remove', { label: link.label })}
                 className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:outline-none"
             >
                 <Trash2 className="size-3.5" />

@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\BoardCommentController;
+use App\Http\Controllers\BoardPostController;
+use App\Http\Controllers\BoardPostReactionController;
 use App\Http\Controllers\BroadcastMessageController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\ChannelFavoriteController;
@@ -19,20 +22,26 @@ use App\Http\Controllers\MessageDeletionController;
 use App\Http\Controllers\MessageEditController;
 use App\Http\Controllers\MessageForwardController;
 use App\Http\Controllers\MessagePinController;
+use App\Http\Controllers\MessageWorkflowController;
 use App\Http\Controllers\PollController;
 use App\Http\Controllers\ReactionController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecretRequestController;
+use App\Http\Controllers\SentSecretController;
 use App\Http\Controllers\ThreadClosureController;
+use App\Http\Controllers\ThreadMuteController;
 use App\Http\Controllers\TicketCommentAttachmentController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WorkspaceBookmarkController;
+use App\Http\Controllers\WorkspaceInboxController;
 use App\Http\Controllers\WorkspaceInvitationController;
-use App\Http\Controllers\WorkspaceMentionController;
+use App\Http\Controllers\WorkspaceMemberProfileController;
+use App\Http\Controllers\WorkspaceSecretController;
 use App\Http\Controllers\WorkspaceTicketController;
+use App\Http\Controllers\WorkspaceTransferController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
@@ -130,6 +139,33 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('secrets.store');
                 Route::delete('secrets/{secretRequest}', [SecretRequestController::class, 'destroy'])
                     ->name('secrets.destroy');
+
+                /*
+                 * The other direction: handing one over rather than asking for
+                 * one. Under the same feature switch, because a workspace that
+                 * has decided not to route credentials through this application
+                 * has decided it for both directions.
+                 *
+                 * Only the making and the withdrawing live here. Picking one up
+                 * is in web.php, outside auth — the key is in the link and the
+                 * recipient may have no account at all.
+                 */
+                Route::post('c/{channel}/geheimen', [SentSecretController::class, 'store'])
+                    ->name('sent-secrets.store');
+
+                /*
+                 * The same thing without a room to announce it in: everything
+                 * this member has put aside, and the place to put aside one
+                 * more. Beside the ticket and transfer lists rather than under
+                 * a channel, and for the same reason — it belongs to a person's
+                 * working day rather than to any one conversation.
+                 */
+                Route::get('geheimen', [WorkspaceSecretController::class, 'index'])
+                    ->name('sent-secrets.index');
+                Route::post('geheimen', [WorkspaceSecretController::class, 'store'])
+                    ->name('sent-secrets.store-standalone');
+                Route::delete('geheimen/{sentSecret}', [SentSecretController::class, 'destroy'])
+                    ->name('sent-secrets.destroy');
             });
             /**
              * A DM is not created through channels.store: StoreChannelRequest
@@ -148,6 +184,14 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
             Route::post('broadcast', [BroadcastMessageController::class, 'store'])
                 ->name('broadcast.store');
 
+            /*
+             * Stopping one before it goes out. No channel in the path, because
+             * a scheduled broadcast belongs to none — that is the whole reason
+             * it is not a scheduled message.
+             */
+            Route::delete('broadcast/{scheduledBroadcast}', [BroadcastMessageController::class, 'destroy'])
+                ->name('broadcast.destroy');
+
             /**
              * Clears the conversation out of your own sidebar and nobody
              * else's. Delete because that is the gesture, not because anything
@@ -155,6 +199,59 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              */
             Route::delete('dm/{channel}', [DirectMessageController::class, 'destroy'])
                 ->name('directs.destroy');
+
+            /*
+             * Het prikbord: mededelingen voor de hele workspace.
+             *
+             * Not under c/{channel} for a stronger reason than the ticket list
+             * below it. Those are gathered from channels and only look
+             * workspace-wide; a notice has no channel at all — it is the
+             * workspace addressing the people in it, which is exactly why a
+             * guest never sees this whole group. BoardPostPolicy is what says
+             * so, on every route here.
+             *
+             * The list is read at ?post= rather than on a path of its own, the
+             * same way an open thread and an open ticket travel: the board stays
+             * beside what is being read, and the URL carries both.
+             */
+            Route::middleware('feature:message-board')->group(function () {
+                Route::get('prikbord', [BoardPostController::class, 'index'])
+                    ->name('board.index');
+                Route::post('prikbord', [BoardPostController::class, 'store'])
+                    ->name('board.store');
+
+                /*
+                 * Scoped, so a notice from another workspace is a 404 before any
+                 * controller runs rather than a check each method has to
+                 * remember to make.
+                 */
+                Route::patch('prikbord/{board_post}', [BoardPostController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('board.update');
+                Route::delete('prikbord/{board_post}', [BoardPostController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('board.destroy');
+
+                /*
+                 * Eén pad voor beide richtingen, zoals bij berichten: de
+                 * browser hoeft nooit te weten of hij een emoji toevoegt of
+                 * weghaalt, dus een pagina van een minuut oud kan het ook niet
+                 * verkeerd hebben.
+                 */
+                Route::post('prikbord/{board_post}/emoji', [BoardPostReactionController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('board.reactions.store');
+
+                Route::post('prikbord/{board_post}/reacties', [BoardCommentController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('board.comments.store');
+                Route::patch('prikbord/{board_post}/reacties/{comment}', [BoardCommentController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('board.comments.update');
+                Route::delete('prikbord/{board_post}/reacties/{comment}', [BoardCommentController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('board.comments.destroy');
+            });
 
             /**
              * Every ticket in the workspace, across the channels this member
@@ -166,11 +263,38 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->name('tickets.index');
 
             /*
+             * Everything sent by link, across the workspace. Beside the tickets
+             * list rather than under settings, and for the same reason it is
+             * not under c/{channel}: it belongs to a person's working day, not
+             * to one conversation and not to administration.
+             */
+            /*
+             * Who somebody is. Under the workspace and not under a channel:
+             * a person belongs to the workspace, and reaching their page from
+             * a channel they happen to have written in would make the address
+             * depend on where you clicked.
+             */
+            Route::get('leden/{member}', [WorkspaceMemberProfileController::class, 'show'])
+                ->name('members.show');
+
+            Route::get('transfers', [WorkspaceTransferController::class, 'index'])
+                ->middleware('feature:transfers')
+                ->name('transfers.index');
+            /*
              * Every place this member was named. Not under c/{channel} for the
              * same reason the ticket list is not: being named is something that
              * happens to a person across channels, not inside one.
              */
-            Route::get('mentions', [WorkspaceMentionController::class, 'index'])
+            Route::get('inbox', [WorkspaceInboxController::class, 'index'])
+                ->name('inbox.index');
+
+            /*
+             * The inbox with the mentions tab already chosen. Kept as its own
+             * path because it is where the sidebar badge has always pointed and
+             * where somebody's bookmarks still go — the page moved, the address
+             * did not have to.
+             */
+            Route::get('mentions', [WorkspaceInboxController::class, 'mentions'])
                 ->name('mentions.index');
 
             // Everything this member set aside, across channels — see
@@ -188,6 +312,8 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->name('sections.store');
             Route::put('sections', [ChannelSectionController::class, 'update'])
                 ->name('sections.update');
+            Route::patch('sections/{section}', [ChannelSectionController::class, 'rename'])
+                ->name('sections.rename');
             Route::delete('sections/{section}', [ChannelSectionController::class, 'destroy'])
                 ->name('sections.destroy');
 
@@ -399,6 +525,21 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->scopeBindings()
                 ->name('messages.unpin');
 
+            /*
+             * Setting a workflow off by hand, from the message menu. Behind the
+             * feature middleware rather than only checked in the controller, so
+             * a workspace with workflows switched off has no such URL at all.
+             */
+            /*
+             * Without scopeBindings, unlike its neighbours. The chain would
+             * make {workflow} a child of {message}, and a workflow hangs off a
+             * workspace rather than off a message — the controller checks both
+             * belong where they should, by hand and in one place.
+             */
+            Route::post('c/{channel}/messages/{message}/workflows/{workflow}', [MessageWorkflowController::class, 'store'])
+                ->middleware('feature:workflows')
+                ->name('messages.workflows.start');
+
             // Closing a thread only ever touches the signed-in member's own
             // view of it, so there is no id in the path beyond the thread.
             Route::post('c/{channel}/messages/{message}/close', [ThreadClosureController::class, 'store'])
@@ -408,5 +549,19 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
             Route::delete('c/{channel}/messages/{message}/close', [ThreadClosureController::class, 'destroy'])
                 ->scopeBindings()
                 ->name('threads.reopen');
+
+            /*
+             * Muting sits beside closing rather than replacing it: closing is
+             * about the sidebar and is undone by the next reply, muting is
+             * about the inbox and is not undone by anything but the delete
+             * below it.
+             */
+            Route::post('c/{channel}/messages/{message}/mute', [ThreadMuteController::class, 'store'])
+                ->scopeBindings()
+                ->name('threads.mute');
+
+            Route::delete('c/{channel}/messages/{message}/mute', [ThreadMuteController::class, 'destroy'])
+                ->scopeBindings()
+                ->name('threads.unmute');
         });
 });

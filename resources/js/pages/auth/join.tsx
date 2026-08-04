@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, setLayoutProps } from '@inertiajs/react';
 import { Hash, Lock } from 'lucide-react';
 
 import InputError from '@/components/input-error';
@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useTranslate } from '@/hooks/use-translate';
 import { login } from '@/routes';
 import { join } from '@/routes/invite-links';
+import type { TranslationKey } from '@/types/translations';
 
 type State = 'usable' | 'expired' | 'revoked' | 'exhausted' | 'unknown';
 
@@ -37,27 +39,36 @@ interface JoinProps {
  * Each reason a link stops working gets its own words. "Ask for a new one" is
  * the same advice every time, but knowing whether it ran out or was withdrawn
  * is what tells somebody whether asking is worth it.
+ *
+ * Named rather than spelled out here: the words themselves live in lang/nl and
+ * lang/en, because whoever follows a dead link may have no account and so no
+ * language of their own on file.
  */
-const DEAD_END: Record<string, { title: string; body: string }> = {
+const DEAD_END: Record<
+    string,
+    { title: TranslationKey; body: TranslationKey }
+> = {
     expired: {
-        title: 'Deze uitnodigingslink is verlopen',
-        body: 'De link was maar een beperkte tijd geldig. Vraag degene die hem stuurde om een nieuwe.',
+        title: 'auth_screens.join.expired_title',
+        body: 'auth_screens.join.expired_body',
     },
     revoked: {
-        title: 'Deze uitnodigingslink is ingetrokken',
-        body: 'De link werkt niet meer omdat iemand hem heeft ingetrokken. Vraag om een nieuwe als je er nog bij moet.',
+        title: 'auth_screens.join.revoked_title',
+        body: 'auth_screens.join.revoked_body',
     },
     exhausted: {
-        title: 'Deze uitnodigingslink is opgebruikt',
-        body: 'De link mocht een beperkt aantal keer gebruikt worden, en dat aantal is bereikt. Vraag om een nieuwe.',
+        title: 'auth_screens.join.exhausted_title',
+        body: 'auth_screens.join.exhausted_body',
     },
     unknown: {
-        title: 'Deze link werkt niet',
-        body: 'Mogelijk is de link onderweg afgekapt. Controleer of je hem in zijn geheel hebt geplakt, of vraag om een nieuwe.',
+        title: 'auth_screens.join.unknown_title',
+        body: 'auth_screens.join.unknown_body',
     },
 };
 
 function ChannelList({ channels }: { channels: string[] }) {
+    const { t } = useTranslate();
+
     if (channels.length === 0) {
         return null;
     }
@@ -65,7 +76,7 @@ function ChannelList({ channels }: { channels: string[] }) {
     return (
         <div className="space-y-1.5 rounded-lg border p-3">
             <p className="text-xs font-medium text-muted-foreground">
-                Je krijgt toegang tot
+                {t('auth_screens.invite.channels_intro')}
             </p>
             <ul className="flex flex-wrap gap-1.5">
                 {channels.map((name) => (
@@ -90,19 +101,28 @@ export default function JoinPage({
     passwordRules,
     link,
 }: JoinProps) {
+    const { t } = useTranslate();
+
+    setLayoutProps({
+        title: t('auth_screens.invite.title'),
+        description: t('auth_screens.invite.description'),
+    });
+
     if (state !== 'usable' || link === null || token === undefined) {
         const message = DEAD_END[state] ?? DEAD_END.unknown;
 
         return (
             <>
-                <Head title="Uitnodigingslink" />
+                <Head title={t('auth_screens.join.head')} />
                 <div className="space-y-4 text-center">
-                    <h2 className="text-lg font-medium">{message.title}</h2>
+                    <h2 className="text-lg font-medium">{t(message.title)}</h2>
                     <p className="text-sm text-muted-foreground">
-                        {message.body}
+                        {t(message.body)}
                     </p>
                     <Button asChild variant="outline" className="w-full">
-                        <Link href={login()}>Naar het inlogscherm</Link>
+                        <Link href={login()}>
+                            {t('auth_screens.invite.to_login')}
+                        </Link>
                     </Button>
                 </div>
             </>
@@ -111,28 +131,31 @@ export default function JoinPage({
 
     return (
         <>
-            <Head title="Uitnodigingslink" />
+            <Head title={t('auth_screens.join.head')} />
 
             <div className="flex flex-col gap-6">
                 <div className="space-y-1 text-center">
                     <p className="text-sm text-muted-foreground">
                         {link.invitedBy
-                            ? `${link.invitedBy} nodigt je uit voor`
-                            : 'Je bent uitgenodigd voor'}
+                            ? t('auth_screens.invite.invited_by', {
+                                  name: link.invitedBy,
+                              })
+                            : t('auth_screens.join.invited_generic')}
                     </p>
                     <p className="text-lg font-medium">{link.workspaceName}</p>
                     {link.isGuest && (
                         <p className="inline-flex items-center gap-1 rounded border border-amber-500/40 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                             <Lock className="size-3" />
-                            Als gast
+                            {t('auth_screens.invite.as_guest')}
                         </p>
                     )}
                 </div>
 
                 {link.isGuest && (
                     <p className="text-center text-sm text-muted-foreground">
-                        Je ziet alleen de kanalen hieronder. De rest van{' '}
-                        {link.workspaceName} blijft buiten beeld.
+                        {t('auth_screens.invite.guest_note', {
+                            workspace: link.workspaceName,
+                        })}
                     </p>
                 )}
 
@@ -149,7 +172,7 @@ export default function JoinPage({
                                 <div className="grid gap-6">
                                     <div className="grid gap-2">
                                         <Label htmlFor="email">
-                                            E-mailadres
+                                            {t('auth_screens.fields.email')}
                                         </Label>
                                         {/*
                                             Asked rather than fixed: unlike a
@@ -165,34 +188,42 @@ export default function JoinPage({
                                             required
                                             autoFocus
                                             autoComplete="email"
-                                            placeholder="jij@voorbeeld.nl"
+                                            placeholder={t(
+                                                'auth_screens.join.email_placeholder',
+                                            )}
                                         />
                                         <InputError message={errors.email} />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="name">Naam</Label>
+                                        <Label htmlFor="name">
+                                            {t('auth_screens.fields.name')}
+                                        </Label>
                                         <Input
                                             id="name"
                                             name="name"
                                             type="text"
                                             required
                                             autoComplete="name"
-                                            placeholder="Voor- en achternaam"
+                                            placeholder={t(
+                                                'auth_screens.fields.name_placeholder',
+                                            )}
                                         />
                                         <InputError message={errors.name} />
                                     </div>
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="password">
-                                            Wachtwoord
+                                            {t('auth_screens.fields.password')}
                                         </Label>
                                         <PasswordInput
                                             id="password"
                                             name="password"
                                             required
                                             autoComplete="new-password"
-                                            placeholder="Wachtwoord"
+                                            placeholder={t(
+                                                'auth_screens.fields.password',
+                                            )}
                                             passwordrules={passwordRules}
                                         />
                                         <InputError message={errors.password} />
@@ -200,14 +231,18 @@ export default function JoinPage({
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="password_confirmation">
-                                            Wachtwoord bevestigen
+                                            {t(
+                                                'auth_screens.fields.password_confirm',
+                                            )}
                                         </Label>
                                         <PasswordInput
                                             id="password_confirmation"
                                             name="password_confirmation"
                                             required
                                             autoComplete="new-password"
-                                            placeholder="Wachtwoord bevestigen"
+                                            placeholder={t(
+                                                'auth_screens.fields.password_confirm',
+                                            )}
                                             passwordrules={passwordRules}
                                         />
                                         <InputError
@@ -221,7 +256,7 @@ export default function JoinPage({
 
                             {mode === 'accept' && currentEmail && (
                                 <p className="text-center text-sm text-muted-foreground">
-                                    Je bent ingelogd als{' '}
+                                    {t('auth_screens.join.signed_in_as')}{' '}
                                     <span className="font-medium text-foreground">
                                         {currentEmail}
                                     </span>
@@ -231,12 +266,12 @@ export default function JoinPage({
 
                             <Button type="submit" className="w-full">
                                 {processing && <Spinner />}
-                                Deelnemen
+                                {t('auth_screens.join.submit')}
                             </Button>
 
                             {mode === 'register' && (
                                 <p className="text-center text-sm text-muted-foreground">
-                                    Heb je al een account?{' '}
+                                    {t('auth_screens.join.have_account')}{' '}
                                     {/*
                                         The join page put itself down as the
                                         intended URL, so logging in lands back
@@ -246,7 +281,7 @@ export default function JoinPage({
                                         href={login()}
                                         className="font-medium text-foreground underline underline-offset-4"
                                     >
-                                        Log eerst in
+                                        {t('auth_screens.join.log_in_first')}
                                     </Link>
                                 </p>
                             )}
@@ -257,8 +292,3 @@ export default function JoinPage({
         </>
     );
 }
-
-JoinPage.layout = {
-    title: 'Je bent uitgenodigd',
-    description: 'Nog één stap en je zit erin',
-};

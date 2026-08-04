@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { useTranslate } from '@/hooks/use-translate';
+
 /**
  * Every path in a payload that could hold a message, with its value.
  *
@@ -65,12 +67,13 @@ export function PayloadPaths({
     /** Called with the dot path, so the field can be filled in for them. */
     onPick: (path: string) => void;
 }) {
+    const { t } = useTranslate();
     const [open, setOpen] = useState(false);
 
     if (payload._truncated === true) {
         return (
             <p className="text-xs text-muted-foreground">
-                Het laatste bericht was te groot om te bewaren.
+                {t('chat_ui.payload.too_large')}
             </p>
         );
     }
@@ -91,7 +94,7 @@ export function PayloadPaths({
                 aria-expanded={open}
                 className="self-start text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >
-                {open ? 'Verberg' : 'Bekijk'} wat er laatst binnenkwam
+                {open ? t('chat_ui.payload.hide') : t('chat_ui.payload.show')}
             </button>
 
             {open && (
@@ -101,7 +104,9 @@ export function PayloadPaths({
                             <button
                                 type="button"
                                 onClick={() => onPick(entry.path)}
-                                title={`Gebruik ${entry.path}`}
+                                title={t('chat_ui.payload.use', {
+                                    path: entry.path,
+                                })}
                                 className="flex w-full gap-2 rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
                             >
                                 <span className="shrink-0 font-mono text-primary">

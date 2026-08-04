@@ -4,9 +4,12 @@ namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
 use App\Enums\WorkspaceRole;
+use App\Models\BoardPost;
 use App\Models\Channel;
 use App\Models\ChannelSection;
+use App\Models\InboxItem;
 use App\Models\Message;
+use App\Models\ScheduledBroadcast;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
@@ -51,6 +54,71 @@ class BuildChatShell
             'workspace' => $this->workspace($workspace, $user),
             ...$this->channels($channels, $user, $seesTags),
             /*
+             * What is waiting in the inbox, of every kind — not just mentions.
+             * The badges beside the channel names are narrower on purpose: a
+             * number there reads as "somebody asked you something", while the
+             * one on the inbox button stands for the whole list behind it.
+             */
+            /*
+             * The other workspaces this member belongs to, so the menu at the
+             * top of the sidebar can move them between teams. Only what a menu
+             * row needs — a switch is a redirect, and the destination builds
+             * its own shell from scratch.
+             *
+             * Ordered by when they joined, which is the same order chat.home
+             * uses to decide where somebody lands with no workspace in the URL.
+             * Two lists in different orders would make "the first one" mean two
+             * things.
+             */
+            'workspaces' => $user->workspaces()
+                ->oldest('workspace_user.joined_at')
+                // Two workspaces joined in the same second are otherwise in
+                // whatever order the database felt like, and a menu that
+                // reshuffles between page loads is one people stop being able
+                // to point at.
+                ->orderBy('workspaces.id')
+                ->get()
+                ->map(fn (Workspace $other): array => [
+                    'id' => $other->id,
+                    'name' => $other->name,
+                    'slug' => $other->slug,
+                    'avatarUrl' => $other->avatarUrl(),
+                    'isCurrent' => $other->id === $workspace->id,
+                ])
+                ->all(),
+
+            /*
+             * Announcements this member has waiting, for the dialog that made
+             * them. Only their own and only the pending ones: somebody checking
+             * "did I schedule that?" is asking about what can still be stopped.
+             *
+             * In the shell rather than on a page of its own, because a
+             * scheduled broadcast belongs to no channel — the one thing that
+             * makes it not a scheduled message.
+             */
+            'scheduledBroadcasts' => ScheduledBroadcast::query()
+                ->where('workspace_id', $workspace->id)
+                ->where('created_by', $user->id)
+                ->pending()
+                ->with('channels:id,name,type')
+                ->orderBy('send_at')
+                ->get()
+                ->map(fn (ScheduledBroadcast $broadcast): array => [
+                    'id' => $broadcast->id,
+                    'body' => $broadcast->body,
+                    'sendAt' => $broadcast->send_at->toIso8601String(),
+                    'channels' => $broadcast->channels
+                        ->map(fn (Channel $channel): string => $channel->displayNameFor($user))
+                        ->all(),
+                ])
+                ->all(),
+
+            'inboxUnread' => InboxItem::query()
+                ->where('user_id', $user->id)
+                ->whereIn('channel_id', $channels->pluck('id'))
+                ->unread()
+                ->count(),
+            /*
              * Every tag on a channel this member can see — for the sidebar
              * filter, and for the settings dialog to suggest from.
              *
@@ -69,7 +137,16 @@ class BuildChatShell
             // Hung under their own channel in the sidebar, so a lively thread
             // stays visible even while the channel it lives in is scrolled past.
             'activeThreads' => $this->findActiveThreads->handle($user, $workspace)
-                ->map(fn (Message $thread): array => $this->presentMessage->threadSummary($thread))
+                ->map(fn (Message $thread): array => [
+                    ...$this->presentMessage->threadSummary($thread),
+                    /*
+                     * Whether this member asked to stop hearing about it. The
+                     * thread is still listed — muting is about the inbox, not
+                     * about hiding things — so the sidebar needs to know in
+                     * order to offer the way back rather than the way in.
+                     */
+                    'muted' => (bool) $thread->muted,
+                ])
                 ->all(),
             /*
              * The channels that were put away, for whoever may take them back
@@ -226,6 +303,17 @@ class BuildChatShell
 
             /** Whether the message field may offer to put a question to the channel. */
             'polls' => $user->can('createPoll', $workspace),
+
+            /*
+             * Whether the prikbord appears in the rail at all.
+             *
+             * One value rather than letting the rail read features['message-board']
+             * and work the rest out. It has to be false for a guest as well as
+             * for a workspace with the board switched off, and a guest is
+             * precisely the reader who must not be handed the two halves and
+             * trusted to combine them.
+             */
+            'board' => $user->can('viewAny', [BoardPost::class, $workspace]),
         ];
     }
 

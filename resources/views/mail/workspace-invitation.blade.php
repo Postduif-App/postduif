@@ -1,15 +1,14 @@
 <x-mail::message>
-# Je bent uitgenodigd
+# {{ __('mail.invitation.heading') }}
 
-{{ $inviter->name }} nodigt je uit voor **{{ $workspace->name }}**.
+{!! __('mail.invitation.intro', ['inviter' => $inviter->name, 'workspace' => $workspace->name]) !!}
 
 @if ($isGuest)
-Je doet mee als gast. Dat betekent dat je alleen de kanalen ziet waarvoor je bent
-uitgenodigd — de rest van de workspace blijft buiten beeld.
+{{ __('mail.invitation.guest') }}
 @endif
 
 @if ($channels->isNotEmpty())
-Je krijgt toegang tot:
+{{ __('mail.invitation.channels') }}
 
 @foreach ($channels as $channel)
 - #{{ $channel->name }}
@@ -17,12 +16,11 @@ Je krijgt toegang tot:
 @endif
 
 <x-mail::button :url="$url">
-Uitnodiging accepteren
+{{ __('mail.invitation.button') }}
 </x-mail::button>
 
-Deze link verloopt op {{ $invitation->expires_at->translatedFormat('j F Y') }}. Was
-deze uitnodiging niet voor jou bedoeld? Dan hoef je niets te doen.
+{{ __('mail.invitation.expires', ['date' => $invitation->expires_at->translatedFormat('j F Y')]) }}
 
-Groeten,<br>
+{{ __('mail.closing') }}<br>
 {{ config('app.name') }}
 </x-mail::message>

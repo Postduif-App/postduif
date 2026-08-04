@@ -6,11 +6,11 @@ class SavedMessages extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Bewaarde berichten';
+        return __('features.saved-messages.label');
     }
 
     public static function description(): string
     {
-        return 'Leden kunnen berichten bewaren en later in één lijst terugvinden.';
+        return __('features.saved-messages.description');
     }
 }

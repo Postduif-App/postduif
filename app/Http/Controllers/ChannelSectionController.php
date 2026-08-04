@@ -37,7 +37,7 @@ class ChannelSectionController extends Controller
                     ->where('workspace_id', $workspace->id),
             ],
         ], [
-            'name.unique' => 'Je hebt al een groep met deze naam.',
+            'name.unique' => __('requests.section.name_taken'),
         ]);
 
         abort_if(
@@ -46,7 +46,7 @@ class ChannelSectionController extends Controller
                 ->where('workspace_id', $workspace->id)
                 ->count() >= self::MAX_SECTIONS,
             422,
-            'Je kunt maximaal '.self::MAX_SECTIONS.' groepen maken.',
+            __('chat.too_many_sections', ['count' => self::MAX_SECTIONS]),
         );
 
         ChannelSection::create([
@@ -110,6 +110,44 @@ class ChannelSectionController extends Controller
                     'position' => 0,
                 ]);
         }
+
+        return back();
+    }
+
+    /**
+     * Give a group a different name.
+     *
+     * Its own endpoint rather than a branch in update(), which answers "which
+     * group is this channel in" and takes no section in its path. Two questions
+     * with different shapes and different failure modes: this one can collide
+     * with a name the member already used, and that one cannot.
+     */
+    public function rename(Request $request, Workspace $workspace, ChannelSection $section): RedirectResponse
+    {
+        $user = $this->member($request, $workspace);
+
+        abort_unless(
+            $section->user_id === $user && $section->workspace_id === $workspace->id,
+            404,
+        );
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:40',
+                // Same rule as creating one, minus itself: saving a group under
+                // the name it already has should not be an error.
+                Rule::unique('channel_sections', 'name')
+                    ->where('user_id', $user)
+                    ->where('workspace_id', $workspace->id)
+                    ->ignore($section->id),
+            ],
+        ], [
+            'name.unique' => __('requests.section.name_taken'),
+        ]);
+
+        $section->forceFill(['name' => $validated['name']])->save();
 
         return back();
     }

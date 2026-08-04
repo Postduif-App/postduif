@@ -1,9 +1,13 @@
 <?php
 
+use App\Actions\Chat\SendMessage;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\WorkspaceRole;
 use App\Features\Transfers;
 use App\Models\Channel;
+use App\Models\Message;
+use App\Models\Poll;
+use App\Models\PollOption;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -24,8 +28,18 @@ use Tests\TestCase;
 |
 */
 
+/*
+ * Dutch unless a test says otherwise.
+ *
+ * Laravel's test client sends "Accept-Language: en-us" of its own accord, and
+ * HandleLocale rightly honours it — which would silently answer every
+ * assertion in this suite in the wrong language. Pinning it here keeps the
+ * suite testing the application rather than the test client's default header;
+ * a test about translation overrides it with a withHeader() of its own.
+ */
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(fn () => test()->withHeader('Accept-Language', 'nl'))
     ->in('Feature');
 
 /*
@@ -161,4 +175,71 @@ function ticketFixture(ChannelTicketPolicy $policy = ChannelTicketPolicy::Everyo
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
 
     return [$member, $guest, $workspace, $channel];
+}
+
+/**
+ * A question in a channel, and somebody else who can answer it.
+ *
+ * @return array{0: User, 1: User, 2: Channel, 3: Message}
+ */
+function threadFixture(): array
+{
+    $asker = User::factory()->create();
+    $workspace = workspaceWithMember($asker);
+    $channel = channelWithMember($workspace, $asker);
+
+    $answerer = User::factory()->create();
+    $workspace->members()->attach($answerer->id, ['joined_at' => now()]);
+    $channel->members()->attach($answerer->id, ['joined_at' => now()]);
+
+    $question = Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $asker->id,
+        'body' => 'Wie weet hoe de facturatie hier werkt?',
+    ]);
+
+    return [$asker, $answerer, $channel, $question];
+}
+
+function reply(mixed $channel, User $author, Message $parent, string $body = 'Ik pak het op'): Message
+{
+    return app(SendMessage::class)->handle(
+        channel: $channel,
+        author: $author,
+        body: $body,
+        parentId: $parent->id,
+    );
+}
+
+/**
+ * A question put to a channel, and somebody else who can answer it.
+ *
+ * @return array{0: User, 1: User, 2: Poll, 3: PollOption, 4: PollOption}
+ */
+function pollFixture(bool $allowsMultiple = false): array
+{
+    $asker = User::factory()->create();
+    $workspace = workspaceWithMember($asker);
+    $channel = channelWithMember($workspace, $asker);
+
+    $voter = User::factory()->create();
+    $workspace->members()->attach($voter->id, ['joined_at' => now()]);
+    $channel->members()->attach($voter->id, ['joined_at' => now()]);
+
+    $poll = Poll::create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $asker->id,
+        'question' => 'Donderdag of vrijdag?',
+        'allows_multiple' => $allowsMultiple,
+    ]);
+
+    $options = collect(['Donderdag', 'Vrijdag'])->map(fn (string $label, int $position) => PollOption::create([
+        'poll_id' => $poll->id,
+        'label' => $label,
+        'position' => $position,
+    ]));
+
+    return [$asker, $voter, $poll, $options[0], $options[1]];
 }

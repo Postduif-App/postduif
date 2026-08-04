@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import {
+    Search,
     CalendarClock,
     ExternalLink,
     Hash,
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useChannelRealtime } from '@/hooks/use-channel-realtime';
 import { useTicketActivity } from '@/hooks/use-ticket-activity';
+import { useTranslate } from '@/hooks/use-translate';
 import { fromLocalInput } from '@/lib/local-datetime';
 import { ulid } from '@/lib/ulid';
 import { cn } from '@/lib/utils';
@@ -99,8 +101,12 @@ interface ConversationProps {
      * slash command and the palette all reach the same one.
      */
     onSendFiles?: () => void;
+    /** Opens the palette already scoped to this channel. */
+    onSearchChannel?: () => void;
     /** The same, for asking somebody for a password or a key. */
     onAskSecret?: () => void;
+    /** The mirror of onAskSecret: handing one over instead of asking for one. */
+    onSendSecret?: () => void;
     /** The same, for putting a question to the channel. */
     onAskPoll?: () => void;
     /** The groups this member arranged, for filing this channel into one. */
@@ -233,7 +239,9 @@ export function Conversation({
     channels,
     workspaceTags,
     onSendFiles,
+    onSearchChannel,
     onAskSecret,
+    onSendSecret,
     onAskPoll,
     sections,
     bookmarkedIds,
@@ -244,6 +252,8 @@ export function Conversation({
     workspacePanelOpen = false,
     onToggleWorkspacePanel,
 }: ConversationProps) {
+    const { t } = useTranslate();
+
     const [pending, setPending] = useState<ChatMessage[]>([]);
 
     /**
@@ -475,6 +485,7 @@ export function Conversation({
                     url: URL.createObjectURL(file),
                     previewUrl: null,
                 })),
+                sentSecretCard: null,
                 pending: true,
             };
 
@@ -831,13 +842,21 @@ export function Conversation({
                     */}
                     {channel.hasTickets && tickets && (
                         <nav
-                            aria-label="Weergave"
+                            aria-label={t('conversation.view.label')}
                             className="ml-4 flex items-center gap-1 rounded-md bg-muted/60 p-0.5"
                         >
                             {(
                                 [
-                                    ['messages', 'Berichten', null],
-                                    ['tickets', 'Tickets', openTickets],
+                                    [
+                                        'messages',
+                                        t('conversation.view.messages'),
+                                        null,
+                                    ],
+                                    [
+                                        'tickets',
+                                        t('conversation.view.tickets'),
+                                        openTickets,
+                                    ],
                                 ] as const
                             ).map(([value, label, badge]) => (
                                 <button
@@ -869,6 +888,30 @@ export function Conversation({
                         </nav>
                     )}
 
+                    {/*
+                        Straight to searching this conversation, which
+                        is where somebody looking for an old message
+                        already is. Opens the ordinary palette with
+                        "in:dit-kanaal " typed in — not a second search
+                        screen, because two search fields that behave
+                        differently is how this sort of thing drifts.
+                    */}
+                    {onSearchChannel && (
+                        <button
+                            type="button"
+                            onClick={onSearchChannel}
+                            aria-label={t('conversation.header.search', {
+                                channel: channel.label,
+                            })}
+                            title={t('conversation.header.search', {
+                                channel: channel.label,
+                            })}
+                            className="ml-auto rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+                        >
+                            <Search className="size-3.5" />
+                        </button>
+                    )}
+
                     <Tooltip>
                         <TooltipTrigger asChild>
                             {/* Same badge either way, but only a button for
@@ -879,8 +922,10 @@ export function Conversation({
                                 <button
                                     type="button"
                                     onClick={() => setMembersOpen(true)}
-                                    aria-label="Leden van dit kanaal"
-                                    className="ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    aria-label={t(
+                                        'conversation.header.members',
+                                    )}
+                                    className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                 >
                                     <PresenceBadge
                                         connected={connected}
@@ -888,7 +933,7 @@ export function Conversation({
                                     />
                                 </button>
                             ) : (
-                                <div className="ml-auto flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground">
                                     <PresenceBadge
                                         connected={connected}
                                         memberCount={channel.memberCount}
@@ -898,7 +943,7 @@ export function Conversation({
                         </TooltipTrigger>
                         <TooltipContent>
                             {!connected
-                                ? 'Realtime verbinding wordt opgezet…'
+                                ? t('conversation.header.connecting')
                                 : `${members.length} nu aanwezig van ${channel.memberCount} leden${channel.canViewMembers ? ' — klik om te beheren' : ''}`}
                         </TooltipContent>
                     </Tooltip>
@@ -917,7 +962,9 @@ export function Conversation({
                                     onClick={() =>
                                         setScheduledOpen((open) => !open)
                                     }
-                                    aria-label="Ingeplande berichten"
+                                    aria-label={t(
+                                        'conversation.header.scheduled',
+                                    )}
                                     className={cn(
                                         'flex items-center gap-1 rounded-md border px-1.5 py-1 text-xs transition-colors',
                                         scheduled.some(
@@ -951,7 +998,7 @@ export function Conversation({
                                     type="button"
                                     onClick={onToggleWorkspacePanel}
                                     aria-pressed={workspacePanelOpen}
-                                    aria-label="Ledenlijst"
+                                    aria-label={t('conversation.members.panel')}
                                     className={cn(
                                         'hidden rounded-md border px-1.5 py-1 text-xs transition-colors lg:flex',
                                         workspacePanelOpen
@@ -964,8 +1011,8 @@ export function Conversation({
                             </TooltipTrigger>
                             <TooltipContent>
                                 {workspacePanelOpen
-                                    ? 'Ledenlijst sluiten'
-                                    : 'Wie zit er in deze workspace'}
+                                    ? t('conversation.members.close')
+                                    : t('conversation.members.workspace')}
                             </TooltipContent>
                         </Tooltip>
                     )}
@@ -994,8 +1041,10 @@ export function Conversation({
                                     aria-pressed={channel.isFavorite}
                                     aria-label={
                                         channel.isFavorite
-                                            ? 'Uit favorieten halen'
-                                            : 'Bij favorieten zetten'
+                                            ? t(
+                                                  'conversation.header.unfavorite',
+                                              )
+                                            : t('conversation.header.favorite')
                                     }
                                     className={cn(
                                         'rounded-md border p-1.5 transition-colors hover:bg-muted hover:text-foreground',
@@ -1015,8 +1064,8 @@ export function Conversation({
                             </TooltipTrigger>
                             <TooltipContent>
                                 {channel.isFavorite
-                                    ? 'Uit favorieten halen'
-                                    : 'Bij favorieten zetten'}
+                                    ? t('conversation.header.unfavorite')
+                                    : t('conversation.header.favorite')}
                             </TooltipContent>
                         </Tooltip>
                     )}
@@ -1039,13 +1088,17 @@ export function Conversation({
                                 <button
                                     type="button"
                                     onClick={() => setSettingsOpen(true)}
-                                    aria-label="Kanaalinstellingen"
+                                    aria-label={t(
+                                        'conversation.header.settings',
+                                    )}
                                     className="rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                 >
                                     <Settings className="size-3.5" />
                                 </button>
                             </TooltipTrigger>
-                            <TooltipContent>Kanaalinstellingen</TooltipContent>
+                            <TooltipContent>
+                                {t('conversation.header.settings')}
+                            </TooltipContent>
                         </Tooltip>
                     )}
                 </header>
@@ -1060,7 +1113,7 @@ export function Conversation({
                 */}
                 {channel.links.length > 0 && (
                     <nav
-                        aria-label="Snelkoppelingen"
+                        aria-label={t('conversation.header.shortcuts')}
                         className="flex shrink-0 flex-wrap items-center gap-1.5 border-b px-4 py-2"
                     >
                         {channel.links.map((link) => (
@@ -1133,6 +1186,7 @@ export function Conversation({
                             <MessageList
                                 messages={rootMessages}
                                 workspace={workspace}
+                                channelId={channel.id}
                                 members={channel.members}
                                 channels={channels}
                                 ticketChannelId={
@@ -1190,22 +1244,26 @@ export function Conversation({
                         workspace={workspace}
                         memberCount={channel.memberCount}
                         attachments={workspace.uploads ?? undefined}
-                        onSendFiles={onSendFiles}
                         /*
                             Built here rather than inside the composer: what is
                             on this list depends on what this member may do in
                             this channel, and those answers already live at this
                             level.
+
+                            These used to be icon buttons beside the field as
+                            well. They are only commands now: three features
+                            each claiming a button turned the row under the
+                            message field into a toolbar nobody could read, and
+                            "/" already offers them by name.
                         */
-                        onAskSecret={onAskSecret}
-                        onAskPoll={onAskPoll}
                         commands={[
                             ...(onSendFiles
                                 ? [
                                       {
                                           name: 'versturen',
-                                          description:
-                                              'Grote bestanden versturen via een downloadlink',
+                                          description: t(
+                                              'conversation.commands.transfer',
+                                          ),
                                           run: onSendFiles,
                                       },
                                   ]
@@ -1214,9 +1272,25 @@ export function Conversation({
                                 ? [
                                       {
                                           name: 'geheim',
-                                          description:
-                                              'Om een wachtwoord of sleutel vragen',
+                                          description: t(
+                                              'conversation.commands.secret_ask',
+                                          ),
                                           run: onAskSecret,
+                                      },
+                                  ]
+                                : []),
+                            ...(onSendSecret
+                                ? [
+                                      {
+                                          // Next to /geheim rather than further
+                                          // down: the two are each other's
+                                          // mirror, so the list should read as
+                                          // a pair.
+                                          name: 'geheim-sturen',
+                                          description: t(
+                                              'conversation.commands.secret_send',
+                                          ),
+                                          run: onSendSecret,
                                       },
                                   ]
                                 : []),
@@ -1224,8 +1298,9 @@ export function Conversation({
                                 ? [
                                       {
                                           name: 'poll',
-                                          description:
-                                              'Een vraag aan het kanaal stellen',
+                                          description: t(
+                                              'conversation.commands.poll',
+                                          ),
                                           run: onAskPoll,
                                       },
                                   ]
@@ -1269,9 +1344,7 @@ export function Conversation({
                         this says what you can do rather than only what you can't.
                     */
                     <p className="mx-4 mb-4 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-                        Alleen beheerders en de kanaalmaker kunnen berichten
-                        plaatsen in dit kanaal. Reageren en antwoorden in een
-                        thread kan wel.
+                        {t('conversation.posting_closed')}
                     </p>
                 )}
             </main>

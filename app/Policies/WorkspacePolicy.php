@@ -6,6 +6,7 @@ use App\Enums\WorkspaceRole;
 use App\Features\Polls;
 use App\Features\SecretRequests;
 use App\Features\Transfers;
+use App\Features\Workflows as WorkflowsFeature;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -200,6 +201,24 @@ class WorkspacePolicy
         }
 
         return $workspace->hasSharedChannel($user, $target);
+    }
+
+    /**
+     * Whether this member may write workflows for this workspace.
+     *
+     * The same two gates as createTransfer, and the role gate is the strictest
+     * one in this file on purpose: a workflow can archive a channel, add people
+     * to it and post in any of them, and it does so with the rights of whoever
+     * wrote it rather than of whoever set it off. That is administering the
+     * workspace by another name, so manage() is the honest question to ask.
+     */
+    public function manageWorkflows(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(WorkflowsFeature::class)) {
+            return false;
+        }
+
+        return $this->manage($user, $workspace);
     }
 
     /**

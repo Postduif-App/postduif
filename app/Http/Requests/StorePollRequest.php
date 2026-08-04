@@ -55,9 +55,9 @@ class StorePollRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'options.required' => 'Geef minstens twee antwoorden.',
-            'options.min' => 'Een poll met één antwoord is geen vraag — geef er minstens twee.',
-            'options.max' => 'Maximaal '.self::MAX_OPTIONS.' antwoorden.',
+            'options.required' => __('requests.poll.options_required'),
+            'options.min' => __('requests.poll.options_min'),
+            'options.max' => __('requests.poll.options_max', ['count' => self::MAX_OPTIONS]),
         ];
     }
 }

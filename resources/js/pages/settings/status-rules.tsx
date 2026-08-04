@@ -6,9 +6,13 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, reorder, store, update } from '@/routes/status-rules';
 import type { Availability } from '@/types/auth';
+import type { TranslationKey } from '@/types/translations';
+
+type Translate = ReturnType<typeof useTranslate>['t'];
 
 interface StatusRule {
     id: number;
@@ -29,43 +33,54 @@ interface StatusRulesProps {
     activeRuleId: number | null;
 }
 
-const DAYS: { iso: number; short: string }[] = [
-    { iso: 1, short: 'ma' },
-    { iso: 2, short: 'di' },
-    { iso: 3, short: 'wo' },
-    { iso: 4, short: 'do' },
-    { iso: 5, short: 'vr' },
-    { iso: 6, short: 'za' },
-    { iso: 7, short: 'zo' },
-];
+/*
+ * The weekdays and the three availabilities as plain constants holding keys
+ * rather than words: a constant lives outside the component and cannot call a
+ * hook, so the wording is looked up where it is rendered.
+ *
+ * The availabilities point at the enum's own lines, which is where every other
+ * screen reads them from — a second wording here is the one that would go stale
+ * when a case is renamed.
+ */
+const DAYS = [
+    { iso: 1, key: 'settings.status_rules.day.monday' },
+    { iso: 2, key: 'settings.status_rules.day.tuesday' },
+    { iso: 3, key: 'settings.status_rules.day.wednesday' },
+    { iso: 4, key: 'settings.status_rules.day.thursday' },
+    { iso: 5, key: 'settings.status_rules.day.friday' },
+    { iso: 6, key: 'settings.status_rules.day.saturday' },
+    { iso: 7, key: 'settings.status_rules.day.sunday' },
+] as const;
 
-const AVAILABILITIES: { value: Availability; label: string }[] = [
-    { value: 'available', label: 'Beschikbaar' },
-    { value: 'away', label: 'Afwezig' },
-    { value: 'do-not-disturb', label: 'Niet storen' },
-];
+const AVAILABILITIES = [
+    { value: 'available', key: 'enums.availability.label.Available' },
+    { value: 'away', key: 'enums.availability.label.Away' },
+    { value: 'do-not-disturb', key: 'enums.availability.label.DoNotDisturb' },
+] as const satisfies { value: Availability; key: TranslationKey }[];
 
 /** How a rule's days and hours read as a sentence. */
-function describe(rule: StatusRule): string {
+function describe(rule: StatusRule, t: Translate): string {
     const days =
         rule.days.length === 0
-            ? 'Elke dag'
+            ? t('settings.status_rules.every_day')
             : DAYS.filter((day) => rule.days.includes(day.iso))
-                  .map((day) => day.short)
+                  .map((day) => t(day.key))
                   .join(', ');
 
     if (rule.startsAt === null || rule.endsAt === null) {
-        return `${days}, de hele dag`;
+        return t('settings.status_rules.summary_all_day', { days });
     }
 
     /*
      * A window whose end is before its start runs through midnight, and saying
      * so beats leaving somebody to work out why "22:00 - 06:00" is not empty.
      */
-    const overnight =
-        rule.endsAt <= rule.startsAt ? ' (tot de volgende ochtend)' : '';
-
-    return `${days}, ${rule.startsAt} - ${rule.endsAt}${overnight}`;
+    return t(
+        rule.endsAt <= rule.startsAt
+            ? 'settings.status_rules.summary_overnight'
+            : 'settings.status_rules.summary_window',
+        { days, start: rule.startsAt, end: rule.endsAt },
+    );
 }
 
 function RuleForm({
@@ -89,6 +104,7 @@ function RuleForm({
     const [availability, setAvailability] = useState<Availability>(
         rule?.availability ?? 'available',
     );
+    const { t } = useTranslate();
 
     const submit = () => {
         const payload = {
@@ -112,7 +128,7 @@ function RuleForm({
     return (
         <div className="space-y-4 rounded-lg border p-4">
             <div className="grid gap-2">
-                <Label>Dagen</Label>
+                <Label>{t('settings.status_rules.days')}</Label>
 
                 <div className="flex flex-wrap gap-1">
                     {DAYS.map((day) => (
@@ -135,14 +151,13 @@ function RuleForm({
                                     : 'text-muted-foreground hover:bg-muted',
                             )}
                         >
-                            {day.short}
+                            {t(day.key)}
                         </button>
                     ))}
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                    Geen dag aangevinkt betekent elke dag — zo schrijf je de
-                    regel die eronder alles opvangt.
+                    {t('settings.status_rules.days_hint')}
                 </p>
             </div>
 
@@ -153,7 +168,7 @@ function RuleForm({
                         checked={allDay}
                         onChange={(event) => setAllDay(event.target.checked)}
                     />
-                    De hele dag
+                    {t('settings.status_rules.all_day')}
                 </label>
 
                 {!allDay && (
@@ -165,29 +180,33 @@ function RuleForm({
                                 setStartsAt(event.target.value)
                             }
                             className="w-32"
-                            aria-label="Van"
+                            aria-label={t('settings.status_rules.from')}
                         />
-                        <span className="text-muted-foreground">tot</span>
+                        <span className="text-muted-foreground">
+                            {t('settings.status_rules.to')}
+                        </span>
                         <Input
                             type="time"
                             value={endsAt}
                             onChange={(event) => setEndsAt(event.target.value)}
                             className="w-32"
-                            aria-label="Tot"
+                            aria-label={t('settings.status_rules.until')}
                         />
                     </div>
                 )}
 
                 {!allDay && endsAt <= startsAt && (
                     <p className="text-xs text-muted-foreground">
-                        Deze regel loopt door tot de volgende ochtend.
+                        {t('settings.status_rules.overnight_hint')}
                     </p>
                 )}
             </div>
 
             <div className="grid gap-2 sm:grid-cols-[5rem_1fr]">
                 <div className="grid gap-2">
-                    <Label htmlFor="rule-emoji">Emoji</Label>
+                    <Label htmlFor="rule-emoji">
+                        {t('settings.status_rules.emoji')}
+                    </Label>
                     <Input
                         id="rule-emoji"
                         value={emoji}
@@ -197,18 +216,24 @@ function RuleForm({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="rule-text">Status</Label>
+                    <Label htmlFor="rule-text">
+                        {t('settings.status_rules.status')}
+                    </Label>
                     <Input
                         id="rule-text"
                         value={text}
                         onChange={(event) => setText(event.target.value)}
-                        placeholder="Aan het werk"
+                        placeholder={t(
+                            'settings.status_rules.status_placeholder',
+                        )}
                     />
                 </div>
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="rule-availability">Bereikbaarheid</Label>
+                <Label htmlFor="rule-availability">
+                    {t('settings.status_rules.availability')}
+                </Label>
 
                 <select
                     id="rule-availability"
@@ -220,16 +245,16 @@ function RuleForm({
                 >
                     {AVAILABILITIES.map((option) => (
                         <option key={option.value} value={option.value}>
-                            {option.label}
+                            {t(option.key)}
                         </option>
                     ))}
                 </select>
             </div>
 
             <div className="flex gap-2">
-                <Button onClick={submit}>Opslaan</Button>
+                <Button onClick={submit}>{t('settings.actions.save')}</Button>
                 <Button variant="ghost" onClick={onDone}>
-                    Annuleren
+                    {t('settings.actions.cancel')}
                 </Button>
             </div>
         </div>
@@ -243,6 +268,7 @@ export default function StatusRules({
 }: StatusRulesProps) {
     const [editing, setEditing] = useState<number | null>(null);
     const [adding, setAdding] = useState(false);
+    const { t } = useTranslate();
 
     /*
      * The whole order at once rather than a move-one endpoint: order is a
@@ -268,25 +294,25 @@ export default function StatusRules({
 
     return (
         <>
-            <Head title="Statusregels" />
+            <Head title={t('settings.status_rules.title')} />
 
             <div className="space-y-6">
                 <Heading
                     variant="small"
-                    title="Statusregels"
-                    description={`Je status volgens de klok in ${timezone}. De bovenste regel die past, wint.`}
+                    title={t('settings.status_rules.title')}
+                    description={t('settings.status_rules.description', {
+                        timezone,
+                    })}
                 />
 
                 {rules.length === 0 && !adding && (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <CalendarClock className="mx-auto size-6 text-muted-foreground" />
                         <p className="mt-3 text-sm font-medium">
-                            Nog geen regels
+                            {t('settings.status_rules.empty')}
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Bijvoorbeeld: elke werkdag van 9 tot 17 &ldquo;aan
-                            het werk&rdquo;, en daaronder een regel zonder dagen
-                            of tijden voor al het andere.
+                            {t('settings.status_rules.empty_hint')}
                         </p>
                     </div>
                 )}
@@ -313,7 +339,9 @@ export default function StatusRules({
                                         type="button"
                                         onClick={() => move(index, -1)}
                                         disabled={index === 0}
-                                        aria-label="Naar boven"
+                                        aria-label={t(
+                                            'settings.status_rules.move_up',
+                                        )}
                                         className="text-muted-foreground disabled:opacity-30"
                                     >
                                         <ArrowUp className="size-4" />
@@ -322,7 +350,9 @@ export default function StatusRules({
                                         type="button"
                                         onClick={() => move(index, 1)}
                                         disabled={index === rules.length - 1}
-                                        aria-label="Naar beneden"
+                                        aria-label={t(
+                                            'settings.status_rules.move_down',
+                                        )}
                                         className="text-muted-foreground disabled:opacity-30"
                                     >
                                         <ArrowDown className="size-4" />
@@ -338,15 +368,18 @@ export default function StatusRules({
                                         {rule.statusEmoji && (
                                             <span>{rule.statusEmoji}</span>
                                         )}
-                                        {rule.statusText ?? 'Geen status'}
+                                        {rule.statusText ??
+                                            t(
+                                                'settings.status_rules.no_status',
+                                            )}
                                         {rule.id === activeRuleId && (
                                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                                                nu
+                                                {t('settings.status_rules.now')}
                                             </span>
                                         )}
                                     </span>
                                     <span className="block text-xs text-muted-foreground">
-                                        {describe(rule)}
+                                        {describe(rule, t)}
                                     </span>
                                 </button>
 
@@ -357,7 +390,9 @@ export default function StatusRules({
                                             preserveScroll: true,
                                         })
                                     }
-                                    aria-label="Regel verwijderen"
+                                    aria-label={t(
+                                        'settings.status_rules.delete',
+                                    )}
                                     className="text-muted-foreground transition-colors hover:text-destructive"
                                 >
                                     <X className="size-4" />
@@ -372,7 +407,7 @@ export default function StatusRules({
                 ) : (
                     <Button variant="outline" onClick={() => setAdding(true)}>
                         <Plus className="size-4" />
-                        Regel toevoegen
+                        {t('settings.status_rules.add')}
                     </Button>
                 )}
             </div>

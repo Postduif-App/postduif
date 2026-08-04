@@ -71,7 +71,7 @@ class InvitationController extends Controller
 
         return redirect()
             ->route('chat.index', $invitation->workspace)
-            ->with('status', 'Welkom bij '.$invitation->workspace->name.'.');
+            ->with('status', __('flashes.invitation.welcome', ['workspace' => $invitation->workspace->name]));
     }
 
     /**

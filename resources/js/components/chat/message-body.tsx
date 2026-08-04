@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { Hash, Megaphone, Ticket as TicketIcon } from 'lucide-react';
 
+import { CodeBlock } from '@/components/chat/code-block';
+import { splitCodeBlocks } from '@/lib/code-blocks';
 import { parseInline } from '@/lib/inline-markdown';
 import type { InlineNode } from '@/lib/inline-markdown';
 import { cn } from '@/lib/utils';
@@ -70,12 +72,39 @@ export function MessageBody({
         currentUsername,
     };
 
-    // Two passes, in this order. Formatting first, because its markers wrap
-    // whole phrases the author typed; mentions and channel references are then
-    // resolved inside each run of plain text that comes out. The other way
-    // round, a mention already turned into an element would hide the text a
-    // marker needs to wrap.
-    return <>{renderNodes(parseInline(body), context, '')}</>;
+    /*
+        Three passes, in this order, and the order is the whole design.
+
+        Fenced blocks come off first, because a code block is the one part of a
+        message that means "leave this alone" — nothing below it gets to look
+        inside. Then formatting, whose markers wrap whole phrases the author
+        typed. Then mentions and channel references, resolved inside each run of
+        plain text that survives. Any other order breaks something: a mention
+        already turned into an element hides the text a marker needs to wrap, and
+        an emphasis pass that ran before the fences were removed would find its
+        markers in somebody's source code.
+    */
+    return (
+        <>
+            {splitCodeBlocks(body).map((block, index) =>
+                block.type === 'code' ? (
+                    <CodeBlock
+                        key={index}
+                        code={block.code}
+                        language={block.language}
+                    />
+                ) : (
+                    <span key={index}>
+                        {renderNodes(
+                            parseInline(block.value),
+                            context,
+                            `${index}-`,
+                        )}
+                    </span>
+                ),
+            )}
+        </>
+    );
 }
 
 function renderNodes(
@@ -91,6 +120,23 @@ function renderNodes(
                 <span key={key}>
                     {renderReferences(node.value, context, key)}
                 </span>
+            );
+        }
+
+        /*
+            The one node the reference pass never sees. `@fenna` inside backticks
+            is a variable somebody is showing you, not a person being addressed —
+            linking it would be wrong on screen and, worse, would disagree with
+            the server, which does not notify for it either.
+        */
+        if (node.type === 'code') {
+            return (
+                <code
+                    key={key}
+                    className="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em]"
+                >
+                    {node.value}
+                </code>
             );
         }
 

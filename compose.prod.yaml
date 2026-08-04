@@ -1,0 +1,196 @@
+##
+# Production.
+#
+#   docker compose -f compose.prod.yaml up -d --build
+#
+# The same image as development, put together the other way round: the source
+# is baked in rather than mounted, there is no Vite, and the worker and the
+# scheduler are processes of their own instead of an afterthought.
+#
+# What this file does not do is terminate TLS. Put a reverse proxy in front of
+# it — Caddy, nginx, Traefik, whatever you already run — and point it at the
+# published ports below. Reverb needs a route of its own there, because a
+# browser on an https page will not open a plain ws:// socket.
+#
+# Values come from .env, which compose reads for the ${...} below and hands to
+# the containers wholesale. The ones written as ${VAR:?...} have no sensible
+# default and stop the stack rather than start it wrong.
+##
+
+name: postduif
+
+x-app-env: &app-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: ${DB_DATABASE:-postduif}
+  DB_USERNAME: ${DB_USERNAME:-postduif}
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "null"
+
+  SESSION_DRIVER: redis
+  QUEUE_CONNECTION: database
+  BROADCAST_CONNECTION: reverb
+
+  # Inside the network. The public hostname the browser uses is a different
+  # thing entirely: it went into the bundle as a build argument, below.
+  REVERB_HOST: reverb
+  REVERB_PORT: "8080"
+  REVERB_SCHEME: http
+
+  # The renderer, in its own container. If it is down or slow, Inertia says so
+  # in the log and sends the page for the browser to render instead — a missing
+  # renderer costs you the first paint, not the request.
+  INERTIA_SSR_URL: http://ssr:13714
+
+x-app: &app
+  build:
+    context: .
+    target: production
+    args:
+      # Echo is configured from import.meta.env, so these are decided when the
+      # assets are built. Change one and you have to rebuild the image — hence
+      # `--build` in the command at the top of this file.
+      VITE_APP_NAME: ${APP_NAME:-Postduif}
+      VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:?set REVERB_APP_KEY in .env}
+      VITE_REVERB_HOST: ${REVERB_HOST:?set REVERB_HOST in .env to the hostname the browser reaches Reverb on}
+      VITE_REVERB_PORT: ${REVERB_PORT:-443}
+      VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
+  image: postduif/app:latest
+  env_file: .env
+  environment: *app-env
+  restart: unless-stopped
+  volumes:
+    # Attachments and transfers live here, on the private disk. Without a volume
+    # every deployment would take the uploads with it.
+    - storage:/app/storage
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-postduif}
+      POSTGRES_USER: ${DB_USERNAME:-postduif}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postduif} -d ${DB_DATABASE:-postduif}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --save 60 1 --appendonly no
+    volumes:
+      - redis:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Migrations run here and nowhere else. Four containers starting at once and
+  # all deciding to migrate is how you get two of them halfway through the same
+  # ALTER TABLE; everything else waits for this one to exit cleanly.
+  migrate:
+    <<: *app
+    command: php artisan migrate --force --no-interaction
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  app:
+    <<: *app
+    ports:
+      - "${APP_PORT:-8000}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/up"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  reverb:
+    <<: *app
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports:
+      - "${REVERB_FORWARD_PORT:-8080}:8080"
+    environment:
+      <<: *app-env
+      # Blank, so the server answers whatever Host the proxy passes on — the
+      # browser says one thing and the app container says another.
+      REVERB_HOST: ""
+      # No certificate, so no TLS — config/reverb.php reads the certificate as
+      # the switch. Terminating TLS is the proxy's job here.
+      REVERB_TLS_CERT: ""
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # The Inertia renderer. A Node process with the page bundle in it and nothing
+  # else — no PHP, no source, no credentials, and no port published: only the
+  # app containers talk to it.
+  ssr:
+    build:
+      context: .
+      target: ssr
+      args:
+        VITE_APP_NAME: ${APP_NAME:-Postduif}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:?set REVERB_APP_KEY in .env}
+        VITE_REVERB_HOST: ${REVERB_HOST:?set REVERB_HOST in .env to the hostname the browser reaches Reverb on}
+        VITE_REVERB_PORT: ${REVERB_PORT:-443}
+        VITE_REVERB_SCHEME: ${REVERB_SCHEME:-https}
+    image: postduif/ssr:latest
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:13714/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # `work`, not `listen`: nothing changes under it here, and a fresh process per
+  # job would be a waste. --max-time recycles it hourly anyway, which is the
+  # cheapest cure for a worker that has slowly grown in memory.
+  queue:
+    <<: *app
+    command: php artisan queue:work --tries=3 --timeout=90 --max-time=3600
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    healthcheck:
+      disable: true
+
+volumes:
+  postgres:
+  redis:
+  storage:

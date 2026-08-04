@@ -6,11 +6,11 @@ class Tickets extends WorkspaceFeature
 {
     public static function label(): string
     {
-        return 'Tickets';
+        return __('features.tickets.label');
     }
 
     public static function description(): string
     {
-        return 'Kanalen kunnen een ticketlijst voeren voor werk dat nog openstaat.';
+        return __('features.tickets.description');
     }
 }

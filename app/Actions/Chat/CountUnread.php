@@ -2,7 +2,8 @@
 
 namespace App\Actions\Chat;
 
-use App\Models\Mention;
+use App\Enums\InboxItemType;
+use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -69,8 +70,12 @@ class CountUnread
      */
     private function unreadMentions(User $user, Collection $channelIds): array
     {
-        return Mention::query()
+        return InboxItem::query()
             ->where('user_id', $user->id)
+            // Mentions only. A thread carrying on earns a line in the inbox,
+            // but not a number beside a channel name — that badge means
+            // somebody asked you something.
+            ->ofType(InboxItemType::Mention)
             ->unread()
             ->whereIn('channel_id', $channelIds)
             ->groupBy('channel_id')

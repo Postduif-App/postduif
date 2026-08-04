@@ -18,9 +18,10 @@ class WorkspaceInvitationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: $this->invitation->inviter->name
-                .' nodigt je uit voor '
-                .$this->invitation->workspace->name,
+            subject: __('notifications.invitation.subject', [
+                'inviter' => $this->invitation->inviter->name,
+                'workspace' => $this->invitation->workspace->name,
+            ]),
         );
     }
 

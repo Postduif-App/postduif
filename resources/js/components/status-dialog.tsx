@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { update } from '@/routes/status';
 import type { Auth, Availability, User, UserStatus } from '@/types/auth';
@@ -22,16 +23,22 @@ import type { Auth, Availability, User, UserStatus } from '@/types/auth';
  * Offered next to your own recent statuses rather than instead of them: the
  * recents are what you actually use, and these are what somebody sees on the
  * first day, when they have no recents at all.
+ *
+ * A function taking t rather than a constant: the words come from the lang
+ * files, and a constant built when the module loads cannot call a hook to reach
+ * them. The emoji stay here — a lunch is a lunch in either language.
  */
-const SUGGESTIONS: UserStatus[] = [
-    { emoji: '📅', text: 'In vergadering' },
-    { emoji: '🍽️', text: 'Lunchpauze' },
-    { emoji: '🎧', text: 'Aan het focussen' },
-    { emoji: '🏠', text: 'Werkt thuis' },
-    { emoji: '🚗', text: 'Onderweg' },
-    { emoji: '🤒', text: 'Ziek' },
-    { emoji: '🌴', text: 'Op vakantie' },
-];
+function suggestions(t: ReturnType<typeof useTranslate>['t']): UserStatus[] {
+    return [
+        { emoji: '📅', text: t('panelen.status.suggestion.meeting') },
+        { emoji: '🍽️', text: t('panelen.status.suggestion.lunch') },
+        { emoji: '🎧', text: t('panelen.status.suggestion.focus') },
+        { emoji: '🏠', text: t('panelen.status.suggestion.home') },
+        { emoji: '🚗', text: t('panelen.status.suggestion.commuting') },
+        { emoji: '🤒', text: t('panelen.status.suggestion.sick') },
+        { emoji: '🌴', text: t('panelen.status.suggestion.holiday') },
+    ];
+}
 
 export function StatusDialog({
     user,
@@ -44,6 +51,7 @@ export function StatusDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
+    const { t } = useTranslate();
     const [emoji, setEmoji] = useState(user.status_emoji ?? '');
     const [text, setText] = useState(user.status_text ?? '');
     const [availability, setAvailability] = useState<Availability>(
@@ -55,7 +63,7 @@ export function StatusDialog({
     // history, so a status you use every day is not offered twice.
     const options = [
         ...user.recent_statuses,
-        ...SUGGESTIONS.filter(
+        ...suggestions(t).filter(
             (suggestion) =>
                 !user.recent_statuses.some(
                     (recent) => recent.text === suggestion.text,
@@ -85,15 +93,17 @@ export function StatusDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Je status</DialogTitle>
+                    <DialogTitle>{t('panelen.status.title')}</DialogTitle>
                     <DialogDescription>
-                        Wat je aan het doen bent, en of je gestoord mag worden.
+                        {t('panelen.status.intro')}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="status-text">Status</Label>
+                        <Label htmlFor="status-text">
+                            {t('panelen.status.field')}
+                        </Label>
                         <div className="flex gap-2">
                             <Input
                                 id="status-emoji"
@@ -102,7 +112,7 @@ export function StatusDialog({
                                     setEmoji(event.target.value)
                                 }
                                 maxLength={16}
-                                aria-label="Emoji"
+                                aria-label={t('panelen.status.emoji_field')}
                                 placeholder="🙂"
                                 className="w-14 text-center"
                             />
@@ -113,7 +123,7 @@ export function StatusDialog({
                                     setText(event.target.value)
                                 }
                                 maxLength={100}
-                                placeholder="Waar ben je mee bezig?"
+                                placeholder={t('panelen.status.placeholder')}
                                 className="flex-1"
                             />
                         </div>
@@ -137,7 +147,7 @@ export function StatusDialog({
 
                     <fieldset className="grid gap-1.5">
                         <legend className="mb-1 text-sm font-medium">
-                            Beschikbaarheid
+                            {t('panelen.status.availability')}
                         </legend>
                         {availabilityOptions.map((option) => (
                             <label
@@ -188,14 +198,14 @@ export function StatusDialog({
                             save({ emoji: '', text: '' });
                         }}
                     >
-                        Status wissen
+                        {t('panelen.status.clear')}
                     </Button>
                     <Button
                         type="button"
                         disabled={saving}
                         onClick={() => save()}
                     >
-                        Opslaan
+                        {t('panelen.save')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

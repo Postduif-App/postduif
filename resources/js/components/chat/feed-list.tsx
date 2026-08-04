@@ -22,7 +22,9 @@ import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { SecretCard } from '@/components/chat/secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
+import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import type {
     ChannelMember,
@@ -31,11 +33,6 @@ import type {
     ChatWorkspace,
     MessageAttachment,
 } from '@/types/chat';
-
-const MOMENT_FORMAT = new Intl.DateTimeFormat('nl-NL', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-});
 
 interface FeedListProps {
     messages: ChatMessage[];
@@ -91,11 +88,13 @@ export function FeedList({
     onOpenThread,
     onPin,
 }: FeedListProps) {
+    const { t } = useTranslate();
+
     if (messages.length === 0) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Newspaper className="size-8 opacity-40" />
-                Nog niets geplaatst.
+                {t('chat_ui.feed.empty')}
             </div>
         );
     }
@@ -170,6 +169,8 @@ function FeedItem({
     onPin?: (message: ChatMessage) => void;
 }) {
     const getInitials = useInitials();
+    const formats = useFormats();
+    const { t, tChoice } = useTranslate();
     const [editing, setEditing] = useState(false);
     const deleted = message.deletedAt !== null;
     const canEdit =
@@ -201,16 +202,18 @@ function FeedItem({
                         {message.author.name}
                         {message.author.isBot && (
                             <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                bot
+                                {t('messages.bot')}
                             </span>
                         )}
                         {message.author.isGuest && <GuestBadge />}
                     </p>
                     <p className="text-xs text-muted-foreground">
                         {message.createdAt
-                            ? MOMENT_FORMAT.format(new Date(message.createdAt))
+                            ? formats.longDateTime.format(
+                                  new Date(message.createdAt),
+                              )
                             : ''}
-                        {message.editedAt && ' · bewerkt'}
+                        {message.editedAt && ` · ${t('messages.edited')}`}
                     </p>
                 </div>
 
@@ -218,8 +221,10 @@ function FeedItem({
                     <span
                         title={
                             message.pinnedBy
-                                ? `Vastgepind door ${message.pinnedBy}`
-                                : 'Vastgepind'
+                                ? t('messages.pinned_by', {
+                                      name: message.pinnedBy,
+                                  })
+                                : t('messages.pinned')
                         }
                         className="ml-auto shrink-0 text-primary"
                     >
@@ -230,7 +235,7 @@ function FeedItem({
 
             {deleted ? (
                 <p className="text-sm text-muted-foreground italic">
-                    Dit bericht is verwijderd
+                    {t('messages.deleted')}
                 </p>
             ) : editing ? (
                 <FeedEditor
@@ -309,10 +314,8 @@ function FeedItem({
                 >
                     <MessageSquareText className="size-3.5" />
                     {message.replyCount === 0
-                        ? 'Reageren'
-                        : `${message.replyCount} ${
-                              message.replyCount === 1 ? 'reactie' : 'reacties'
-                          }`}
+                        ? t('chat_ui.feed.reply')
+                        : tChoice('chat_ui.feed.replies', message.replyCount)}
                 </button>
             )}
 
@@ -341,7 +344,7 @@ function FeedItem({
                         <button
                             type="button"
                             onClick={() => setEditing(true)}
-                            aria-label="Bewerken"
+                            aria-label={t('messages.actions.edit')}
                             className={messageToolbarButton()}
                         >
                             <Pencil className="size-3.5" />
@@ -352,7 +355,9 @@ function FeedItem({
                             type="button"
                             onClick={() => onPin(message)}
                             aria-label={
-                                message.pinnedAt ? 'Losmaken' : 'Vastpinnen'
+                                message.pinnedAt
+                                    ? t('messages.actions.unpin')
+                                    : t('messages.actions.pin')
                             }
                             className={messageToolbarButton()}
                         >
@@ -363,7 +368,7 @@ function FeedItem({
                         <button
                             type="button"
                             onClick={() => onDelete(message)}
-                            aria-label="Verwijderen"
+                            aria-label={t('messages.actions.delete')}
                             className={messageToolbarButton()}
                         >
                             <Trash2 className="size-3.5" />
@@ -390,6 +395,7 @@ function FeedEditor({
     onSave: (body: string) => void;
     onCancel: () => void;
 }) {
+    const { t } = useTranslate();
     const [draft, setDraft] = useState(body);
     const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -423,7 +429,7 @@ function FeedEditor({
                 value={draft}
                 rows={4}
                 maxLength={4000}
-                aria-label="Bericht bewerken"
+                aria-label={t('messages.actions.edit')}
                 onChange={(event) => {
                     setDraft(event.target.value);
                     event.target.style.height = 'auto';
@@ -443,7 +449,7 @@ function FeedEditor({
                     onClick={save}
                     className="font-medium text-primary hover:underline"
                 >
-                    Opslaan
+                    {t('messages.editor.save')}
                 </button>
                 {' · '}
                 <button
@@ -451,11 +457,11 @@ function FeedEditor({
                     onClick={onCancel}
                     className="hover:underline"
                 >
-                    Annuleren
+                    {t('messages.editor.cancel')}
                 </button>
                 {' · '}
                 <kbd className="rounded bg-muted px-1 font-mono">Esc</kbd>{' '}
-                annuleert
+                {t('messages.editor.escape_hint')}
             </p>
         </div>
     );
