@@ -1,0 +1,43 @@
+# What the build does not need, and what it must not pick up from the host.
+#
+# vendor/ and node_modules/ are built inside the image on purpose: the ones on
+# your machine were compiled for your machine, and a macOS rollup binary in a
+# Linux image fails at `vite build` rather than at copy time.
+
+.git
+.github
+.beads
+.claude
+.codex
+.agents
+.perles
+
+vendor
+node_modules
+public/build
+public/hot
+public/storage
+
+storage/app/private
+storage/app/public
+storage/framework/cache
+storage/framework/sessions
+storage/framework/testing
+storage/framework/views
+storage/logs
+storage/debugbar
+
+.env
+.env.*
+!.env.example
+
+tests
+phpunit.xml
+phpstan.neon
+eslint-suppressions.json
+issue-export.jsonl
+
+compose.yaml
+compose.prod.yaml
+Dockerfile
+.dockerignore
