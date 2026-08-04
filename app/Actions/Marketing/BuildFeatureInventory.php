@@ -2,8 +2,16 @@
 
 namespace App\Actions\Marketing;
 
+use App\Enums\ChannelLayout;
+use App\Enums\ChannelPostingPolicy;
+use App\Enums\ChannelTicketPolicy;
 use App\Enums\WorkspaceRole;
 use App\Features\WorkspaceFeature;
+use App\Mcp\Servers\ChatServer;
+use App\Workflows\WorkflowRegistry;
+use Illuminate\Routing\Router;
+use Laravel\Mcp\Server\Tool;
+use ReflectionProperty;
 
 class BuildFeatureInventory
 {
@@ -39,6 +47,122 @@ class BuildFeatureInventory
              */
             'onByDefault' => $feature::default(),
         ], WorkspaceFeature::ALL);
+    }
+
+    /**
+     * How a channel can be set up, in the words the settings screen uses.
+     *
+     * The half of this application that has no feature switch: a channel is not
+     * something you turn on, so none of it appears in the inventory above. It
+     * is still most of what somebody is buying, and every answer here is an
+     * enum case with a label and a sentence already written for a beheerder.
+     *
+     * @return array<string, array<int, array<string, string>>>
+     */
+    public function channelSettings(): array
+    {
+        return [
+            'layout' => array_map(fn (ChannelLayout $case): array => [
+                'label' => $case->getLabel(),
+                'description' => $case->description(),
+            ], ChannelLayout::cases()),
+
+            'posting' => array_map(fn (ChannelPostingPolicy $case): array => [
+                'label' => $case->label(),
+                'description' => $case->description(),
+            ], ChannelPostingPolicy::cases()),
+
+            'tickets' => array_map(fn (ChannelTicketPolicy $case): array => [
+                'label' => $case->label(),
+                'description' => $case->description(),
+            ], ChannelTicketPolicy::cases()),
+        ];
+    }
+
+    /**
+     * Every trigger and every action a workflow can be built from.
+     *
+     * Read from the register the runner reads, which is the same argument as
+     * everywhere else on this page one step further: a page that listed these
+     * by hand would keep advertising an action the day it was taken out, and
+     * the register is the one thing that cannot be wrong about it.
+     *
+     * @return array<string, array<int, array<string, string>>>
+     */
+    public function workflowVocabulary(WorkflowRegistry $registry): array
+    {
+        $described = $registry->toArray();
+
+        $plain = fn (array $entries): array => array_map(fn (array $entry): array => [
+            'label' => $entry['label'],
+            'description' => $entry['description'],
+        ], $entries);
+
+        return [
+            'triggers' => $plain($described['triggers']),
+            'actions' => $plain($described['actions']),
+        ];
+    }
+
+    /**
+     * What a personal token opens, as the router and the MCP server have it.
+     *
+     * Two doors onto the same application and both are worth showing: the
+     * endpoints because somebody writing a script wants to see the shape before
+     * they sign up, and the tools because "works with an AI client" is a claim
+     * that ought to name what the client can actually do.
+     *
+     * @return array<string, array<int, array<string, string>>>
+     */
+    public function tokenSurface(Router $router): array
+    {
+        $endpoints = [];
+
+        foreach ($router->getRoutes() as $route) {
+            if (! str_starts_with((string) $route->getName(), 'api.v1.')) {
+                continue;
+            }
+
+            $endpoints[] = [
+                // HEAD comes along with every GET and says nothing anybody
+                // needs to read.
+                'method' => implode(', ', array_diff($route->methods(), ['HEAD'])),
+                'path' => '/'.ltrim($route->uri(), '/'),
+            ];
+        }
+
+        return [
+            'endpoints' => $endpoints,
+
+            /*
+             * The tool's own name and the sentence it hands the client, which
+             * is the sentence that decides whether a model reaches for it. If
+             * it does not read well here it does not read well there either.
+             *
+             * Read off the server through reflection, because the list is
+             * protected and rightly so — making it public to feed a marketing
+             * page would be the page dictating the shape of the server.
+             */
+            'tools' => array_map(function (string $tool): array {
+                $instance = app($tool);
+
+                return [
+                    'name' => $instance->name(),
+                    'description' => $instance->description(),
+                ];
+            }, $this->toolsOf(ChatServer::class)),
+        ];
+    }
+
+    /**
+     * @param  class-string  $server
+     * @return array<int, class-string<Tool>>
+     */
+    private function toolsOf(string $server): array
+    {
+        $property = new ReflectionProperty($server, 'tools');
+
+        return $property->getDefaultValue() ?? [];
     }
 
     /**

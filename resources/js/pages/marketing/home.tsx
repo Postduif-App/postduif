@@ -21,9 +21,25 @@ interface Role {
     canSendTransfers: boolean;
 }
 
+/** A label with the sentence the settings screen already puts under it. */
+interface Described {
+    label: string;
+    description: string;
+}
+
 interface HomeProps {
     features: Feature[];
     roles: Role[];
+    channelSettings: {
+        layout: Described[];
+        posting: Described[];
+        tickets: Described[];
+    };
+    workflow: { triggers: Described[]; actions: Described[] };
+    token: {
+        endpoints: { method: string; path: string }[];
+        tools: { name: string; description: string }[];
+    };
 }
 
 /** A numbered section head, as the huisstijl sets them out. */
@@ -114,7 +130,44 @@ function Mark({ on }: { on: boolean }) {
  * this codebase, so none of it is here — which is exactly what the brief asked
  * for. Taking the design without the copy is the whole job.
  */
-export default function MarketingHome({ features, roles }: HomeProps) {
+/** A short list of label-and-sentence pairs, as the huisstijl sets them out. */
+function Described({ items }: { items: Described[] }) {
+    return (
+        <ul className="m-0 grid list-none gap-3 p-0">
+            {items.map((item) => (
+                <li key={item.label}>
+                    <span
+                        style={{
+                            fontFamily: 'var(--pd-mono)',
+                            fontSize: 14,
+                            fontWeight: 600,
+                        }}
+                    >
+                        {item.label}
+                    </span>
+                    <p
+                        className="m-0 mt-1"
+                        style={{
+                            fontSize: 14,
+                            lineHeight: 1.55,
+                            color: 'var(--pd-steen)',
+                        }}
+                    >
+                        {item.description}
+                    </p>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+export default function MarketingHome({
+    features,
+    roles,
+    channelSettings,
+    workflow,
+    token,
+}: HomeProps) {
     const optIn = features.filter((feature) => !feature.onByDefault);
 
     return (
@@ -327,6 +380,189 @@ export default function MarketingHome({ features, roles }: HomeProps) {
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="03"
+                    title="Een kanaal naar de vorm van het gesprek"
+                    lead="Een kanaal is niets dat je aanzet, dus het staat niet in de lijst hierboven — terwijl het wel is waar je de hele dag in zit. Dit zijn de knoppen eronder."
+                />
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Weergave
+                        </div>
+                        <Described items={channelSettings.layout} />
+                    </Card>
+
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Wie er post
+                        </div>
+                        <Described items={channelSettings.posting} />
+                    </Card>
+
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Tickets
+                        </div>
+                        <Described items={channelSettings.tickets} />
+                    </Card>
+                </div>
+            </div>
+
+            <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
+                <SectionHead
+                    number="04"
+                    title="Dingen die je workspace zelf doet"
+                    lead={`Een workflow is één aanleiding en daarna een reeks stappen, met voorwaarden en splitsingen ertussen. ${workflow.triggers.length} aanleidingen en ${workflow.actions.length} stappen om uit te kiezen.`}
+                />
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Wanneer
+                        </div>
+                        <Described items={workflow.triggers} />
+                    </Card>
+
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Wat er dan gebeurt
+                        </div>
+                        <Described items={workflow.actions} />
+                    </Card>
+                </div>
+            </div>
+
+            <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
+                <SectionHead
+                    number="05"
+                    title="Voor je eigen script en je AI-client"
+                    lead="Eén persoonlijk token opent allebei. Wat erachter zit is precies wat jij mag zien: elke aanroep loopt langs dezelfde regels als het scherm."
+                />
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            De API
+                        </div>
+                        <ul className="m-0 grid list-none gap-2 p-0">
+                            {token.endpoints.map((endpoint) => (
+                                <li
+                                    key={`${endpoint.method} ${endpoint.path}`}
+                                    style={{
+                                        fontFamily: 'var(--pd-mono)',
+                                        fontSize: 13,
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            color: 'var(--pd-steen)',
+                                            display: 'inline-block',
+                                            minWidth: '4.5rem',
+                                        }}
+                                    >
+                                        {endpoint.method}
+                                    </span>
+                                    {endpoint.path}
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
+
+                    <Card>
+                        <div
+                            className="mb-4"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 11,
+                                letterSpacing: '0.08em',
+                                color: '#8b8a7b',
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            Wat een AI-client kan
+                        </div>
+                        <Described
+                            items={token.tools.map((tool) => ({
+                                label: tool.name,
+                                description: tool.description,
+                            }))}
+                        />
+                    </Card>
+                </div>
+
+                <p
+                    className="mt-6 max-w-[68ch]"
+                    style={{
+                        fontSize: 15,
+                        lineHeight: 1.6,
+                        color: 'var(--pd-steen)',
+                        borderLeft: '2px solid var(--pd-geel)',
+                        paddingLeft: 16,
+                    }}
+                >
+                    Meelezen door een AI-client staat standaard uit, per
+                    workspace. Zolang die uit staat komt er niets langs deze
+                    kant naar binnen of naar buiten.
+                </p>
+            </div>
+
+            <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
+                <SectionHead
+                    number="06"
                     title="Wie wat mag"
                     lead="Een gast is iemand van buiten: een klant, een leverancier. Ze zien alleen de kanalen waarvoor ze zijn uitgenodigd."
                 />
