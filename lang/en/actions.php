@@ -1,0 +1,67 @@
+<?php
+
+return [
+    'cancel' => 'Cancel',
+
+    'ticket' => [
+        'title' => 'New ticket',
+        'title_from_message' => 'Ticket from this message',
+        'intro_from_message' => 'The message stays right where it is; this ticket points back to it.',
+        'intro_picking' => 'Pick where this ticket is kept; only channels where you may open tickets are listed.',
+        'intro_channel' => 'Kept in #:channel, so everybody can see what is still open.',
+        'channel_field' => 'Channel',
+        'channel_placeholder' => 'Pick a channel',
+        'title_field' => 'Title',
+        'title_placeholder' => 'What is it about?',
+        'body_field' => 'Description',
+        'body_placeholder' => 'What is going on, and what have you tried already?',
+        'priority_field' => 'Priority',
+        'submit' => 'Open ticket',
+    ],
+
+    'broadcast' => [
+        'title' => 'Message to several channels',
+        'intro' => 'Each channel gets a message of its own, so a reply stays where it belongs.',
+        'body_field' => 'Message',
+        'body_placeholder' => 'What do you want to let people know?',
+        'tags_field' => 'Tags',
+        'channels_field' => 'Channels',
+        'via_tag' => 'via tag',
+        'no_channels' => 'You\'re not in a channel you may post in yet.',
+        'reach' => '{0}No channel picked yet|{1}Goes to 1 channel|[2,*]Goes to :count channels',
+        'submit' => 'Send',
+        'schedule_later' => 'Send later',
+        'schedule_at' => 'Send on',
+        'schedule_now' => 'Send now after all',
+        'schedule_submit' => 'Schedule',
+        'pending_title' => 'Waiting to go out',
+        'pending_channels' => '{1}1 channel|[2,*]:count channels',
+        'withdraw' => 'Withdraw',
+    ],
+
+    'forward' => [
+        'title' => 'Forward message',
+        'intro' => 'The text comes along, with the name of whoever said it first. Files stay behind — they belong to the original message.',
+        'attachments' => '{1}1 file comes along|[2,*]:count files come along',
+        'target' => 'To which channel?',
+        'no_channels' => 'You\'re not in any other channel to send something to.',
+        'note_field' => 'Anything to add?',
+        'note_placeholder' => 'Optional',
+        'submit' => 'Forward',
+    ],
+
+    'invite' => [
+        'title' => 'Invite to :workspace',
+        'intro' => 'The invitee gets a mail with a link that works for two weeks.',
+        'email_field' => 'Email address',
+        'email_placeholder' => 'name@example.com',
+        'role_question' => 'What will it be?',
+        'guest' => 'Guest',
+        'guest_hint' => 'Somebody from outside. Sees only the channels you tick below.',
+        'member' => 'Member',
+        'member_hint' => 'One of you. Finds the public channels themselves and sees who is in the workspace.',
+        'guest_channels' => 'Channels for this guest',
+        'no_channels' => 'There are no channels to invite anybody to yet.',
+        'submit' => 'Send invitation',
+    ],
+];

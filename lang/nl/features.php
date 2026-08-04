@@ -1,0 +1,59 @@
+<?php
+
+/*
+ * The names and one-line explanations a beheerder reads when switching a
+ * feature on. Keyed by the feature's own name in kebab-case, which is the same
+ * string Pennant stores — so a key here can never drift from the flag it
+ * describes without the flag itself being renamed.
+ */
+
+return [
+    'ai-access' => [
+        'label' => 'AI-toegang',
+        'description' => 'AI-clients mogen met een token meelezen en meepraten in deze workspace.',
+    ],
+    'invite-links' => [
+        'label' => 'Uitnodigingslinks',
+        'description' => 'Meedoen via een deelbare link, naast een uitnodiging op naam.',
+    ],
+    'message-board' => [
+        'label' => 'Prikbord',
+        'description' => 'Een lijst met mededelingen voor de hele workspace, waar leden op kunnen reageren. Gasten zien het prikbord niet.',
+    ],
+    'message-forwarding' => [
+        'label' => 'Berichten doorsturen',
+        'description' => 'Een bericht uit het ene kanaal in het andere plaatsen, met de herkomst erbij.',
+    ],
+    'polls' => [
+        'label' => 'Polls',
+        'description' => 'Een vraag met antwoorden in een kanaal zetten, waar iedereen op kan stemmen.',
+    ],
+    'saved-messages' => [
+        'label' => 'Bewaarde berichten',
+        'description' => 'Leden kunnen berichten bewaren en later in één lijst terugvinden.',
+    ],
+    'scheduled-messages' => [
+        'label' => 'Geplande berichten',
+        'description' => 'Leden kunnen een bericht klaarzetten dat later vanzelf verstuurd wordt.',
+    ],
+    'secret-requests' => [
+        'label' => 'Geheimen',
+        'description' => 'Wachtwoorden en sleutels opvragen via een formulier, en er zelf één versturen die de ontvanger precies één keer kan bekijken — in plaats van ze in een gesprek te laten plakken.',
+    ],
+    'tickets' => [
+        'label' => 'Tickets',
+        'description' => 'Kanalen kunnen een ticketlijst voeren voor werk dat nog openstaat.',
+    ],
+    'transfers' => [
+        'label' => 'Bestanden versturen',
+        'description' => 'Bestanden klaarzetten achter een deelbare downloadlink, ook voor mensen buiten de workspace.',
+    ],
+    'webhooks' => [
+        'label' => 'Webhooks',
+        'description' => 'Andere systemen mogen via een geheime URL in een kanaal posten.',
+    ],
+    'workflows' => [
+        'label' => 'Workflows',
+        'description' => 'De workspace kan zelf dingen doen: bij een trefwoord, een nieuw kanaallid of op een vast moment een reeks stappen aflopen. De stappen draaien met de rechten van wie de workflow schreef.',
+    ],
+];
