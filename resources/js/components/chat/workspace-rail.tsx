@@ -2,6 +2,8 @@ import { Link } from '@inertiajs/react';
 import type { AtSign } from 'lucide-react';
 import {
     Bookmark,
+    ClipboardList,
+    Clock,
     Inbox,
     KeyRound,
     Megaphone,
@@ -21,10 +23,12 @@ import {
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { index as boardIndex } from '@/routes/chat/board';
+import { index as formsIndex } from '@/routes/chat/forms';
 import { index as inboxIndex } from '@/routes/chat/inbox';
 import { index as savedIndex } from '@/routes/chat/saved';
 import { index as secretsIndex } from '@/routes/chat/sent-secrets';
 import { index as ticketsIndex } from '@/routes/chat/tickets';
+import { index as timeclockIndex } from '@/routes/chat/timeclock';
 import { index as transfersIndex } from '@/routes/chat/transfers';
 import type { ChatWorkspace } from '@/types/chat';
 
@@ -110,6 +114,8 @@ export function WorkspaceRail({
     savedActive = false,
     transfersActive = false,
     ticketsActive = false,
+    formsActive = false,
+    timeclockActive = false,
     onBroadcast,
 }: {
     workspace: ChatWorkspace;
@@ -125,6 +131,8 @@ export function WorkspaceRail({
     savedActive?: boolean;
     transfersActive?: boolean;
     ticketsActive?: boolean;
+    formsActive?: boolean;
+    timeclockActive?: boolean;
     onBroadcast?: () => void;
 }) {
     const { t } = useTranslate();
@@ -243,6 +251,42 @@ export function WorkspaceRail({
                     icon={Send}
                     href={transfersIndex(workspace.slug)}
                     active={transfersActive}
+                />
+            )}
+
+            {/*
+                The forms this workspace keeps. Beside sending rather than in
+                settings alone, because writing one is work somebody does in the
+                middle of their day — the same reason the transfer list sits
+                here rather than behind a settings screen.
+
+                One condition, because workspace.forms already carries both
+                halves — the workspace has the feature and this member may write
+                one. See BuildChatShell.
+            */}
+            {workspace.forms && (
+                <RailButton
+                    label={t('sidebar.rail.forms')}
+                    icon={ClipboardList}
+                    href={formsIndex(workspace.slug)}
+                    active={formsActive}
+                />
+            )}
+
+            {/*
+                The clock, under the forms.
+
+                One condition, as with forms: workspace.timeclock already
+                carries the feature and the role — and the role half is what
+                keeps it away from a guest, whose working day belongs to
+                somebody else's company.
+            */}
+            {workspace.timeclock && (
+                <RailButton
+                    label={t('sidebar.rail.timeclock')}
+                    icon={Clock}
+                    href={timeclockIndex(workspace.slug)}
+                    active={timeclockActive}
                 />
             )}
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\PublicTransferController;
 use App\Http\Controllers\SecretAnswerController;
 use App\Http\Controllers\SecretFillController;
@@ -102,6 +103,26 @@ Route::prefix('transfers/{token}')
     });
 
 /**
+ * Filling in a form somebody shared as a link.
+ *
+ * Outside auth, like a transfer and a sent secret: whoever answers may have no
+ * account at all, which is the whole point of sharing a form this way. The
+ * token in the address is the permission, so it is looked up by token and never
+ * by id, and a withdrawn link answers 404 rather than explaining itself.
+ *
+ * Throttled on both halves. The GET because a token is a secret and a stream of
+ * guesses must cost something; the POST harder still, because it writes into
+ * the workspace and nobody legitimately sends a form in ten times a minute.
+ */
+Route::get('formulier/{token}', [PublicFormController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('forms.public.show');
+
+Route::post('formulier/{token}', [PublicFormController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('forms.public.submit');
+
+/**
  * Picking up a secret somebody sent you.
  *
  * Outside auth, unlike the form for answering a request below, and for the same
@@ -162,6 +183,15 @@ Route::get('avatars/users/{user}', AvatarController::class)
 Route::get('avatars/workspaces/{workspace}', [AvatarController::class, 'workspace'])
     ->middleware(['auth', 'verified'])
     ->name('avatars.workspace');
+
+/*
+ * And the face a workspace gave to one of its workflows, which appears beside
+ * the messages that workflow posts. Behind the same door for the same reason:
+ * a picture uploaded into a private workspace is not the internet's.
+ */
+Route::get('avatars/workflows/{workflow}', [AvatarController::class, 'workflow'])
+    ->middleware(['auth', 'verified'])
+    ->name('avatars.workflow');
 
 /*
  * A workspace's own emoji. Beside the avatars and behind the same door: a

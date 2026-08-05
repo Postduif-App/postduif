@@ -6,6 +6,7 @@ use App\Http\Controllers\BoardPostReactionController;
 use App\Http\Controllers\BroadcastMessageController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\ChannelFavoriteController;
+use App\Http\Controllers\ChannelFormController;
 use App\Http\Controllers\ChannelLinkController;
 use App\Http\Controllers\ChannelMemberController;
 use App\Http\Controllers\ChannelMuteController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\ChannelTagController;
 use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DirectMessageController;
+use App\Http\Controllers\FormFillController;
 use App\Http\Controllers\InviteLinkController;
 use App\Http\Controllers\MessageAttachmentController;
 use App\Http\Controllers\MessageBookmarkController;
@@ -34,28 +36,45 @@ use App\Http\Controllers\ThreadMuteController;
 use App\Http\Controllers\TicketCommentAttachmentController;
 use App\Http\Controllers\TicketCommentController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\TimeclockController;
+use App\Http\Controllers\TimeEntryController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WorkspaceBookmarkController;
+use App\Http\Controllers\WorkspaceCreationController;
+use App\Http\Controllers\WorkspaceFormAnswerController;
+use App\Http\Controllers\WorkspaceFormController;
 use App\Http\Controllers\WorkspaceInboxController;
 use App\Http\Controllers\WorkspaceInvitationController;
 use App\Http\Controllers\WorkspaceMemberProfileController;
 use App\Http\Controllers\WorkspaceSecretController;
 use App\Http\Controllers\WorkspaceTicketController;
 use App\Http\Controllers\WorkspaceTransferController;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
     Route::get('/', [ChatController::class, 'home'])->name('chat.home');
 
+    /*
+     * Making one of your own. Above the wildcard below and named in
+     * Workspace::RESERVED_SLUGS, so neither the router nor a workspace can
+     * claim the address.
+     */
+    Route::get('nieuw', [WorkspaceCreationController::class, 'create'])
+        ->name('workspaces.create');
+    Route::post('nieuw', [WorkspaceCreationController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('workspaces.store');
+
     /**
      * The workspace slug is a wildcard directly under /app, so it could swallow
      * /app/settings. Two things keep that from happening: settings.php is
-     * registered first, and the pattern below refuses "settings" outright — so
-     * a workspace can never claim the slug either.
+     * registered first, and the pattern below refuses the reserved names
+     * outright — so a workspace can never claim one of those slugs either.
      */
     Route::prefix('{workspace}')
         ->name('chat.')
-        ->where(['workspace' => '(?!settings$)[a-z0-9][a-z0-9-]*'])
+        ->where(['workspace' => '(?!(?:'.implode('|', Workspace::RESERVED_SLUGS).')$)[a-z0-9][a-z0-9-]*'])
         ->group(function () {
             Route::get('/', [ChatController::class, 'index'])->name('index');
             Route::get('search', SearchController::class)->name('search');
@@ -126,6 +145,122 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 // a DELETE that sometimes un-deletes reads as neither.
                 Route::post('polls/{poll}/reopen', [PollController::class, 'reopen'])
                     ->name('polls.reopen');
+            });
+
+            /*
+             * A questionnaire, and the two things a member does with one from
+             * inside the chat: put it in a channel, and fill it in.
+             *
+             * Writing the form is not here — that is a settings screen, because
+             * a form outlives the conversation it is announced in. Filling one
+             * in from outside is not here either: that door has a token instead
+             * of an account and lives in web.php.
+             */
+            Route::middleware('feature:forms')->group(function () {
+                /*
+                 * Where a form is written. Beside the transfer and secret lists
+                 * rather than under settings: it belongs to somebody's working
+                 * day rather than to the configuration of the workspace, and it
+                 * is opened from the same rail they were already looking at.
+                 */
+                Route::get('formulieren', [WorkspaceFormController::class, 'index'])
+                    ->name('forms.index');
+                Route::post('formulieren', [WorkspaceFormController::class, 'store'])
+                    ->name('forms.store');
+
+                /*
+                 * The builder is a screen of its own rather than a panel in the
+                 * list, for the reason the workflow builder is: writing a form
+                 * takes more than one sitting and deserves an address somebody
+                 * can bookmark and send to a colleague.
+                 */
+                Route::get('formulieren/{form}/bewerken', [WorkspaceFormController::class, 'edit'])
+                    ->name('forms.edit');
+                Route::put('formulieren/{form}', [WorkspaceFormController::class, 'update'])
+                    ->name('forms.update');
+                Route::delete('formulieren/{form}', [WorkspaceFormController::class, 'destroy'])
+                    ->name('forms.destroy');
+
+                /*
+                 * Stopping it and starting it again. A POST and a DELETE on one
+                 * address rather than two verbs of their own: "gesloten" is a
+                 * thing a form either has or has not.
+                 */
+                Route::post('formulieren/{form}/gesloten', [WorkspaceFormController::class, 'close'])
+                    ->name('forms.close');
+                Route::delete('formulieren/{form}/gesloten', [WorkspaceFormController::class, 'reopen'])
+                    ->name('forms.reopen');
+
+                // The same shape for the public link, and the POST deliberately
+                // replaces rather than being idempotent — see the controller.
+                Route::post('formulieren/{form}/link', [WorkspaceFormController::class, 'share'])
+                    ->name('forms.share');
+                Route::delete('formulieren/{form}/link', [WorkspaceFormController::class, 'unshare'])
+                    ->name('forms.unshare');
+
+                Route::get('formulieren/{form}/antwoorden', [WorkspaceFormAnswerController::class, 'index'])
+                    ->name('forms.answers');
+                Route::get('formulieren/{form}/antwoorden/csv', [WorkspaceFormAnswerController::class, 'export'])
+                    ->name('forms.answers.export');
+
+                Route::post('c/{channel}/forms', [ChannelFormController::class, 'store'])
+                    ->name('forms.post');
+
+                /*
+                 * The address that goes in the message, and so the shape
+                 * PresentMessage matches on to know a link is a form. Short on
+                 * purpose — it is pasted into conversations.
+                 */
+                Route::get('f/{form}', [FormFillController::class, 'show'])
+                    ->name('forms.show');
+                Route::post('f/{form}', [FormFillController::class, 'store'])
+                    ->middleware('throttle:20,1')
+                    ->name('forms.submit');
+            });
+
+            /*
+             * The clock: in, out, and the week it recorded.
+             *
+             * In the chat rather than under settings, beside the forms it sits
+             * under in the rail. Settings is where a workspace is configured
+             * once and left alone; clocking in is the first thing somebody does
+             * in the morning and the last thing at night, and sending them out
+             * of the conversation to do it turns a daily act into
+             * administration.
+             *
+             * The workspace is in the path, so the feature middleware guards
+             * the whole group and a workspace with tijdregistratie switched off
+             * has no such address at all. What is left for the controller is
+             * the role — see WorkspacePolicy::clock, which keeps guests out.
+             */
+            Route::middleware('feature:timeclock')->group(function () {
+                Route::get('tijdregistratie', [TimeclockController::class, 'index'])
+                    ->name('timeclock.index');
+
+                /*
+                 * Pressed from the user menu, which is on every chat screen, so
+                 * these are not part of the screen that lists the hours.
+                 */
+                Route::post('tijdregistratie/in', [TimeclockController::class, 'clockIn'])
+                    ->name('timeclock.clock-in');
+                Route::post('tijdregistratie/uit', [TimeclockController::class, 'clockOut'])
+                    ->name('timeclock.clock-out');
+
+                Route::patch('tijdregistratie/voorkeur', [TimeclockController::class, 'updatePreference'])
+                    ->name('timeclock.preference');
+
+                /*
+                 * Correcting what was recorded. Judged by TimeEntryPolicy,
+                 * which only ever says yes to the person the stretch is about —
+                 * so an id from a colleague's week is refused however senior
+                 * the asker is.
+                 */
+                Route::patch('tijdregistratie/{timeEntry}', [TimeEntryController::class, 'update'])
+                    ->whereNumber('timeEntry')
+                    ->name('timeclock.entries.update');
+                Route::delete('tijdregistratie/{timeEntry}', [TimeEntryController::class, 'destroy'])
+                    ->whereNumber('timeEntry')
+                    ->name('timeclock.entries.destroy');
             });
 
             /*
@@ -554,14 +689,26 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->middleware('feature:workflows')
                 ->name('messages.workflows.start');
 
+            /*
+             * All four of these accept a deleted parent, which is why they say
+             * withTrashed(). A thread whose opening message was deleted keeps
+             * its replies and stays in the sidebar as a tombstone — see
+             * Message::scopeVisible — so the very buttons drawn beside it must
+             * resolve it, and implicit binding hides trashed rows unless told
+             * otherwise. Only {message} is affected: neither channels nor
+             * workspaces are soft-deleted.
+             */
+
             // Closing a thread only ever touches the signed-in member's own
             // view of it, so there is no id in the path beyond the thread.
             Route::post('c/{channel}/messages/{message}/close', [ThreadClosureController::class, 'store'])
                 ->scopeBindings()
+                ->withTrashed()
                 ->name('threads.close');
 
             Route::delete('c/{channel}/messages/{message}/close', [ThreadClosureController::class, 'destroy'])
                 ->scopeBindings()
+                ->withTrashed()
                 ->name('threads.reopen');
 
             /*
@@ -572,10 +719,12 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              */
             Route::post('c/{channel}/messages/{message}/mute', [ThreadMuteController::class, 'store'])
                 ->scopeBindings()
+                ->withTrashed()
                 ->name('threads.mute');
 
             Route::delete('c/{channel}/messages/{message}/mute', [ThreadMuteController::class, 'destroy'])
                 ->scopeBindings()
+                ->withTrashed()
                 ->name('threads.unmute');
         });
 });

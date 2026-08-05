@@ -82,6 +82,7 @@ export function ThreadPanel({
                 ticketChannelId={channel.hasTickets ? channel.id : null}
                 currentUserId={currentUserId}
                 currentUsername={currentUsername}
+                canDeleteBotMessages={channel.canDeleteBotMessages}
                 onReact={onReact}
                 onDelete={onDelete}
                 onEdit={onEdit}

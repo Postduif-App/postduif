@@ -52,6 +52,11 @@ createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            // Making your first workspace. The auth shell rather than the chat
+            // one: there is no sidebar to draw, because there is nothing yet to
+            // put in it.
+            case name.startsWith('workspaces/'):
+                return AuthLayout;
             // A download link is followed by somebody who may have no account
             // here at all, which is exactly who the auth shell is built for:
             // one card, no navigation, nothing to sign in to.
@@ -69,6 +74,15 @@ createInertiaApp({
             // often a guest who never opens the chat. The same one-card shell
             // the download page uses, for the same reason.
             case name.startsWith('secrets/'):
+                return AuthLayout;
+            /*
+             * Filling in a form, through either door. The public one is
+             * followed by somebody with no account at all — the same case the
+             * download page is built for — and the member's page is the same
+             * screen with a name attached, so it gets the same shell rather
+             * than a second one that would have to be kept in step.
+             */
+            case name.startsWith('forms/'):
                 return AuthLayout;
             // The member list manages a table rather than a form, so it gets
             // the room a table needs. Every other settings page stays at

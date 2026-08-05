@@ -82,6 +82,18 @@ export interface ChatWorkspace {
     /** Whether this member may put a question to a channel here. */
     polls: boolean;
     /**
+     * Whether the rail offers the forms screen. False when the workspace has
+     * forms switched off, or this role may not write one — worked out on the
+     * server, like secrets above.
+     */
+    forms: boolean;
+    /**
+     * Whether the rail offers the clock. False for a workspace with
+     * tijdregistratie switched off and for a guest, who is here from another
+     * company and whose hours are not this workspace's business.
+     */
+    timeclock: boolean;
+    /**
      * Whether the prikbord appears in the rail at all. Already worked out
      * against the feature and this member's role — a guest gets false, and the
      * browser never sees the two halves separately.
@@ -116,6 +128,8 @@ export interface WorkspaceFeatures {
     webhooks: boolean;
     'invite-links': boolean;
     'ai-access': boolean;
+    forms: boolean;
+    timeclock: boolean;
 }
 
 /** Handles that address a group rather than a person. */
@@ -268,6 +282,16 @@ export interface ActiveChannel extends ChannelSummary {
     canPost: boolean;
     canManageSettings: boolean;
     /**
+     * Whether the bin appears on a message a bot posted.
+     *
+     * Its own flag rather than something the browser works out: the answer is
+     * "you configure this channel, or your role holds the right, or you are a
+     * platform moderator", and only the first of those is knowable here. It
+     * cannot ride on the message either — that payload is broadcast to everyone
+     * at once, and this differs per reader.
+     */
+    canDeleteBotMessages: boolean;
+    /**
      * Whether this member may take the channel away for good. Not the same
      * question as canManageSettings: an archived channel may still be deleted.
      */
@@ -414,6 +438,8 @@ export interface ChatMessage {
     secretCard: MessageSecretCard | null;
     /** A question put to the channel, with where the votes stand. */
     pollCard: MessagePollCard | null;
+    /** A form put to the channel — the questions it asks, and nothing about the answers. */
+    formCard: MessageFormCard | null;
     /** A secret put aside for one person: who it is for, never what. */
     sentSecretCard: MessageSentSecretCard | null;
     /** Set while the message is only in the browser, awaiting the server echo. */
@@ -466,6 +492,28 @@ export interface MessagePollCard {
             avatarUrl: string | null;
         }[];
     }[];
+}
+
+/**
+ * A form somebody put in a channel.
+ *
+ * The opposite decision to the poll above. A poll carries its voters because
+ * that is what a poll is for; a form carries nothing whatever about what came
+ * back — not the values, not the names, not the number of submissions. This
+ * payload is broadcast to everybody in the room at once, and a count is the
+ * kind of thing that looks harmless right up until the form is called "Melding
+ * ongewenst gedrag". See PresentMessage::formCard.
+ */
+export interface MessageFormCard {
+    id: string;
+    title: string;
+    description: string | null;
+    /** Which kind of shut: somebody stopped it, or the deadline passed. */
+    state: 'open' | 'closed' | 'expired';
+    closesAt: string | null;
+    /** How many questions it asks. Zero means it cannot be filled in yet. */
+    fieldCount: number;
+    isFillable: boolean;
 }
 
 /**

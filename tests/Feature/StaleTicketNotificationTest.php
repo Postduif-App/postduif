@@ -62,7 +62,7 @@ it('nags only the assignee once a ticket has one', function () {
     [$member, , $workspace, $channel] = ticketFixture();
 
     $colleague = User::factory()->create(['notify_via_mail' => true]);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     Ticket::factory()->overdue()->create([

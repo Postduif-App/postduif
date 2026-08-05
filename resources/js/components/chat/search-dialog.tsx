@@ -12,7 +12,7 @@ import {
     UserPlus,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     CommandDialog,
@@ -120,12 +120,12 @@ function FilterChip({
         <button
             type="button"
             onClick={onRemove}
-            className="flex items-center gap-1 rounded-full border bg-muted/60 py-0.5 pr-1.5 pl-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+            className="flex items-center gap-1 rounded-full border border-border/70 px-2 py-px text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
             aria-label={t('search.palette.remove_filter', { label })}
         >
             <Icon className="size-3 shrink-0" />
             <span className="max-w-40 truncate">{label}</span>
-            <X className="size-3 shrink-0 opacity-60" />
+            <X className="size-3 shrink-0 opacity-50" />
         </button>
     );
 }
@@ -161,6 +161,52 @@ export function SearchDialog({
             setQuery(prefill ?? '');
         }
     }
+
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    /**
+     * Write into the field and leave the caret after it, ready to type on.
+     *
+     * Every one of these calls is the machine writing, not the person: picking
+     * a channel from the list, taking a filter back off. Left alone the browser
+     * hands the field back with its whole contents selected, so the next
+     * keystroke wipes the filter that was just switched on — and the reader's
+     * own next word is what does it.
+     *
+     * On the next frame rather than straight away: cmdk moves focus back to the
+     * input after an item is chosen, and a caret set before that happens is a
+     * caret that gets moved again.
+     */
+    const applyQuery = (next: string) => {
+        setQuery(next);
+
+        requestAnimationFrame(() => {
+            const input = inputRef.current;
+
+            if (input === null) {
+                return;
+            }
+
+            input.focus();
+            input.setSelectionRange(next.length, next.length);
+        });
+    };
+
+    /*
+     * The same courtesy for a dialog that opened with a filter already in it —
+     * "in:algemeen " is a starting point, not a thing to overtype.
+     */
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            const input = inputRef.current;
+
+            input?.setSelectionRange(input.value.length, input.value.length);
+        });
+    }, [open]);
 
     const [hits, setHits] = useState<SearchHit[]>([]);
     const [loading, setLoading] = useState(false);
@@ -376,6 +422,7 @@ export function SearchDialog({
             shouldFilter={false}
         >
             <CommandInput
+                ref={inputRef}
                 placeholder={t('search.palette.placeholder')}
                 value={query}
                 onValueChange={setQuery}
@@ -387,13 +434,13 @@ export function SearchDialog({
                 this row appears and disappears as filters come and go.
             */}
             {(filters.channel || filters.from) && (
-                <div className="flex flex-wrap items-center gap-1.5 border-b px-3 pb-2">
+                <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-1.5">
                     {filters.channel && (
                         <FilterChip
                             icon={Hash}
                             label={filters.channel}
                             onRemove={() =>
-                                setQuery(withFilter(query, 'in', null))
+                                applyQuery(withFilter(query, 'in', null))
                             }
                         />
                     )}
@@ -402,7 +449,7 @@ export function SearchDialog({
                             icon={AtSign}
                             label={filters.from}
                             onRemove={() =>
-                                setQuery(withFilter(query, 'from', null))
+                                applyQuery(withFilter(query, 'from', null))
                             }
                         />
                     )}
@@ -430,7 +477,7 @@ export function SearchDialog({
                                 key={`in-${channel.id}`}
                                 value={`in-${channel.id}`}
                                 onSelect={() =>
-                                    setQuery(
+                                    applyQuery(
                                         withFilter(query, 'in', channel.label),
                                     )
                                 }
@@ -451,7 +498,7 @@ export function SearchDialog({
                                 key={`from-${member.id}`}
                                 value={`from-${member.id}`}
                                 onSelect={() =>
-                                    setQuery(
+                                    applyQuery(
                                         withFilter(
                                             query,
                                             'from',

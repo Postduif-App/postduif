@@ -468,6 +468,7 @@ export function Conversation({
                 transferCard: null,
                 secretCard: null,
                 pollCard: null,
+                formCard: null,
                 reactions: [],
                 /*
                     Stand-ins pointing at the files still in the browser, so a
@@ -1181,6 +1182,9 @@ export function Conversation({
                                 onEdit={edit}
                                 onOpenThread={openThread}
                                 onPin={channel.canPin ? togglePin : undefined}
+                                canDeleteBotMessages={
+                                    channel.canDeleteBotMessages
+                                }
                             />
                         ) : (
                             <MessageList
@@ -1214,6 +1218,9 @@ export function Conversation({
                                     channel.canPost ? setQuoting : undefined
                                 }
                                 onPin={channel.canPin ? togglePin : undefined}
+                                canDeleteBotMessages={
+                                    channel.canDeleteBotMessages
+                                }
                                 onPromote={
                                     channel.canCreateTicket
                                         ? (message) => {

@@ -256,6 +256,22 @@ export function useChannelRealtime(
                     [payload.message.id]: payload.message,
                 }));
             })
+            /*
+                A link somebody pasted has been looked up and the card can be
+                drawn. The same payload as an edit and the same handling — the
+                whole message is replaced — because that is what this is: the
+                server's newest idea of what this message looks like. It is a
+                separate event only because nothing here was edited.
+            */
+            .listen(
+                '.link-preview.attached',
+                (payload: MessageEditedPayload) => {
+                    setEdits((current) => ({
+                        ...current,
+                        [payload.message.id]: payload.message,
+                    }));
+                },
+            )
             .listen('.reaction.toggled', (payload: ReactionToggledPayload) => {
                 // The payload is absolute, so it simply replaces what we hold
                 // for this message — no merging, no counting.

@@ -7,7 +7,8 @@ use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Tickets\PresentTicket;
-use App\Enums\SystemRole;
+use App\Actions\Workspace\CreateHomeChannel;
+use App\Enums\WorkspaceAbility;
 use App\Features\Tickets;
 use App\Models\Bookmark;
 use App\Models\Channel;
@@ -30,6 +31,7 @@ class ChatController extends Controller
         private readonly MarkChannelRead $markChannelRead,
         private readonly PresentTicket $presentTicket,
         private readonly HideDirectMessage $hideDirectMessage,
+        private readonly CreateHomeChannel $createHomeChannel,
     ) {}
 
     /**
@@ -45,7 +47,15 @@ class ChatController extends Controller
             ->orderBy('workspaces.id')
             ->first();
 
-        abort_if($workspace === null, 404, __('chat.no_workspace_yet'));
+        /*
+         * Somebody who belongs nowhere is sent to make a workspace rather than
+         * shown a 404. That is what happens to everybody who has just signed
+         * up: the account is real, and the only thing missing is the one thing
+         * this page can offer them.
+         */
+        if ($workspace === null) {
+            return redirect()->route('workspaces.create');
+        }
 
         return redirect()->route('chat.index', $workspace);
     }
@@ -57,13 +67,46 @@ class ChatController extends Controller
     {
         $this->authorizeMembership($request->user(), $workspace);
 
-        $channel = $workspace->channels()
-            ->visibleTo($request->user())
-            ->whereNull('archived_at')
-            ->orderByRaw('last_message_at desc nulls last')
-            ->firstOrFail();
+        $channel = $this->firstVisibleChannel($request->user(), $workspace);
+
+        /*
+         * A workspace with nothing in it gets its first channel here rather
+         * than answering 404 at the door.
+         *
+         * Every workspace made from now on starts with one — see
+         * CreateHomeChannel — but the ones that already exist do not, and the
+         * only way out of an empty workspace was a create-channel dialog that
+         * a member without the right cannot open. That is a locked room with
+         * the key on the inside.
+         *
+         * Asked of the workspace rather than of what this member can see. A
+         * guest is shown only the channels they were invited to, so a guest
+         * standing in a busy workspace also sees none — and building them a
+         * channel because of it would be reading "I cannot see anything" as
+         * "there is nothing here".
+         */
+        if ($channel === null && $workspace->channels()->doesntExist()) {
+            $this->createHomeChannel->handle($workspace);
+
+            $channel = $this->firstVisibleChannel($request->user(), $workspace);
+        }
+
+        abort_if($channel === null, 404);
 
         return redirect()->route('chat.show', [$workspace, $channel]);
+    }
+
+    /**
+     * The channel to land in: the one spoken in most recently, of those this
+     * member is allowed to see.
+     */
+    private function firstVisibleChannel(User $user, Workspace $workspace): ?Channel
+    {
+        return $workspace->channels()
+            ->visibleTo($user)
+            ->whereNull('archived_at')
+            ->orderByRaw('last_message_at desc nulls last')
+            ->first();
     }
 
     public function show(Request $request, Workspace $workspace, Channel $channel): Response
@@ -76,7 +119,7 @@ class ChatController extends Controller
 
         $messages = $channel->rootMessages()
             ->visible()
-            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace', 'workflow'])
             ->before($request->query('before'))
             ->orderByDesc('id')
             ->limit(50)
@@ -151,6 +194,24 @@ class ChatController extends Controller
                 // MessagePolicy::pin() — but asked here as its own question, so
                 // the browser never has to infer one from the other.
                 'canPin' => $user->can('manageSettings', $channel),
+                /*
+                 * Whether the bin appears on a message a bot posted.
+                 *
+                 * Asked here rather than worked out in the browser, because the
+                 * browser cannot: the answer is "you configure this channel, or
+                 * your role holds the right, or you are a platform moderator",
+                 * and only the first of those three is anywhere near the
+                 * frontend. It also cannot travel on the message itself — that
+                 * payload is the broadcast payload, one copy for everybody on
+                 * the channel, and this differs per reader.
+                 *
+                 * MessagePolicy::delete is still what decides; this only says
+                 * whether to draw the button, so a stale page can be refused
+                 * rather than obeyed.
+                 */
+                'canDeleteBotMessages' => $user->isAdmin()
+                    || $user->can('manageSettings', $channel)
+                    || $workspace->allows($user, WorkspaceAbility::DeleteBotMessages),
                 // Whether the member button at the top opens anything. False
                 // for a guest, so for them it stays a presence indicator.
                 'canViewMembers' => $user->can('viewMembers', $channel),
@@ -360,8 +421,7 @@ class ChatController extends Controller
      */
     private function channelMembers(Workspace $workspace, Channel $channel): array
     {
-        $guestIds = $workspace->members()
-            ->wherePivot('role', SystemRole::Guest->value)
+        $guestIds = $workspace->externalMembers()
             ->pluck('users.id')
             ->flip();
 
@@ -394,7 +454,7 @@ class ChatController extends Controller
 
         $parent = $channel->rootMessages()
             ->visible()
-            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace', 'workflow'])
             ->whereKey($parentId)
             ->first();
 
@@ -403,7 +463,7 @@ class ChatController extends Controller
         }
 
         $replies = $parent->replies()
-            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace'])
+            ->with(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace', 'workflow'])
             ->orderBy('id')
             ->get();
 

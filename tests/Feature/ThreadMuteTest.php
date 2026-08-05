@@ -112,6 +112,30 @@ it('lets a member mute and unmute over the route', function () {
     expect($question->fresh()->isMutedFor($asker))->toBeFalse();
 });
 
+it('mutes a thread whose opening message was deleted', function () {
+    [$asker, $answerer, $channel, $question] = threadFixture();
+
+    reply($channel, $answerer, $question, 'Ik pak het op');
+
+    /*
+     * A deleted parent with replies stays in the sidebar as a tombstone — see
+     * Message::scopeVisible — so the buttons beside it have to keep working.
+     * Implicit binding hides trashed rows by default, which turned muting one
+     * of those into a 404.
+     */
+    $question->delete();
+
+    actingAs($asker)
+        ->post(route('chat.threads.mute', [$channel->workspace, $channel, $question]))
+        ->assertRedirect();
+
+    expect($question->isMutedFor($asker))->toBeTrue();
+
+    actingAs($asker)
+        ->delete(route('chat.threads.unmute', [$channel->workspace, $channel, $question]))
+        ->assertRedirect();
+});
+
 it('refuses to mute a thread in a channel you cannot see', function () {
     [, , $channel, $question] = threadFixture();
 

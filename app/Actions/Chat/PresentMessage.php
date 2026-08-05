@@ -2,7 +2,7 @@
 
 namespace App\Actions\Chat;
 
-use App\Enums\SystemRole;
+use App\Models\Form;
 use App\Models\LinkPreview;
 use App\Models\Message;
 use App\Models\Poll;
@@ -59,6 +59,13 @@ class PresentMessage
     private array $secretRequests = [];
 
     /**
+     * Forms already looked up, keyed by id.
+     *
+     * @var array<string, Form|null>
+     */
+    private array $forms = [];
+
+    /**
      * Transfers already looked up, keyed by token.
      *
      * Same reason as the previews below: one link pasted five times is one
@@ -87,6 +94,13 @@ class PresentMessage
     private array $linkPreviews = [];
 
     /**
+     * Which workspaces show link cards, keyed by workspace.
+     *
+     * @var array<int, bool>
+     */
+    private array $linkPreviewsEnabled = [];
+
+    /**
      * Shape a message for the frontend.
      *
      * Both the Inertia page and the broadcast payload go through here, because
@@ -97,7 +111,7 @@ class PresentMessage
      */
     public function handle(Message $message): array
     {
-        $message->loadMissing(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace']);
+        $message->loadMissing(['author', 'reactions', 'quoted.author', 'pinner', 'media', 'workspace', 'workflow']);
 
         $deleted = $message->isDeleted();
 
@@ -144,6 +158,9 @@ class PresentMessage
             'secretCard' => $deleted ? null : $this->secretCard($message),
             // And a question put to the channel, with where the votes stand.
             'pollCard' => $deleted ? null : $this->pollCard($message),
+            // And a form put to the channel — the questions it asks, and
+            // nothing whatever about the answers.
+            'formCard' => $deleted ? null : $this->formCard($message),
             // And a secret put aside for one person: who it is for, never what.
             'sentSecretCard' => $deleted ? null : $this->sentSecretCard($message),
         ];
@@ -224,6 +241,66 @@ class PresentMessage
     }
 
     /**
+     * A form somebody put in this channel.
+     *
+     * The opposite decision to the poll card above, and the reason is worth
+     * spelling out. A poll shows who voted for what, because that is what a
+     * poll in a work channel is for. A form is the other thing entirely: it
+     * exists so that answers go to one named person, and this payload is the
+     * broadcast that goes to everybody in the room at once.
+     *
+     * So nothing about the answers travels — not the values, not the names of
+     * who sent one in, not even how many there are. "Vier collega's hebben
+     * vakantie aangevraagd" is not the channel's business, and a count is the
+     * kind of thing that looks harmless right up until the form is called
+     * "Melding ongewenst gedrag".
+     *
+     * What the card does carry is enough to decide whether to walk in: the
+     * title, the explanation, how many questions, and whether it still takes
+     * answers. Whether *you* already sent one in is answered on the fill screen,
+     * which is rendered per person and can afford to know.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function formCard(Message $message): ?array
+    {
+        $id = $this->formIdIn($message->body);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $form = $this->forms[$id] ??= Form::query()
+            ->withCount('fields')
+            ->find($id);
+
+        if ($form === null || $form->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'id' => $form->id,
+            'title' => $form->title,
+            'description' => $form->description,
+
+            // Which of the two ways of being shut it was, exactly as a poll
+            // distinguishes them.
+            'state' => match (true) {
+                $form->closed_at !== null => 'closed',
+                $form->isClosed() => 'expired',
+                default => 'open',
+            },
+
+            'closesAt' => $form->closes_at?->toIso8601String(),
+
+            // A form with no questions cannot be filled in, and the card says
+            // so rather than offering a button that leads to an empty page.
+            'fieldCount' => $form->fields_count,
+            'isFillable' => $form->acceptsAnswers(),
+        ];
+    }
+
+    /**
      * The id of the first link in this body pointing at a poll, or null.
      *
      * Built from the route, as the transfer and secret matchers are.
@@ -235,6 +312,26 @@ class PresentMessage
 
         // The workspace slug sits inside the prefix, so match it as a segment
         // rather than pinning the one this message happens to be in.
+        $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
+        $pattern = str_replace(preg_quote('__WS__', '/'), '[a-z0-9-]+', $pattern);
+
+        return preg_match($pattern, $body, $matches) === 1
+            ? mb_strtolower($matches[1])
+            : null;
+    }
+
+    /**
+     * The id of the first link in this body pointing at a form, or null.
+     *
+     * The same construction as the poll matcher, and it has to be: the route is
+     * the single source for what a form's address looks like, so changing the
+     * path in routes/chat.php cannot leave the cards behind.
+     */
+    private function formIdIn(string $body): ?string
+    {
+        $prefix = route('chat.forms.show', ['__WS__', '__ID__']);
+        [$before] = explode('__ID__', $prefix, 2);
+
         $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
         $pattern = str_replace(preg_quote('__WS__', '/'), '[a-z0-9-]+', $pattern);
 
@@ -467,11 +564,26 @@ class PresentMessage
      */
     private function linkPreview(Message $message): ?array
     {
-        if (preg_match('/\bhttps?:\/\/[^\s<>"\']+/i', $message->body, $matches) !== 1) {
+        /*
+         * The workspace's own switch, asked here and not only where a look-up
+         * is queued.
+         *
+         * The cache is shared by the whole platform — that is the point of it,
+         * one fetch per link rather than one per workspace — so a workspace
+         * that never turned previews on would otherwise start showing cards the
+         * moment somebody elsewhere pasted the same link. Nothing was fetched
+         * on their behalf, but the setting reads as "wij doen dit niet" and it
+         * has to mean that on the screen too.
+         */
+        if (! $this->previewsAllowedIn($message)) {
             return null;
         }
 
-        $url = rtrim($matches[0], '.,;:!?)');
+        $url = LinkPreview::firstUrlIn($message->body);
+
+        if ($url === null) {
+            return null;
+        }
 
         $preview = $this->linkPreviews[$url] ??= LinkPreview::query()
             ->where('url_hash', LinkPreview::hash($url))
@@ -488,6 +600,19 @@ class PresentMessage
             'imageUrl' => $preview->image_url,
             'siteName' => $preview->site_name,
         ];
+    }
+
+    /**
+     * Whether this message's workspace shows link cards at all.
+     *
+     * Memoised per workspace for the same reason the blocklist above is: a page
+     * draws fifty messages from one workspace, and this must not be fifty
+     * reads of the same column.
+     */
+    private function previewsAllowedIn(Message $message): bool
+    {
+        return $this->linkPreviewsEnabled[$message->workspace_id] ??=
+            (bool) $message->workspace->link_previews_enabled;
     }
 
     /**
@@ -541,8 +666,18 @@ class PresentMessage
                 'name' => (string) $message->bot_name,
                 'isBot' => true,
                 'isGuest' => false,
-                // A bot has no face to set.
-                'avatarUrl' => null,
+
+                /*
+                 * The face of the workflow that posted it, where there is one.
+                 *
+                 * Read through the workflow rather than copied onto the message
+                 * — the opposite of the name beside it — so that changing the
+                 * picture changes it everywhere at once. Null covers three
+                 * cases that all draw the same default mark: a workflow with no
+                 * avatar, a workflow since deleted, and the application
+                 * speaking for itself.
+                 */
+                'avatarUrl' => $message->workflow?->avatarUrl(),
             ];
         }
 
@@ -599,8 +734,7 @@ class PresentMessage
         $ids = Workspace::query()
             ->whereKey($workspaceId)
             ->firstOrFail()
-            ->members()
-            ->wherePivot('role', SystemRole::Guest->value)
+            ->externalMembers()
             ->pluck('users.id');
 
         // Built by hand rather than through flip()->map(): a set of ids is what

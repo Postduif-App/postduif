@@ -11,6 +11,7 @@ use App\Workflows\Actions\AddChannelMembers;
 use App\Workflows\Actions\AddReaction;
 use App\Workflows\Actions\ArchiveChannel;
 use App\Workflows\Actions\CreateChannel;
+use App\Workflows\Actions\CreateTicket;
 use App\Workflows\Actions\Delay;
 use App\Workflows\Actions\GetChannelInfo;
 use App\Workflows\Actions\HttpRequest;
@@ -22,10 +23,12 @@ use App\Workflows\Actions\SendDirectMessage;
 use App\Workflows\Actions\UnarchiveChannel;
 use App\Workflows\Actions\UnpinMessage;
 use App\Workflows\Triggers\ChannelJoinTrigger;
+use App\Workflows\Triggers\FormSubmittedTrigger;
 use App\Workflows\Triggers\LinkTrigger;
 use App\Workflows\Triggers\MessageKeywordTrigger;
 use App\Workflows\Triggers\ReactionTrigger;
 use App\Workflows\Triggers\ScheduleTrigger;
+use App\Workflows\Triggers\TimeclockTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
@@ -77,6 +80,20 @@ class AppServiceProvider extends ServiceProvider
                 MessageKeywordTrigger::class,
                 ChannelJoinTrigger::class,
                 ReactionTrigger::class,
+                /*
+                 * Among the things people do in the workspace rather than down
+                 * with the webhook, even though a form can be filled in from
+                 * outside over a public link. What somebody looks for here is
+                 * "when an answer comes in", and that sits with the message and
+                 * the emoji — the link is a detail of the form, not of this.
+                 */
+                FormSubmittedTrigger::class,
+                /*
+                 * Among the things people do rather than down with the clock's
+                 * own screen: what somebody looks for here is "wanneer iemand
+                 * inklokt", which belongs beside joining a channel.
+                 */
+                TimeclockTrigger::class,
                 LinkTrigger::class,
                 ScheduleTrigger::class,
                 WebhookTrigger::class,
@@ -91,6 +108,7 @@ class AppServiceProvider extends ServiceProvider
                 SendChannelMessage::class,
                 SendDirectMessage::class,
                 ReplyInThread::class,
+                CreateTicket::class,
                 AddReaction::class,
                 RemoveReaction::class,
                 PinMessage::class,

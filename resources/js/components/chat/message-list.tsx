@@ -17,6 +17,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import { ReactionEmoji } from '@/components/chat/custom-emoji';
+import { FormCard } from '@/components/chat/form-card';
 import { GuestBadge } from '@/components/chat/guest-badge';
 import { LinkPreviewCard } from '@/components/chat/link-preview-card';
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
@@ -416,6 +417,7 @@ function MessageRow({
     currentUsername,
     onReact,
     onDelete,
+    canDeleteBotMessages,
     onRemoveAttachment,
     onEdit,
     onOpenThread,
@@ -438,6 +440,8 @@ function MessageRow({
     currentUsername?: string;
     onReact?: (message: ChatMessage, emoji: string) => void;
     onDelete?: (message: ChatMessage) => void;
+    /** Whether this reader may take down what a bot posted here. */
+    canDeleteBotMessages: boolean;
     /** Taking one file back, judged by the same rule as deleting the message. */
     onRemoveAttachment?: (
         message: ChatMessage,
@@ -499,12 +503,22 @@ function MessageRow({
         workspace: workspace.slug,
         channel: channelId,
     })}#message-${message.id}`;
-    // Your own words are yours; a tombstone has nothing left to remove.
+    /*
+     * Your own words are yours; a tombstone has nothing left to remove.
+     *
+     * And a bot message is nobody's own words, so that first rule leaves it
+     * undeletable by everyone — which is what it did until now, quietly, while
+     * the server had allowed it for channel managers all along. Whether this
+     * reader is one of the people who may is a question only the server can
+     * answer: see canDeleteBotMessages on the channel.
+     */
     const canDelete =
         onDelete !== undefined &&
         !deleted &&
         !message.pending &&
-        message.author.id === currentUserId;
+        (message.author.isBot
+            ? canDeleteBotMessages
+            : message.author.id === currentUserId);
 
     // The same rule as deleting, with one exception the server also makes: a bot
     // message has no author to speak for, so nobody may put words in its mouth.
@@ -755,6 +769,13 @@ function MessageRow({
                         card={message.pollCard}
                         workspaceSlug={workspace.slug}
                         currentUserId={currentUserId}
+                    />
+                )}
+
+                {!deleted && message.formCard && (
+                    <FormCard
+                        card={message.formCard}
+                        workspaceSlug={workspace.slug}
                     />
                 )}
 
@@ -1040,6 +1061,7 @@ export function MessageList({
     onDelete,
     onRemoveAttachment,
     onEdit,
+    canDeleteBotMessages,
     onOpenThread,
     onQuote,
     onPromote,
@@ -1074,6 +1096,8 @@ export function MessageList({
     /** Omitted where reacting is not allowed, which also hides the picker. */
     onReact?: (message: ChatMessage, emoji: string) => void;
     onDelete?: (message: ChatMessage) => void;
+    /** Passed straight through to every row — see MessageRow. */
+    canDeleteBotMessages: boolean;
     onEdit?: (message: ChatMessage, body: string) => void;
     onOpenThread?: (message: ChatMessage) => void;
     /** Omitted in the thread panel, where a quote has nowhere to land. */
@@ -1084,11 +1108,69 @@ export function MessageList({
     onPin?: (message: ChatMessage) => void;
 }) {
     const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const columnRef = useRef<HTMLDivElement>(null);
+    /*
+     * Whether the reader was at the bottom just before the list changed shape.
+     *
+     * A ref rather than state: it is read inside an observer that must not
+     * cause a render, and nothing on screen depends on its value.
+     */
+    const wasAtBottom = useRef(true);
     const { t } = useTranslate();
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ block: 'end' });
     }, [messages.length]);
+
+    /**
+     * Follow the conversation when it grows under the reader's eyes.
+     *
+     * The effect above only fires when a message is added, which used to be the
+     * only way this list changed height. It is not: a link preview arrives
+     * seconds after the message that carried the link, its picture lands after
+     * that again, and an image attachment does the same. Each of those pushes
+     * the newest line up out of view without a single message having been
+     * added — you watch a card appear and the sentence it belongs to leave.
+     *
+     * Only for a reader who was already at the bottom. Somebody scrolled up
+     * reading yesterday has not asked to be dragged back down because a picture
+     * finished loading somewhere below them.
+     */
+    useEffect(() => {
+        const scroller = scrollRef.current;
+        const column = columnRef.current;
+
+        if (scroller === null || column === null) {
+            return;
+        }
+
+        // A little slack: "at the bottom" has to survive the half pixel a
+        // zoomed page or a sub-pixel row height leaves behind.
+        const remember = () => {
+            wasAtBottom.current =
+                scroller.scrollHeight -
+                    scroller.scrollTop -
+                    scroller.clientHeight <
+                80;
+        };
+
+        remember();
+        scroller.addEventListener('scroll', remember, { passive: true });
+
+        const observer = new ResizeObserver(() => {
+            if (wasAtBottom.current) {
+                bottomRef.current?.scrollIntoView({ block: 'end' });
+            }
+        });
+
+        observer.observe(column);
+
+        return () => {
+            scroller.removeEventListener('scroll', remember);
+            observer.disconnect();
+        };
+    }, []);
 
     if (messages.length === 0) {
         return (
@@ -1100,13 +1182,20 @@ export function MessageList({
     }
 
     return (
-        <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4">
             {/*
                 A short conversation should sit against the composer rather than
                 float at the top of an empty pane, so the inner column grows to
                 full height and pushes its content down.
+
+                Measured as well as laid out: the observer above watches this
+                column, because it is what grows when a card or a picture lands
+                — the scroller around it keeps the same height throughout.
             */}
-            <div className="flex min-h-full flex-col justify-end">
+            <div
+                ref={columnRef}
+                className="flex min-h-full flex-col justify-end"
+            >
                 {messages.map((message, index) => {
                     const previous = messages[index - 1];
                     const newDay =
@@ -1130,6 +1219,7 @@ export function MessageList({
                                 currentUsername={currentUsername}
                                 onReact={onReact}
                                 onDelete={onDelete}
+                                canDeleteBotMessages={canDeleteBotMessages}
                                 onRemoveAttachment={onRemoveAttachment}
                                 bookmarked={bookmarkedIds?.has(message.id)}
                                 onToggleBookmark={onToggleBookmark}

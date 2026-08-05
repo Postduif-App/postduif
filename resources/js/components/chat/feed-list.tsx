@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { FormCard } from '@/components/chat/form-card';
 import { GuestBadge } from '@/components/chat/guest-badge';
 import { LinkPreviewCard } from '@/components/chat/link-preview-card';
 import { MessageAttachments } from '@/components/chat/message-attachments';
@@ -47,6 +48,8 @@ interface FeedListProps {
     repliesOpen: boolean;
     onReact?: (message: ChatMessage, emoji: string) => void;
     onDelete?: (message: ChatMessage) => void;
+    /** Whether this reader may take down what a bot posted here. */
+    canDeleteBotMessages: boolean;
     /** Taking one file off a message, judged as deleting the message is. */
     onRemoveAttachment?: (
         message: ChatMessage,
@@ -83,6 +86,7 @@ export function FeedList({
     repliesOpen,
     onReact,
     onDelete,
+    canDeleteBotMessages,
     onRemoveAttachment,
     onEdit,
     onOpenThread,
@@ -115,6 +119,7 @@ export function FeedList({
                         repliesOpen={repliesOpen}
                         onReact={onReact}
                         onDelete={onDelete}
+                        canDeleteBotMessages={canDeleteBotMessages}
                         onRemoveAttachment={onRemoveAttachment}
                         onEdit={onEdit}
                         onOpenThread={onOpenThread}
@@ -144,6 +149,7 @@ function FeedItem({
     repliesOpen,
     onReact,
     onDelete,
+    canDeleteBotMessages,
     onRemoveAttachment,
     onEdit,
     onOpenThread,
@@ -159,6 +165,7 @@ function FeedItem({
     repliesOpen: boolean;
     onReact?: (message: ChatMessage, emoji: string) => void;
     onDelete?: (message: ChatMessage) => void;
+    canDeleteBotMessages: boolean;
     /** Taking one file off a message, judged as deleting the message is. */
     onRemoveAttachment?: (
         message: ChatMessage,
@@ -177,6 +184,18 @@ function FeedItem({
         !deleted &&
         !message.author.isBot &&
         message.author.id === currentUserId;
+
+    /*
+     * Wider than canEdit, in the one place the two part company: a bot message
+     * has no author to speak for, so nobody may rewrite it — but somebody has
+     * to be able to take it down. Who that is comes from the server; see
+     * canDeleteBotMessages on the channel.
+     */
+    const canDelete =
+        !deleted &&
+        (message.author.isBot
+            ? canDeleteBotMessages
+            : message.author.id === currentUserId);
 
     return (
         <article
@@ -285,6 +304,13 @@ function FeedItem({
                 />
             )}
 
+            {message.formCard && (
+                <FormCard
+                    card={message.formCard}
+                    workspaceSlug={workspace.slug}
+                />
+            )}
+
             <MessageAttachments
                 attachments={message.attachments}
                 onRemove={
@@ -364,7 +390,7 @@ function FeedItem({
                             <Pin className="size-3.5" />
                         </button>
                     )}
-                    {canEdit && onDelete && (
+                    {canDelete && onDelete && (
                         <button
                             type="button"
                             onClick={() => onDelete(message)}

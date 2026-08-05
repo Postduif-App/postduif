@@ -86,6 +86,8 @@ interface ChannelSidebarProps {
     boardActive?: boolean;
     /** True on the secrets page, so its rail entry reads as current. */
     secretsActive?: boolean;
+    /** True on any of the three form screens, for the same reason. */
+    formsActive?: boolean;
     /** True on the workspace-wide ticket page, so its row reads as current. */
     ticketsActive?: boolean;
     /** Marks the mentions row, the same way ticketsActive marks its own. */
@@ -93,6 +95,7 @@ interface ChannelSidebarProps {
     /** Marks the saved row. */
     savedActive?: boolean;
     transfersActive?: boolean;
+    timeclockActive?: boolean;
     /**
      * Channels that were put away, for whoever may take them back out. Empty
      * for everybody else, so the section simply does not appear.
@@ -777,10 +780,12 @@ export function ChannelSidebar({
     onBroadcast,
     boardActive = false,
     secretsActive = false,
+    formsActive = false,
     ticketsActive = false,
     mentionsActive = false,
     savedActive = false,
     transfersActive = false,
+    timeclockActive = false,
     archivedChannels = [],
     sections = [],
     onCreateChannel,
@@ -839,9 +844,11 @@ export function ChannelSidebar({
                 mentionsActive={mentionsActive}
                 savedActive={savedActive}
                 transfersActive={transfersActive}
+                timeclockActive={timeclockActive}
                 ticketsActive={ticketsActive}
                 boardActive={boardActive}
                 secretsActive={secretsActive}
+                formsActive={formsActive}
                 onBroadcast={onBroadcast}
             />
 

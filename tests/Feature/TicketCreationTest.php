@@ -107,10 +107,7 @@ it('keeps somebody outside the channel away from its tickets', function () {
     [, , $workspace, $channel] = ticketFixture();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $outsider, SystemRole::Guest);
 
     $ticket = Ticket::factory()->create(['channel_id' => $channel->id]);
 

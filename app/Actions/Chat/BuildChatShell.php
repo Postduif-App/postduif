@@ -320,6 +320,25 @@ class BuildChatShell
             'polls' => $user->can('createPoll', $workspace),
 
             /*
+             * Whether the rail offers the forms screen.
+             *
+             * The same one-value shape as secrets above: the workspace has the
+             * feature and this role may write a form, answered together so the
+             * rail cannot draw a button leading to a 404.
+             */
+            'forms' => $user->can('createForm', $workspace),
+
+            /*
+             * Whether the rail offers the clock.
+             *
+             * The same one-value shape as forms above, and it carries the guest
+             * rule with it: WorkspacePolicy::clock says no to somebody who is
+             * here from outside, so the rail cannot offer a clock to a person
+             * whose hours are another company's business.
+             */
+            'timeclock' => $user->can('clock', $workspace),
+
+            /*
              * Whether the prikbord appears in the rail at all.
              *
              * One value rather than letting the rail read features['message-board']

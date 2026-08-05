@@ -58,7 +58,7 @@ it('leaves out threads from channels the member cannot see', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $private = Channel::factory()->create([
         'workspace_id' => $workspace->id,
@@ -97,7 +97,7 @@ it('keeps a closed thread visible for everybody else', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
     $channel = channelWithMember($workspace, $user);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
@@ -193,6 +193,25 @@ it('closes a thread for the member who asked', function () {
         ->assertInertia(fn ($page) => $page->has('activeThreads', 0));
 });
 
+it('closes a thread whose opening message was deleted', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+    $thread = threadIn($channel, $user);
+
+    // The tombstone is still listed — the replies under it are somebody's
+    // conversation — so the button beside it has to reach a trashed row.
+    $thread->delete();
+
+    actingAs($user)
+        ->post(route('chat.threads.close', [$workspace, $channel, $thread]))
+        ->assertRedirect();
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page->has('activeThreads', 0));
+});
+
 it('reopens a closed thread', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
@@ -213,7 +232,7 @@ it('refuses to close a thread in a channel the member cannot see', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $private = Channel::factory()->create([
         'workspace_id' => $workspace->id,
