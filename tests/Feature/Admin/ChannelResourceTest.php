@@ -2,7 +2,7 @@
 
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Filament\Actions\ToggleChannelArchivedAction;
 use App\Filament\Resources\Channels\Pages\EditChannel;
 use App\Filament\Resources\Channels\Pages\ListChannels;
@@ -171,7 +171,7 @@ test('it lists the members of a channel', function () {
     $outsider = User::factory()->create();
 
     $channel->workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
@@ -190,7 +190,7 @@ test('it puts a guest into a channel from the panel', function () {
     $guest = User::factory()->create();
 
     $channel->workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -227,7 +227,7 @@ test('it takes a member back out of a channel', function () {
     $member = User::factory()->create();
 
     $channel->workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);

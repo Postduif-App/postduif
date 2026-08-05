@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\SendMessage;
 use App\Actions\Chat\StartDirectMessage;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -21,7 +21,7 @@ function directFixture(): array
 
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -101,7 +101,7 @@ it('refuses to hide a conversation somebody else is having', function () {
 
     $stranger = User::factory()->create();
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

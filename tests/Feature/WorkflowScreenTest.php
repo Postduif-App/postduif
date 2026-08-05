@@ -1,10 +1,10 @@
 <?php
 
 use App\Actions\Workflows\PruneWorkflowRuns;
+use App\Enums\SystemRole;
 use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowRunStatus;
 use App\Enums\WorkflowStepKind;
-use App\Enums\WorkspaceRole;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\User;
 use App\Models\Workflow;
@@ -22,7 +22,7 @@ use Laravel\Pennant\Feature;
 function workflowBeheerder(): array
 {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     Feature::for($workspace)->activate(WorkflowsFeature::class);
 
@@ -111,7 +111,7 @@ it('keeps an ordinary member out of the builder', function () {
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -120,7 +120,7 @@ it('keeps an ordinary member out of the builder', function () {
 
 it('has no builder at all in a workspace that switched workflows off', function () {
     $admin = User::factory()->create();
-    $workspace = workspaceWithMember($admin, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($admin, SystemRole::Admin);
 
     Feature::for($workspace)->deactivate(WorkflowsFeature::class);
 

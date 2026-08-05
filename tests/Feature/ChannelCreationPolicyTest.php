@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelCreationPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 
@@ -9,7 +9,7 @@ use function Pest\Laravel\actingAs;
 
 it('lets anybody who belongs here open a channel by default', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
 
     expect($workspace->channel_creation)->toBe(ChannelCreationPolicy::Everyone);
 
@@ -23,7 +23,7 @@ it('lets anybody who belongs here open a channel by default', function () {
     expect(Channel::firstWhere('slug', 'marketing'))->not->toBeNull();
 });
 
-it('closes channel creation to plain members once the workspace says so', function (WorkspaceRole $role, bool $allowed) {
+it('closes channel creation to plain members once the workspace says so', function (SystemRole $role, bool $allowed) {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, $role);
     $workspace->update(['channel_creation' => ChannelCreationPolicy::Admins]);
@@ -37,15 +37,15 @@ it('closes channel creation to plain members once the workspace says so', functi
 
     expect(Channel::firstWhere('slug', 'marketing') !== null)->toBe($allowed);
 })->with([
-    'eigenaar' => [WorkspaceRole::Owner, true],
-    'beheerder' => [WorkspaceRole::Admin, true],
-    'lid' => [WorkspaceRole::Member, false],
-    'gast' => [WorkspaceRole::Guest, false],
+    'eigenaar' => [SystemRole::Owner, true],
+    'beheerder' => [SystemRole::Admin, true],
+    'lid' => [SystemRole::Member, false],
+    'gast' => [SystemRole::Guest, false],
 ]);
 
 it('keeps a guest out even when everybody else may', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($user, SystemRole::Guest);
     $workspace->update(['channel_creation' => ChannelCreationPolicy::Everyone]);
 
     actingAs($user)
@@ -58,7 +58,7 @@ it('keeps a guest out even when everybody else may', function () {
 
 it('stops offering the button to whoever may no longer use it', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
     $channel = channelWithMember($workspace, $user);
 
     actingAs($user)

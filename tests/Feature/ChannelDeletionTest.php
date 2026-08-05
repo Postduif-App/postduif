@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Ticket;
@@ -28,7 +28,7 @@ function channelDeletionFixture(): array
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
@@ -82,7 +82,7 @@ it('lets whoever runs the workspace delete a channel they never joined', functio
 
     $owner = User::factory()->create();
     $workspace->members()->attach($owner->id, [
-        'role' => WorkspaceRole::Owner->value,
+        'role' => SystemRole::Owner->value,
         'joined_at' => now(),
     ]);
 
@@ -109,7 +109,7 @@ it('does not delete a direct message', function () {
     $workspace = workspaceWithMember($user);
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

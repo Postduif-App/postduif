@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use Database\Factories\InvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * @property int $workspace_id
  * @property int $invited_by
  * @property string $email
- * @property WorkspaceRole $role
+ * @property SystemRole $role
  * @property string $token
  * @property Carbon $expires_at
  * @property Carbon|null $accepted_at
@@ -38,7 +38,7 @@ class Invitation extends Model
     protected function casts(): array
     {
         return [
-            'role' => WorkspaceRole::class,
+            'role' => SystemRole::class,
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
         ];

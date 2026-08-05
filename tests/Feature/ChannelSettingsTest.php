@@ -2,7 +2,7 @@
 
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -27,7 +27,7 @@ function settingsFixture(): array
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
@@ -55,7 +55,7 @@ it('lets whoever runs the workspace change it too', function () {
     [, $member, $workspace, $channel] = settingsFixture();
 
     $workspace->members()->updateExistingPivot($member->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
     ]);
 
     saveSettings($member, $workspace, $channel, 'admins')->assertRedirect();

@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -46,7 +46,7 @@ it('refuses a workspace that tries to claim the settings slug', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['slug' => 'settings']);
     $workspace->members()->attach($user->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     channelWithMember($workspace, $user);

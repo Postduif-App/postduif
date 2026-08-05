@@ -1,9 +1,9 @@
 <?php
 
 use App\Enums\ChannelTicketPolicy;
+use App\Enums\SystemRole;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
-use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\Ticket;
 use App\Models\User;
@@ -173,7 +173,7 @@ it('carries the same sidebar as a channel page', function () {
     [$member, , $workspace] = ticketFixture();
 
     $workspace->members()->attach(User::factory()->create()->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

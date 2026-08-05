@@ -182,6 +182,26 @@ return [
             'Failed' => 'Failed',
         ],
     ],
+    'workspace-ability' => [
+        'label' => [
+            'ManageWorkspace' => 'Manage the workspace',
+            'InviteMembers' => 'Invite people',
+            'SeeMembers' => 'See who takes part',
+            'CreateChannels' => 'Make channels',
+            'SendTransfers' => 'Send files',
+            'BroadcastMention' => 'Use @here and @everyone',
+            'ManageWorkflows' => 'Write workflows',
+        ],
+        'description' => [
+            'ManageWorkspace' => 'The name, the roles, the permissions and the look. Whoever holds this can also give themselves and others more — it is the one right that reaches every other.',
+            'InviteMembers' => 'Bring somebody in from inside or outside, and withdraw invitations again.',
+            'SeeMembers' => 'The member list of the workspace and of a channel. Without it you only see who turns up in the conversation.',
+            'CreateChannels' => 'Open a new channel. Taking part in existing ones is a separate matter.',
+            'SendTransfers' => 'Put files behind a link that works outside the workspace too.',
+            'BroadcastMention' => 'Notify a whole channel at once. Without it those mentions cannot be picked and reach nobody.',
+            'ManageWorkflows' => 'Write the things the workspace does by itself. They run with the rights of whoever wrote them.',
+        ],
+    ],
     'workspace-accent' => [
         'label' => [
             'Neutral' => 'Neutral',
@@ -202,7 +222,7 @@ return [
             'System' => 'System font',
         ],
     ],
-    'workspace-role' => [
+    'system-role' => [
         'getLabel' => [
             'Owner' => 'Owner',
             'Admin' => 'Admin',

@@ -7,35 +7,35 @@
  * little speed and buys the assertion being able to run at all.
  */
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 
-it('labels every role', function (WorkspaceRole $role, string $label) {
+it('labels every role', function (SystemRole $role, string $label) {
     expect($role->getLabel())->toBe($label);
 })->with([
-    [WorkspaceRole::Owner, 'Eigenaar'],
-    [WorkspaceRole::Admin, 'Beheerder'],
-    [WorkspaceRole::Member, 'Lid'],
-    [WorkspaceRole::Guest, 'Gast'],
+    [SystemRole::Owner, 'Eigenaar'],
+    [SystemRole::Admin, 'Beheerder'],
+    [SystemRole::Member, 'Lid'],
+    [SystemRole::Guest, 'Gast'],
 ]);
 
 it('keeps managing the workspace to the owner and admins', function () {
-    expect(WorkspaceRole::Owner->canManageWorkspace())->toBeTrue()
-        ->and(WorkspaceRole::Admin->canManageWorkspace())->toBeTrue()
-        ->and(WorkspaceRole::Member->canManageWorkspace())->toBeFalse()
-        ->and(WorkspaceRole::Guest->canManageWorkspace())->toBeFalse();
+    expect(SystemRole::Owner->canManageWorkspace())->toBeTrue()
+        ->and(SystemRole::Admin->canManageWorkspace())->toBeTrue()
+        ->and(SystemRole::Member->canManageWorkspace())->toBeFalse()
+        ->and(SystemRole::Guest->canManageWorkspace())->toBeFalse();
 });
 
 it('lets nobody but the owner and admins invite', function () {
-    expect(WorkspaceRole::Guest->canInviteMembers())->toBeFalse()
-        ->and(WorkspaceRole::Member->canInviteMembers())->toBeFalse()
-        ->and(WorkspaceRole::Admin->canInviteMembers())->toBeTrue();
+    expect(SystemRole::Guest->canInviteMembers())->toBeFalse()
+        ->and(SystemRole::Member->canInviteMembers())->toBeFalse()
+        ->and(SystemRole::Admin->canInviteMembers())->toBeTrue();
 });
 
 it('marks only the guest as a guest', function () {
-    expect(WorkspaceRole::Guest->isGuest())->toBeTrue()
-        ->and(WorkspaceRole::Member->isGuest())->toBeFalse()
-        ->and(WorkspaceRole::Admin->isGuest())->toBeFalse()
-        ->and(WorkspaceRole::Owner->isGuest())->toBeFalse();
+    expect(SystemRole::Guest->isGuest())->toBeTrue()
+        ->and(SystemRole::Member->isGuest())->toBeFalse()
+        ->and(SystemRole::Admin->isGuest())->toBeFalse()
+        ->and(SystemRole::Owner->isGuest())->toBeFalse();
 });
 
 /**
@@ -43,16 +43,16 @@ it('marks only the guest as a guest', function () {
  * not look around the workspace; everybody else may.
  */
 it('closes the workspace to guests only', function () {
-    expect(WorkspaceRole::Guest->canBrowseWorkspace())->toBeFalse()
-        ->and(WorkspaceRole::Member->canBrowseWorkspace())->toBeTrue()
-        ->and(WorkspaceRole::Admin->canBrowseWorkspace())->toBeTrue()
-        ->and(WorkspaceRole::Owner->canBrowseWorkspace())->toBeTrue();
+    expect(SystemRole::Guest->canBrowseWorkspace())->toBeFalse()
+        ->and(SystemRole::Member->canBrowseWorkspace())->toBeTrue()
+        ->and(SystemRole::Admin->canBrowseWorkspace())->toBeTrue()
+        ->and(SystemRole::Owner->canBrowseWorkspace())->toBeTrue();
 });
 
 it('ranks roles by standing, guests last', function () {
-    $ranked = collect(WorkspaceRole::cases())
-        ->sortBy(fn (WorkspaceRole $role) => $role->rank())
-        ->map(fn (WorkspaceRole $role) => $role->value)
+    $ranked = collect(SystemRole::cases())
+        ->sortBy(fn (SystemRole $role) => $role->rank())
+        ->map(fn (SystemRole $role) => $role->value)
         ->values()
         ->all();
 

@@ -1,7 +1,7 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Enums\TransferAudience;
-use App\Enums\WorkspaceRole;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -86,7 +86,7 @@ it('opens for a member of the workspace it came from', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

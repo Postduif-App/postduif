@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 
@@ -12,7 +12,7 @@ it('makes a public channel private and hides it from everyone outside it', funct
 
     $outsider = User::factory()->create();
     $workspace->members()->attach($outsider->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -44,7 +44,7 @@ it('puts a workspace admin in the channel they just closed', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -66,7 +66,7 @@ it('opens a private channel back up to the workspace', function () {
 
     $outsider = User::factory()->create();
     $workspace->members()->attach($outsider->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

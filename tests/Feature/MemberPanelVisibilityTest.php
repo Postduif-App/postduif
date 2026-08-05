@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\MemberPanelVisibility;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
@@ -11,7 +11,7 @@ use function Pest\Laravel\actingAs;
  *
  * @return bool Whether this member would be shown the panel.
  */
-function seesMemberPanel(MemberPanelVisibility $setting, WorkspaceRole $role): bool
+function seesMemberPanel(MemberPanelVisibility $setting, SystemRole $role): bool
 {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, $role);
@@ -31,16 +31,16 @@ function seesMemberPanel(MemberPanelVisibility $setting, WorkspaceRole $role): b
 }
 
 it('keeps the panel to itself until a workspace asks for it', function () {
-    expect(seesMemberPanel(MemberPanelVisibility::Off, WorkspaceRole::Owner))->toBeFalse();
+    expect(seesMemberPanel(MemberPanelVisibility::Off, SystemRole::Owner))->toBeFalse();
 });
 
 it('shows it to everybody once the workspace opens it up', function () {
-    expect(seesMemberPanel(MemberPanelVisibility::Everyone, WorkspaceRole::Member))->toBeTrue();
+    expect(seesMemberPanel(MemberPanelVisibility::Everyone, SystemRole::Member))->toBeTrue();
 });
 
 it('shows it to only the people running the workspace when asked to', function () {
-    expect(seesMemberPanel(MemberPanelVisibility::Admins, WorkspaceRole::Admin))->toBeTrue()
-        ->and(seesMemberPanel(MemberPanelVisibility::Admins, WorkspaceRole::Member))->toBeFalse();
+    expect(seesMemberPanel(MemberPanelVisibility::Admins, SystemRole::Admin))->toBeTrue()
+        ->and(seesMemberPanel(MemberPanelVisibility::Admins, SystemRole::Member))->toBeFalse();
 });
 
 /**
@@ -48,23 +48,23 @@ it('shows it to only the people running the workspace when asked to', function (
  * is in it is not one of those, whatever the setting says.
  */
 it('never shows it to a guest', function () {
-    expect(seesMemberPanel(MemberPanelVisibility::Everyone, WorkspaceRole::Guest))->toBeFalse();
+    expect(seesMemberPanel(MemberPanelVisibility::Everyone, SystemRole::Guest))->toBeFalse();
 });
 
 it('sends the people in the workspace along with the panel', function () {
     $user = User::factory()->create(['name' => 'Anna Bakker']);
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $workspace->update(['member_panel' => MemberPanelVisibility::Everyone]);
 
     $colleague = User::factory()->create(['name' => 'Bram de Vries']);
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
     $guest = User::factory()->create(['name' => 'Carla Klant']);
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -85,7 +85,7 @@ it('sends the people in the workspace along with the panel', function () {
  */
 it('sends nobody to a member who does not get the panel', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
     $workspace->update(['member_panel' => MemberPanelVisibility::Admins]);
 
     $channel = channelWithMember($workspace, $user);
@@ -97,7 +97,7 @@ it('sends nobody to a member who does not get the panel', function () {
 
 it('remembers that the panel was left open', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $workspace->update(['member_panel' => MemberPanelVisibility::Everyone]);
 
     $channel = channelWithMember($workspace, $user);

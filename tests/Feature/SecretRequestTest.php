@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\SecretRequests;
 use App\Models\Channel;
 use App\Models\Message;
@@ -83,7 +83,7 @@ it('does not let a guest ask for secrets', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -182,7 +182,7 @@ it('does not let an admin withdraw somebody else request', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -227,7 +227,7 @@ it('offers a guest nothing, even where the workspace has it on', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 

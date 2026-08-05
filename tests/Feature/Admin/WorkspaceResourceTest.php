@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\BroadcastMentionPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Tickets;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspaceFeatures;
@@ -76,7 +76,7 @@ test('it detaches a member from a workspace', function () {
     $workspace = Workspace::factory()->create();
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -93,7 +93,7 @@ test('it detaches a member from a workspace', function () {
 test('it keeps the owner attached to the workspace', function () {
     $workspace = Workspace::factory()->create();
     $workspace->members()->attach($workspace->owner_id, [
-        'role' => WorkspaceRole::Owner->value,
+        'role' => SystemRole::Owner->value,
         'joined_at' => now(),
     ]);
 

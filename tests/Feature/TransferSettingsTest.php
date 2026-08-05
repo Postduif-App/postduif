@@ -2,7 +2,7 @@
 
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Transfers;
 use App\Models\User;
 use App\Models\Workspace;
@@ -46,7 +46,7 @@ it('gives a new workspace ceilings to work within from the start', function () {
 
 it('keeps the ceilings off the screen while the feature is off', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
+    workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->get(route('workspace.permissions.edit'))
@@ -56,7 +56,7 @@ it('keeps the ceilings off the screen while the feature is off', function () {
 
 it('shows the ceilings once the workspace has the feature', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     Feature::for($workspace)->activate(Transfers::class);
 
@@ -73,7 +73,7 @@ it('shows the ceilings once the workspace has the feature', function () {
 /** Asked in megabytes, because that is what somebody setting a limit thinks in. */
 it('takes the size ceiling in megabytes and stores kilobytes', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -90,7 +90,7 @@ it('takes the size ceiling in megabytes and stores kilobytes', function () {
 
 it('refuses a ceiling nobody could wait out', function (array $payload) {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
+    workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [...standingRules(), ...$payload])
@@ -109,7 +109,7 @@ it('refuses a ceiling nobody could wait out', function (array $payload) {
  */
 it('leaves the ceilings alone when a request says nothing about them', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $workspace->update(['max_transfer_kb' => 51200, 'max_transfer_days' => 3]);
 
     actingAs($user)
@@ -123,7 +123,7 @@ it('leaves the ceilings alone when a request says nothing about them', function 
 
 it('refuses the whole screen to a plain member, ceilings and all', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Member);
+    workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [

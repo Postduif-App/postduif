@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Mail\WorkspaceInvitationMail;
 use App\Models\Channel;
 use App\Models\Invitation;
@@ -35,7 +35,7 @@ beforeEach(function () {
 function workspaceExpectingAMember(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
     $workspace->forceFill(['owner_id' => $owner->id])->save();
 
     $openToEveryone = Channel::factory()->create([
@@ -54,7 +54,7 @@ it('invites somebody as a member without naming any channels', function () {
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'Nieuw@Collega.nl',
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -64,7 +64,7 @@ it('invites somebody as a member without naming any channels', function () {
     assertDatabaseHas('invitations', [
         'workspace_id' => $workspace->id,
         'email' => 'nieuw@collega.nl',
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
     ]);
 
     $invitation = Invitation::where('email', 'nieuw@collega.nl')->sole();
@@ -93,7 +93,7 @@ it('lands an accepted member in the workspace with the public channels open', fu
 
     // The channel was never handed to them, but a member may browse the
     // workspace — which is the whole difference with a guest.
-    expect($workspace->roleFor($member))->toBe(WorkspaceRole::Member)
+    expect($workspace->roleFor($member))->toBe(SystemRole::Member)
         ->and($workspace->channels()->visibleTo($member)->pluck('id')->all())
         ->toBe([$openToEveryone->id])
         ->and($openToEveryone->members()->whereKey($member->id)->exists())->toBeFalse();
@@ -104,14 +104,14 @@ it('lets an admin invite a member', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'nieuw@collega.nl',
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -129,14 +129,14 @@ it('never lets an admin invite somebody as owner', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'nieuw@collega.nl',
-            'role' => WorkspaceRole::Owner->value,
+            'role' => SystemRole::Owner->value,
         ])
         ->assertForbidden();
 
@@ -149,7 +149,7 @@ it('keeps an existing member at the standing they already have', function () {
 
     $admin = User::factory()->create(['email' => 'beheerder@intern.nl']);
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -160,12 +160,12 @@ it('keeps an existing member at the standing they already have', function () {
         'workspace_id' => $workspace->id,
         'invited_by' => $owner->id,
         'email' => $admin->email,
-        'role' => WorkspaceRole::Member,
+        'role' => SystemRole::Member,
     ]);
 
     actingAs($admin)
         ->post(route('invitations.accept', $invitation->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($admin))->toBe(WorkspaceRole::Admin);
+    expect($workspace->roleFor($admin))->toBe(SystemRole::Admin);
 });

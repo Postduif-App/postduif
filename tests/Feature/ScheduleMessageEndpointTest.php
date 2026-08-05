@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelPostingPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\ScheduledMessage;
 use App\Models\User;
 
@@ -164,7 +164,7 @@ it('refuses scheduling by somebody who is not in the channel', function () {
     [, , $workspace, $channel] = settingsFixture();
     $stranger = User::factory()->create();
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

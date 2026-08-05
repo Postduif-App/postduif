@@ -30,7 +30,7 @@ enum MemberPanelVisibility: string implements HasLabel
      * for the channels they were invited to, and the membership list is not one
      * of those. The same reasoning as the tags in BuildChatShell.
      */
-    public function allows(?WorkspaceRole $role): bool
+    public function allows(?SystemRole $role): bool
     {
         if ($role === null || ! $role->canBrowseWorkspace()) {
             return false;

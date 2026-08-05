@@ -3,8 +3,8 @@
 use App\Actions\Workflows\ResumeWaitingWorkflows;
 use App\Actions\Workflows\RunWorkflow;
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Enums\WorkflowRunStatus;
-use App\Enums\WorkspaceRole;
 use App\Events\ChannelActivity;
 use App\Events\MessageSent;
 use App\Features\Workflows as WorkflowsFeature;
@@ -30,7 +30,7 @@ use Laravel\Pennant\Feature;
 function workflowWithChannel(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
 
     Feature::for($workspace)->activate(WorkflowsFeature::class);
 
@@ -140,7 +140,7 @@ it('opens a conversation with somebody and says its piece there', function () {
 
     $recipient = User::factory()->create();
     $workspace->members()->attach($recipient->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -311,7 +311,7 @@ it('takes off only the owner his own reaction', function () {
 
     $somebody = User::factory()->create();
     $workspace->members()->attach($somebody->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -380,7 +380,7 @@ it('puts somebody in a channel and says whether that changed anything', function
 
     $newcomer = User::factory()->create();
     $workspace->members()->attach($newcomer->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

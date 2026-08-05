@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Workflows\DispatchScheduledWorkflows;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Webhooks;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Channel;
@@ -22,7 +22,7 @@ use function Pest\Laravel\post;
 function externallyTriggered(string $trigger, array $config = [], string $timezone = 'Europe/Amsterdam'): array
 {
     $owner = User::factory()->create(['timezone' => $timezone]);
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
 
     Feature::for($workspace)->activate(WorkflowsFeature::class);
     Feature::for($workspace)->activate(Webhooks::class);
@@ -213,7 +213,7 @@ it('lets an ordinary member set a link workflow off from a message', function ()
 
     $member = User::factory()->create();
     $channel->workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);

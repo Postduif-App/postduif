@@ -2,7 +2,7 @@
 
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
 use App\Mcp\Tools\FindChannelsTool;
@@ -106,7 +106,7 @@ it('shows a guest only what they were invited to', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);

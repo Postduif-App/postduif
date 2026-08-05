@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelPostingPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Polls;
 use App\Models\Channel;
 use App\Models\Message;
@@ -121,7 +121,7 @@ it('lets a guest ask and answer', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
@@ -269,7 +269,7 @@ it('does not let a bystander close somebody else poll', function () {
 
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
@@ -367,7 +367,7 @@ it('does not let a bystander reopen somebody else poll', function () {
 
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);

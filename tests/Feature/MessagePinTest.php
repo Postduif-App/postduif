@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Chat\DeleteMessage;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Events\MessagePinned;
 use App\Models\Channel;
 use App\Models\Message;
@@ -20,7 +20,7 @@ use function Pest\Laravel\actingAs;
 function pinFixture(): array
 {
     $manager = User::factory()->create();
-    $workspace = workspaceWithMember($manager, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($manager, SystemRole::Admin);
     $channel = channelWithMember($workspace, $manager);
 
     return [$manager, $workspace, $channel];
@@ -43,7 +43,7 @@ function pinUrl(Workspace $workspace, Channel $channel, Message $message): strin
 /**
  * Somebody in the channel with the given role, and nothing more.
  */
-function memberOf(Workspace $workspace, Channel $channel, WorkspaceRole $role): User
+function memberOf(Workspace $workspace, Channel $channel, SystemRole $role): User
 {
     $user = User::factory()->create();
 
@@ -84,7 +84,7 @@ it('lets them take it back down', function () {
 
 it('refuses an ordinary member', function () {
     [, $workspace, $channel] = pinFixture();
-    $member = memberOf($workspace, $channel, WorkspaceRole::Member);
+    $member = memberOf($workspace, $channel, SystemRole::Member);
     $message = messageIn($channel);
 
     actingAs($member)
@@ -96,7 +96,7 @@ it('refuses an ordinary member', function () {
 
 it('refuses a guest', function () {
     [, $workspace, $channel] = pinFixture();
-    $guest = memberOf($workspace, $channel, WorkspaceRole::Guest);
+    $guest = memberOf($workspace, $channel, SystemRole::Guest);
     $message = messageIn($channel);
 
     actingAs($guest)
@@ -238,7 +238,7 @@ it('shows a guest what is pinned without offering the button', function () {
     $message = messageIn($channel);
     $message->pin($manager);
 
-    $guest = memberOf($workspace, $channel, WorkspaceRole::Guest);
+    $guest = memberOf($workspace, $channel, SystemRole::Guest);
 
     actingAs($guest)
         ->get(route('chat.show', [$workspace, $channel]))
@@ -259,7 +259,7 @@ it('masks blocked words in the pinned list too', function () {
     ]);
     $message->pin($manager);
 
-    $member = memberOf($workspace, $channel, WorkspaceRole::Member);
+    $member = memberOf($workspace, $channel, SystemRole::Member);
 
     actingAs($member)
         ->get(route('chat.show', [$workspace, $channel]))

@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -17,7 +17,7 @@ function workspaceWithThreeRoles(): array
     $admin = User::factory()->create();
     $member = User::factory()->create();
 
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
     $workspace->members()->attach($admin->id, ['role' => 'admin', 'joined_at' => now()]);
     $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
     $workspace->forceFill(['owner_id' => $owner->id])->save();
@@ -25,7 +25,7 @@ function workspaceWithThreeRoles(): array
     return [$owner, $admin, $member, $workspace];
 }
 
-function roleOf(Workspace $workspace, User $user): ?WorkspaceRole
+function roleOf(Workspace $workspace, User $user): ?SystemRole
 {
     return $workspace->roleFor($user);
 }
@@ -37,7 +37,7 @@ it('promotes a member to admin', function () {
         ->patch(route('workspace.members.update', $member), ['role' => 'admin'])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(WorkspaceRole::Admin);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin);
 });
 
 it('lets an admin manage ordinary members', function () {
@@ -47,7 +47,7 @@ it('lets an admin manage ordinary members', function () {
         ->patch(route('workspace.members.update', $member), ['role' => 'admin'])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(WorkspaceRole::Admin);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin);
 });
 
 /**
@@ -61,7 +61,7 @@ it('never lets an admin touch the owner', function () {
         ->patch(route('workspace.members.update', $owner), ['role' => 'member'])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $owner))->toBe(WorkspaceRole::Owner);
+    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner);
 });
 
 it('never lets an admin hand out ownership', function () {
@@ -71,7 +71,7 @@ it('never lets an admin hand out ownership', function () {
         ->patch(route('workspace.members.update', $member), ['role' => 'owner'])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $member))->toBe(WorkspaceRole::Member);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Member);
 });
 
 /**
@@ -89,8 +89,8 @@ it('lets an owner hand the workspace over', function () {
         ->patch(route('workspace.members.update', $owner), ['role' => 'admin'])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $admin))->toBe(WorkspaceRole::Owner)
-        ->and(roleOf($workspace, $owner))->toBe(WorkspaceRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Owner)
+        ->and(roleOf($workspace, $owner))->toBe(SystemRole::Admin);
 });
 
 /**
@@ -105,7 +105,7 @@ it('refuses to step down the only owner', function () {
         ->patch(route('workspace.members.update', $owner), ['role' => 'admin'])
         ->assertSessionHasErrors('role');
 
-    expect(roleOf($workspace, $owner))->toBe(WorkspaceRole::Owner);
+    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner);
 });
 
 it('never lets an admin promote themselves to owner', function () {
@@ -115,7 +115,7 @@ it('never lets an admin promote themselves to owner', function () {
         ->patch(route('workspace.members.update', $admin), ['role' => 'owner'])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $admin))->toBe(WorkspaceRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin);
 });
 
 it('refuses a role change from a plain member', function () {
@@ -125,7 +125,7 @@ it('refuses a role change from a plain member', function () {
         ->patch(route('workspace.members.update', $admin), ['role' => 'member'])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $admin))->toBe(WorkspaceRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin);
 });
 
 it('removes a member from the workspace', function () {
@@ -215,7 +215,7 @@ it('refuses a removal by a plain member', function () {
 it('never touches somebody in another workspace', function () {
     [$owner] = workspaceWithThreeRoles();
     $stranger = User::factory()->create();
-    $other = workspaceWithMember($stranger, WorkspaceRole::Member);
+    $other = workspaceWithMember($stranger, SystemRole::Member);
 
     actingAs($owner)
         ->delete(route('workspace.members.destroy', $stranger))
@@ -251,12 +251,12 @@ it('turns a member into a guest', function () {
         ->patch(route('workspace.members.update', $member), ['role' => 'guest'])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(WorkspaceRole::Guest);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Guest);
 });
 
 it('refuses the settings screen to a guest', function () {
     $guest = User::factory()->create();
-    workspaceWithMember($guest, WorkspaceRole::Guest);
+    workspaceWithMember($guest, SystemRole::Guest);
 
     actingAs($guest)->get(route('workspace.members.index'))->assertForbidden();
 });

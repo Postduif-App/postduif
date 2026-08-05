@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use Database\Factories\InviteLinkFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +25,7 @@ use Illuminate\Support\Str;
  * @property int $workspace_id
  * @property int|null $created_by
  * @property string $token
- * @property WorkspaceRole $role
+ * @property SystemRole $role
  * @property int|null $max_uses
  * @property Carbon|null $expires_at
  * @property int $uses
@@ -49,7 +49,7 @@ class InviteLink extends Model
     protected function casts(): array
     {
         return [
-            'role' => WorkspaceRole::class,
+            'role' => SystemRole::class,
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
             'max_uses' => 'integer',

@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelPostingPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -29,7 +29,7 @@ function broadcastChannel(): array
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
@@ -76,7 +76,7 @@ it('lets a workspace admin post in a broadcast channel', function () {
     [$member, $workspace, $channel] = broadcastChannel();
 
     $workspace->members()->updateExistingPivot($member->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
     ]);
 
     postMessage($member, $workspace, $channel)->assertRedirect();

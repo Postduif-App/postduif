@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Mail\WorkspaceInvitationMail;
 use App\Models\Channel;
 use App\Models\Invitation;
@@ -23,7 +23,7 @@ beforeEach(function () {
 function workspaceToInviteInto(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
     $workspace->forceFill(['owner_id' => $owner->id])->save();
 
     $invited = Channel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'klantproject']);
@@ -61,7 +61,7 @@ it('invites a guest for the channels that were picked', function () {
     // Stored lowercased: the same person invited twice under a different
     // spelling would otherwise slip past the unique key on (workspace, email).
     expect($invitation->email)->toBe('gast@extern.nl')
-        ->and($invitation->role)->toBe(WorkspaceRole::Guest)
+        ->and($invitation->role)->toBe(SystemRole::Guest)
         ->and($invitation->workspace_id)->toBe($workspace->id)
         ->and($invitation->channels->pluck('id')->all())->toBe([$invited->id]);
 
@@ -144,7 +144,7 @@ it('onboards a guest who has no account yet', function () {
         // Reaching the link proves they read mail sent to that address, which
         // is the whole of what a verification mail establishes.
         ->and($guest->email_verified_at)->not->toBeNull()
-        ->and($workspace->roleFor($guest))->toBe(WorkspaceRole::Guest)
+        ->and($workspace->roleFor($guest))->toBe(SystemRole::Guest)
         ->and($guest->channels->pluck('id')->all())->toBe([$invited->id])
         ->and($guest->channels->contains($offLimits))->toBeFalse();
 
@@ -174,7 +174,7 @@ it('lets somebody who is already signed in accept their own invitation', functio
         ->post(route('invitations.accept', $invitation->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($guest))->toBe(WorkspaceRole::Guest)
+    expect($workspace->roleFor($guest))->toBe(SystemRole::Guest)
         ->and($guest->channels()->pluck('channels.id')->all())->toBe([$invited->id]);
 });
 

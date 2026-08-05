@@ -4,7 +4,7 @@ namespace App\Enums;
 
 use Filament\Support\Contracts\HasLabel;
 
-enum WorkspaceRole: string implements HasLabel
+enum SystemRole: string implements HasLabel
 {
     case Owner = 'owner';
     case Admin = 'admin';
@@ -22,10 +22,10 @@ enum WorkspaceRole: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Owner => __('enums.workspace-role.getLabel.Owner'),
-            self::Admin => __('enums.workspace-role.getLabel.Admin'),
-            self::Member => __('enums.workspace-role.getLabel.Member'),
-            self::Guest => __('enums.workspace-role.getLabel.Guest'),
+            self::Owner => __('enums.system-role.getLabel.Owner'),
+            self::Admin => __('enums.system-role.getLabel.Admin'),
+            self::Member => __('enums.system-role.getLabel.Member'),
+            self::Guest => __('enums.system-role.getLabel.Guest'),
         };
     }
 
@@ -94,6 +94,51 @@ enum WorkspaceRole: string implements HasLabel
     public function canSendTransfers(): bool
     {
         return ! $this->isGuest();
+    }
+
+    /**
+     * What a workspace starts with, before anybody edits anything.
+     *
+     * This enum stops being the answer to "may they?" once a workspace has
+     * roles of its own — see SystemRole model — and becomes the seed for
+     * them instead. Written here rather than in a seeder because it is the same
+     * list the predicates above already encode: change one and this has to
+     * follow, and having them side by side is what makes that obvious.
+     *
+     * @return list<WorkspaceAbility>
+     */
+    public function defaultAbilities(): array
+    {
+        return array_values(array_filter(WorkspaceAbility::cases(), fn (WorkspaceAbility $ability): bool => match ($ability) {
+            WorkspaceAbility::ManageWorkspace,
+            WorkspaceAbility::InviteMembers,
+            WorkspaceAbility::ManageWorkflows => $this->canManageWorkspace(),
+
+            /*
+             * Everybody but a guest, which is what the predicates above say
+             * today. Broadcast mentions are the exception: the workspace column
+             * that governs them starts at "beheerders", so the seed follows the
+             * column rather than the role — see the migration, which reads the
+             * workspace's own setting where there is one.
+             */
+            WorkspaceAbility::BroadcastMention => $this->canManageWorkspace(),
+
+            WorkspaceAbility::SeeMembers => $this->canSeeChannelMembers(),
+            WorkspaceAbility::CreateChannels => $this->canCreateChannels(),
+            WorkspaceAbility::SendTransfers => $this->canSendTransfers(),
+        }));
+    }
+
+    /**
+     * Whether somebody in this role is from outside.
+     *
+     * The one answer that becomes a column rather than a right: it decides what
+     * exists for them rather than what they may do with it, and that decision
+     * is made in SQL.
+     */
+    public function isExternal(): bool
+    {
+        return $this->isGuest();
     }
 
     /**

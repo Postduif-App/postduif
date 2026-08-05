@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Transfers;
 use App\Models\Transfer;
 use App\Models\User;
@@ -67,7 +67,7 @@ it('does not show one colleague what another is sending', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -88,7 +88,7 @@ it('shows whoever runs the workspace everything that is out there', function () 
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -146,7 +146,7 @@ it('tells a guest they may look but not send', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 

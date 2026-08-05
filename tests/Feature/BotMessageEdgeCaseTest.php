@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Webhook;
@@ -63,7 +63,7 @@ it('counts a bot message as unread', function () {
 
 it('lets whoever manages the channel delete a bot message', function () {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
     $channel = channelWithMember($workspace, $owner);
     $webhook = Webhook::factory()->for($channel)->create(['bot_name' => 'Buildbot']);
 
@@ -76,7 +76,7 @@ it('keeps a plain member from deleting a bot message', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
 
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
     $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $owner);
@@ -92,7 +92,7 @@ it('still refuses to let anyone delete another members message', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
 
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
     $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $owner);

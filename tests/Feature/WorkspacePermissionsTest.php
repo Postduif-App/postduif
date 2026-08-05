@@ -3,14 +3,14 @@
 use App\Enums\AttachmentType;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 
 it('shows both rules with everything they can be set to', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
+    workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->get(route('workspace.permissions.edit'))
@@ -26,14 +26,14 @@ it('shows both rules with everything they can be set to', function () {
 
 it('refuses the rules screen to a plain member', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Member);
+    workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)->get(route('workspace.permissions.edit'))->assertForbidden();
 });
 
 it('saves both rules at once', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -49,7 +49,7 @@ it('saves both rules at once', function () {
 
 it('leaves the name alone — that is the other screen', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -64,7 +64,7 @@ it('leaves the name alone — that is the other screen', function () {
 
 it('refuses a rule that is not one of the options', function (string $field) {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -81,7 +81,7 @@ it('refuses a rule that is not one of the options', function (string $field) {
 
 it('refuses a rule change from a plain member', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -95,7 +95,7 @@ it('refuses a rule change from a plain member', function () {
 
 it('shows what the workspace accepts as an attachment', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
+    workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->get(route('workspace.permissions.edit'))
@@ -110,7 +110,7 @@ it('shows what the workspace accepts as an attachment', function () {
 
 it('saves what may be shared and how large', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -131,7 +131,7 @@ it('saves what may be shared and how large', function () {
 
 it('keeps the earlier choices when sharing is switched off', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
     $workspace->update([
         'allowed_attachment_types' => [AttachmentType::Archives->value],
         'max_attachment_kb' => 51200,
@@ -154,7 +154,7 @@ it('keeps the earlier choices when sharing is switched off', function () {
 it('refuses to allow sharing with nothing allowed', function () {
     $user = User::factory()->create();
 
-    workspaceWithMember($user, WorkspaceRole::Admin);
+    workspaceWithMember($user, SystemRole::Admin);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -170,7 +170,7 @@ it('refuses to allow sharing with nothing allowed', function () {
 it('refuses a size nobody could actually upload', function () {
     $user = User::factory()->create();
 
-    workspaceWithMember($user, WorkspaceRole::Admin);
+    workspaceWithMember($user, SystemRole::Admin);
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
@@ -185,7 +185,7 @@ it('refuses a size nobody could actually upload', function () {
 
 it('shows whether the server may open shared links', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Owner);
+    workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->get(route('workspace.permissions.edit'))
@@ -197,7 +197,7 @@ it('shows whether the server may open shared links', function () {
 
 it('turns link previews on and off again', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     $rules = [
         'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
@@ -222,7 +222,7 @@ it('turns link previews on and off again', function () {
 /** A request that says nothing about previews leaves them as they were. */
 it('leaves link previews alone when the form does not mention them', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
     $workspace->update(['link_previews_enabled' => true]);
 
     actingAs($user)->patch(route('workspace.permissions.update'), [

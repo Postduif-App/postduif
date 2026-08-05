@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Webhook;
@@ -19,7 +19,7 @@ function channelWithManagerAndMember(): array
     $manager = User::factory()->create();
     $member = User::factory()->create();
 
-    $workspace = workspaceWithMember($manager, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($manager, SystemRole::Admin);
     $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $manager);
@@ -342,7 +342,7 @@ it('refuses to change a webhook by somebody who may not manage the channel', fun
 
     $outsider = User::factory()->create();
     $workspace->members()->attach($outsider->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

@@ -3,7 +3,7 @@
 use App\Actions\Chat\SendMessage;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\Message;
@@ -23,7 +23,7 @@ use function Pest\Laravel\assertDatabaseMissing;
 function guestWithOneChannel(): array
 {
     $guest = User::factory()->create();
-    $workspace = workspaceWithMember($guest, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($guest, SystemRole::Guest);
 
     $invited = channelWithMember($workspace, $guest);
     $invited->update(['name' => 'klantproject', 'slug' => 'klantproject']);
@@ -122,7 +122,7 @@ it('hands a guest only the names from their own channel for the mention picker',
 
     foreach ([$roommate, $stranger] as $colleague) {
         $workspace->members()->attach($colleague->id, [
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
             'joined_at' => now(),
         ]);
     }
@@ -149,7 +149,7 @@ it('marks guests as guests in the payloads their name appears in', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $invited->members()->attach($colleague->id, ['joined_at' => now()]);
@@ -181,7 +181,7 @@ it('marks a guest in the candidate list of a channel', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -213,7 +213,7 @@ it('refuses a guest adding somebody to a channel they are in', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -325,7 +325,7 @@ it('keeps a broadcast mention by a guest inside their own channel', function () 
 
     foreach ([$roommate, $stranger] as $colleague) {
         $workspace->members()->attach($colleague->id, [
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
             'joined_at' => now(),
         ]);
     }
@@ -344,7 +344,7 @@ it('cannot address somebody outside the channel by name', function () {
 
     $stranger = User::factory()->create(['username' => 'stranger']);
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -355,7 +355,7 @@ it('cannot address somebody outside the channel by name', function () {
 
 it('still lets a regular member see, join and create public channels', function () {
     $member = User::factory()->create();
-    $workspace = workspaceWithMember($member, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($member, SystemRole::Member);
     $home = channelWithMember($workspace, $member);
 
     $openToEveryone = Channel::factory()->create([

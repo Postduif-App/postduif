@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\StartDirectMessage;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -20,7 +20,7 @@ function twoMembers(): array
     $workspace = workspaceWithMember($initiator);
     $recipient = User::factory()->create();
     $workspace->members()->attach($recipient->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -168,16 +168,16 @@ it('refuses candidates to somebody outside the workspace', function () {
 
 it('shows a guest only the people from their own channels', function () {
     $guest = User::factory()->create();
-    $workspace = workspaceWithMember($guest, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($guest, SystemRole::Guest);
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $stranger = User::factory()->create();
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -193,10 +193,10 @@ it('shows a guest only the people from their own channels', function () {
 
 it('refuses a guest the person they share no channel with', function () {
     $guest = User::factory()->create();
-    $workspace = workspaceWithMember($guest, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($guest, SystemRole::Guest);
     $stranger = User::factory()->create();
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     channelWithMember($workspace, $guest);
@@ -210,10 +210,10 @@ it('refuses a guest the person they share no channel with', function () {
 
 it('lets a guest write to somebody from their own channel', function () {
     $guest = User::factory()->create();
-    $workspace = workspaceWithMember($guest, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($guest, SystemRole::Guest);
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $shared = channelWithMember($workspace, $guest);

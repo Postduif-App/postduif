@@ -1,7 +1,7 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Enums\TransferAudience;
-use App\Enums\WorkspaceRole;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -161,7 +161,7 @@ it('does not exist at all in a workspace that never switched it on', function ()
 
 /** A guest is somebody from outside; making links on our behalf is not theirs. */
 it('does not let a guest send files out of the workspace', function () {
-    [$user, $workspace] = senderInWorkspace(WorkspaceRole::Guest);
+    [$user, $workspace] = senderInWorkspace(SystemRole::Guest);
 
     actingAs($user)
         ->post(route('chat.transfers.store', $workspace), transferPayload())
@@ -217,7 +217,7 @@ it('does not let a colleague withdraw what somebody else sent', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -242,7 +242,7 @@ it('lets whoever runs the workspace stop a transfer', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 

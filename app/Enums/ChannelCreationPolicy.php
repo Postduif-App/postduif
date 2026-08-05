@@ -14,14 +14,14 @@ use Filament\Support\Contracts\HasLabel;
  * needs to be deliberate.
  *
  * Guests are outside this question entirely — they may never open a channel,
- * whatever is chosen here. See WorkspaceRole::canCreateChannels().
+ * whatever is chosen here. See SystemRole::canCreateChannels().
  */
 enum ChannelCreationPolicy: string implements HasLabel
 {
     case Everyone = 'everyone';
     case Admins = 'admins';
 
-    public function allows(WorkspaceRole $role): bool
+    public function allows(SystemRole $role): bool
     {
         return match ($this) {
             self::Everyone => true,

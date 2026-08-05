@@ -190,6 +190,26 @@ return [
             'Failed' => 'Mislukt',
         ],
     ],
+    'workspace-ability' => [
+        'label' => [
+            'ManageWorkspace' => 'De workspace beheren',
+            'InviteMembers' => 'Mensen uitnodigen',
+            'SeeMembers' => 'Zien wie er meedoet',
+            'CreateChannels' => 'Kanalen maken',
+            'SendTransfers' => 'Bestanden versturen',
+            'BroadcastMention' => '@here en @everyone gebruiken',
+            'ManageWorkflows' => 'Workflows schrijven',
+        ],
+        'description' => [
+            'ManageWorkspace' => 'De naam, de rollen, de rechten en het uiterlijk. Wie dit heeft, kan ook zichzelf en anderen meer geven — het is het enige recht dat bij alle andere kan.',
+            'InviteMembers' => 'Iemand van binnen of buiten binnenhalen, en uitnodigingen weer intrekken.',
+            'SeeMembers' => 'De ledenlijst van de workspace en van een kanaal. Zonder dit zie je alleen wie er in het gesprek langskomt.',
+            'CreateChannels' => 'Een nieuw kanaal openen. Meedoen in bestaande kanalen staat hier los van.',
+            'SendTransfers' => 'Bestanden klaarzetten achter een link die ook buiten de workspace werkt.',
+            'BroadcastMention' => 'Een heel kanaal in één keer een melding geven. Zonder dit zijn die vermeldingen niet te kiezen en bereiken ze niemand.',
+            'ManageWorkflows' => 'Dingen schrijven die de workspace zelf doet. Ze lopen met de rechten van wie ze schreef.',
+        ],
+    ],
     'workspace-accent' => [
         'label' => [
             'Neutral' => 'Neutraal',
@@ -210,7 +230,7 @@ return [
             'System' => 'Systeemlettertype',
         ],
     ],
-    'workspace-role' => [
+    'system-role' => [
         'getLabel' => [
             'Owner' => 'Eigenaar',
             'Admin' => 'Beheerder',

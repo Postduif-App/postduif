@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InviteLink;
 use App\Models\User;
@@ -19,7 +19,7 @@ use function Pest\Laravel\actingAs;
 function workspaceHandingOutLinks(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
     $workspace->forceFill(['owner_id' => $owner->id])->save();
 
     $channel = Channel::factory()->create([
@@ -35,13 +35,13 @@ it('makes a link with no limits on it', function () {
 
     actingAs($owner)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
         ])
         ->assertRedirect();
 
     $link = InviteLink::sole();
 
-    expect($link->role)->toBe(WorkspaceRole::Member)
+    expect($link->role)->toBe(SystemRole::Member)
         ->and($link->max_uses)->toBeNull()
         ->and($link->expires_at)->toBeNull()
         ->and($link->uses)->toBe(0)
@@ -54,7 +54,7 @@ it('makes a link with a ceiling and a date', function () {
     [$owner, $workspace] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'max_uses' => 5,
         'valid_for_days' => 7,
     ]);
@@ -69,7 +69,7 @@ it('puts the chosen channels on the link', function () {
     [$owner, $workspace, $channel] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'channel_ids' => [$channel->id],
     ]);
 
@@ -81,7 +81,7 @@ it('refuses a guest link with no channels on it', function () {
 
     actingAs($owner)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => WorkspaceRole::Guest->value,
+            'role' => SystemRole::Guest->value,
         ])
         ->assertSessionHasErrors('channel_ids');
 
@@ -98,7 +98,7 @@ it('drops channels that are not this workspace to hand out', function () {
     ]);
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'channel_ids' => [$channel->id, $elsewhere->id, $archived->id],
     ]);
 
@@ -110,13 +110,13 @@ it('refuses somebody who may not invite', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
     actingAs($guest)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => WorkspaceRole::Member->value,
+            'role' => SystemRole::Member->value,
         ])
         ->assertForbidden();
 
@@ -128,13 +128,13 @@ it('does not let an admin hand out ownership by link', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
     actingAs($admin)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => WorkspaceRole::Owner->value,
+            'role' => SystemRole::Owner->value,
         ])
         ->assertForbidden();
 
@@ -145,10 +145,10 @@ it('makes a second link without breaking the first', function () {
     [$owner, $workspace] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
     ]);
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
     ]);
 
     expect(InviteLink::count())->toBe(2)

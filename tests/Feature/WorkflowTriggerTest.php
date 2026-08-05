@@ -3,7 +3,7 @@
 use App\Actions\Chat\AddChannelMembers;
 use App\Actions\Chat\SendMessage;
 use App\Actions\Chat\ToggleReaction;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Channel;
 use App\Models\Message;
@@ -23,7 +23,7 @@ use Laravel\Pennant\Feature;
 function triggerScene(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Admin);
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
 
     Feature::for($workspace)->activate(WorkflowsFeature::class);
 
@@ -143,7 +143,7 @@ it('starts a workflow when somebody joins a channel', function () {
 
     $newcomer = User::factory()->create();
     $workspace->members()->attach($newcomer->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

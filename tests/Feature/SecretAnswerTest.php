@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\SecretValue;
 use App\Models\User;
 
@@ -79,7 +79,7 @@ it('does not let a workspace admin read it', function () {
 
     $admin = User::factory()->create();
     $request->workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 

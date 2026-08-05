@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,12 +16,12 @@ use function Pest\Laravel\actingAs;
 function workspaceWithOwnerAndGuest(): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
     $workspace->update(['owner_id' => $owner->id]);
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -139,7 +139,7 @@ it('refuses managing the channels of somebody who is not a guest', function () {
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -159,7 +159,7 @@ it('refuses an ordinary member managing a guest', function () {
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -173,7 +173,7 @@ it('drops public channel access when a member is demoted to guest', function () 
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -203,7 +203,7 @@ it('keeps a demoted member in the public channel they created themselves', funct
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -223,7 +223,7 @@ it('leaves channel membership alone when promoting instead of demoting', functio
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

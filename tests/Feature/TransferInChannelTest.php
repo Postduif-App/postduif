@@ -2,8 +2,8 @@
 
 use App\Actions\Chat\PresentMessage;
 use App\Enums\ChannelPostingPolicy;
+use App\Enums\SystemRole;
 use App\Enums\TransferAudience;
-use App\Enums\WorkspaceRole;
 use App\Features\Transfers;
 use App\Models\Channel;
 use App\Models\Message;
@@ -154,7 +154,7 @@ it('does not let a guest announce a transfer either', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -219,7 +219,7 @@ it('offers a guest nothing, even where the workspace has it on', function () {
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 

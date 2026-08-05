@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -107,7 +107,7 @@ it('refuses somebody who cannot see the channel', function () {
 
     $outsider = User::factory()->create();
     $channel->workspace->members()->attach($outsider->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -205,7 +205,7 @@ it('refuses somebody else in the channel', function () {
 
     $other = User::factory()->create();
     $channel->workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);

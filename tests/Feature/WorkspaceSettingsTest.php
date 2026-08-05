@@ -1,14 +1,14 @@
 <?php
 
 use App\Enums\BroadcastMentionPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 
 it('shows the general screen to whoever runs the workspace', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->get(route('workspace.edit'))
@@ -22,12 +22,12 @@ it('shows the general screen to whoever runs the workspace', function () {
 
 it('refuses the screen to a plain member', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Member);
+    workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)->get(route('workspace.edit'))->assertForbidden();
 });
 
-it('only offers the workspace section to whoever runs one', function (WorkspaceRole $role, bool $shown) {
+it('only offers the workspace section to whoever runs one', function (SystemRole $role, bool $shown) {
     $user = User::factory()->create();
     workspaceWithMember($user, $role);
 
@@ -35,14 +35,14 @@ it('only offers the workspace section to whoever runs one', function (WorkspaceR
         ->get(route('profile.edit'))
         ->assertInertia(fn ($page) => $page->where('auth.canManageWorkspace', $shown));
 })->with([
-    'eigenaar' => [WorkspaceRole::Owner, true],
-    'beheerder' => [WorkspaceRole::Admin, true],
-    'lid' => [WorkspaceRole::Member, false],
+    'eigenaar' => [SystemRole::Owner, true],
+    'beheerder' => [SystemRole::Admin, true],
+    'lid' => [SystemRole::Member, false],
 ]);
 
 it('tells the chat screen whether broadcasting is allowed', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
     $channel = channelWithMember($workspace, $user);
 
     actingAs($user)
@@ -58,7 +58,7 @@ it('tells the chat screen whether broadcasting is allowed', function () {
 
 it('lists everyone in the workspace, whoever runs it first', function () {
     $owner = User::factory()->create(['name' => 'Zoe Zwart']);
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
 
     $admin = User::factory()->create(['name' => 'Bram Bakker']);
     $member = User::factory()->create(['name' => 'Anna Aalders']);
@@ -82,7 +82,7 @@ it('lists everyone in the workspace, whoever runs it first', function () {
 
 it('sorts guests below ordinary members and labels them as such', function () {
     $owner = User::factory()->create(['name' => 'Zoe Zwart']);
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
 
     $guest = User::factory()->create(['name' => 'Aad Aardema']);
     $member = User::factory()->create(['name' => 'Bram Bakker']);
@@ -105,7 +105,7 @@ it('sorts guests below ordinary members and labels them as such', function () {
 
 it('carries the handle and joined date for every member', function () {
     $owner = User::factory()->create(['username' => 'zoe']);
-    workspaceWithMember($owner, WorkspaceRole::Owner);
+    workspaceWithMember($owner, SystemRole::Owner);
 
     actingAs($owner)
         ->get(route('workspace.members.index'))
@@ -117,10 +117,10 @@ it('carries the handle and joined date for every member', function () {
 
 it('never shows members of another workspace', function () {
     $owner = User::factory()->create();
-    workspaceWithMember($owner, WorkspaceRole::Owner);
+    workspaceWithMember($owner, SystemRole::Owner);
 
     $stranger = User::factory()->create(['name' => 'Iemand Anders']);
-    workspaceWithMember($stranger, WorkspaceRole::Owner);
+    workspaceWithMember($stranger, SystemRole::Owner);
 
     actingAs($owner)
         ->get(route('workspace.members.index'))
@@ -132,7 +132,7 @@ it('never shows members of another workspace', function () {
 
 it('renames the workspace without touching its address', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $slug = $workspace->slug;
 
     actingAs($user)
@@ -148,7 +148,7 @@ it('renames the workspace without touching its address', function () {
 
 it('refuses an empty or overlong name', function (string $name) {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->patch(route('workspace.update'), [
@@ -162,7 +162,7 @@ it('refuses an empty or overlong name', function (string $name) {
 
 it('refuses a rename from a plain member', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Member);
+    $workspace = workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)
         ->patch(route('workspace.update'), [

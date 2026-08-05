@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\SendMessage;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\User;
@@ -209,7 +209,7 @@ it('still answers the part of the query that is not blocked', function () {
 it('lets whoever runs the workspace search on a blocked word', function () {
     $owner = User::factory()->create();
     $workspace = workspaceBlocking($owner, ['sukkel']);
-    $workspace->members()->updateExistingPivot($owner->id, ['role' => WorkspaceRole::Owner->value]);
+    $workspace->members()->updateExistingPivot($owner->id, ['role' => SystemRole::Owner->value]);
     $channel = channelWithMember($workspace, $owner);
 
     Message::factory()->create([

@@ -1,7 +1,7 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Enums\TransferAudience;
-use App\Enums\WorkspaceRole;
 use App\Models\Transfer;
 use App\Models\TransferDownload;
 use App\Models\TransferRecipient;
@@ -177,7 +177,7 @@ it('does not show a colleague what happened to somebody else transfer', function
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

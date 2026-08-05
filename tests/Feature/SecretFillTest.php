@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\SecretRequest;
 use App\Models\SecretRequestKey;
 use App\Models\SecretValue;
@@ -40,7 +40,7 @@ function fillableRequest(array $state = []): array
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);

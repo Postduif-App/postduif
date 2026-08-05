@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Events\StatusChanged;
 use App\Models\User;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -17,7 +17,7 @@ it('tells everyone in your channels that your status changed', function () {
 
     $colleague = User::factory()->create();
     $workspace->members()->attach($colleague->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
@@ -51,7 +51,7 @@ it('says nothing to a workspace member who shares no channel with you', function
 
     $stranger = User::factory()->create();
     $workspace->members()->attach($stranger->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 

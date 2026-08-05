@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InviteLink;
 use App\Models\User;
@@ -17,10 +17,10 @@ use function Pest\Laravel\post;
  *
  * @return array{0: InviteLink, 1: Workspace, 2: Channel}
  */
-function workspaceReachableByLink(WorkspaceRole $role = WorkspaceRole::Member): array
+function workspaceReachableByLink(SystemRole $role = SystemRole::Member): array
 {
     $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($owner, SystemRole::Owner);
 
     $channel = Channel::factory()->create([
         'workspace_id' => $workspace->id,
@@ -69,7 +69,7 @@ it('makes an account and joins in one go', function () {
 
     $user = User::where('email', 'nieuw@voorbeeld.nl')->sole();
 
-    expect($workspace->roleFor($user))->toBe(WorkspaceRole::Member)
+    expect($workspace->roleFor($user))->toBe(SystemRole::Member)
         ->and($channel->members()->whereKey($user->id)->exists())->toBeTrue()
         ->and($link->fresh()->uses)->toBe(1)
         // Nothing proved the address, unlike a mailed invitation.
@@ -84,32 +84,32 @@ it('joins somebody who is already signed in', function () {
         ->post(route('invite-links.join', $link->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($user))->toBe(WorkspaceRole::Member)
+    expect($workspace->roleFor($user))->toBe(SystemRole::Member)
         ->and($channel->members()->whereKey($user->id)->exists())->toBeTrue()
         ->and($link->fresh()->uses)->toBe(1);
 });
 
 it('joins as a guest when the link says so', function () {
-    [$link, $workspace] = workspaceReachableByLink(WorkspaceRole::Guest);
+    [$link, $workspace] = workspaceReachableByLink(SystemRole::Guest);
     $user = User::factory()->create();
 
     actingAs($user)->post(route('invite-links.join', $link->token));
 
-    expect($workspace->roleFor($user))->toBe(WorkspaceRole::Guest);
+    expect($workspace->roleFor($user))->toBe(SystemRole::Guest);
 });
 
 it('leaves an existing member where they are and spends no use', function () {
-    [$link, $workspace, $channel] = workspaceReachableByLink(WorkspaceRole::Guest);
+    [$link, $workspace, $channel] = workspaceReachableByLink(SystemRole::Guest);
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
     actingAs($admin)->post(route('invite-links.join', $link->token));
 
-    expect($workspace->roleFor($admin))->toBe(WorkspaceRole::Admin)
+    expect($workspace->roleFor($admin))->toBe(SystemRole::Admin)
         // The channels do get added: that is a reasonable thing to follow a
         // link for, and it costs nobody a place.
         ->and($channel->members()->whereKey($admin->id)->exists())->toBeTrue()

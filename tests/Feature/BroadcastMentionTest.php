@@ -3,7 +3,7 @@
 use App\Actions\Chat\ChannelPresence;
 use App\Actions\Chat\SendMessage;
 use App\Enums\BroadcastMentionPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\User;
@@ -22,7 +22,7 @@ function channelWithThree(): array
     $one = User::factory()->create(['username' => 'one']);
     $two = User::factory()->create(['username' => 'two']);
 
-    $workspace = workspaceWithMember($author, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($author, SystemRole::Owner);
     foreach ([$one, $two] as $member) {
         $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
     }

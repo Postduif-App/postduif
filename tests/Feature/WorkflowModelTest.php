@@ -1,8 +1,8 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Enums\WorkflowRunStatus;
 use App\Enums\WorkflowStepStatus;
-use App\Enums\WorkspaceRole;
 use App\Features\Workflows;
 use App\Models\User;
 use App\Models\Workflow;
@@ -21,7 +21,7 @@ use Laravel\Pennant\Feature;
  *
  * @return array{0: User, 1: Workspace}
  */
-function workspaceWithWorkflows(WorkspaceRole $role = WorkspaceRole::Admin): array
+function workspaceWithWorkflows(SystemRole $role = SystemRole::Admin): array
 {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, $role);
@@ -144,7 +144,7 @@ it('keeps a skipped step apart from one that ran', function () {
 
 it('offers workflows to nobody until the workspace switches them on', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     expect($user->can('manageWorkflows', $workspace))->toBeFalse();
 });
@@ -154,7 +154,7 @@ it('lets a beheerder write workflows and keeps an ordinary member out', function
 
     $member = User::factory()->create();
     $workspace->members()->attach($member->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

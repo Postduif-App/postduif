@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\BoardComment;
 use App\Models\BoardPost;
 use App\Models\User;
@@ -83,7 +83,7 @@ it('lets nobody rewrite another persons reply', function () {
 
     $beheerder = User::factory()->create();
     $workspace->members()->attach($beheerder->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -105,7 +105,7 @@ it('lets a beheerder take somebody elses reply off the board', function () {
 
     $beheerder = User::factory()->create();
     $workspace->members()->attach($beheerder->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 
@@ -125,7 +125,7 @@ it('lets an ordinary member withdraw only their own reply', function () {
 
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 

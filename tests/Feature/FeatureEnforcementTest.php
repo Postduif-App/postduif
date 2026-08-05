@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\ChannelTicketPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\InviteLinks;
 use App\Features\MessageForwarding;
 use App\Features\SavedMessages;
@@ -28,7 +28,7 @@ use function Pest\Laravel\actingAs;
 function workspaceWithout(string $feature): array
 {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $channel = channelWithMember($workspace, $user);
 
     Feature::for($workspace)->deactivate($feature);
@@ -109,7 +109,7 @@ it('does not save a message where saving is switched off', function () {
  */
 it('leaves everything alone in a workspace that switched nothing off', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $channel = channelWithMember($workspace, $user);
 
     actingAs($user)->post(route('chat.channels.scheduled.store', [$workspace, $channel]), [
@@ -120,7 +120,7 @@ it('leaves everything alone in a workspace that switched nothing off', function 
 
 it('tells the page which features this workspace offers', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
     $channel = channelWithMember($workspace, $user);
 
     Feature::for($workspace)->deactivate(SavedMessages::class);

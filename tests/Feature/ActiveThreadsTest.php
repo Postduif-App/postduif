@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\FindActiveThreads;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Channel;
 use App\Models\Message;
@@ -58,7 +58,7 @@ it('leaves out threads from channels the member cannot see', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => WorkspaceRole::Member->value, 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $private = Channel::factory()->create([
         'workspace_id' => $workspace->id,
@@ -97,7 +97,7 @@ it('keeps a closed thread visible for everybody else', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => WorkspaceRole::Member->value, 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel = channelWithMember($workspace, $user);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
@@ -213,7 +213,7 @@ it('refuses to close a thread in a channel the member cannot see', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($other->id, ['role' => WorkspaceRole::Member->value, 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $private = Channel::factory()->create([
         'workspace_id' => $workspace->id,

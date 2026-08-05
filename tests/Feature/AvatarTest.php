@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -126,7 +126,7 @@ it('is not reachable while signed out', function () {
 
 it('stores a logo for the workspace', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)
         ->post(route('workspace.avatar.store'), [
@@ -140,7 +140,7 @@ it('stores a logo for the workspace', function () {
 /** Setting it is for whoever runs the workspace, not for everybody in it. */
 it('refuses a plain member setting the logo', function () {
     $user = User::factory()->create();
-    workspaceWithMember($user, WorkspaceRole::Member);
+    workspaceWithMember($user, SystemRole::Member);
 
     actingAs($user)
         ->post(route('workspace.avatar.store'), [
@@ -155,7 +155,7 @@ it('refuses a plain member setting the logo', function () {
  */
 it('shows the logo to members and to nobody else', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)->post(route('workspace.avatar.store'), [
         'avatar' => UploadedFile::fake()->image('logo.png'),
@@ -170,7 +170,7 @@ it('shows the logo to members and to nobody else', function () {
 
 it('takes the logo away again', function () {
     $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, WorkspaceRole::Owner);
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
 
     actingAs($user)->post(route('workspace.avatar.store'), [
         'avatar' => UploadedFile::fake()->image('logo.png'),

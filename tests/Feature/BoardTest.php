@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\MessageBoard;
 use App\Models\BoardPost;
 use App\Models\Channel;
@@ -27,7 +27,7 @@ function boardFixture(): array
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 
@@ -197,7 +197,7 @@ it('lets nobody but the author or a beheerder correct a notice', function () {
 
     $other = User::factory()->create();
     $workspace->members()->attach($other->id, [
-        'role' => WorkspaceRole::Member->value,
+        'role' => SystemRole::Member->value,
         'joined_at' => now(),
     ]);
 
@@ -230,7 +230,7 @@ it('lets only a beheerder pin a notice', function () {
 
     $beheerder = User::factory()->create();
     $workspace->members()->attach($beheerder->id, [
-        'role' => WorkspaceRole::Admin->value,
+        'role' => SystemRole::Admin->value,
         'joined_at' => now(),
     ]);
 

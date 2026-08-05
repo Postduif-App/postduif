@@ -1,9 +1,9 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
-use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Ticket;
@@ -68,7 +68,7 @@ test('het bord zet de urgentste bovenaan', function () {
 
 test('een gast ziet alleen tickets uit zijn eigen kanalen', function () {
     $guest = User::factory()->create();
-    $workspace = workspaceWithMember($guest, WorkspaceRole::Guest);
+    $workspace = workspaceWithMember($guest, SystemRole::Guest);
 
     $shared = channelWithMember($workspace, $guest);
     $elsewhere = Channel::factory()->create([

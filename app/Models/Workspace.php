@@ -6,9 +6,10 @@ use App\Enums\AttachmentType;
 use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
 use App\Enums\MemberPanelVisibility;
+use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Enums\WorkspaceAccent;
 use App\Enums\WorkspaceFont;
-use App\Enums\WorkspaceRole;
 use App\Features\WorkspaceFeature;
 use Database\Factories\WorkspaceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -72,6 +73,17 @@ class Workspace extends Model
         'accent' => WorkspaceAccent::Neutral->value,
         'font' => WorkspaceFont::InstrumentSans->value,
     ];
+
+    /**
+     * A new workspace gets its roles before anybody can join it.
+     *
+     * created rather than creating: the rows point back at a workspace that
+     * has to exist first.
+     */
+    protected static function booted(): void
+    {
+        static::created(fn (self $workspace) => $workspace->seedSystemRoles());
+    }
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -197,7 +209,7 @@ class Workspace extends Model
              * describe. This one always means the workspace side.
              */
             ->as('membership')
-            ->withPivot(['role', 'display_name', 'joined_at'])
+            ->withPivot(['role', 'workspace_role_id', 'display_name', 'joined_at'])
             ->withTimestamps();
     }
 
@@ -290,13 +302,88 @@ class Workspace extends Model
     /**
      * Resolve a member's role, or null when the user does not belong here.
      */
-    public function roleFor(User $user): ?WorkspaceRole
+    /**
+     * The roles this workspace has, its own and the four it started with.
+     *
+     * @return HasMany<Role, $this>
+     */
+    public function roles(): HasMany
+    {
+        return $this->hasMany(Role::class)->inOrder();
+    }
+
+    /**
+     * Give a workspace the four roles it starts life with.
+     *
+     * On the model rather than in whichever screen makes a workspace, because
+     * it is an invariant and not a step: a workspace with no roles is one
+     * nobody can be a member of, and there is more than one way in here — the
+     * admin panel, a factory, and whatever comes next.
+     */
+    public function seedSystemRoles(): void
+    {
+        foreach (SystemRole::cases() as $position => $role) {
+            $this->roles()->firstOrCreate(['key' => $role->value], [
+                'name' => $role->getLabel(),
+                'is_external' => $role->isExternal(),
+                'is_system' => true,
+                'position' => $position,
+                'abilities' => $this->seedAbilitiesFor($role),
+            ]);
+        }
+    }
+
+    /**
+     * What a system role starts with here, rather than in general.
+     *
+     * Two of the seven are already a decision this workspace has made in a
+     * column of its own — who may open a channel, and who may notify a whole
+     * one — so the seed reads those rather than the role's default, which would
+     * quietly undo the setting.
+     *
+     * The migration that gave the existing workspaces their roles does the same
+     * translation in its own copy, as a migration has to: it runs against a
+     * schema this model may since have outgrown. Both copies go together when
+     * the two columns do.
+     *
+     * @return list<string>
+     */
+    private function seedAbilitiesFor(SystemRole $role): array
+    {
+        $abilities = collect($role->defaultAbilities())
+            ->reject(fn (WorkspaceAbility $ability): bool => in_array($ability, [
+                WorkspaceAbility::BroadcastMention,
+                WorkspaceAbility::CreateChannels,
+            ], true));
+
+        if (match ($this->broadcast_mentions) {
+            BroadcastMentionPolicy::Everyone => ! $role->isExternal(),
+            BroadcastMentionPolicy::Nobody => false,
+            default => $role->canManageWorkspace(),
+        }) {
+            $abilities->push(WorkspaceAbility::BroadcastMention);
+        }
+
+        if (match ($this->channel_creation) {
+            ChannelCreationPolicy::Admins => $role->canManageWorkspace(),
+            default => ! $role->isExternal(),
+        }) {
+            $abilities->push(WorkspaceAbility::CreateChannels);
+        }
+
+        return $abilities
+            ->map(fn (WorkspaceAbility $ability): string => $ability->value)
+            ->values()
+            ->all();
+    }
+
+    public function roleFor(User $user): ?SystemRole
     {
         // One column rather than the whole membership: this is asked on nearly
         // every request, and the answer is a single string.
         $role = $this->members()->whereKey($user->id)->value('workspace_user.role');
 
-        return $role === null ? null : WorkspaceRole::from($role);
+        return $role === null ? null : SystemRole::from($role);
     }
 
     public function hasMember(User $user): bool
@@ -323,7 +410,7 @@ class Workspace extends Model
     /**
      * Workspaces the user may look around in — so, the ones they belong to in
      * a role that is not a guest. The query-side twin of
-     * WorkspaceRole::canBrowseWorkspace(), for the places that filter a list
+     * SystemRole::canBrowseWorkspace(), for the places that filter a list
      * instead of judging a single record.
      *
      * @param  Builder<$this>  $query
@@ -332,6 +419,6 @@ class Workspace extends Model
     {
         $query->whereHas('members', fn (Builder $members) => $members
             ->whereKey($user->id)
-            ->whereIn('workspace_user.role', WorkspaceRole::browsingValues()));
+            ->whereIn('workspace_user.role', SystemRole::browsingValues()));
     }
 }

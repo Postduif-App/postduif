@@ -2,9 +2,9 @@
 
 use App\Actions\Tickets\CreateTicket;
 use App\Enums\ChannelTicketPolicy;
+use App\Enums\SystemRole;
 use App\Enums\TicketEventType;
 use App\Enums\TicketPriority;
-use App\Enums\WorkspaceRole;
 use App\Models\Message;
 use App\Models\Ticket;
 use App\Models\User;
@@ -108,7 +108,7 @@ it('keeps somebody outside the channel away from its tickets', function () {
 
     $outsider = User::factory()->create();
     $workspace->members()->attach($outsider->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
 

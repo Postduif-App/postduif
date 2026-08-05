@@ -3,7 +3,7 @@
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Transfers;
 use App\Features\WorkspaceFeature;
 use App\Models\User;
@@ -75,8 +75,8 @@ it('describes the roles as the code defines them', function () {
     get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('roles', count(WorkspaceRole::cases()))
-            ->where('roles.3.value', WorkspaceRole::Guest->value)
+            ->has('roles', count(SystemRole::cases()))
+            ->where('roles.3.value', SystemRole::Guest->value)
             // The guest row is the one that matters: it is the only role the
             // application actively keeps out of things.
             ->where('roles.3.canBrowseWorkspace', false)
