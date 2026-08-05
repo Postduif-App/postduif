@@ -81,7 +81,12 @@ class SendDirectMessage extends WorkflowAction
 
         $channel = $this->startDirectMessage->handle($context->workspace(), $owner, $recipient);
 
-        $message = $this->sendMessage->fromSystem($channel, $body, $this->botName($context));
+        $message = $this->sendMessage->fromSystem(
+            $channel,
+            $body,
+            $this->botName($context),
+            workflow: $context->workflow,
+        );
 
         return [
             'message' => ['id' => $message->id],

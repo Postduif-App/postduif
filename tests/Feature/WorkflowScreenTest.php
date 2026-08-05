@@ -6,6 +6,8 @@ use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowRunStatus;
 use App\Enums\WorkflowStepKind;
 use App\Features\Workflows as WorkflowsFeature;
+use App\Models\Form;
+use App\Models\FormField;
 use App\Models\User;
 use App\Models\Workflow;
 use App\Models\WorkflowRun;
@@ -29,6 +31,41 @@ function workflowBeheerder(): array
     return [$user, $workspace];
 }
 
+it('hands the builder the questions a form asks, under the keys they arrive as', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $form = Form::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+        'title' => 'Storingsmelding',
+    ]);
+
+    FormField::factory()->for($form)->create([
+        'key' => 'wat_gaat_er_fout',
+        'label' => 'Wat gaat er fout?',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.edit', $workflow))
+        ->assertOk()
+        /*
+         * The key without punctuation and the question with it. This is the one
+         * trigger whose variables the register cannot describe — the answers
+         * arrive under keys the form invented — so the picker is built from
+         * this, and somebody guessing at the spelling is what put a literal
+         * {{ trigger.answers.wat_gaat_er_fout? }} in a ticket title.
+         */
+        ->assertInertia(fn ($page) => $page
+            ->where('forms.0.title', 'Storingsmelding')
+            ->where('forms.0.fields.0.key', 'wat_gaat_er_fout')
+            ->where('forms.0.fields.0.label', 'Wat gaat er fout?'));
+});
+
 it('lists a workspace his workflows without drawing any of them', function () {
     [$admin, $workspace] = workflowBeheerder();
 
@@ -51,7 +88,7 @@ it('lists a workspace his workflows without drawing any of them', function () {
             ->missing('workflows.0.steps')
             // Only the triggers, because the only thing built here is a new
             // workflow's first question.
-            ->has('triggers', 6)
+            ->has('triggers', 8)
             ->missing('catalogue')
         );
 });
@@ -69,8 +106,8 @@ it('shows a beheerder the builder with everything it can be built from', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workflow-edit')
-            ->has('catalogue.triggers', 6)
-            ->has('catalogue.actions', 14)
+            ->has('catalogue.triggers', 8)
+            ->has('catalogue.actions', 15)
             // The fields come down with them: a builder that had to ask for
             // them would drift from what the runner reads.
             ->has('catalogue.triggers.0.fields')
@@ -110,10 +147,7 @@ it('keeps an ordinary member out of the builder', function () {
     [, $workspace] = workflowBeheerder();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $this->actingAs($member)->get(route('workflows.index'))->assertForbidden();
 });
@@ -153,6 +187,92 @@ it('gives a webhook workflow a URL the moment it becomes one', function () {
     ]);
 
     expect($workspace->workflows()->first()->webhookUrl())->not->toBeNull();
+});
+
+it('saves the name a workflow his messages are signed with', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $this->actingAs($admin)->put(route('workflows.update', $workflow), [
+        'name' => 'Storingsmelder',
+        'bot_name' => 'Storingsdienst',
+        'trigger_type' => 'message-keyword',
+        'trigger_config' => [],
+        'steps' => [],
+    ]);
+
+    expect($workflow->fresh()->botName())->toBe('Storingsdienst');
+});
+
+it('reads an emptied box as the workflow his own name again', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+        'name' => 'Storingsmelder',
+        'bot_name' => 'Storingsdienst',
+    ]);
+
+    $this->actingAs($admin)->put(route('workflows.update', $workflow), [
+        'name' => 'Storingsmelder',
+        // A box holding nothing but spaces is a box somebody cleared, and the
+        // middleware has turned it into null by the time the rules see it.
+        'bot_name' => '   ',
+        'trigger_type' => 'message-keyword',
+        'trigger_config' => [],
+        'steps' => [],
+    ]);
+
+    expect($workflow->fresh())
+        ->bot_name->toBeNull()
+        ->botName()->toBe('Storingsmelder');
+});
+
+it('refuses a name longer than a message can carry', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('workflows.update', $workflow), [
+            'name' => 'Storingsmelder',
+            'bot_name' => str_repeat('a', 81),
+            'trigger_type' => 'message-keyword',
+            'trigger_config' => [],
+            'steps' => [],
+        ])
+        ->assertSessionHasErrors('bot_name');
+});
+
+it('sends the builder the stored name rather than what stands in for it', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+        'name' => 'Storingsmelder',
+        'bot_name' => null,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.edit', $workflow))
+        ->assertInertia(fn ($page) => $page
+            /*
+             * Empty, not filled in with the workflow's name. Sending what the
+             * messages are signed with would turn the fallback into a choice
+             * the first time anybody saved the screen, after which renaming the
+             * workflow would quietly stop renaming its messages.
+             */
+            ->where('workflow.botName', null)
+        );
 });
 
 it('leaves an existing URL alone when the workflow is saved again', function () {

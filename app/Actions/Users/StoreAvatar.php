@@ -3,6 +3,7 @@
 namespace App\Actions\Users;
 
 use App\Models\User;
+use App\Models\Workflow;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,9 +19,9 @@ class StoreAvatar
     /**
      * Take a picture, square it, and put it away.
      *
-     * One action for a member and for a workspace: the storing is the same
-     * question — crop, shrink, replace what was there — and only who may ask it
-     * differs, which is the controllers' business.
+     * One action for a member, a workspace and a workflow: the storing is the
+     * same question — crop, shrink, replace what was there — and only who may
+     * ask it differs, which is the controllers' business.
      *
      * Resized on the way in rather than on the way out. An avatar is drawn
      * dozens of times on a page, and serving a four-megabyte original each time
@@ -31,11 +32,15 @@ class StoreAvatar
      * circle or a square, and a photo with bars down the side looks broken
      * rather than considerate.
      */
-    public function handle(User|Workspace $owner, UploadedFile $file): void
+    public function handle(User|Workspace|Workflow $owner, UploadedFile $file): void
     {
         $previous = $owner->avatar_path;
 
-        $folder = $owner instanceof User ? 'users' : 'workspaces';
+        $folder = match (true) {
+            $owner instanceof User => 'users',
+            $owner instanceof Workflow => 'workflows',
+            default => 'workspaces',
+        };
         $path = 'avatars/'.$folder.'/'.$owner->id.'/'.Str::random(24).'.webp';
 
         // Converted in place in the upload's temporary file: it is going to be
@@ -60,7 +65,7 @@ class StoreAvatar
     }
 
     /** Take the picture away, file and all. */
-    public function remove(User|Workspace $owner): void
+    public function remove(User|Workspace|Workflow $owner): void
     {
         if ($owner->avatar_path === null) {
             return;

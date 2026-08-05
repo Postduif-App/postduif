@@ -23,6 +23,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int $channel_id
  * @property int|null $user_id
  * @property int|null $webhook_id
+ * @property int|null $workflow_id
  * @property string|null $bot_name
  * @property string|null $forwarded_from
  * @property string|null $parent_id
@@ -41,7 +42,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * why every reader casts.
  * @property-read bool|null $muted
  */
-#[Fillable(['id', 'workspace_id', 'channel_id', 'user_id', 'webhook_id', 'bot_name', 'forwarded_from', 'parent_id', 'quoted_message_id', 'body'])]
+#[Fillable(['id', 'workspace_id', 'channel_id', 'user_id', 'webhook_id', 'workflow_id', 'bot_name', 'forwarded_from', 'parent_id', 'quoted_message_id', 'body'])]
 class Message extends Model implements HasMedia
 {
     /** @use HasFactory<MessageFactory> */
@@ -129,6 +130,20 @@ class Message extends Model implements HasMedia
     public function webhook(): BelongsTo
     {
         return $this->belongsTo(Webhook::class);
+    }
+
+    /**
+     * The workflow that posted this, if it still exists.
+     *
+     * Only ever read for its face. The name is on the message itself — see the
+     * bot_author migration — so a workflow that has since been deleted costs
+     * this message its avatar and nothing else.
+     *
+     * @return BelongsTo<Workflow, $this>
+     */
+    public function workflow(): BelongsTo
+    {
+        return $this->belongsTo(Workflow::class);
     }
 
     /** @return BelongsTo<Message, $this> */

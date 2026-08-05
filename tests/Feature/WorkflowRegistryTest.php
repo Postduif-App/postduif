@@ -76,6 +76,8 @@ it('offers every trigger the application was built with', function () {
         'message-keyword',
         'channel-join',
         'reaction',
+        'form-submitted',
+        'timeclock',
         'link',
         'schedule',
         'webhook',

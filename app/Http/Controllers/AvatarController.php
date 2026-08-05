@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Workflow;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,24 @@ class AvatarController extends Controller
         abort_unless($workspace->hasMember($request->user()), 404);
 
         return $this->stream($workspace->avatar_path);
+    }
+
+    /**
+     * The face a workspace gave to something it built.
+     *
+     * The same membership rule as the logo above, and for a plainer reason than
+     * either of the two: this picture appears beside messages in that
+     * workspace's channels, so the people who may see it are the people who may
+     * be in them.
+     *
+     * Not a person, so nothing here is about privacy — it is about a picture
+     * from one organisation not being fetchable by another.
+     */
+    public function workflow(Request $request, Workflow $workflow): StreamedResponse
+    {
+        abort_unless($workflow->workspace?->hasMember($request->user()) ?? false, 404);
+
+        return $this->stream($workflow->avatar_path);
     }
 
     public function __invoke(Request $request, User $user): StreamedResponse

@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Users\StoreAvatar;
 use App\Concerns\ResolvesCurrentWorkspace;
+use App\Enums\AttachmentType;
 use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowConditionMatch;
 use App\Enums\WorkflowConditionOperator;
 use App\Enums\WorkflowConditionOutcome;
 use App\Enums\WorkflowStepKind;
 use App\Http\Controllers\Controller;
+use App\Models\Form;
+use App\Models\FormField;
 use App\Models\Workflow;
 use App\Models\WorkflowStep;
 use App\Workflows\Actions\HttpRequest;
@@ -147,7 +151,90 @@ class WorkflowController extends Controller
                 ->orderBy('name')
                 ->get(['users.id', 'users.name'])
                 ->all(),
+
+            /*
+             * And what a form picker chooses from. Every form of this workspace
+             * rather than only the open ones: a workflow is written to outlive
+             * the moment, and a form that is closed today may be reopened
+             * tomorrow — hiding it here would silently empty the one setting
+             * the trigger cannot do without.
+             */
+            /*
+             * The questions come with them, and that is the point of sending
+             * more than a name here. The answers to a form arrive under keys
+             * the form itself invented, so this is the only trigger whose
+             * variables cannot be described by the register — see
+             * FormSubmittedTrigger::provides. Sending them lets the builder
+             * offer {{ trigger.answers.reden }} in the picker rather than
+             * leaving somebody to guess at the spelling, which is exactly the
+             * guess that produced a title reading "{{ trigger.answers.wat_gaat_er_fout? }}".
+             */
+            'forms' => $workspace->forms()
+                ->with('fields:id,form_id,key,label,position')
+                ->orderBy('title')
+                ->get(['id', 'title'])
+                ->map(fn (Form $form): array => [
+                    'id' => $form->id,
+                    'title' => $form->title,
+                    'fields' => $form->fields
+                        ->map(fn (FormField $field): array => [
+                            'key' => $field->key,
+                            'label' => $field->label,
+                        ])
+                        ->values()
+                        ->all(),
+                ])
+                ->all(),
         ]);
+    }
+
+    /**
+     * Give this workflow a face, or replace the one it has.
+     *
+     * Through the same StoreAvatar a member's photograph goes through — squared
+     * and shrunk on the way in, stored on the private disk, served through a
+     * route. The validation is the workspace logo's, down to the refusal of an
+     * SVG: a bot avatar is drawn beside messages in a channel, and a script in a
+     * costume is no more welcome there than anywhere else.
+     */
+    public function storeAvatar(Request $request, Workflow $workflow, StoreAvatar $storeAvatar): RedirectResponse
+    {
+        $this->authorizeWorkflow($request, $workflow);
+
+        $request->validate([
+            'avatar' => [
+                'required',
+                'image',
+                'max:2048',
+                'mimetypes:'.implode(',', AttachmentType::Images->mimeTypes()),
+            ],
+        ], [
+            'avatar.mimetypes' => __('requests.image.type'),
+        ]);
+
+        $storeAvatar->handle($workflow, $request->file('avatar'));
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('workflows.screen.avatar_saved')]);
+
+        return back();
+    }
+
+    /**
+     * Take it away again.
+     *
+     * What is left is the mark the browser draws for a bot with no picture,
+     * which is what every bot message showed before this existed — so removing
+     * one is a step back to the default rather than a message with a hole in it.
+     */
+    public function destroyAvatar(Request $request, Workflow $workflow, StoreAvatar $storeAvatar): RedirectResponse
+    {
+        $this->authorizeWorkflow($request, $workflow);
+
+        $storeAvatar->remove($workflow);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('workflows.screen.avatar_removed')]);
+
+        return back();
     }
 
     public function store(Request $request, WorkflowRegistry $registry): RedirectResponse
@@ -207,6 +294,14 @@ class WorkflowController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'description' => ['nullable', 'string', 'max:200'],
+            /*
+             * The same ceiling the channel webhooks give their bot name, so the
+             * two kinds of automatic message cannot be signed by names of
+             * different lengths. Optional: empty means the workflow's name, and
+             * the middleware has already turned a box holding nothing but
+             * spaces into null by the time this is read.
+             */
+            'bot_name' => ['nullable', 'string', 'max:80'],
             'trigger_type' => ['required', 'string', Rule::in(array_keys($registry->triggers()))],
             'trigger_config' => ['array'],
             'steps' => ['array', 'max:'.self::MAX_STEPS],
@@ -231,6 +326,7 @@ class WorkflowController extends Controller
             $workflow->update([
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
+                'bot_name' => $data['bot_name'] ?? null,
                 'trigger_type' => $data['trigger_type'],
                 'trigger_config' => $data['trigger_config'] ?? [],
             ]);
@@ -550,6 +646,21 @@ class WorkflowController extends Controller
             'id' => $workflow->id,
             'name' => $workflow->name,
             'description' => $workflow->description,
+            /*
+             * The stored value rather than what the messages are actually
+             * signed with, so an empty box stays empty. Filling it in with the
+             * workflow's name would turn the fallback into a choice the first
+             * time anybody saved the screen — after which renaming the workflow
+             * would quietly stop renaming its messages.
+             */
+            'botName' => $workflow->bot_name,
+
+            /*
+             * The face its messages carry, or null where it has none. A URL
+             * rather than the stored path: the path is where the file sits on
+             * our disk, and the browser has no business with it.
+             */
+            'avatarUrl' => $workflow->avatarUrl(),
             'triggerType' => $workflow->trigger_type,
             'triggerConfig' => (object) $workflow->trigger_config,
             'enabled' => $workflow->isEnabled(),

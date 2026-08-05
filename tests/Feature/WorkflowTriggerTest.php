@@ -142,10 +142,7 @@ it('starts a workflow when somebody joins a channel', function () {
     $workflow = listeningWorkflow($owner, 'channel-join', ['channel_id' => $channel->id], $channel);
 
     $newcomer = User::factory()->create();
-    $workspace->members()->attach($newcomer->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $newcomer, SystemRole::Member);
 
     app(AddChannelMembers::class)->handle($channel, [$newcomer->id]);
 

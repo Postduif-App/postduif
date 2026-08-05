@@ -8,6 +8,7 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
 use App\Models\Webhook;
+use App\Models\Workflow;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,14 @@ class SendMessage
      * that was opened or closed — which is a bot message in every way that
      * matters to a reader.
      *
+     * @param  Workflow|null  $workflow  The workflow this was posted by, where
+     *                                   one was. Only ever read for its face —
+     *                                   the name is copied into bot_name above,
+     *                                   so a workflow deleted tomorrow leaves
+     *                                   this message signed and unillustrated
+     *                                   rather than unsigned. Null for the
+     *                                   application speaking for itself, which
+     *                                   has no picture to offer.
      * @param  string|null  $parentId  A message in this channel to hang the
      *                                 reply under. It has to travel through
      *                                 post() rather than be written on
@@ -101,8 +110,17 @@ class SendMessage
         string $body,
         string $botName,
         ?string $parentId = null,
+        ?Workflow $workflow = null,
     ): Message {
-        return $this->post($channel, ['bot_name' => $botName], null, $body, $parentId, null, null);
+        return $this->post(
+            $channel,
+            ['bot_name' => $botName, 'workflow_id' => $workflow?->id],
+            null,
+            $body,
+            $parentId,
+            null,
+            null,
+        );
     }
 
     /**

@@ -31,6 +31,16 @@ function workspaceWithWorkflows(SystemRole $role = SystemRole::Admin): array
     return [$user, $workspace];
 }
 
+it('signs a workflow his messages with its own name until it is given one for them', function () {
+    $workflow = Workflow::factory()->create(['name' => 'Storingsmelder', 'bot_name' => null]);
+
+    expect($workflow->botName())->toBe('Storingsmelder');
+
+    $workflow->update(['bot_name' => 'Storingsdienst']);
+
+    expect($workflow->botName())->toBe('Storingsdienst');
+});
+
 it('leaves a new workflow switched off', function () {
     $workflow = Workflow::factory()->create();
 
@@ -153,10 +163,7 @@ it('lets a beheerder write workflows and keeps an ordinary member out', function
     [$admin, $workspace] = workspaceWithWorkflows();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     expect($admin->can('manageWorkflows', $workspace))->toBeTrue()
         ->and($member->can('manageWorkflows', $workspace))->toBeFalse();

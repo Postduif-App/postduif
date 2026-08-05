@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { AvatarField } from '@/components/avatar-field';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,10 @@ import {
     toggle,
     update,
 } from '@/routes/workflows';
+import {
+    destroy as removeAvatar,
+    store as storeAvatar,
+} from '@/routes/workflows/avatar';
 
 /**
  * One thing a trigger or an action needs to be told, exactly as the register
@@ -48,6 +53,7 @@ interface Field {
         | 'long-text'
         | 'channel'
         | 'member'
+        | 'form'
         | 'emoji'
         | 'number'
         | 'words'
@@ -132,6 +138,10 @@ interface Workflow {
     id: number;
     name: string;
     description: string | null;
+    /** What the messages are signed with, or null while it is still the name. */
+    botName: string | null;
+    /** The face its messages carry, or null where it has none. */
+    avatarUrl: string | null;
     triggerType: string;
     triggerConfig: Record<string, Setting>;
     enabled: boolean;
@@ -174,6 +184,18 @@ interface WorkflowEditProps {
     grammar: Grammar;
     channels: { id: number; name: string }[];
     members: { id: number; name: string }[];
+    /** Ids are ULIDs here, unlike the two above. */
+    /**
+     * The forms this workspace has written, with the questions each of them
+     * asks. The questions are here because the answers to a form arrive under
+     * keys the form invented — the one trigger whose variables the register
+     * cannot describe — and the picker offers them from this.
+     */
+    forms: {
+        id: string;
+        title: string;
+        fields: { key: string; label: string }[];
+    }[];
 }
 
 /** The two that compare against nothing, so their value box is hidden. */
@@ -390,6 +412,28 @@ function readCondition(saved: SavedCondition): Condition | null {
 }
 
 /**
+ * The questions of the form this workflow waits for, or none.
+ *
+ * Keyed off the trigger's own setting rather than off the trigger type, so a
+ * workflow that has not chosen a form yet offers nothing rather than the
+ * questions of whichever form happened to be first.
+ */
+function askedBy(
+    forms: WorkflowEditProps['forms'],
+    triggerConfig: Record<string, Setting>,
+): { key: string; label: string }[] {
+    const chosen = triggerConfig.form_id;
+
+    if (chosen === undefined || chosen === null || chosen === '') {
+        return [];
+    }
+
+    return (
+        forms.find((form) => String(form.id) === String(chosen))?.fields ?? []
+    );
+}
+
+/**
  * Every path a block at this address may read, with what it holds.
  *
  * The trigger's own, plus whatever each block that is certain to have run
@@ -403,11 +447,26 @@ function variablesFor(
     actions: Described[],
     payload: Record<string, Setting> | null,
     samples: Samples,
+    answers: { key: string; label: string }[] = [],
 ): { path: string; what: string }[] {
     const found: { path: string; what: string }[] = [];
 
     for (const [path, what] of Object.entries(trigger?.provides ?? {})) {
         found.push({ path: `trigger.${path}`, what });
+    }
+
+    /*
+     * The questions of the form this trigger was pointed at, each under the key
+     * it will actually arrive as.
+     *
+     * The same problem the webhook payload below has, solved the same way: the
+     * register can only promise the word "answers", because what sits under it
+     * belongs to one particular form. The difference is that this one does not
+     * have to wait for a run to find out — the form is chosen up front, and its
+     * questions are known.
+     */
+    for (const { key, label } of answers) {
+        found.push({ path: `trigger.answers.${key}`, what: label });
     }
 
     /*
@@ -470,6 +529,7 @@ function summarise(
     config: Record<string, Setting>,
     channels: WorkflowEditProps['channels'],
     members: WorkflowEditProps['members'],
+    forms: WorkflowEditProps['forms'],
 ): string | null {
     for (const field of described?.fields ?? []) {
         const value = config[field.key];
@@ -499,6 +559,12 @@ function summarise(
             return member?.name ?? null;
         }
 
+        if (field.type === 'form') {
+            const form = forms.find((one) => String(one.id) === String(value));
+
+            return form?.title ?? null;
+        }
+
         return Array.isArray(value) ? value.join(', ') : String(value);
     }
 
@@ -511,6 +577,7 @@ function FieldInput({
     onChange,
     channels,
     members,
+    forms,
     variables,
 }: {
     field: Field;
@@ -518,6 +585,7 @@ function FieldInput({
     onChange: (next: Setting) => void;
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
+    forms: WorkflowEditProps['forms'];
     variables: { path: string; what: string }[];
 }) {
     const { t } = useTranslate();
@@ -595,6 +663,20 @@ function FieldInput({
                     {members.map((member) => (
                         <option key={member.id} value={member.id}>
                             {member.name}
+                        </option>
+                    ))}
+                </select>
+            ) : field.type === 'form' ? (
+                <select
+                    {...common}
+                    value={String(value ?? '')}
+                    onChange={(event) => onChange(event.target.value)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                    <option value="">{t('settings.workflows.choose')}</option>
+                    {forms.map((form) => (
+                        <option key={form.id} value={form.id}>
+                            {form.title}
                         </option>
                     ))}
                 </select>
@@ -745,6 +827,7 @@ function Blocks({
     selected,
     channels,
     members,
+    forms,
     onSelect,
     onInsert,
     onMove,
@@ -758,6 +841,7 @@ function Blocks({
     selected: Selection;
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
+    forms: WorkflowEditProps['forms'];
     onSelect: (path: Path) => void;
     onInsert: (path: Path, kind: Step['kind']) => void;
     onMove: (path: Path, to: number) => void;
@@ -815,6 +899,7 @@ function Blocks({
                                           step.config,
                                           channels,
                                           members,
+                                          forms,
                                       ) ?? t('settings.workflows.unconfigured'))
                             }
                             selected={
@@ -877,6 +962,7 @@ function Blocks({
                                         selected={selected}
                                         channels={channels}
                                         members={members}
+                                        forms={forms}
                                         onSelect={onSelect}
                                         onInsert={onInsert}
                                         onMove={onMove}
@@ -1131,9 +1217,11 @@ export default function WorkflowEdit({
     grammar,
     channels,
     members,
+    forms,
 }: WorkflowEditProps) {
     const { t, tChoice } = useTranslate();
     const [name, setName] = useState(workflow.name);
+    const [botName, setBotName] = useState(workflow.botName ?? '');
     const [triggerType, setTriggerType] = useState(workflow.triggerType);
     const [triggerConfig, setTriggerConfig] = useState<Record<string, Setting>>(
         workflow.triggerConfig ?? {},
@@ -1168,6 +1256,7 @@ export default function WorkflowEdit({
             {
                 name,
                 description: workflow.description,
+                bot_name: botName,
                 trigger_type: triggerType,
                 trigger_config: triggerConfig,
                 /*
@@ -1332,18 +1421,65 @@ export default function WorkflowEdit({
                 </div>
 
                 <div className="space-y-4">
-                    <div className="grid gap-1">
-                        <Label htmlFor={`name-${workflow.id}`}>
-                            {t('settings.workflows.name')}
-                        </Label>
-                        <Input
-                            id={`name-${workflow.id}`}
-                            value={name}
-                            onChange={(event) => setName(event.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            {t('settings.workflows.name_hint')}
-                        </p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-1">
+                            <Label htmlFor={`name-${workflow.id}`}>
+                                {t('settings.workflows.name')}
+                            </Label>
+                            <Input
+                                id={`name-${workflow.id}`}
+                                value={name}
+                                onChange={(event) =>
+                                    setName(event.target.value)
+                                }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {t('settings.workflows.name_hint')}
+                            </p>
+                        </div>
+
+                        <div className="grid gap-1">
+                            <Label htmlFor={`bot-name-${workflow.id}`}>
+                                {t('settings.workflows.bot_name')}
+                            </Label>
+                            {/*
+                                The name being typed beside it stands in for an
+                                empty box, rather than the one that was saved.
+                                Somebody renaming the workflow can see straight
+                                away what its messages will be signed with.
+                            */}
+                            <Input
+                                id={`bot-name-${workflow.id}`}
+                                value={botName}
+                                placeholder={name}
+                                maxLength={80}
+                                onChange={(event) =>
+                                    setBotName(event.target.value)
+                                }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {t('settings.workflows.bot_name_hint')}
+                            </p>
+
+                            {/*
+                                The face, under the name it belongs to rather
+                                than in a section of its own: the two together
+                                are what a reader sees beside a message, and
+                                somebody choosing one is choosing both.
+
+                                Its initials fall back to the name being typed,
+                                for the same reason the placeholder above does.
+                            */}
+                            <div className="mt-3">
+                                <AvatarField
+                                    name={botName === '' ? name : botName}
+                                    avatarUrl={workflow.avatarUrl}
+                                    uploadUrl={storeAvatar.url(workflow.id)}
+                                    removeUrl={removeAvatar.url(workflow.id)}
+                                    hint={t('workflows.screen.avatar_hint')}
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid gap-6 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:items-start">
@@ -1361,6 +1497,7 @@ export default function WorkflowEdit({
                                         triggerConfig,
                                         channels,
                                         members,
+                                        forms,
                                     ) ?? t('settings.workflows.unconfigured')
                                 }
                                 selected={selected.kind === 'trigger'}
@@ -1378,6 +1515,7 @@ export default function WorkflowEdit({
                                 selected={selected}
                                 channels={channels}
                                 members={members}
+                                forms={forms}
                                 onSelect={(path) =>
                                     setSelected({ kind: 'step', path })
                                 }
@@ -1487,6 +1625,7 @@ export default function WorkflowEdit({
                                             }
                                             channels={channels}
                                             members={members}
+                                            forms={forms}
                                             variables={[]}
                                         />
                                     ))}
@@ -1563,11 +1702,13 @@ export default function WorkflowEdit({
                                         catalogue.actions,
                                         workflow.webhookPayload,
                                         samples,
+                                        askedBy(forms, triggerConfig),
                                     )}
                                     catalogue={catalogue}
                                     grammar={grammar}
                                     channels={channels}
                                     members={members}
+                                    forms={forms}
                                     onChange={(change) =>
                                         changeStep(
                                             (selected as { path: Path }).path,
@@ -1604,6 +1745,7 @@ function StepPanel({
     grammar,
     channels,
     members,
+    forms,
     onChange,
 }: {
     path: Path;
@@ -1614,6 +1756,7 @@ function StepPanel({
     grammar: Grammar;
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
+    forms: WorkflowEditProps['forms'];
     onChange: (change: Partial<Step>) => void;
 }) {
     const { t } = useTranslate();
@@ -1691,6 +1834,7 @@ function StepPanel({
                     }
                     channels={channels}
                     members={members}
+                    forms={forms}
                     variables={variables}
                 />
             ))}

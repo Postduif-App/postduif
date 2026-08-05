@@ -23,6 +23,8 @@ use Illuminate\Support\Str;
  * @property int $workspace_id
  * @property string $name
  * @property string|null $description
+ * @property string|null $bot_name
+ * @property string|null $avatar_path
  * @property string $trigger_type
  * @property array<string, mixed> $trigger_config
  * @property Carbon|null $enabled_at
@@ -35,7 +37,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['workspace_id', 'name', 'description', 'trigger_type', 'trigger_config', 'created_by'])]
+#[Fillable(['workspace_id', 'name', 'description', 'bot_name', 'trigger_type', 'trigger_config', 'created_by'])]
 class Workflow extends Model
 {
     /** @use HasFactory<WorkflowFactory> */
@@ -150,6 +152,40 @@ class Workflow extends Model
 
     /** The same ceiling the channel webhooks use, and for the same reason. */
     public const MAX_PAYLOAD_BYTES = 16384;
+
+    /**
+     * The name this workflow's messages are signed with.
+     *
+     * A method rather than a column read, because "empty means the workflow's
+     * name" is a rule and not a default: a blank box on the builder has to mean
+     * the same thing as a workflow written before the box existed. Trimmed on
+     * the way in, so a space is empty too — a message signed by a single space
+     * would look like the application had lost the name.
+     *
+     * Never the owner's name, whatever is in the column. A message that looked
+     * like a colleague saying something they never said is the one outcome this
+     * whole feature must not produce.
+     */
+    public function botName(): string
+    {
+        return $this->bot_name ?? $this->name;
+    }
+
+    /**
+     * Where this workflow's face can be fetched, or null when it has none.
+     *
+     * Null rather than a default image on purpose: what a bot message shows
+     * without one is a mark drawn by the browser, and a URL that always
+     * resolved would mean fetching a picture to say "no picture".
+     *
+     * Stored as a column and a file rather than through the media library, and
+     * served through a route rather than off a public disk — the same two
+     * decisions a member's face and a workspace's logo are kept under.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_path === null ? null : route('avatars.workflow', $this);
+    }
 
     public function isEnabled(): bool
     {

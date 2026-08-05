@@ -21,6 +21,9 @@ enum WorkflowFieldType: string
     /** Somebody in this workspace. */
     case Member = 'member';
 
+    /** A form of this workspace, chosen from a list. */
+    case Form = 'form';
+
     case Emoji = 'emoji';
     case Number = 'number';
 
@@ -35,7 +38,10 @@ enum WorkflowFieldType: string
      *
      * Only the free-text ones. A channel picker hands back an id, and letting a
      * variable through there would mean a run could point a step at a channel
-     * nobody chose — including one in another workspace.
+     * nobody chose — including one in another workspace. The form picker is out
+     * for exactly that reason: a form id is a ULID that arrives from outside as
+     * readily as a channel id does, and "watch whichever form this variable
+     * names" is a way of listening to another workspace's answers.
      *
      * The number is excluded for the plainer reason that "{{ trigger.x }}
      * minutes" cannot be validated when it is saved, which is the one moment

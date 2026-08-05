@@ -78,6 +78,21 @@ it('posts in a channel as a bot under the workflow name, not as the person who w
         ->and($owner->id)->not->toBe($message->user_id);
 });
 
+it('signs its messages with the name the workflow was given for them', function () {
+    [$workflow, , , $channel] = workflowWithChannel();
+
+    $workflow->update(['bot_name' => 'Storingsdienst']);
+
+    runStep($workflow, 'send-channel-message', [
+        'channel_id' => $channel->id,
+        'body' => 'Er is een storing.',
+    ]);
+
+    // The workflow is still called Storingsmelder. That name is how a beheerder
+    // finds it back, and it is not what a channel should have to read.
+    expect($channel->messages()->latest()->first()->bot_name)->toBe('Storingsdienst');
+});
+
 it('puts what the trigger saw into the message it posts', function () {
     [$workflow, , , $channel] = workflowWithChannel();
 
@@ -139,10 +154,7 @@ it('opens a conversation with somebody and says its piece there', function () {
     [$workflow, $workspace, $owner] = workflowWithChannel();
 
     $recipient = User::factory()->create();
-    $workspace->members()->attach($recipient->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $recipient, SystemRole::Member);
 
     $run = runStep($workflow, 'send-direct-message', [
         'user_id' => $recipient->id,
@@ -310,10 +322,7 @@ it('takes off only the owner his own reaction', function () {
     [$workflow, $workspace, $owner, $channel] = workflowWithChannel();
 
     $somebody = User::factory()->create();
-    $workspace->members()->attach($somebody->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $somebody, SystemRole::Member);
 
     $message = Message::factory()->create([
         'workspace_id' => $channel->workspace_id,
@@ -379,10 +388,7 @@ it('puts somebody in a channel and says whether that changed anything', function
     [$workflow, $workspace, $owner, $channel] = workflowWithChannel();
 
     $newcomer = User::factory()->create();
-    $workspace->members()->attach($newcomer->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $newcomer, SystemRole::Member);
 
     $run = runStep($workflow, 'add-channel-members', [
         'channel_id' => $channel->id,

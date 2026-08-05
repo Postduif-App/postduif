@@ -150,6 +150,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workflows.toggle');
     Route::delete('app/settings/workflows/{workflow}', [WorkflowController::class, 'destroy'])
         ->name('workflows.destroy');
+
+    /*
+     * The face its messages carry. Beside the workspace's own logo endpoints
+     * and shaped the same way: a POST that replaces whatever was there, and a
+     * DELETE that puts it back to the default bot mark.
+     */
+    Route::post('app/settings/workflows/{workflow}/avatar', [WorkflowController::class, 'storeAvatar'])
+        ->name('workflows.avatar.store');
+    Route::delete('app/settings/workflows/{workflow}/avatar', [WorkflowController::class, 'destroyAvatar'])
+        ->name('workflows.avatar.destroy');
     Route::get('app/settings/workflows/{workflow}/runs', [WorkflowRunController::class, 'index'])
         ->name('workflows.runs');
 

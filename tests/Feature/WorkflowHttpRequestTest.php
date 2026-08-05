@@ -63,7 +63,7 @@ it('sends what the step was given, to the address the variables made', function 
     runStep($workflow, 'http-request', [
         'method' => 'post',
         'url' => 'https://93.184.216.34/melden/{{ trigger.user.id }}',
-        'headers' => "Authorization: Bearer geheim\nX-Bron: pcom",
+        'headers' => "Authorization: Bearer geheim\nX-Bron: postduif",
         'body' => '{"wie":"{{ trigger.user.name }}"}',
     ], ['trigger' => ['user' => ['id' => 7, 'name' => 'Pietje']]]);
 
@@ -71,7 +71,7 @@ it('sends what the step was given, to the address the variables made', function 
         return $request->url() === 'https://93.184.216.34/melden/7'
             && $request->method() === 'POST'
             && $request->header('Authorization') === ['Bearer geheim']
-            && $request->header('X-Bron') === ['pcom']
+            && $request->header('X-Bron') === ['postduif']
             // Typed as JSON and sent as typed: a body run through an encoder
             // again would quietly repair what somebody wrote.
             && $request->body() === '{"wie":"Pietje"}'

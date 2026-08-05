@@ -213,7 +213,7 @@ it('lets an ordinary member set a link workflow off from a message', function ()
 
     $member = User::factory()->create();
     $channel->workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Member),
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);

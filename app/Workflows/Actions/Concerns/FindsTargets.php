@@ -125,13 +125,13 @@ trait FindsTargets
     /**
      * The name a workflow's messages appear under.
      *
-     * The workflow's own name, marked as a bot the way every other automatic
-     * message in this application is. Never the owner's name: a message that
-     * looked like a colleague saying something they never said is the one
-     * outcome this whole feature must not produce.
+     * Whatever the workflow says to sign them with, marked as a bot the way
+     * every other automatic message in this application is — see
+     * Workflow::botName() for why an empty box falls back to the workflow's own
+     * name, and never to the owner's.
      */
     protected function botName(WorkflowStepContext $context): string
     {
-        return $context->workflow->name;
+        return $context->workflow->botName();
     }
 }

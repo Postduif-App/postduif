@@ -48,6 +48,11 @@ final class WorkflowField
         return new self($key, WorkflowFieldType::Member, $label, $hint, $required);
     }
 
+    public static function form(string $key, string $label, ?string $hint = null, bool $required = true): self
+    {
+        return new self($key, WorkflowFieldType::Form, $label, $hint, $required);
+    }
+
     public static function emoji(string $key, string $label, ?string $hint = null, bool $required = true): self
     {
         return new self($key, WorkflowFieldType::Emoji, $label, $hint, $required);

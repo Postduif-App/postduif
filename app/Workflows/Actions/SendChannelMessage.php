@@ -80,7 +80,12 @@ class SendChannelMessage extends WorkflowAction
             throw new RuntimeException(__('workflows.errors.empty_message'));
         }
 
-        $message = $this->sendMessage->fromSystem($channel, $body, $this->botName($context));
+        $message = $this->sendMessage->fromSystem(
+            $channel,
+            $body,
+            $this->botName($context),
+            workflow: $context->workflow,
+        );
 
         return [
             'message' => ['id' => $message->id],

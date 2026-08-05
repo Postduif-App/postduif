@@ -86,6 +86,7 @@ class ReplyInThread extends WorkflowAction
             $body,
             $this->botName($context),
             $parent->parent_id ?? $parent->id,
+            $context->workflow,
         );
 
         return [
