@@ -2,6 +2,7 @@
 
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\ToggleReaction;
+use App\Enums\SystemRole;
 use App\Events\ReactionToggled;
 use App\Models\Channel;
 use App\Models\Message;
@@ -59,7 +60,7 @@ it('keeps reactions from different people and different emoji apart', function (
     [$user, $workspace, $channel, $message] = reactionFixture();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
     actingAs($user)->post(reactionUrl($workspace, $channel, $message), ['emoji' => '👍']);
@@ -74,7 +75,7 @@ it('refuses a reaction from someone who is not a member of the channel', functio
     [, $workspace, $channel, $message] = reactionFixture();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($outsider)
         ->post(reactionUrl($workspace, $channel, $message), ['emoji' => '👍'])

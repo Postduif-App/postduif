@@ -18,8 +18,8 @@ function workspaceWithThreeRoles(): array
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($owner, SystemRole::Owner);
-    $workspace->members()->attach($admin->id, ['role' => 'admin', 'joined_at' => now()]);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($admin->id, ['role' => SystemRole::Admin->value, 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $workspace->forceFill(['owner_id' => $owner->id])->save();
 
     return [$owner, $admin, $member, $workspace];

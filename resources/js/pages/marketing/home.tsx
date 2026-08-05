@@ -1,6 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
 
 import { DoveMark } from '@/components/marketing/logo';
+import {
+    Card,
+    DescribedList,
+    Note,
+    SectionHead,
+} from '@/components/marketing/prose';
+import type { Described } from '@/components/marketing/prose';
 import { register } from '@/routes';
 
 interface Feature {
@@ -21,12 +28,6 @@ interface Role {
     canSendTransfers: boolean;
 }
 
-/** A label with the sentence the settings screen already puts under it. */
-interface Described {
-    label: string;
-    description: string;
-}
-
 interface HomeProps {
     features: Feature[];
     roles: Role[];
@@ -40,66 +41,6 @@ interface HomeProps {
         endpoints: { method: string; path: string }[];
         tools: { name: string; description: string }[];
     };
-}
-
-/** A numbered section head, as the huisstijl sets them out. */
-function SectionHead({
-    number,
-    title,
-    lead,
-}: {
-    number: string;
-    title: string;
-    lead: string;
-}) {
-    return (
-        <div className="mb-10 flex flex-wrap items-baseline gap-4">
-            <span
-                style={{
-                    fontFamily: 'var(--pd-mono)',
-                    fontSize: 12,
-                    color: '#8b8a7b',
-                    letterSpacing: '0.08em',
-                }}
-            >
-                {number}
-            </span>
-            <h2 style={{ fontSize: 32, letterSpacing: '-0.03em', margin: 0 }}>
-                {title}
-            </h2>
-            <p
-                className="m-0 max-w-[46ch]"
-                style={{
-                    fontSize: 15,
-                    color: 'var(--pd-steen)',
-                    lineHeight: 1.5,
-                }}
-            >
-                {lead}
-            </p>
-        </div>
-    );
-}
-
-function Card({
-    children,
-    className = '',
-}: {
-    children: React.ReactNode;
-    className?: string;
-}) {
-    return (
-        <div
-            className={`p-6 ${className}`}
-            style={{
-                background: 'var(--pd-wit)',
-                border: '1px solid var(--pd-zand)',
-                borderRadius: 10,
-            }}
-        >
-            {children}
-        </div>
-    );
 }
 
 function Mark({ on }: { on: boolean }) {
@@ -130,37 +71,6 @@ function Mark({ on }: { on: boolean }) {
  * this codebase, so none of it is here — which is exactly what the brief asked
  * for. Taking the design without the copy is the whole job.
  */
-/** A short list of label-and-sentence pairs, as the huisstijl sets them out. */
-function Described({ items }: { items: Described[] }) {
-    return (
-        <ul className="m-0 grid list-none gap-3 p-0">
-            {items.map((item) => (
-                <li key={item.label}>
-                    <span
-                        style={{
-                            fontFamily: 'var(--pd-mono)',
-                            fontSize: 14,
-                            fontWeight: 600,
-                        }}
-                    >
-                        {item.label}
-                    </span>
-                    <p
-                        className="m-0 mt-1"
-                        style={{
-                            fontSize: 14,
-                            lineHeight: 1.55,
-                            color: 'var(--pd-steen)',
-                        }}
-                    >
-                        {item.description}
-                    </p>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
 export default function MarketingHome({
     features,
     roles,
@@ -172,11 +82,18 @@ export default function MarketingHome({
 
     return (
         <>
-            <Head title="Postduif" />
+            <Head title="Het gesprek en het werk op één plek" />
 
-            {/* Hero, on ink, with the 48px grid the huisstijl uses. */}
+            {/*
+                Hero, on ink, with the 48px grid the huisstijl uses.
+
+                The ink and the grid run edge to edge, so the width is held one
+                level in — see the div below. Nothing horizontal belongs on the
+                section itself: padding here would inset the background rather
+                than the words.
+            */}
             <section
-                className="relative overflow-hidden px-6 pt-24 sm:px-12"
+                className="relative overflow-hidden pt-24"
                 style={{
                     background: 'var(--pd-inkt)',
                     color: 'var(--pd-papier)',
@@ -192,7 +109,15 @@ export default function MarketingHome({
                     }}
                 />
 
-                <div className="relative mx-auto max-w-[1120px]">
+                {/*
+                    The same 1120 and the same padding as the navbar and every
+                    section below, on one element rather than two. Box-sizing is
+                    border-box, so a max-width that sits above the padding is a
+                    different width from one that sits beside it: this used to
+                    give the hero the full 1120 while everything else got 1120
+                    less its padding, and the words hung out past the wordmark.
+                */}
+                <div className="relative mx-auto max-w-[1120px] px-6 sm:px-12">
                     <div
                         className="mb-8 inline-flex items-center gap-2.5 rounded-full px-3 py-1.5"
                         style={{
@@ -398,7 +323,7 @@ export default function MarketingHome({
                         >
                             Weergave
                         </div>
-                        <Described items={channelSettings.layout} />
+                        <DescribedList items={channelSettings.layout} />
                     </Card>
 
                     <Card>
@@ -414,7 +339,7 @@ export default function MarketingHome({
                         >
                             Wie er post
                         </div>
-                        <Described items={channelSettings.posting} />
+                        <DescribedList items={channelSettings.posting} />
                     </Card>
 
                     <Card>
@@ -430,7 +355,7 @@ export default function MarketingHome({
                         >
                             Tickets
                         </div>
-                        <Described items={channelSettings.tickets} />
+                        <DescribedList items={channelSettings.tickets} />
                     </Card>
                 </div>
             </div>
@@ -456,7 +381,7 @@ export default function MarketingHome({
                         >
                             Wanneer
                         </div>
-                        <Described items={workflow.triggers} />
+                        <DescribedList items={workflow.triggers} />
                     </Card>
 
                     <Card>
@@ -472,7 +397,7 @@ export default function MarketingHome({
                         >
                             Wat er dan gebeurt
                         </div>
-                        <Described items={workflow.actions} />
+                        <DescribedList items={workflow.actions} />
                     </Card>
                 </div>
             </div>
@@ -535,7 +460,7 @@ export default function MarketingHome({
                         >
                             Wat een AI-client kan, na jouw toestemming
                         </div>
-                        <Described
+                        <DescribedList
                             items={token.tools.map((tool) => ({
                                 label: tool.name,
                                 description: tool.description,
@@ -544,22 +469,13 @@ export default function MarketingHome({
                     </Card>
                 </div>
 
-                <p
-                    className="mt-6 max-w-[68ch]"
-                    style={{
-                        fontSize: 15,
-                        lineHeight: 1.6,
-                        color: 'var(--pd-steen)',
-                        borderLeft: '2px solid var(--pd-geel)',
-                        paddingLeft: 16,
-                    }}
-                >
+                <Note>
                     Een AI-client meldt zich met OAuth aan en vraagt jou om
                     toestemming; je ziet op een scherm van Postduif wat hij mag
                     en trekt het met één klik weer in. En het staat per
                     workspace standaard uit: zolang die schakelaar uit is, komt
                     er langs deze kant niets naar binnen of naar buiten.
-                </p>
+                </Note>
             </div>
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
@@ -645,19 +561,10 @@ export default function MarketingHome({
                     </table>
                 </div>
 
-                <p
-                    className="mt-6 max-w-[68ch]"
-                    style={{
-                        fontSize: 15,
-                        lineHeight: 1.6,
-                        color: 'var(--pd-steen)',
-                        borderLeft: '2px solid var(--pd-geel)',
-                        paddingLeft: 16,
-                    }}
-                >
+                <Note>
                     Deze tabel komt uit dezelfde code die de rechten afdwingt.
                     Verandert de regel, dan verandert de tabel.
-                </p>
+                </Note>
             </div>
         </>
     );

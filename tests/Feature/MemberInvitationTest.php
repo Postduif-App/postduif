@@ -54,7 +54,7 @@ it('invites somebody as a member without naming any channels', function () {
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'Nieuw@Collega.nl',
-            'role' => SystemRole::Member->value,
+            'role' => roleId($workspace, SystemRole::Member),
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -64,7 +64,7 @@ it('invites somebody as a member without naming any channels', function () {
     assertDatabaseHas('invitations', [
         'workspace_id' => $workspace->id,
         'email' => 'nieuw@collega.nl',
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($workspace, SystemRole::Member),
     ]);
 
     $invitation = Invitation::where('email', 'nieuw@collega.nl')->sole();
@@ -111,7 +111,7 @@ it('lets an admin invite a member', function () {
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'nieuw@collega.nl',
-            'role' => SystemRole::Member->value,
+            'role' => roleId($workspace, SystemRole::Member),
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -136,7 +136,7 @@ it('never lets an admin invite somebody as owner', function () {
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'nieuw@collega.nl',
-            'role' => SystemRole::Owner->value,
+            'role' => roleId($workspace, SystemRole::Owner),
         ])
         ->assertForbidden();
 
@@ -160,7 +160,7 @@ it('keeps an existing member at the standing they already have', function () {
         'workspace_id' => $workspace->id,
         'invited_by' => $owner->id,
         'email' => $admin->email,
-        'role' => SystemRole::Member,
+        'workspace_role_id' => roleId($workspace, SystemRole::Member),
     ]);
 
     actingAs($admin)

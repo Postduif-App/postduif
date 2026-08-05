@@ -36,4 +36,20 @@ if (is_string($database) && $database !== '') {
     $_ENV['DB_DATABASE'] = $database;
     $_SERVER['DB_DATABASE'] = $database;
     putenv("DB_DATABASE={$database}");
+
+    /*
+     * The same isolation for the filesystem, which the database alone does not
+     * give. Storage::fake() empties its root before every use and works out
+     * that root from storage_path() — a fixed address, so two suites running at
+     * once share it whatever databases they were pointed at. One wipes the
+     * other's uploads mid-test, and what surfaces is a download answering 404
+     * in a test about something else entirely.
+     *
+     * TEST_TOKEN is what Laravel already namespaces that root with; setting it
+     * here borrows the mechanism rather than inventing a second one. On a
+     * sequential run nothing else reads it: the provider that would rename the
+     * database is deferred, and its callbacks only fire under the parallel
+     * runner.
+     */
+    $_SERVER['TEST_TOKEN'] = $database;
 }

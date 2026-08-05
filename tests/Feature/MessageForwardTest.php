@@ -2,6 +2,7 @@
 
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -110,7 +111,7 @@ it('refuses a source this member may not read', function () {
     $source->update(['type' => ChannelType::Private]);
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $target->members()->attach($outsider->id, ['joined_at' => now()]);
 
     actingAs($outsider)

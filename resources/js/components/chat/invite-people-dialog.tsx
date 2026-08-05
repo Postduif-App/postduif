@@ -20,7 +20,6 @@ import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { store } from '@/routes/chat/invitations';
 import type { ChannelSummary, ChatWorkspace } from '@/types/chat';
-import type { TranslationKey } from '@/types/translations';
 
 interface InvitePeopleDialogProps {
     workspace: ChatWorkspace;
@@ -32,24 +31,6 @@ interface InvitePeopleDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-/** What each role is called and what it means, looked up when the dialog draws. */
-const ROLES: {
-    value: 'guest' | 'member';
-    label: TranslationKey;
-    hint: TranslationKey;
-}[] = [
-    {
-        value: 'guest',
-        label: 'actions.invite.guest',
-        hint: 'actions.invite.guest_hint',
-    },
-    {
-        value: 'member',
-        label: 'actions.invite.member',
-        hint: 'actions.invite.member_hint',
-    },
-];
-
 export function InvitePeopleDialog({
     workspace,
     channels,
@@ -58,7 +39,17 @@ export function InvitePeopleDialog({
     onOpenChange,
 }: InvitePeopleDialogProps) {
     const { t } = useTranslate();
-    const [role, setRole] = useState<'guest' | 'member'>('guest');
+    /*
+     * The roles come from the workspace now, so the dialog cannot name one in
+     * advance. It opens on the first that is from outside — inviting a customer
+     * is what this dialog is mostly for — and otherwise on the first there is.
+     */
+    const roles = workspace.invitableRoles;
+    const [role, setRole] = useState<number>(
+        () => (roles.find((one) => one.isExternal) ?? roles[0])?.id ?? 0,
+    );
+
+    const chosen = roles.find((one) => one.id === role);
     const [picked, setPicked] = useState<number[]>(() =>
         initialChannelId === undefined ? [] : [initialChannelId],
     );
@@ -71,7 +62,7 @@ export function InvitePeopleDialog({
         );
 
     const reset = () => {
-        setRole('guest');
+        setRole((roles.find((one) => one.isExternal) ?? roles[0])?.id ?? 0);
         setPicked(initialChannelId === undefined ? [] : [initialChannelId]);
     };
 
@@ -143,12 +134,12 @@ export function InvitePeopleDialog({
                                 <legend className="mb-2 text-sm font-medium">
                                     {t('actions.invite.role_question')}
                                 </legend>
-                                {ROLES.map((option) => (
+                                {roles.map((option) => (
                                     <label
-                                        key={option.value}
+                                        key={option.id}
                                         className={cn(
                                             'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
-                                            role === option.value
+                                            role === option.id
                                                 ? 'border-primary bg-primary/5'
                                                 : 'hover:bg-muted/50',
                                         )}
@@ -156,19 +147,30 @@ export function InvitePeopleDialog({
                                         <input
                                             type="radio"
                                             name="role-choice"
-                                            value={option.value}
-                                            checked={role === option.value}
-                                            onChange={() =>
-                                                setRole(option.value)
-                                            }
+                                            value={option.id}
+                                            checked={role === option.id}
+                                            onChange={() => setRole(option.id)}
                                             className="mt-1"
                                         />
                                         <span>
                                             <span className="block text-sm font-medium">
-                                                {t(option.label)}
+                                                {option.name}
                                             </span>
+                                            {/*
+                                                Only the one line the
+                                                application can say for certain
+                                                about a role it did not name:
+                                                whether the person is coming in
+                                                from outside.
+                                            */}
                                             <span className="block text-xs text-muted-foreground">
-                                                {t(option.hint)}
+                                                {option.isExternal
+                                                    ? t(
+                                                          'actions.invite.guest_hint',
+                                                      )
+                                                    : t(
+                                                          'actions.invite.member_hint',
+                                                      )}
                                             </span>
                                         </span>
                                     </label>
@@ -176,7 +178,7 @@ export function InvitePeopleDialog({
                                 <InputError message={errors.role} />
                             </fieldset>
 
-                            {role === 'guest' && (
+                            {chosen?.isExternal && (
                                 <fieldset className="grid gap-2">
                                     <legend className="mb-2 text-sm font-medium">
                                         {t('actions.invite.guest_channels')}

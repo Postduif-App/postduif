@@ -29,7 +29,7 @@ class AcceptInvitation
             // invitation is a way in, not a way to be demoted to guest.
             if (! $workspace->hasMember($user)) {
                 $workspace->members()->attach($user->id, [
-                    'role' => $invitation->role->value,
+                    'workspace_role_id' => $invitation->workspace_role_id,
                     'joined_at' => now(),
                 ]);
             }

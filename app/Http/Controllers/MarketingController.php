@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Marketing\BuildApiReference;
 use App\Actions\Marketing\BuildFeatureInventory;
 use App\Workflows\WorkflowRegistry;
 use Illuminate\Routing\Router;
@@ -35,6 +36,88 @@ class MarketingController extends Controller
             'channelSettings' => $inventory->channelSettings(),
             'workflow' => $inventory->workflowVocabulary($registry),
             'token' => $inventory->tokenSurface($router),
+
+            'seo' => $this->seo(
+                route('home'),
+                'Postduif — het gesprek en het werk op één plek',
+                'Kanalen en threads, tickets voor wat er blijft liggen, en bestanden die te groot zijn om mee te sturen. Klanten doen mee als gast en zien alleen hun eigen kanalen.',
+                [
+                    /*
+                     * SoftwareApplication rather than Organization: what is
+                     * being described here is the thing somebody installs, and
+                     * there is no company behind this to describe.
+                     */
+                    '@context' => 'https://schema.org',
+                    '@type' => 'SoftwareApplication',
+                    'name' => config('app.name'),
+                    'applicationCategory' => 'CommunicationApplication',
+                    'operatingSystem' => 'Web',
+                    'url' => route('home'),
+                    /*
+                     * Read off the same inventory the page renders, so the
+                     * count in the structured data cannot claim a feature the
+                     * page does not list.
+                     */
+                    'featureList' => array_column($inventory->handle(), 'label'),
+                ],
+            ),
         ]);
+    }
+
+    /**
+     * The reference for the API, for somebody about to point a script at it.
+     *
+     * Its own page rather than more of the landing page: the home page answers
+     * "is there an API" in one card, and the person who has decided there is
+     * wants the method, the path, the parameters and the ceiling — which is a
+     * different reader entirely, and a landing page that served both would
+     * serve neither.
+     *
+     * Public, like the rest of this controller. The endpoints are guarded by a
+     * token nobody gets from reading about them, and an API whose shape is a
+     * secret is one nobody can build against.
+     */
+    public function docs(BuildApiReference $reference, BuildFeatureInventory $inventory, Router $router): Response
+    {
+        return Inertia::render('marketing/docs', [
+            ...$reference->handle($router),
+
+            /*
+             * The MCP tools alongside the plain endpoints. They are the other
+             * half of what a token opens, and somebody weighing "can I automate
+             * this" is asking one question rather than two.
+             */
+            'tools' => $inventory->tokenSurface($router)['tools'],
+
+            'seo' => $this->seo(
+                route('docs'),
+                'De API van Postduif',
+                'Elke aanroep loopt langs dezelfde regels als het scherm. Methodes, paden, parameters en de limieten per minuut — gelezen uit de router, niet overgetypt.',
+            ),
+        ]);
+    }
+
+    /**
+     * What a crawler and a chat client are told about a page.
+     *
+     * One shape for every public page, because the alternative is a page that
+     * quietly ships without a description — and the tags themselves are
+     * rendered in the Blade template rather than through Inertia's head, so
+     * they survive a client that never runs JavaScript.
+     *
+     * @param  array<string, mixed>|null  $schema
+     * @return array<string, mixed>
+     */
+    private function seo(string $url, string $title, string $description, ?array $schema = null): array
+    {
+        return [
+            'url' => $url,
+            'title' => $title,
+            'description' => $description,
+            // Absolute, because a preview card is fetched by something that has
+            // no idea what this site's root is.
+            'image' => url('/og.png'),
+            ...$schema === null ? [] : ['schema' => $schema],
+        ];
     }
 }

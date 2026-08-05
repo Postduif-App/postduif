@@ -2,6 +2,7 @@
 
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Events\MessageSent;
 use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
@@ -126,7 +127,7 @@ it('records a mention the same way the app does', function () {
     [$user, $workspace, $channel] = memberWhoCanPost();
 
     $colleague = User::factory()->create(['username' => 'fenna']);
-    $workspace->members()->attach($colleague->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     ChatServer::actingAs($user)->tool(SendMessageTool::class, [

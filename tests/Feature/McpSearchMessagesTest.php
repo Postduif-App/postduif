@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Features\AiAccess;
 use App\Mcp\Servers\ChatServer;
 use App\Mcp\Tools\SearchMessagesTool;
@@ -127,7 +128,7 @@ it('keeps the whole query for whoever runs the workspace', function () {
     $workspace->update(['blocked_words' => ['klojo']]);
 
     $owner = User::factory()->create();
-    $workspace->members()->attach($owner->id, ['role' => 'owner', 'joined_at' => now()]);
+    $workspace->members()->attach($owner->id, ['role' => SystemRole::Owner->value, 'joined_at' => now()]);
     $workspace->channels->each(fn (Channel $channel) => $channel->members()
         ->syncWithoutDetaching([$owner->id => ['joined_at' => now()]]));
 

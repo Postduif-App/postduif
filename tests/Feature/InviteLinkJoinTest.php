@@ -29,7 +29,10 @@ function workspaceReachableByLink(SystemRole $role = SystemRole::Member): array
 
     $link = InviteLink::factory()
         ->for($workspace)
-        ->state(['created_by' => $owner->id, 'role' => $role])
+        ->state(fn (): array => [
+            'created_by' => $owner->id,
+            'workspace_role_id' => roleId($workspace, $role),
+        ])
         ->create();
 
     $link->channels()->attach($channel->id);
@@ -103,7 +106,7 @@ it('leaves an existing member where they are and spends no use', function () {
 
     $admin = User::factory()->create();
     $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
+        'workspace_role_id' => roleId($workspace, SystemRole::Admin),
         'joined_at' => now(),
     ]);
 

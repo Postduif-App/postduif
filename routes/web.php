@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\IndexingController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
 use App\Http\Controllers\MarketingController;
@@ -21,6 +22,22 @@ use Illuminate\Support\Facades\Route;
  * always logged in and break for everybody else.
  */
 Route::get('/', [MarketingController::class, 'home'])->name('home');
+
+/*
+ * What the API answers to, for somebody about to point a script at it. Public
+ * for the same reason the rest of this file is: the endpoints are guarded by a
+ * token, and an API whose shape is a secret is one nobody can build against.
+ */
+Route::get('docs', [MarketingController::class, 'docs'])->name('docs');
+
+/*
+ * Routes rather than files in public/: this application runs under whatever
+ * hostname it is installed on, and robots.txt has to name its sitemap by
+ * absolute URL. See IndexingController, and note that a public/robots.txt
+ * would win over this because the web server answers before PHP does.
+ */
+Route::get('robots.txt', [IndexingController::class, 'robots'])->name('robots');
+Route::get('sitemap.xml', [IndexingController::class, 'sitemap'])->name('sitemap');
 
 Route::get('session-status', SessionStatusController::class)->name('session.status');
 

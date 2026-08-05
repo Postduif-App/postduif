@@ -40,8 +40,8 @@ class WorkspaceInvitationController extends Controller
                 ->map(fn (Invitation $invitation): array => [
                     'id' => $invitation->id,
                     'email' => $invitation->email,
-                    'role' => $invitation->role->value,
-                    'roleLabel' => $invitation->role->getLabel(),
+                    'role' => $invitation->workspace_role_id,
+                    'roleLabel' => $invitation->workspaceRole?->name,
                     'invitedBy' => $invitation->inviter->name,
                     'expiresAt' => $invitation->expires_at,
                     // Expired ones stay on the list: the row still occupies
@@ -89,8 +89,8 @@ class WorkspaceInvitationController extends Controller
             ->map(fn (InviteLink $link): array => [
                 'id' => $link->id,
                 'url' => route('invite-links.show', $link->token),
-                'roleLabel' => $link->role->getLabel(),
-                'isGuest' => $link->role->isGuest(),
+                'roleLabel' => $link->workspaceRole?->name,
+                'isGuest' => $link->workspaceRole?->is_external ?? false,
                 'createdBy' => $link->creator?->name,
                 'uses' => $link->uses,
                 'maxUses' => $link->max_uses,

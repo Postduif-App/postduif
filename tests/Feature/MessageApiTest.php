@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ChannelPostingPolicy;
+use App\Enums\SystemRole;
 use App\Features\AiAccess;
 use App\Models\Channel;
 use App\Models\InboxItem;
@@ -224,7 +225,7 @@ it('lists the channels a token may reach, and says which it may write in', funct
 
     // And one in a workspace that lets no token in at all.
     $elsewhere = Workspace::factory()->create();
-    $elsewhere->members()->attach($user->id, ['role' => 'member', 'joined_at' => now()]);
+    $elsewhere->members()->attach($user->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     Channel::factory()->create(['workspace_id' => $elsewhere->id, 'name' => 'gesloten']);
 
     $listed = withHeader('Authorization', "Bearer {$token}")

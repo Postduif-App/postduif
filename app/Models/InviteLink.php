@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\SystemRole;
 use Database\Factories\InviteLinkFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,13 +24,13 @@ use Illuminate\Support\Str;
  * @property int $workspace_id
  * @property int|null $created_by
  * @property string $token
- * @property SystemRole $role
+ * @property int $workspace_role_id
  * @property int|null $max_uses
  * @property Carbon|null $expires_at
  * @property int $uses
  * @property Carbon|null $revoked_at
  */
-#[Fillable(['workspace_id', 'created_by', 'token', 'role', 'max_uses', 'expires_at'])]
+#[Fillable(['workspace_id', 'workspace_role_id', 'created_by', 'token', 'max_uses', 'expires_at'])]
 class InviteLink extends Model
 {
     /** @use HasFactory<InviteLinkFactory> */
@@ -49,7 +48,6 @@ class InviteLink extends Model
     protected function casts(): array
     {
         return [
-            'role' => SystemRole::class,
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',
             'max_uses' => 'integer',
@@ -65,6 +63,20 @@ class InviteLink extends Model
     public static function freshToken(): string
     {
         return Str::random(64);
+    }
+
+    /**
+     * The role somebody arrives in.
+     *
+     * A row of the workspace rather than one of four words, so an invitation
+     * can name "Leverancier" — which is the whole point of the roles being a
+     * workspace's own.
+     *
+     * @return BelongsTo<Role, $this>
+     */
+    public function workspaceRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'workspace_role_id');
     }
 
     /** @return BelongsTo<Workspace, $this> */

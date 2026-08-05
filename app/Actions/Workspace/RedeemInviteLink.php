@@ -44,7 +44,7 @@ class RedeemInviteLink
 
             if ($isNew) {
                 $workspace->members()->attach($user->id, [
-                    'role' => $link->role->value,
+                    'workspace_role_id' => $link->workspace_role_id,
                     'joined_at' => now(),
                 ]);
             }

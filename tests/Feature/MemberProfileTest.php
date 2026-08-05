@@ -119,6 +119,50 @@ it('lets somebody write a line about themselves', function () {
     expect($viewer->fresh()->bio)->toBe('Frontend, en de koffie.');
 });
 
+it('shows you your own bio on your own page', function () {
+    [$viewer, , $workspace] = profileFixture();
+
+    $viewer->forceFill(['bio' => 'Design, en de dinsdagen.'])->save();
+
+    // The point of writing one is knowing what it says. A line you can set and
+    // never read back is a line nobody trusts.
+    actingAs($viewer)
+        ->get(route('chat.members.show', [$workspace, $viewer]))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('member.isYou', true)
+            ->where('member.bio', 'Design, en de dinsdagen.'));
+});
+
+it('hands the settings screen the bio it has to fill the field with', function () {
+    [$viewer] = profileFixture();
+
+    $viewer->forceFill(['bio' => 'Design, en de dinsdagen.'])->save();
+
+    // Through the shared auth props rather than a prop of its own — see
+    // HandleInertiaRequests, which sends the signed-in member whole.
+    actingAs($viewer)
+        ->get(route('profile.edit'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('settings/profile')
+            ->where('auth.user.bio', 'Design, en de dinsdagen.'));
+});
+
+it('refuses a bio longer than the field allows', function () {
+    [$viewer] = profileFixture();
+
+    actingAs($viewer)->patch(route('profile.update'), [
+        'name' => $viewer->name,
+        'username' => $viewer->username,
+        'email' => $viewer->email,
+        'timezone' => $viewer->timezone,
+        'bio' => str_repeat('a', 281),
+    ])->assertSessionHasErrors('bio');
+
+    // The textarea holds to the same 280, so this only ever answers somebody
+    // who went around it.
+    expect($viewer->fresh()->bio)->toBeNull();
+});
+
 it('reads a bio of only spaces as none at all', function () {
     [$viewer] = profileFixture();
 

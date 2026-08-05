@@ -9,6 +9,7 @@ use App\Models\Channel;
 use App\Models\ChannelSection;
 use App\Models\InboxItem;
 use App\Models\Message;
+use App\Models\Role;
 use App\Models\ScheduledBroadcast;
 use App\Models\Ticket;
 use App\Models\User;
@@ -226,6 +227,21 @@ class BuildChatShell
             'canBroadcastMention' => $user->can('broadcastMention', $workspace),
             'canManage' => $user->can('manage', $workspace),
             'canInvite' => $user->can('invite', $workspace),
+
+            /*
+             * The roles this member may hand out, for the invite dialog. From
+             * the workspace rather than a pair of words in the browser: a
+             * workspace writes its own roles, so "gast of lid" is no longer the
+             * whole list — and which of them somebody may give away is a
+             * question only the policy can answer.
+             */
+            'invitableRoles' => $workspace->roles()->get()
+                ->filter(fn (Role $role): bool => $user->can('grantRole', [$workspace, $role]))
+                ->map(fn (Role $role): array => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'isExternal' => $role->is_external,
+                ])->values()->all(),
             // Hides "Kanaal toevoegen" for a guest. The request checks the same
             // ability, so this only spares them a button that would have
             // refused them.

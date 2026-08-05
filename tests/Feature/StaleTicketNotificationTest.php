@@ -2,6 +2,7 @@
 
 use App\Actions\Tickets\FindStaleTickets;
 use App\Enums\Availability;
+use App\Enums\SystemRole;
 use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
@@ -61,7 +62,7 @@ it('nags only the assignee once a ticket has one', function () {
     [$member, , $workspace, $channel] = ticketFixture();
 
     $colleague = User::factory()->create(['notify_via_mail' => true]);
-    $workspace->members()->attach($colleague->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     Ticket::factory()->overdue()->create([

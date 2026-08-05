@@ -82,7 +82,7 @@ it('does not hand out an invite link where links are switched off', function () 
     [$user, $workspace] = workspaceWithout(InviteLinks::class);
 
     actingAs($user)->post(route('chat.invite-links.store', $workspace), [
-        'role' => 'member',
+        'role' => roleId($workspace, SystemRole::Member),
     ])->assertNotFound();
 });
 

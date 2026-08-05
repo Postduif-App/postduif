@@ -145,9 +145,9 @@ class InvitationController extends Controller
                 'email' => $invitation->email,
                 'workspaceName' => $invitation->workspace->name,
                 'invitedBy' => $invitation->inviter->name,
-                'role' => $invitation->role->value,
-                'roleLabel' => $invitation->role->getLabel(),
-                'isGuest' => $invitation->role->isGuest(),
+                'role' => $invitation->workspace_role_id,
+                'roleLabel' => $invitation->workspaceRole?->name,
+                'isGuest' => $invitation->workspaceRole?->is_external ?? false,
                 'channels' => $invitation->channels()
                     ->orderBy('name')
                     ->get()

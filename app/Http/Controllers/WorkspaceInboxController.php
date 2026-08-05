@@ -90,7 +90,7 @@ class WorkspaceInboxController extends Controller
             404,
         );
 
-        $item->forceFill(['read_at' => now()])->save();
+        $item->update(['read_at' => now()]);
 
         return redirect()->to($this->destination($workspace, $item));
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Ticket;
 use App\Models\TicketComment;
@@ -99,7 +100,7 @@ it('refuses the file to somebody who may not see the channel', function () {
     $attachment = TicketCommentAttachment::sole();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($outsider)->get(route('chat.tickets.comments.attachments.show', [
         $workspace, $channel, $ticket, $attachment->comment, $attachment,

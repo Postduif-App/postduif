@@ -62,8 +62,8 @@ it('lists everyone in the workspace, whoever runs it first', function () {
 
     $admin = User::factory()->create(['name' => 'Bram Bakker']);
     $member = User::factory()->create(['name' => 'Anna Aalders']);
-    $workspace->members()->attach($admin->id, ['role' => 'admin', 'joined_at' => now()]);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($admin->id, ['role' => SystemRole::Admin->value, 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($owner)
         ->get(route('workspace.members.index'))
@@ -86,8 +86,8 @@ it('sorts guests below ordinary members and labels them as such', function () {
 
     $guest = User::factory()->create(['name' => 'Aad Aardema']);
     $member = User::factory()->create(['name' => 'Bram Bakker']);
-    $workspace->members()->attach($guest->id, ['role' => 'guest', 'joined_at' => now()]);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($guest->id, ['role' => SystemRole::Guest->value, 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($owner)
         ->get(route('workspace.members.index'))

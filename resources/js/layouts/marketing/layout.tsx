@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import type { ComponentProps, PropsWithChildren } from 'react';
 
 import { Wordmark } from '@/components/marketing/logo';
-import { login, register } from '@/routes';
+import { docs, login, register } from '@/routes';
 import { home as openApp } from '@/routes/chat';
 import type { Auth } from '@/types';
 
@@ -82,6 +82,25 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
 
                     <div className="flex items-center gap-3">
                         {/*
+                            A plain link rather than a button: the two buttons
+                            beside it are the one thing this page is asking for,
+                            and a third in the same weight would make it three
+                            equal choices. Hidden on the narrowest screens,
+                            where the footer still carries it.
+                        */}
+                        <Link
+                            href={docs()}
+                            className="pd-plain hidden sm:inline"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 13,
+                                color: 'var(--pd-steen)',
+                            }}
+                        >
+                            API
+                        </Link>
+
+                        {/*
                             Somebody already signed in gets a way back to their
                             own workspace rather than an invitation to log in
                             again — the commonest visitor to a landing page is
@@ -122,7 +141,14 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
 
             <main className="flex-1">{children}</main>
 
-            <footer className="mx-auto w-full max-w-[1120px] px-6 pb-24 sm:px-12">
+            {/*
+                The space above the footer belongs here rather than at the end
+                of each page. Every section on these pages carries its own
+                padding on top and none underneath, so the last one on any page
+                ends flush — and a spacer left to the page is a spacer the next
+                page forgets, which is exactly how this got noticed.
+            */}
+            <footer className="mx-auto w-full max-w-[1120px] px-6 pt-24 pb-24 sm:px-12">
                 <div
                     className="flex flex-wrap items-center justify-between gap-10 p-8 sm:p-14"
                     style={{ background: 'var(--pd-inkt)', borderRadius: 12 }}
@@ -152,6 +178,13 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                         }}
                     >
                         <span style={{ color: '#b6b4a5' }}>postduif</span>
+                        <Link
+                            href={docs()}
+                            className="pd-plain"
+                            style={{ color: 'var(--pd-steen)' }}
+                        >
+                            API
+                        </Link>
                         <span>augustus 2026</span>
                     </div>
                 </div>

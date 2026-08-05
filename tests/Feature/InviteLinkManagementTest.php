@@ -35,13 +35,13 @@ it('makes a link with no limits on it', function () {
 
     actingAs($owner)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => SystemRole::Member->value,
+            'role' => roleId($workspace, SystemRole::Member),
         ])
         ->assertRedirect();
 
     $link = InviteLink::sole();
 
-    expect($link->role)->toBe(SystemRole::Member)
+    expect($link->workspaceRole->key)->toBe(SystemRole::Member->value)
         ->and($link->max_uses)->toBeNull()
         ->and($link->expires_at)->toBeNull()
         ->and($link->uses)->toBe(0)
@@ -54,7 +54,7 @@ it('makes a link with a ceiling and a date', function () {
     [$owner, $workspace] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => SystemRole::Member->value,
+        'role' => roleId($workspace, SystemRole::Member),
         'max_uses' => 5,
         'valid_for_days' => 7,
     ]);
@@ -69,7 +69,7 @@ it('puts the chosen channels on the link', function () {
     [$owner, $workspace, $channel] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => SystemRole::Guest->value,
+        'role' => roleId($workspace, SystemRole::Guest),
         'channel_ids' => [$channel->id],
     ]);
 
@@ -81,7 +81,7 @@ it('refuses a guest link with no channels on it', function () {
 
     actingAs($owner)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => SystemRole::Guest->value,
+            'role' => roleId($workspace, SystemRole::Guest),
         ])
         ->assertSessionHasErrors('channel_ids');
 
@@ -98,7 +98,7 @@ it('drops channels that are not this workspace to hand out', function () {
     ]);
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => SystemRole::Guest->value,
+        'role' => roleId($workspace, SystemRole::Guest),
         'channel_ids' => [$channel->id, $elsewhere->id, $archived->id],
     ]);
 
@@ -116,7 +116,7 @@ it('refuses somebody who may not invite', function () {
 
     actingAs($guest)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => SystemRole::Member->value,
+            'role' => roleId($workspace, SystemRole::Member),
         ])
         ->assertForbidden();
 
@@ -134,7 +134,7 @@ it('does not let an admin hand out ownership by link', function () {
 
     actingAs($admin)
         ->post(route('chat.invite-links.store', $workspace), [
-            'role' => SystemRole::Owner->value,
+            'role' => roleId($workspace, SystemRole::Owner),
         ])
         ->assertForbidden();
 
@@ -145,10 +145,10 @@ it('makes a second link without breaking the first', function () {
     [$owner, $workspace] = workspaceHandingOutLinks();
 
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => SystemRole::Member->value,
+        'role' => roleId($workspace, SystemRole::Member),
     ]);
     actingAs($owner)->post(route('chat.invite-links.store', $workspace), [
-        'role' => SystemRole::Member->value,
+        'role' => roleId($workspace, SystemRole::Member),
     ]);
 
     expect(InviteLink::count())->toBe(2)

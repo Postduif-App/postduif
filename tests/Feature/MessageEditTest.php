@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
+use App\Enums\SystemRole;
 use App\Events\ChannelActivity;
 use App\Events\MessageEdited;
 use App\Models\InboxItem;
@@ -41,7 +42,7 @@ it('refuses to let anybody rewrite somebody else', function () {
     $author = User::factory()->create();
     $other = User::factory()->create();
     $workspace = workspaceWithMember($author);
-    $workspace->members()->attach($other->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel = channelWithMember($workspace, $author);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
@@ -157,7 +158,7 @@ it('records a mention the edit adds', function () {
     $author = User::factory()->create();
     $mentioned = User::factory()->create(['username' => 'fenna']);
     $workspace = workspaceWithMember($author);
-    $workspace->members()->attach($mentioned->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($mentioned->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel = channelWithMember($workspace, $author);
     $channel->members()->attach($mentioned->id, ['joined_at' => now()]);
 
@@ -184,7 +185,7 @@ it('drops the mention when the edit takes the handle out', function () {
     $author = User::factory()->create();
     $mentioned = User::factory()->create(['username' => 'fenna']);
     $workspace = workspaceWithMember($author);
-    $workspace->members()->attach($mentioned->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($mentioned->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel = channelWithMember($workspace, $author);
     $channel->members()->attach($mentioned->id, ['joined_at' => now()]);
 
@@ -205,7 +206,7 @@ it('leaves an unchanged mention alone rather than notifying again', function () 
     $author = User::factory()->create();
     $mentioned = User::factory()->create(['username' => 'fenna']);
     $workspace = workspaceWithMember($author);
-    $workspace->members()->attach($mentioned->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($mentioned->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel = channelWithMember($workspace, $author);
     $channel->members()->attach($mentioned->id, ['joined_at' => now()]);
 

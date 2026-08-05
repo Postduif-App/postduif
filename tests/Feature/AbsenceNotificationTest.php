@@ -5,6 +5,7 @@ use App\Actions\Chat\MarkChannelRead;
 use App\Enums\Availability;
 use App\Enums\ChannelType;
 use App\Enums\InboxItemType;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\Message;
@@ -44,7 +45,7 @@ function absentMember(array $overrides = []): array
     $colleague = User::factory()->create();
 
     $workspace = workspaceWithMember($member);
-    $workspace->members()->attach($colleague->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $member);
     $channel->update(['name' => 'klantproject', 'slug' => 'klantproject']);

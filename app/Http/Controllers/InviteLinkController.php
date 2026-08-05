@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Workspace\CreateInviteLink;
-use App\Enums\SystemRole;
 use App\Models\InviteLink;
+use App\Models\Role;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 use Inertia\Inertia;
 
 /**
@@ -34,14 +33,32 @@ class InviteLinkController extends Controller
         $this->authorize('invite', $workspace);
 
         $validated = $request->validate([
-            'role' => ['required', new Enum(SystemRole::class)],
+            /*
+             * A role of this workspace, by its own id. Scoped in the rule
+             * rather than checked afterwards: without the workspace_id an id
+             * from somewhere else would name a role that exists, and the only
+             * thing standing between that and a link into the wrong workspace
+             * is the policy below.
+             */
+            'role' => [
+                'required',
+                'integer',
+                Rule::exists('workspace_roles', 'id')->where('workspace_id', $workspace->id),
+            ],
 
-            // A guest sees nothing but the channels named here, so a link
-            // without any would drop them into a workspace with nothing in it.
+            /*
+             * Somebody from outside sees nothing but the channels named here,
+             * so a link without any would drop them into a workspace with
+             * nothing in it. Asked of the role rather than of a name: a
+             * workspace may call its outside role anything.
+             */
             'channel_ids' => [
                 'array',
                 'max:50',
-                Rule::requiredIf(fn (): bool => $request->input('role') === SystemRole::Guest->value),
+                Rule::requiredIf(fn (): bool => Role::query()
+                    ->whereKey($request->input('role'))
+                    ->where('workspace_id', $workspace->id)
+                    ->value('is_external') ?? false),
             ],
             'channel_ids.*' => ['integer'],
 
@@ -53,15 +70,9 @@ class InviteLinkController extends Controller
             'channel_ids.required' => __('requests.invite.channels_required'),
         ]);
 
-        $role = SystemRole::from($validated['role']);
+        $role = $workspace->roles()->findOrFail($validated['role']);
 
-        /*
-         * Authorised against this workspace's own row for that role, not
-         * against the name. An invitation still stores the name — that moves
-         * when the screens that pick one do — but who may hand it out is a
-         * question about a role, and only the row can answer it.
-         */
-        $this->authorize('grantRole', [$workspace, $workspace->roles()->where('key', $role->value)->firstOrFail()]);
+        $this->authorize('grantRole', [$workspace, $role]);
 
         $createInviteLink->handle(
             $workspace,

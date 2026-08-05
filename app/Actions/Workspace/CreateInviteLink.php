@@ -2,8 +2,8 @@
 
 namespace App\Actions\Workspace;
 
-use App\Enums\SystemRole;
 use App\Models\InviteLink;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
@@ -31,7 +31,7 @@ class CreateInviteLink
     public function handle(
         Workspace $workspace,
         User $creator,
-        SystemRole $role,
+        Role $role,
         ?int $maxUses = null,
         ?int $validForDays = null,
         Collection|array $channelIds = [],
@@ -41,7 +41,7 @@ class CreateInviteLink
                 'workspace_id' => $workspace->id,
                 'created_by' => $creator->id,
                 'token' => InviteLink::freshToken(),
-                'role' => $role,
+                'workspace_role_id' => $role->id,
                 'max_uses' => $maxUses,
                 'expires_at' => $validForDays === null ? null : now()->addDays($validForDays),
             ]);

@@ -2,6 +2,7 @@
 
 use App\Actions\Chat\SendMessage;
 use App\Enums\InboxItemType;
+use App\Enums\SystemRole;
 use App\Events\MessageDeleted;
 use App\Models\Channel;
 use App\Models\InboxItem;
@@ -72,7 +73,7 @@ it('refuses to delete somebody elses message', function () {
     [$user, $workspace, $channel] = deletionFixture();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
     $message = messageFrom($other, $workspace, $channel);

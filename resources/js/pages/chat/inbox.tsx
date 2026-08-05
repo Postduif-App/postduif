@@ -14,10 +14,7 @@ import { useFormats } from '@/hooks/use-formats';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import {
-    index as inboxIndex,
-    open as inboxOpen,
-} from '@/routes/chat/inbox';
+import { index as inboxIndex, open as inboxOpen } from '@/routes/chat/inbox';
 import { index as mentionsIndex } from '@/routes/chat/mentions';
 import type {
     ActiveThread,
@@ -53,7 +50,11 @@ interface InboxRowBase {
 /** A row that points at something somebody wrote. */
 interface InboxMessageRow extends InboxRowBase {
     type: Exclude<InboxItemType, 'poll-vote'>;
-    /** The message it hangs off; the id doubles as the anchor to jump to. */
+    /**
+     * The message it hangs off. Not what the row links to — the server works
+     * the destination out and forwards there, anchor and all, so that a row
+     * cannot be jumped to without also being marked off.
+     */
     messageId: string;
     author: string;
     snippet: string;
@@ -200,9 +201,12 @@ function InboxCard({
  * Everything that asks something of you, in one list.
  *
  * Unread first and newest within that, because the question this screen answers
- * is "what is being asked of me" rather than "what happened". Nothing is marked
- * read here: opening the channel is what does that, and it is also where the
- * answer gets written.
+ * is "what is being asked of me" rather than "what happened". A row is marked
+ * off by being opened — see InboxCard — and a mention additionally by reading
+ * past it in its channel, which is the same event arrived at from the other
+ * side. The ordering is the server's answer and does not shuffle underneath
+ * somebody as they read: a row that goes read stays where it is until the next
+ * load.
  */
 export default function WorkspaceInbox({
     workspace,

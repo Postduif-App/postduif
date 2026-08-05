@@ -2,6 +2,7 @@
 
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\SendMessage;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\Message;
@@ -23,7 +24,7 @@ function channelWithTwoMembers(): array
     $writer = User::factory()->create(['username' => 'writer']);
 
     $workspace = workspaceWithMember($reader);
-    $workspace->members()->attach($writer->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($writer->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $reader);
     $channel->members()->attach($writer->id, ['joined_at' => now()]);

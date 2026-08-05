@@ -32,6 +32,14 @@ export interface ChatWorkspace {
     canManage: boolean;
     /** Whether this member may bring people in, as a member or as a guest. */
     canInvite: boolean;
+    /**
+     * The roles this member may hand out, worked out by the policy.
+     *
+     * A list rather than the two words the invite dialog used to know: a
+     * workspace writes its own roles, so nothing this side can name them in
+     * advance.
+     */
+    invitableRoles: { id: number; name: string; isExternal: boolean }[];
     /** False for guests, who are only in the channels they were invited to. */
     canCreateChannel: boolean;
     /** True for guests too: they may write to people from their own channels. */

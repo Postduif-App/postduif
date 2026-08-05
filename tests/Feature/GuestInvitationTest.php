@@ -51,7 +51,7 @@ it('invites a guest for the channels that were picked', function () {
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'Gast@Extern.nl',
-            'role' => 'guest',
+            'role' => roleId($workspace, SystemRole::Guest),
             'channel_ids' => [$invited->id],
         ])
         ->assertRedirect();
@@ -61,7 +61,7 @@ it('invites a guest for the channels that were picked', function () {
     // Stored lowercased: the same person invited twice under a different
     // spelling would otherwise slip past the unique key on (workspace, email).
     expect($invitation->email)->toBe('gast@extern.nl')
-        ->and($invitation->role)->toBe(SystemRole::Guest)
+        ->and($invitation->workspaceRole->key)->toBe(SystemRole::Guest->value)
         ->and($invitation->workspace_id)->toBe($workspace->id)
         ->and($invitation->channels->pluck('id')->all())->toBe([$invited->id]);
 
@@ -77,7 +77,7 @@ it('refuses a guest invitation without channels', function () {
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'gast@extern.nl',
-            'role' => 'guest',
+            'role' => roleId($workspace, SystemRole::Guest),
         ])
         ->assertSessionHasErrors('channel_ids');
 
@@ -91,7 +91,7 @@ it('ignores channels from another workspace', function () {
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'gast@extern.nl',
-            'role' => 'guest',
+            'role' => roleId($workspace, SystemRole::Guest),
             'channel_ids' => [$invited->id, $elsewhere->id],
         ])
         ->assertRedirect();
@@ -102,12 +102,12 @@ it('ignores channels from another workspace', function () {
 it('never lets an ordinary member invite anybody', function () {
     [, $workspace, $invited] = workspaceToInviteInto();
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($member)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'gast@extern.nl',
-            'role' => 'guest',
+            'role' => roleId($workspace, SystemRole::Guest),
             'channel_ids' => [$invited->id],
         ])
         ->assertForbidden();
@@ -118,12 +118,12 @@ it('never lets an ordinary member invite anybody', function () {
 it('refuses to invite somebody who is already in the workspace', function () {
     [$owner, $workspace] = workspaceToInviteInto();
     $member = User::factory()->create(['email' => 'lid@intern.nl']);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
             'email' => 'lid@intern.nl',
-            'role' => 'member',
+            'role' => roleId($workspace, SystemRole::Member),
         ])
         ->assertSessionHasErrors('email');
 });
@@ -333,7 +333,7 @@ it('refuses the invitations screen to a plain member', function () {
     [, $workspace] = workspaceToInviteInto();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($member)
         ->get(route('workspace.invitations.index'))

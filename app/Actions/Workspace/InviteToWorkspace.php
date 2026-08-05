@@ -2,9 +2,9 @@
 
 namespace App\Actions\Workspace;
 
-use App\Enums\SystemRole;
 use App\Mail\WorkspaceInvitationMail;
 use App\Models\Invitation;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
@@ -31,7 +31,7 @@ class InviteToWorkspace
         Workspace $workspace,
         User $inviter,
         string $email,
-        SystemRole $role,
+        Role $role,
         Collection|array $channelIds = [],
     ): Invitation {
         $email = mb_strtolower(trim($email));
@@ -41,7 +41,7 @@ class InviteToWorkspace
                 ['workspace_id' => $workspace->id, 'email' => $email],
                 [
                     'invited_by' => $inviter->id,
-                    'role' => $role,
+                    'workspace_role_id' => $role->id,
                     'token' => Invitation::freshToken(),
                     'expires_at' => now()->addDays(Invitation::VALID_FOR_DAYS),
                 ],

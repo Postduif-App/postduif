@@ -145,8 +145,8 @@ class InviteLinkJoinController extends Controller
             'link' => [
                 'workspaceName' => $link->workspace->name,
                 'invitedBy' => $link->creator?->name,
-                'roleLabel' => $link->role->getLabel(),
-                'isGuest' => $link->role->isGuest(),
+                'roleLabel' => $link->workspaceRole?->name,
+                'isGuest' => $link->workspaceRole?->is_external ?? false,
                 'channels' => $link->channels()
                     ->orderBy('name')
                     ->get()

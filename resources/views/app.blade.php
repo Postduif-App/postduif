@@ -47,6 +47,43 @@
         <meta name="theme-color" content="#16160F">
 
         {{--
+            What a crawler and a chat client read. Rendered here rather than
+            through Inertia's <Head> so it is in the first response whatever
+            happens to SSR — a preview card is fetched by something that does
+            not run JavaScript, and a description that depended on hydration
+            would be a description nobody outside a browser ever sees.
+
+            Only the public pages send this prop. The application behind the
+            login has nothing to say to a crawler and says nothing.
+        --}}
+        @if ($seo = ($page['props']['seo'] ?? null))
+            <meta name="description" content="{{ $seo['description'] }}">
+            <link rel="canonical" href="{{ $seo['url'] }}">
+
+            <meta property="og:type" content="website">
+            <meta property="og:site_name" content="{{ config('app.name') }}">
+            <meta property="og:title" content="{{ $seo['title'] }}">
+            <meta property="og:description" content="{{ $seo['description'] }}">
+            <meta property="og:url" content="{{ $seo['url'] }}">
+            <meta property="og:locale" content="{{ str_replace('_', '-', app()->getLocale()) }}">
+            {{-- Absolute, and the dimensions said out loud: a card renders
+                 before the image has been fetched, and one that knows the
+                 shape does not reflow when it arrives. --}}
+            <meta property="og:image" content="{{ $seo['image'] }}">
+            <meta property="og:image:width" content="1200">
+            <meta property="og:image:height" content="630">
+
+            <meta name="twitter:card" content="summary_large_image">
+            <meta name="twitter:title" content="{{ $seo['title'] }}">
+            <meta name="twitter:description" content="{{ $seo['description'] }}">
+            <meta name="twitter:image" content="{{ $seo['image'] }}">
+
+            @isset($seo['schema'])
+                <script type="application/ld+json">{!! json_encode($seo['schema'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}</script>
+            @endisset
+        @endif
+
+        {{--
             Only the face this workspace actually reads in. Loading all three
             bundled families would mean two of them are downloaded and
             preloaded for nothing on every single page.

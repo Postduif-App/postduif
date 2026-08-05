@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ChannelType;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -115,7 +116,7 @@ it('hides a new private channel from the rest of the workspace', function () {
     $workspace = workspaceWithMember($creator);
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
     $home = channelWithMember($workspace, $other);
 
     actingAs($creator)->post(route('chat.channels.store', $workspace), [

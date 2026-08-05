@@ -9,6 +9,7 @@ use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Poll;
 use App\Models\PollOption;
+use App\Models\Role;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -281,4 +282,21 @@ function pollFixture(bool $allowsMultiple = false): array
     ]));
 
     return [$asker, $voter, $poll, $options[0], $options[1]];
+}
+
+/**
+ * The id of a workspace's built-in role, for a factory that has only the id of
+ * the workspace to go on.
+ *
+ * A factory attribute may be handed a workspace that is itself still a factory,
+ * so this resolves whatever it is given rather than insisting on a model.
+ */
+function roleIdFor(mixed $workspace, SystemRole $role): int
+{
+    $id = $workspace instanceof Workspace ? $workspace->id : $workspace;
+
+    return Role::query()
+        ->where('workspace_id', $id)
+        ->where('key', $role->value)
+        ->value('id');
 }

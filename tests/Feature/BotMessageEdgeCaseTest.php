@@ -77,7 +77,7 @@ it('keeps a plain member from deleting a bot message', function () {
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($owner, SystemRole::Admin);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $owner);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
@@ -93,7 +93,7 @@ it('still refuses to let anyone delete another members message', function () {
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($owner, SystemRole::Admin);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $owner);
     $channel->members()->attach($member->id, ['joined_at' => now()]);

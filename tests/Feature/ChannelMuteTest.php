@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\ChannelMembership;
 use App\Models\User;
@@ -83,7 +84,7 @@ it('refuses somebody who is not in the channel', function () {
     [, $workspace, $channel] = channelToQuieten();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     actingAs($outsider)
         ->post(route('chat.channels.mute', [$workspace, $channel]))

@@ -13,6 +13,11 @@ export type User = {
     timezone: string;
     /** The chosen language, or null for "follow the browser". */
     locale: string | null;
+    /**
+     * A few lines beside the name, or null for somebody who wrote none. Read
+     * on the member page — see chat/member.
+     */
+    bio: string | null;
     status_emoji: string | null;
     status_text: string | null;
     availability: Availability;

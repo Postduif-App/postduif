@@ -20,7 +20,7 @@ function channelWithManagerAndMember(): array
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($manager, SystemRole::Admin);
-    $workspace->members()->attach($member->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $manager);
     $channel->members()->attach($member->id, ['joined_at' => now()]);

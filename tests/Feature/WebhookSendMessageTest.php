@@ -2,6 +2,7 @@
 
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\SendMessage;
+use App\Enums\SystemRole;
 use App\Events\ChannelActivity;
 use App\Events\MessageSent;
 use App\Models\InboxItem;
@@ -20,7 +21,7 @@ function channelWithWebhook(): array
     $second = User::factory()->create(['username' => 'joris']);
 
     $workspace = workspaceWithMember($first);
-    $workspace->members()->attach($second->id, ['role' => 'member', 'joined_at' => now()]);
+    $workspace->members()->attach($second->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
 
     $channel = channelWithMember($workspace, $first);
     $channel->members()->attach($second->id, ['joined_at' => now()]);

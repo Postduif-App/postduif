@@ -37,11 +37,15 @@ return [
 
     'profile' => [
         'title' => 'Profiel',
-        'description' => 'Je naam en e-mailadres',
+        'description' => 'Je naam, e-mailadres en wat collega\'s daarnaast lezen',
         'name' => 'Naam',
         'name_placeholder' => 'Je volledige naam',
         'email' => 'E-mailadres',
         'email_placeholder' => 'Je e-mailadres',
+        'bio' => 'Over jou',
+        'bio_placeholder' => 'Wat je doet, en waarvoor mensen bij je terechtkunnen',
+        'bio_hint' => 'Te zien voor collega\'s op je pagina in de workspace.',
+        'bio_remaining' => '{1} Nog :count teken|[0,*] Nog :count tekens',
         'unverified' => 'Je e-mailadres is nog niet bevestigd.',
         'resend' => 'Stuur de bevestigingsmail opnieuw.',
         'resent' => 'We hebben een nieuwe link naar je e-mailadres gestuurd.',

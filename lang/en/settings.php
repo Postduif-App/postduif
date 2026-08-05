@@ -28,11 +28,15 @@ return [
 
     'profile' => [
         'title' => 'Profile',
-        'description' => 'Your name and email address',
+        'description' => 'Your name, email address and what colleagues read beside them',
         'name' => 'Name',
         'name_placeholder' => 'Your full name',
         'email' => 'Email address',
         'email_placeholder' => 'Your email address',
+        'bio' => 'About you',
+        'bio_placeholder' => 'What you do, and what people can come to you for',
+        'bio_hint' => 'Shown to colleagues on your page in the workspace.',
+        'bio_remaining' => '{1} :count character left|[0,*] :count characters left',
         'unverified' => 'Your email address is not confirmed yet.',
         'resend' => 'Send the confirmation email again.',
         'resent' => 'We sent a new link to your email address.',
