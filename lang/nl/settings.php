@@ -130,11 +130,12 @@ return [
 
     'api_tokens' => [
         'title' => 'API-tokens',
-        'description' => 'Laat een AI-client of een eigen script meelezen en meepraten namens jou',
+        'description' => 'Laat een eigen script meelezen en meepraten namens jou',
         'warning_title' => 'Wat een token kan',
-        'warning' => 'Een token handelt als jij: het ziet elk kanaal dat jij kunt zien en kan berichten plaatsen waar jij dat kunt. Het geldt voor al je workspaces, en opent zowel de MCP-server als de API. Deel er dus geen, en trek er een in zodra je hem niet meer gebruikt.',
-        'endpoint' => 'Adres van de server',
+        'warning' => 'Een token handelt als jij: het ziet elk kanaal dat jij kunt zien en kan berichten plaatsen waar jij dat kunt. Het geldt voor al je workspaces en opent de API. Deel er dus geen, en trek er een in zodra je hem niet meer gebruikt.',
+        'endpoint' => 'Adres voor je AI-client',
         'copy_endpoint' => 'Adres kopiëren',
+        'endpoint_hint' => 'Hier hoeft geen token bij. Je client vraagt zelf toestemming, en die geef je op een scherm van Pcom — daar zie je ook wat hij mag.',
         'new_token' => 'Nieuw token',
         'name_placeholder' => 'Waar ga je hem gebruiken? Bijvoorbeeld: Claude op mijn laptop',
         'create' => 'Aanmaken',

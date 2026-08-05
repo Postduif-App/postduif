@@ -56,6 +56,20 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        /*
+         * The guard the MCP server sits behind. Passport rather than a session,
+         * because an MCP client is not a browser: it arrives with an access
+         * token it was granted once, and there is no cookie jar to keep.
+         *
+         * Only the MCP routes use it. Everything a member does in the
+         * application goes through 'web', and the personal-token API keeps its
+         * own middleware — see AuthenticateApiToken.
+         */
+        'api' => [
+            'driver' => 'passport',
+            'provider' => 'users',
+        ],
     ],
 
     /*

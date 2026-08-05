@@ -5,7 +5,7 @@ use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Laravel\postJson;
+use function Pest\Laravel\getJson;
 
 /**
  * A member with a usable token.
@@ -61,32 +61,27 @@ it('shows only your own tokens', function () {
     expect(ApiToken::whereKey($theirs->id)->exists())->toBeTrue();
 });
 
-it('signs an MCP request in as the member who owns the token', function () {
+/*
+ * A personal token opens the API and nothing else. The MCP server moved to
+ * OAuth — see McpOAuthTest, which holds the counterpart of every case here.
+ */
+it('signs an API request in as the member who owns the token', function () {
     [$user, , $plain] = memberWithToken();
 
-    // A bare initialize call is enough: what is under test is whether the
-    // request gets past the middleware at all.
-    postJson('/mcp/chat', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => 'ping',
-    ], ['Authorization' => 'Bearer '.$plain])->assertOk();
+    getJson(route('api.v1.status.show'), ['Authorization' => 'Bearer '.$plain])
+        ->assertOk();
 
     expect(ApiToken::sole()->last_used_at)->not->toBeNull()
         ->and($user->fresh())->not->toBeNull();
 });
 
 it('refuses a request without a token', function () {
-    postJson('/mcp/chat', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'ping'])
-        ->assertUnauthorized();
+    getJson(route('api.v1.status.show'))->assertUnauthorized();
 });
 
 it('refuses a token nobody has', function () {
-    postJson('/mcp/chat', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => 'ping',
-    ], ['Authorization' => 'Bearer mcp_verzonnen'])->assertUnauthorized();
+    getJson(route('api.v1.status.show'), ['Authorization' => 'Bearer mcp_verzonnen'])
+        ->assertUnauthorized();
 });
 
 it('refuses a token that was withdrawn', function () {
@@ -94,11 +89,8 @@ it('refuses a token that was withdrawn', function () {
 
     actingAs($user)->delete(route('api-tokens.destroy', $record))->assertRedirect();
 
-    postJson('/mcp/chat', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => 'ping',
-    ], ['Authorization' => 'Bearer '.$plain])->assertUnauthorized();
+    getJson(route('api.v1.status.show'), ['Authorization' => 'Bearer '.$plain])
+        ->assertUnauthorized();
 
     // Marked rather than deleted: the row is the record that it existed.
     expect($record->fresh()->isRevoked())->toBeTrue();
@@ -117,11 +109,8 @@ it('does not let somebody withdraw a token that is not theirs', function () {
 it('reads the header whatever case the client sends it in', function () {
     [, , $plain] = memberWithToken();
 
-    postJson('/mcp/chat', [
-        'jsonrpc' => '2.0',
-        'id' => 1,
-        'method' => 'ping',
-    ], ['Authorization' => 'bearer '.$plain])->assertOk();
+    getJson(route('api.v1.status.show'), ['Authorization' => 'bearer '.$plain])
+        ->assertOk();
 });
 
 it('refuses an eleventh token, and says so in words', function () {

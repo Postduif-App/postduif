@@ -31,6 +31,15 @@ if [ "$APP_ENV" = "production" ]; then
         exit 1
     fi
 
+    # The same argument one door along. Passport signs the OAuth tokens an AI
+    # client holds, and a container that generated a fresh pair on boot would
+    # log every connected client out — silently, and again on the next deploy.
+    # Either mount storage/ or pass the pair in the environment.
+    if [ -z "$PASSPORT_PRIVATE_KEY" ] && [ ! -f storage/oauth-private.key ]; then
+        echo "No Passport keys. Run 'php artisan passport:keys' and keep storage/oauth-*.key, or set PASSPORT_PRIVATE_KEY and PASSPORT_PUBLIC_KEY." >&2
+        exit 1
+    fi
+
     # Config, routes, events and views compiled into bootstrap/cache. Done here
     # rather than in the image because caching the config freezes the
     # environment as it was at that moment, and at build time it was not yet
@@ -45,6 +54,13 @@ else
 
     if [ -f .env ] && ! grep -qE '^APP_KEY=.+' .env; then
         php artisan key:generate --force --no-interaction
+    fi
+
+    # On a development machine a fresh pair is no loss: nobody has an OAuth
+    # token worth keeping, and the alternative is an MCP server that refuses
+    # every request for a reason nothing explains.
+    if [ ! -f storage/oauth-private.key ]; then
+        php artisan passport:keys --no-interaction || true
     fi
 fi
 

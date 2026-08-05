@@ -21,6 +21,24 @@ return [
         'invalid' => 'Ongeldig of ontbrekend MCP-token.',
     ],
 
+    /*
+     * Het scherm waar een AI-client je naartoe stuurt om toestemming te vragen.
+     * De client heeft zijn eigen naam in de adresbalk gezet, dus dit is de enige
+     * plek waar staat wiens account er weggegeven wordt — vandaar dat het
+     * e-mailadres er letterlijk bij staat en niet verondersteld wordt.
+     */
+    'authorize' => [
+        'title' => ':client toegang geven',
+        'heading' => ':client wil meelezen namens jou',
+        'explanation' => 'Deze client krijgt toegang tot Pcom alsof jij het bent. Geef alleen toestemming als je dit zelf net in gang hebt gezet.',
+        'as' => 'Als',
+        'scope' => 'Lezen en schrijven in de kanalen die jij mag zien, en je status zetten.',
+        'limits' => 'Nooit meer dan jij zelf mag. Een privékanaal waar jij niet in zit, bestaat voor deze client ook niet.',
+        'approve' => 'Toestaan',
+        'deny' => 'Weigeren',
+        'revoke_hint' => 'Je kunt dit later intrekken bij Instellingen → API-tokens.',
+    ],
+
     'channels' => [
         'none' => 'Deze gebruiker zit in geen enkel kanaal.',
         'no_match' => 'Geen kanaal gevonden voor ":search".',

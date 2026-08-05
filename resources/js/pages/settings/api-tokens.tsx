@@ -115,12 +115,21 @@ export default function ApiTokens({
                             label={t('settings.api_tokens.copy_endpoint')}
                         />
                     </div>
+                    {/*
+                        Said here rather than left to be discovered: a token is
+                        the first thing somebody reaches for on this screen, and
+                        this is the one address that does not want one.
+                    */}
+                    <p className="text-xs text-muted-foreground">
+                        {t('settings.api_tokens.endpoint_hint')}
+                    </p>
                 </div>
 
                 {/*
-                    Beside the MCP address rather than on a page of its own: it
-                    is the same credential, and somebody who has just made a
-                    token is exactly who needs to know where to point it.
+                    Beside the MCP address rather than on a page of its own:
+                    somebody who has just made a token is exactly who needs to
+                    know where to point it. The two doors take different
+                    credentials — this is the one the token is for.
                 */}
                 <div className="grid gap-2">
                     <Label htmlFor="api-endpoint">

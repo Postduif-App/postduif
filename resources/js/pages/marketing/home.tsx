@@ -481,7 +481,7 @@ export default function MarketingHome({
                 <SectionHead
                     number="05"
                     title="Voor je eigen script en je AI-client"
-                    lead="Eén persoonlijk token opent allebei. Wat erachter zit is precies wat jij mag zien: elke aanroep loopt langs dezelfde regels als het scherm."
+                    lead="Twee deuren, elk met hun eigen sleutel: een persoonlijk token voor je eigen script, OAuth voor een AI-client die zichzelf aanmeldt. Wat erachter zit is precies wat jij mag zien — elke aanroep loopt langs dezelfde regels als het scherm."
                 />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -533,7 +533,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Wat een AI-client kan
+                            Wat een AI-client kan, na jouw toestemming
                         </div>
                         <Described
                             items={token.tools.map((tool) => ({
@@ -554,9 +554,11 @@ export default function MarketingHome({
                         paddingLeft: 16,
                     }}
                 >
-                    Meelezen door een AI-client staat standaard uit, per
-                    workspace. Zolang die uit staat komt er niets langs deze
-                    kant naar binnen of naar buiten.
+                    Een AI-client meldt zich met OAuth aan en vraagt jou om
+                    toestemming; je ziet op een scherm van Postduif wat hij mag
+                    en trekt het met één klik weer in. En het staat per
+                    workspace standaard uit: zolang die schakelaar uit is, komt
+                    er langs deze kant niets naar binnen of naar buiten.
                 </p>
             </div>
 

@@ -37,6 +37,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -112,10 +113,36 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+        $this->configureOAuth();
 
         // Chat is unusable without a websocket server, so "php artisan dev"
         // starts Reverb alongside the HTTP server, queue worker and Vite.
         DevCommands::artisan('reverb:start', 'reverb');
+    }
+
+    /**
+     * How somebody is asked whether an AI client may act as them.
+     *
+     * The package ships a screen and it works; this one is ours because of
+     * where it is shown. An OAuth client opens it in a window with its own name
+     * in the address bar, which makes the page the only thing telling the
+     * reader whose account is about to be handed over — so it carries the brand
+     * and says the address out loud, like every other screen somebody meets
+     * from outside the application.
+     */
+    private function configureOAuth(): void
+    {
+        Passport::authorizationView(fn (array $parameters) => view('mcp.authorize', $parameters));
+
+        /*
+         * An access token outlives the conversation it was granted in but not
+         * by much: a client that has gone quiet for a fortnight is one somebody
+         * has stopped using, and a grant nobody remembers giving is exactly the
+         * kind that should have run out. The refresh token is the thing that
+         * keeps a client in use working without asking again.
+         */
+        Passport::tokensExpireIn(now()->addDays(14));
+        Passport::refreshTokensExpireIn(now()->addDays(90));
     }
 
     /**
