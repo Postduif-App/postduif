@@ -1346,7 +1346,7 @@ export default function WorkflowEdit({
                         </p>
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:items-start">
                         {/* The canvas. */}
                         <div className="rounded-lg bg-muted/30 p-3">
                             <WorkflowNode

@@ -77,11 +77,16 @@ createInertiaApp({
                 return WideSettingsLayout;
             /*
              * The workflow builder and its run history, for the same reason as
-             * the member list: a row of steps with a form open on each is not a
-             * thing that fits a reading column, and a run's context is JSON that
-             * has to be readable rather than pretty.
+             * the member list: a canvas with a panel beside it is not a thing
+             * that fits a reading column, and a run's context is JSON that has
+             * to be readable rather than pretty.
+             *
+             * The builder is the one that needs it most — it draws lanes inside
+             * forks, and every level of nesting eats into the width the blocks
+             * have left.
              */
             case name === 'settings/workflows':
+            case name === 'settings/workflow-edit':
             case name === 'settings/workflow-runs':
                 return WideSettingsLayout;
             // Settings bring their own full-height shell, in the same idiom as
