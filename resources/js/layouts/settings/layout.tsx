@@ -15,6 +15,7 @@ import { edit as editSecurity } from '@/routes/security';
 import { index as statusRules } from '@/routes/status-rules';
 import { index as workflowsIndex } from '@/routes/workflows';
 import { edit as editWorkspace } from '@/routes/workspace';
+import { index as workspaceEmoji } from '@/routes/workspace/emoji';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
 import { edit as editWorkspacePermissions } from '@/routes/workspace/permissions';
@@ -85,6 +86,10 @@ export default function SettingsLayout({
                   {
                       title: t('settings.nav.roles'),
                       href: workspaceRoles(),
+                  },
+                  {
+                      title: t('settings.nav.emoji'),
+                      href: workspaceEmoji(),
                   },
                   {
                       title: t('settings.nav.theme'),
