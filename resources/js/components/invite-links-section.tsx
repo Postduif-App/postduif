@@ -2,6 +2,7 @@ import { Form, router } from '@inertiajs/react';
 import { Check, Copy, Hash, Link2, Lock, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { ChoiceText } from '@/components/choice-text';
 import InputError from '@/components/input-error';
 import {
     AlertDialog,
@@ -200,14 +201,10 @@ export function InviteLinksSection({
                                         onChange={() => setRole(option.value)}
                                         className="mt-0.5"
                                     />
-                                    <span className="min-w-0">
-                                        <span className="block font-medium">
-                                            {t(option.label)}
-                                        </span>
-                                        <span className="block text-xs text-muted-foreground">
-                                            {t(option.hint)}
-                                        </span>
-                                    </span>
+                                    <ChoiceText
+                                        title={t(option.label)}
+                                        hint={t(option.hint)}
+                                    />
                                 </label>
                             ))}
                             <InputError message={errors.role} />
