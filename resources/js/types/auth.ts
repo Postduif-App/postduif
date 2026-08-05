@@ -47,6 +47,15 @@ export type Auth = {
     /** Whether the settings navigation should offer the workflow builder. */
     canManageWorkflows: boolean;
     /**
+     * The clock, or null where this workspace has none — switched off, or the
+     * person is a guest here.
+     *
+     * Shared rather than fetched per screen because the button lives in the
+     * user menu, which is on every page. `runningSince` is the moment the open
+     * shift began, so the menu can count without asking the server again.
+     */
+    timeclock: { runningSince: string | null } | null;
+    /**
      * Whether the person is in that workspace from outside.
      *
      * A fact rather than the name of their role: a workspace writes its own

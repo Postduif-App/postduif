@@ -133,6 +133,22 @@ class HandleInertiaRequests extends Middleware
                   * matches no string the browser knows.
                   */
                 'workspaceIsExternal' => $role?->is_external ?? false,
+                /*
+                 * The clock, for the button in the user menu.
+                 *
+                 * Shared rather than left to the screen that shows the hours,
+                 * because clocking in is something you do from wherever you
+                 * happen to be — the same reason the status picker lives here.
+                 * Null when this workspace has tijdregistratie switched off or
+                 * the person is a guest in it, which is what lets the menu
+                 * leave the item out rather than draw one that refuses.
+                 *
+                 * The open shift is only looked up once the policy has said
+                 * yes, so a workspace without the feature pays no query for it.
+                 */
+                'timeclock' => $workspace !== null && ($request->user()?->can('clock', $workspace) ?? false)
+                    ? ['runningSince' => $request->user()?->openShiftIn($workspace)?->started_at->toIso8601String()]
+                    : null,
                 // The status picker sits in the user menu, which is on every
                 // screen — so its options travel with the menu rather than each
                 // page having to remember to send them. The labels stay in the

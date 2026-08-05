@@ -1,8 +1,18 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { LogOut, Monitor, Moon, Settings, Smile, Sun } from 'lucide-react';
+import {
+    LogOut,
+    Monitor,
+    Moon,
+    Play,
+    Settings,
+    Smile,
+    Square,
+    Sun,
+} from 'lucide-react';
 import { useState } from 'react';
 
+import { ClockOutDialog } from '@/components/clock-out-dialog';
 import { StatusDialog } from '@/components/status-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -25,7 +35,9 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { useInitials } from '@/hooks/use-initials';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { useTranslate } from '@/hooks/use-translate';
+import { spokenDuration, useElapsed } from '@/lib/duration';
 import { logout } from '@/routes';
+import { clockIn } from '@/routes/chat/timeclock';
 import { edit } from '@/routes/profile';
 import type { Auth, User } from '@/types';
 import type { TranslationKey } from '@/types/translations';
@@ -138,6 +150,19 @@ export function UserMenuContent({ user }: Props) {
                 </DropdownMenuItem>
 
                 {/*
+                    The clock, where this workspace has one. In the menu rather
+                    than on its own screen for the same reason the status is:
+                    you clock in on your way into the first conversation of the
+                    day, not by navigating to settings first.
+                */}
+                {auth.timeclock && auth.workspace && (
+                    <ClockItem
+                        runningSince={auth.timeclock.runningSince}
+                        workspaceSlug={auth.workspace.slug}
+                    />
+                )}
+
+                {/*
                     The appearance store is module level, so switching here and
                     switching on the settings page stay in sync without props.
                 */}
@@ -204,6 +229,87 @@ export function UserMenuContent({ user }: Props) {
                 open={statusOpen}
                 onOpenChange={setStatusOpen}
             />
+        </>
+    );
+}
+
+/**
+ * Clocking in and out, with the shift counting beside it.
+ *
+ * Its own component so the ticking lives here: a timer that ran in the menu
+ * itself would re-render every screen the menu sits on, once a second, for the
+ * sake of a line nobody has opened.
+ *
+ * The elapsed time is worked out from the moment the shift began rather than
+ * counted up from a number, so a tab that has been open since this morning
+ * still shows the truth — see useElapsed.
+ */
+function ClockItem({
+    runningSince,
+    workspaceSlug,
+}: {
+    runningSince: string | null;
+    workspaceSlug: string;
+}) {
+    const { t } = useTranslate();
+    const elapsed = useElapsed(runningSince);
+    const [confirming, setConfirming] = useState(false);
+
+    return (
+        <>
+            <DropdownMenuItem
+                className="cursor-pointer"
+                onSelect={(event) => {
+                    /*
+                        Held open on the way out, closed on the way in. The
+                        dialog is mounted inside this dropdown, so letting the
+                        menu close would take the question with it — the same
+                        reason the status item stays open behind its own dialog.
+                    */
+                    if (runningSince) {
+                        event.preventDefault();
+                        setConfirming(true);
+
+                        return;
+                    }
+
+                    router.post(
+                        clockIn.url(workspaceSlug),
+                        {},
+                        { preserveScroll: true },
+                    );
+                }}
+            >
+                {runningSince ? (
+                    <Square className="mr-2 size-4" />
+                ) : (
+                    <Play className="mr-2 size-4" />
+                )}
+                <span className="truncate">
+                    {runningSince
+                        ? t('timeclock.clock_out')
+                        : t('timeclock.clock_in')}
+                </span>
+                {/*
+                    The running total sits at the end of the row rather than in
+                    the label: what the item does should not change width every
+                    minute.
+                */}
+                {runningSince && (
+                    <span className="ml-auto font-mono text-xs text-muted-foreground tabular-nums">
+                        {spokenDuration(elapsed)}
+                    </span>
+                )}
+            </DropdownMenuItem>
+
+            {runningSince && (
+                <ClockOutDialog
+                    runningSince={runningSince}
+                    workspaceSlug={workspaceSlug}
+                    open={confirming}
+                    onOpenChange={setConfirming}
+                />
+            )}
         </>
     );
 }
