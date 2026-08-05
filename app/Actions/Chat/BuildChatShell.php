@@ -3,10 +3,10 @@
 namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
-use App\Enums\SystemRole;
 use App\Models\BoardPost;
 use App\Models\Channel;
 use App\Models\ChannelSection;
+use App\Models\CustomEmoji;
 use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\Role;
@@ -188,8 +188,7 @@ class BuildChatShell
      */
     private function workspaceMembers(Workspace $workspace): array
     {
-        return $workspace->members()
-            ->wherePivot('role', '!=', SystemRole::Guest->value)
+        return $workspace->internalMembers()
             ->orderBy('name')
             ->get()
             ->map(fn (User $member): array => [
@@ -330,6 +329,26 @@ class BuildChatShell
              * trusted to combine them.
              */
             'board' => $user->can('viewAny', [BoardPost::class, $workspace]),
+
+            /*
+             * The pictures this workspace named for itself.
+             *
+             * In the shell rather than fetched by the picker, because three
+             * separate things need the same list: the picker offers them, the
+             * composer suggests them while you type, and every message drawn on
+             * screen has to turn ":shipit:" back into a picture. A list that
+             * arrived later would mean a screenful of chat that reads as bare
+             * text for a moment and then rearranges itself.
+             *
+             * Small enough to send whole — a name and a URL each, capped at two
+             * hundred by the screen that makes them.
+             */
+            'customEmoji' => $workspace->customEmoji()->get()
+                ->map(fn (CustomEmoji $emoji): array => [
+                    'name' => $emoji->name,
+                    'url' => $emoji->url(),
+                ])
+                ->all(),
         ];
     }
 

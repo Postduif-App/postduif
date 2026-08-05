@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\CustomEmojiController;
 use App\Http\Controllers\IndexingController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\PublicTransferController;
 use App\Http\Controllers\SecretAnswerController;
@@ -36,6 +38,13 @@ Route::get('docs', [MarketingController::class, 'docs'])->name('docs');
  * absolute URL. See IndexingController, and note that a public/robots.txt
  * would win over this because the web server answers before PHP does.
  */
+/*
+ * Asking for the other language. Outside auth: the people who need it are the
+ * ones with no account to save a preference against. See LocaleController for
+ * why it is a link rather than a form.
+ */
+Route::get('taal/{locale}', LocaleController::class)->name('locale.switch');
+
 Route::get('robots.txt', [IndexingController::class, 'robots'])->name('robots');
 Route::get('sitemap.xml', [IndexingController::class, 'sitemap'])->name('sitemap');
 
@@ -153,6 +162,14 @@ Route::get('avatars/users/{user}', AvatarController::class)
 Route::get('avatars/workspaces/{workspace}', [AvatarController::class, 'workspace'])
     ->middleware(['auth', 'verified'])
     ->name('avatars.workspace');
+
+/*
+ * A workspace's own emoji. Beside the avatars and behind the same door: a
+ * picture uploaded into a private workspace, handed to the people in it.
+ */
+Route::get('emoji/{customEmoji}', CustomEmojiController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('custom-emoji.show');
 
 // Order matters: settings claims /app/settings before chat.php registers the
 // /app/{workspace} wildcard that would otherwise match it.

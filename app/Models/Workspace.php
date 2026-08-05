@@ -69,10 +69,30 @@ class Workspace extends Model
     ];
 
     /**
+     * Addresses directly under /app that are not a workspace.
+     *
+     * The slug is a wildcard one segment under /app, so anything else living
+     * there has to be kept out of it twice: the route pattern refuses these
+     * outright, and CreateWorkspace will not hand one out. Either alone leaves
+     * a hole — a workspace that claimed "settings" would be unreachable, and a
+     * pattern that forgot one would swallow the page.
+     *
+     * @var list<string>
+     */
+    public const RESERVED_SLUGS = ['settings', 'nieuw'];
+
+    /**
      * A new workspace gets its roles before anybody can join it.
      *
      * created rather than creating: the rows point back at a workspace that
      * has to exist first.
+     *
+     * The first channel is deliberately not here, though it is just as true of
+     * every workspace somebody makes. Roles are structural — without them no
+     * permission resolves and the workspace is broken — so they belong to the
+     * row itself. A channel is something in the workspace rather than part of
+     * it, and hanging it off this event would hand every test fixture a
+     * conversation it never asked for. See CreateHomeChannel for who calls it.
      */
     protected static function booted(): void
     {
@@ -201,7 +221,7 @@ class Workspace extends Model
              * describe. This one always means the workspace side.
              */
             ->as('membership')
-            ->withPivot(['role', 'workspace_role_id', 'display_name', 'joined_at'])
+            ->withPivot(['workspace_role_id', 'display_name', 'joined_at'])
             ->withTimestamps();
     }
 
@@ -225,6 +245,21 @@ class Workspace extends Model
     public function workflows(): HasMany
     {
         return $this->hasMany(Workflow::class);
+    }
+
+    /**
+     * The pictures this workspace made up for itself, by name.
+     *
+     * Ordered here rather than at each of the three places that read them — the
+     * settings screen, the picker and the chat shell — because a list of emoji
+     * that comes back in a different order per screen is one nobody can point
+     * at.
+     *
+     * @return HasMany<CustomEmoji, $this>
+     */
+    public function customEmoji(): HasMany
+    {
+        return $this->hasMany(CustomEmoji::class)->orderBy('name');
     }
 
     /** @return HasMany<Invitation, $this> */
@@ -299,6 +334,39 @@ class Workspace extends Model
     public function roles(): HasMany
     {
         return $this->hasMany(Role::class)->inOrder();
+    }
+
+    /**
+     * The people here from outside, and the people here from inside.
+     *
+     * Asked of the role's is_external flag rather than of a role named "guest".
+     * A workspace writes its own roles now, so "from outside" is a property a
+     * role carries — and a workspace that called theirs "Leverancier" would
+     * otherwise have suppliers counted as colleagues everywhere this is used.
+     *
+     * @return BelongsToMany<User, $this, WorkspaceMembership, 'membership'>
+     */
+    public function externalMembers(): BelongsToMany
+    {
+        return $this->membersByExternality(true);
+    }
+
+    /** @return BelongsToMany<User, $this, WorkspaceMembership, 'membership'> */
+    public function internalMembers(): BelongsToMany
+    {
+        return $this->membersByExternality(false);
+    }
+
+    /** @return BelongsToMany<User, $this, WorkspaceMembership, 'membership'> */
+    private function membersByExternality(bool $external): BelongsToMany
+    {
+        return $this->members()->whereIn(
+            'workspace_user.workspace_role_id',
+            Role::query()
+                ->where('workspace_id', $this->id)
+                ->where('is_external', $external)
+                ->select('id'),
+        );
     }
 
     /**

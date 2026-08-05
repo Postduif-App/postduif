@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\AvatarController;
+use App\Http\Controllers\Settings\CustomEmojiController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -106,6 +107,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.roles.update');
     Route::delete('app/settings/workspace/roles/{role}', [WorkspaceRoleController::class, 'destroy'])
         ->name('workspace.roles.destroy');
+
+    /*
+     * The pictures a workspace names for itself. Its own screen rather than a
+     * field on the general page: it is a list that grows, and every row of it
+     * is a file somebody uploaded.
+     */
+    Route::get('app/settings/workspace/emoji', [CustomEmojiController::class, 'index'])
+        ->name('workspace.emoji.index');
+    Route::post('app/settings/workspace/emoji', [CustomEmojiController::class, 'store'])
+        ->name('workspace.emoji.store');
+    Route::delete('app/settings/workspace/emoji/{customEmoji}', [CustomEmojiController::class, 'destroy'])
+        ->name('workspace.emoji.destroy');
 
     Route::get('app/settings/workspace/theme', [WorkspaceThemeController::class, 'edit'])
         ->name('workspace.theme.edit');
