@@ -30,6 +30,33 @@ use Tests\TestCase;
 |
 */
 
+/**
+ * Skip a test that has to read server-rendered markup, when nothing is there
+ * to render it.
+ *
+ * Inertia's SSR is switched on in config and renders through a separate
+ * process, and Inertia falls back to client-side rendering when that process
+ * is not answering. That fallback is right for a browser and useless to a test
+ * that asserts on the HTML — the response is then a div and a blob of JSON,
+ * and the assertion fails for a reason that has nothing to do with the code.
+ *
+ * So: skipped rather than failed. A test that says "no renderer" is honest
+ * about what it did not check; one that goes red sends somebody looking for a
+ * bug that is not there.
+ */
+function skipWithoutSsr(): void
+{
+    $url = parse_url((string) config('inertia.ssr.url'));
+
+    $socket = @fsockopen($url['host'] ?? '127.0.0.1', (int) ($url['port'] ?? 13714), $code, $message, 0.5);
+
+    if ($socket === false) {
+        test()->markTestSkipped('The Inertia SSR renderer is not running, so there is no server-rendered HTML to read.');
+    }
+
+    fclose($socket);
+}
+
 /*
  * Dutch unless a test says otherwise.
  *
@@ -115,9 +142,26 @@ function roleId(Workspace $workspace, SystemRole $role): int
 function workspaceWithMember(User $user, SystemRole $role = SystemRole::Member): Workspace
 {
     $workspace = Workspace::factory()->create();
-    $workspace->members()->attach($user->id, ['role' => $role->value, 'joined_at' => now()]);
+
+    joinWorkspace($workspace, $user, $role);
 
     return $workspace;
+}
+
+/**
+ * Put somebody in a workspace, in one of its built-in roles.
+ *
+ * The membership points at a role row; the old string column beside it is on
+ * its way out. Going through here rather than writing the pivot by hand at
+ * sixty-odd call sites means the next change to how a role is held is one
+ * edit — which is exactly the change being made now.
+ */
+function joinWorkspace(Workspace $workspace, User $user, SystemRole $role = SystemRole::Member): void
+{
+    $workspace->members()->attach($user->id, [
+        'workspace_role_id' => roleId($workspace, $role),
+        'joined_at' => now(),
+    ]);
 }
 
 /**
@@ -208,10 +252,7 @@ function ticketFixture(ChannelTicketPolicy $policy = ChannelTicketPolicy::Everyo
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
 
     return [$member, $guest, $workspace, $channel];

@@ -52,4 +52,15 @@ if (is_string($database) && $database !== '') {
      * runner.
      */
     $_SERVER['TEST_TOKEN'] = $database;
+
+    /*
+     * And the one place TEST_TOKEN does not reach: media-library writes its
+     * image conversions through a temporary directory of its own, which
+     * defaults to a fixed path under storage. Same hazard, so the same answer.
+     */
+    $temp = __DIR__."/../storage/media-library/temp-{$database}";
+
+    $_ENV['MEDIA_TEMPORARY_DIRECTORY_PATH'] = $temp;
+    $_SERVER['MEDIA_TEMPORARY_DIRECTORY_PATH'] = $temp;
+    putenv("MEDIA_TEMPORARY_DIRECTORY_PATH={$temp}");
 }

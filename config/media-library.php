@@ -245,8 +245,13 @@ return [
     /*
      * The path where to store temporary files while performing image conversions.
      * If set to null, storage_path('media-library/temp') will be used.
+     *
+     * Read from the environment so a test run can be given one of its own. That
+     * default is a fixed address, and two suites running at once would hand
+     * each other half-written conversions — see tests/bootstrap.php, which sets
+     * this for the same reason it sets the database.
      */
-    'temporary_directory_path' => null,
+    'temporary_directory_path' => env('MEDIA_TEMPORARY_DIRECTORY_PATH'),
 
     /*
      * The engine that should perform the image conversions.
