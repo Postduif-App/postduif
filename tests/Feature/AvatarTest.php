@@ -83,7 +83,7 @@ it('hands the picture to somebody who shares a workspace', function () {
     ]);
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)
         ->get(route('avatars.user', $user))
@@ -113,7 +113,7 @@ it('answers with nothing for somebody who set no picture', function () {
     $workspace = workspaceWithMember($user);
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)->get(route('avatars.user', $user))->assertNotFound();
 });

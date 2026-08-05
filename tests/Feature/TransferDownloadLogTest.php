@@ -176,10 +176,7 @@ it('does not show a colleague what happened to somebody else transfer', function
     [, $workspace] = waitingTransfer();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)
         ->get(route('chat.transfers.index', $workspace))

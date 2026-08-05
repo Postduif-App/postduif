@@ -26,10 +26,7 @@ function boardFixture(): array
     $workspace = workspaceWithMember($member);
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = Channel::factory()->create([
         'workspace_id' => $workspace->id,
@@ -196,10 +193,7 @@ it('lets nobody but the author or a beheerder correct a notice', function () {
     [$member, , $workspace] = boardFixture();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $post = BoardPost::factory()->in($workspace)->by($member)->create(['title' => 'Van mij']);
 
@@ -229,10 +223,7 @@ it('lets only a beheerder pin a notice', function () {
     expect($post->refresh()->pinned_at)->toBeNull();
 
     $beheerder = User::factory()->create();
-    $workspace->members()->attach($beheerder->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $beheerder, SystemRole::Admin);
 
     actingAs($beheerder)
         ->patch(route('chat.board.update', [$workspace, $post]), ['pinned' => true]);

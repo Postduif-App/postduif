@@ -45,10 +45,7 @@ it('keeps the settings routes out of the workspace wildcard', function () {
 it('refuses a workspace that tries to claim the settings slug', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['slug' => 'settings']);
-    $workspace->members()->attach($user->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $user, SystemRole::Member);
     channelWithMember($workspace, $user);
 
     // The route pattern excludes it, so this never reaches ChatController.

@@ -19,6 +19,20 @@ class ChannelPolicy
         return $user->isAdmin();
     }
 
+    /**
+     * Opening a channel from /admin, on a workspace's behalf.
+     *
+     * Not the same question as WorkspaceAbility::CreateChannels, which is what
+     * the chat screen asks and which a workspace hands out to its own people.
+     * This one is the panel's, and it is deliberately about being an
+     * administrator rather than about belonging to the workspace — an
+     * administrator setting one up is usually not a member of it.
+     */
+    public function create(User $user): bool
+    {
+        return $user->isAdmin();
+    }
+
     public function update(User $user, Channel $channel): bool
     {
         return $user->isAdmin();

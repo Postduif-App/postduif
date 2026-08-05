@@ -47,7 +47,7 @@ it('leaves everybody else where they were', function () {
     [$user, $workspace, $channel] = favouritableChannel();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     actingAs($user)->post(route('chat.channels.favorite', [$workspace, $channel]));
@@ -71,7 +71,7 @@ it('refuses somebody who is not in the channel', function () {
     [, $workspace, $channel] = favouritableChannel();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)
         ->post(route('chat.channels.favorite', [$workspace, $channel]))

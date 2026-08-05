@@ -107,7 +107,7 @@ it('refuses somebody who cannot see the channel', function () {
 
     $outsider = User::factory()->create();
     $channel->workspace->members()->attach($outsider->id, [
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Member),
         'joined_at' => now(),
     ]);
 
@@ -205,7 +205,7 @@ it('refuses somebody else in the channel', function () {
 
     $other = User::factory()->create();
     $channel->workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Member),
         'joined_at' => now(),
     ]);
     $channel->members()->attach($other->id, ['joined_at' => now()]);

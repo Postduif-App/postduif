@@ -105,10 +105,7 @@ it('shows a guest only what they were invited to', function () {
     [, $workspace, $channel] = memberWithChannels();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
 
     Channel::factory()->create([

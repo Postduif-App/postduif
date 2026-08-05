@@ -57,16 +57,10 @@ it('sends the people in the workspace along with the panel', function () {
     $workspace->update(['member_panel' => MemberPanelVisibility::Everyone]);
 
     $colleague = User::factory()->create(['name' => 'Bram de Vries']);
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     $guest = User::factory()->create(['name' => 'Carla Klant']);
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = channelWithMember($workspace, $user);
 

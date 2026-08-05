@@ -116,7 +116,7 @@ it('hides a new private channel from the rest of the workspace', function () {
     $workspace = workspaceWithMember($creator);
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
     $home = channelWithMember($workspace, $other);
 
     actingAs($creator)->post(route('chat.channels.store', $workspace), [

@@ -118,7 +118,12 @@ class FortifyServiceProvider extends ServiceProvider
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->workspaces->first()?->membership->role,
+                /*
+                 * The role row rather than the old string on the pivot: a
+                 * workspace writes its own roles, so the name is the only
+                 * answer that is right for all of them.
+                 */
+                'role' => $user->workspaces->first()?->roleFor($user)?->name,
             ])
             ->all();
     }

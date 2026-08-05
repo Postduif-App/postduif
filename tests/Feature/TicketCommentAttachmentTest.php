@@ -100,7 +100,7 @@ it('refuses the file to somebody who may not see the channel', function () {
     $attachment = TicketCommentAttachment::sole();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)->get(route('chat.tickets.comments.attachments.show', [
         $workspace, $channel, $ticket, $attachment->comment, $attachment,

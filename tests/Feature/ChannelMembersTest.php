@@ -19,7 +19,7 @@ function privateChannelWithOutsider(): array
     $colleague = User::factory()->create();
 
     $workspace = workspaceWithMember($insider);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     $channel = Channel::factory()->private()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($insider->id, ['joined_at' => now()]);
@@ -105,7 +105,7 @@ it('never allows adding someone to a direct message', function () {
 
     $workspace = workspaceWithMember($user);
     foreach ([$partner, $third] as $member) {
-        $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+        joinWorkspace($workspace, $member, SystemRole::Member);
     }
 
     $dm = Channel::factory()->direct()->create(['workspace_id' => $workspace->id]);
@@ -190,7 +190,7 @@ it('refuses to let anyone leave a direct message', function () {
     $user = User::factory()->create();
     $partner = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($partner->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $partner, SystemRole::Member);
 
     $dm = Channel::factory()->direct()->create(['workspace_id' => $workspace->id]);
     $dm->members()->attach([$user->id, $partner->id], ['joined_at' => now()]);
@@ -213,7 +213,7 @@ function channelWithOwnerAndMember(): array
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($owner);
-    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $channel = Channel::factory()->create([
         'workspace_id' => $workspace->id,
@@ -237,7 +237,7 @@ it('removes another member from a channel', function () {
 it('lets any member remove any other member', function () {
     [$owner, $member, $workspace, $channel] = channelWithOwnerAndMember();
     $third = User::factory()->create();
-    $workspace->members()->attach($third->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $third, SystemRole::Member);
     $channel->members()->attach($third->id, ['joined_at' => now()]);
 
     actingAs($member)
@@ -301,7 +301,7 @@ it('tells the page that the owner cannot leave', function () {
 it('refuses to remove someone from outside the channel', function () {
     [$owner, , $workspace, $channel] = channelWithOwnerAndMember();
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $stranger, SystemRole::Member);
 
     actingAs($owner)
         ->delete(route('chat.channels.members.remove', [$workspace, $channel, $stranger]))
@@ -311,7 +311,7 @@ it('refuses to remove someone from outside the channel', function () {
 it('refuses removal by someone who is not in the channel', function () {
     [, $member, $workspace, $channel] = channelWithOwnerAndMember();
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)
         ->delete(route('chat.channels.members.remove', [$workspace, $channel, $member]))
@@ -324,7 +324,7 @@ it('never removes anyone from a direct message', function () {
     $user = User::factory()->create();
     $partner = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($partner->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $partner, SystemRole::Member);
 
     $dm = Channel::factory()->direct()->create(['workspace_id' => $workspace->id]);
     $dm->members()->attach([$user->id, $partner->id], ['joined_at' => now()]);

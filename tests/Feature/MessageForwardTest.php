@@ -111,7 +111,7 @@ it('refuses a source this member may not read', function () {
     $source->update(['type' => ChannelType::Private]);
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
     $target->members()->attach($outsider->id, ['joined_at' => now()]);
 
     actingAs($outsider)

@@ -84,7 +84,7 @@ it('refuses somebody who is not in the channel', function () {
     [, $workspace, $channel] = channelToQuieten();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)
         ->post(route('chat.channels.mute', [$workspace, $channel]))

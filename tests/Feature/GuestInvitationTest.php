@@ -102,7 +102,7 @@ it('ignores channels from another workspace', function () {
 it('never lets an ordinary member invite anybody', function () {
     [, $workspace, $invited] = workspaceToInviteInto();
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     actingAs($member)
         ->post(route('chat.invitations.store', $workspace), [
@@ -118,7 +118,7 @@ it('never lets an ordinary member invite anybody', function () {
 it('refuses to invite somebody who is already in the workspace', function () {
     [$owner, $workspace] = workspaceToInviteInto();
     $member = User::factory()->create(['email' => 'lid@intern.nl']);
-    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     actingAs($owner)
         ->post(route('chat.invitations.store', $workspace), [
@@ -333,7 +333,7 @@ it('refuses the invitations screen to a plain member', function () {
     [, $workspace] = workspaceToInviteInto();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     actingAs($member)
         ->get(route('workspace.invitations.index'))

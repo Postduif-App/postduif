@@ -128,7 +128,7 @@ it('keeps the whole query for whoever runs the workspace', function () {
     $workspace->update(['blocked_words' => ['klojo']]);
 
     $owner = User::factory()->create();
-    $workspace->members()->attach($owner->id, ['role' => SystemRole::Owner->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $owner, SystemRole::Owner);
     $workspace->channels->each(fn (Channel $channel) => $channel->members()
         ->syncWithoutDetaching([$owner->id => ['joined_at' => now()]]));
 

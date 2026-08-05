@@ -45,7 +45,7 @@ function absentMember(array $overrides = []): array
     $colleague = User::factory()->create();
 
     $workspace = workspaceWithMember($member);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     $channel = channelWithMember($workspace, $member);
     $channel->update(['name' => 'klantproject', 'slug' => 'klantproject']);

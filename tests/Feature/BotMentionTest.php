@@ -52,7 +52,7 @@ it('resolves a handle to the member even when a bot shares the name', function (
     $fenna = User::factory()->create(['username' => 'fenna', 'name' => 'Fenna']);
 
     $workspace = workspaceWithMember($writer);
-    $workspace->members()->attach($fenna->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $fenna, SystemRole::Member);
 
     $channel = channelWithMember($workspace, $writer);
     $channel->members()->attach($fenna->id, ['joined_at' => now()]);

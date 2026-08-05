@@ -3,7 +3,6 @@
 namespace App\Actions\Tickets;
 
 use App\Actions\Chat\CensorBlockedWords;
-use App\Enums\SystemRole;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\TicketCommentAttachment;
@@ -245,8 +244,7 @@ class PresentTicket
         $ids = Workspace::query()
             ->whereKey($workspaceId)
             ->firstOrFail()
-            ->members()
-            ->wherePivot('role', SystemRole::Guest->value)
+            ->externalMembers()
             ->pluck('users.id');
 
         // Built by hand rather than through flip()->map(): a set of ids is what

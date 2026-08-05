@@ -70,10 +70,7 @@ it('refuses an ordinary member', function () {
     [, $workspace, $channel] = archivableChannel();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 
     actingAs($member)
@@ -108,10 +105,7 @@ it('does not list it for somebody who could not reopen it', function () {
     actingAs($creator)->post(route('chat.channels.archive', [$workspace, $channel]));
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     actingAs($member)
         ->get(route('chat.mentions.index', $workspace))

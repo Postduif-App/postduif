@@ -173,7 +173,7 @@ it('carries the same sidebar as a channel page', function () {
     [$member, , $workspace] = ticketFixture();
 
     $workspace->members()->attach(User::factory()->create()->id, [
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($workspace, SystemRole::Member),
         'joined_at' => now(),
     ]);
 

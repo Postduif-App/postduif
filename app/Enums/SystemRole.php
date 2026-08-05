@@ -109,6 +109,25 @@ enum SystemRole: string implements HasLabel
      */
     public function defaultAbilities(): array
     {
+        /*
+         * The owner starts with everything there is, and this is not generosity
+         * — it is what keeps the rest of this list usable.
+         *
+         * Nobody may write into a role a right they do not hold themselves; see
+         * WorkspaceRoleController::guardAgainstReachingUp, which is what stops
+         * this screen from being a way to promote yourself. The corollary is
+         * sharp: a right that no seeded role holds is a right nobody inside the
+         * workspace can ever switch on, for any role, ever. It exists on the
+         * screen and refuses every attempt to use it.
+         *
+         * So somebody has to be the ceiling, and the owner is the only
+         * defensible answer. Everything below is then what the other roles get
+         * *less* than the owner, which is also how a person reads this list.
+         */
+        if ($this === self::Owner) {
+            return WorkspaceAbility::cases();
+        }
+
         return array_values(array_filter(WorkspaceAbility::cases(), fn (WorkspaceAbility $ability): bool => match ($ability) {
             WorkspaceAbility::ManageWorkspace,
             WorkspaceAbility::InviteMembers,
@@ -126,6 +145,38 @@ enum SystemRole: string implements HasLabel
             WorkspaceAbility::SeeMembers => $this->canSeeChannelMembers(),
             WorkspaceAbility::CreateChannels => $this->canCreateChannels(),
             WorkspaceAbility::SendTransfers => $this->canSendTransfers(),
+
+            /*
+             * Making a form is ordinary work — anybody who is not a guest may
+             * ask their colleagues something. Handing that form to the outside
+             * world is not, and starts with the people who run the workspace,
+             * for the reason SendTransfers is kept from guests: a link that
+             * writes into this workspace carries its name.
+             */
+            WorkspaceAbility::CreateForms => $this->canCreateChannels(),
+            WorkspaceAbility::ShareFormsPublicly => $this->canManageWorkspace(),
+
+            /*
+             * Nobody below the owner. Reading when a colleague started and
+             * stopped working does not follow from running the workspace, so an
+             * administrator does not get it with the job — the owner hands it
+             * out on purpose, to whoever it is actually for.
+             */
+            WorkspaceAbility::SeeHours => false,
+
+            /*
+             * Nobody below the owner, and not because it is weighty: everybody
+             * who would get it from a seed already has it another way. Whoever
+             * manages the workspace can configure any channel, and configuring
+             * a channel has carried "delete what the bots post there" since
+             * before this right existed.
+             *
+             * The right exists for the role that is *not* a workspace admin —
+             * somebody who should tidy up after the integrations without being
+             * handed the channel — and that is a choice a workspace makes on
+             * purpose.
+             */
+            WorkspaceAbility::DeleteBotMessages => false,
         }));
     }
 

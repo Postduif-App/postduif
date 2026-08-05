@@ -216,10 +216,7 @@ it('does not let a colleague withdraw what somebody else sent', function () {
     [$sender, $workspace] = senderInWorkspace();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     $transfer = Transfer::factory()->create([
         'workspace_id' => $workspace->id,
@@ -241,10 +238,7 @@ it('lets whoever runs the workspace stop a transfer', function () {
     [$sender, $workspace] = senderInWorkspace();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     $transfer = Transfer::factory()->create([
         'workspace_id' => $workspace->id,

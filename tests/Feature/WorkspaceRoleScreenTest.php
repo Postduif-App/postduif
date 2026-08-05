@@ -141,9 +141,7 @@ it('leaves outside-ness alone once somebody holds the role', function () {
     ]);
 
     $holder = User::factory()->create();
-    $workspace->members()->attach($holder->id, [
-        'role' => SystemRole::Guest->value,
-        'workspace_role_id' => $role->id,
+    $workspace->members()->attach($holder->id, ['workspace_role_id' => $role->id,
         'joined_at' => now(),
     ]);
 
@@ -174,9 +172,7 @@ it('refuses to delete a role somebody still holds', function () {
     ]);
 
     $holder = User::factory()->create();
-    $workspace->members()->attach($holder->id, [
-        'role' => SystemRole::Member->value,
-        'workspace_role_id' => $role->id,
+    $workspace->members()->attach($holder->id, ['workspace_role_id' => $role->id,
         'joined_at' => now(),
     ]);
 

@@ -85,10 +85,7 @@ it('opens for a member of the workspace it came from', function () {
     [$transfer, $workspace] = membersOnlyTransfer();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)
         ->get(route('transfers.show', $transfer->token))

@@ -20,7 +20,7 @@ function channelWithManagerAndMember(): array
     $member = User::factory()->create();
 
     $workspace = workspaceWithMember($manager, SystemRole::Admin);
-    $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $channel = channelWithMember($workspace, $manager);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
@@ -341,10 +341,7 @@ it('refuses to change a webhook by somebody who may not manage the channel', fun
     $webhook = Webhook::factory()->for($channel)->create();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)->patchJson(
         route('chat.channels.webhooks.update', [$workspace, $channel, $webhook]),

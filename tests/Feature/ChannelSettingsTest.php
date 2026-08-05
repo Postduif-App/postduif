@@ -26,10 +26,7 @@ function settingsFixture(): array
     $channel->members()->attach($creator->id, ['joined_at' => now()]);
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 
     return [$creator, $member, $workspace, $channel];
@@ -55,7 +52,7 @@ it('lets whoever runs the workspace change it too', function () {
     [, $member, $workspace, $channel] = settingsFixture();
 
     $workspace->members()->updateExistingPivot($member->id, [
-        'role' => SystemRole::Admin->value,
+        'workspace_role_id' => roleId($workspace, SystemRole::Admin),
     ]);
 
     saveSettings($member, $workspace, $channel, 'admins')->assertRedirect();

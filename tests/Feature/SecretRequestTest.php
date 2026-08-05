@@ -82,10 +82,7 @@ it('does not let a guest ask for secrets', function () {
     [, $workspace] = requesterInChannel();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
@@ -181,10 +178,7 @@ it('does not let an admin withdraw somebody else request', function () {
     [$requester, $workspace, $channel] = requesterInChannel();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     $request = SecretRequest::factory()->create([
         'workspace_id' => $workspace->id,
@@ -226,10 +220,7 @@ it('offers a guest nothing, even where the workspace has it on', function () {
     [, $workspace] = requesterInChannel();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);

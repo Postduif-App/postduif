@@ -70,7 +70,7 @@ it('refuses somebody who cannot see the channel', function () {
     $channel->update(['type' => 'private']);
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)
         ->post(route('chat.messages.bookmark', [$workspace, $channel, $message]))
@@ -126,7 +126,7 @@ it('shows only your own', function () {
     [$user, $workspace, $channel, $message] = savableMessage();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     actingAs($colleague)->post(route('chat.messages.bookmark', [$workspace, $channel, $message]));

@@ -20,10 +20,7 @@ function workspaceWithOwnerAndGuest(): array
     $workspace->update(['owner_id' => $owner->id]);
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     return [$owner, $guest, $workspace];
 }
@@ -138,10 +135,7 @@ it('refuses managing the channels of somebody who is not a guest', function () {
     [$owner, , $workspace] = workspaceWithOwnerAndGuest();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $channel = channelIn($workspace, 'algemeen');
 
@@ -158,10 +152,7 @@ it('refuses an ordinary member managing a guest', function () {
     [, $guest, $workspace] = workspaceWithOwnerAndGuest();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     actingAs($member)
         ->put(route('workspace.members.channels.update', $guest), ['channel_ids' => []])
@@ -172,10 +163,7 @@ it('drops public channel access when a member is demoted to guest', function () 
     [$owner, , $workspace] = workspaceWithOwnerAndGuest();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $open = channelIn($workspace, 'algemeen');
     $closed = channelIn($workspace, 'directie', ChannelType::Private);
@@ -202,10 +190,7 @@ it('keeps a demoted member in the public channel they created themselves', funct
     [$owner, , $workspace] = workspaceWithOwnerAndGuest();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $theirs = channelIn($workspace, 'hun-kanaal');
     $theirs->update(['created_by' => $member->id]);
@@ -222,10 +207,7 @@ it('leaves channel membership alone when promoting instead of demoting', functio
     [$owner, , $workspace] = workspaceWithOwnerAndGuest();
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $open = channelIn($workspace, 'algemeen');
     $open->members()->attach($member->id, ['joined_at' => now()]);

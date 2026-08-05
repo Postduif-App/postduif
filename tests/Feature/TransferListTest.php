@@ -66,10 +66,7 @@ it('does not show one colleague what another is sending', function () {
     [$sender, $workspace] = senderInWorkspace();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     Transfer::factory()->create([
         'workspace_id' => $workspace->id,
@@ -87,10 +84,7 @@ it('shows whoever runs the workspace everything that is out there', function () 
     [$sender, $workspace] = senderInWorkspace();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     Transfer::factory()->create([
         'workspace_id' => $workspace->id,
@@ -145,10 +139,7 @@ it('tells a guest they may look but not send', function () {
     [, $workspace] = senderInWorkspace();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     actingAs($guest)
         ->get(route('chat.transfers.index', $workspace))

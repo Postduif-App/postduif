@@ -79,7 +79,7 @@ it('does not let a workspace admin read it', function () {
 
     $admin = User::factory()->create();
     $request->workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
+        'workspace_role_id' => roleId($request->workspace, SystemRole::Admin),
         'joined_at' => now(),
     ]);
 

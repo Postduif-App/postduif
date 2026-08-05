@@ -24,7 +24,7 @@ function channelWithTwoMembers(): array
     $writer = User::factory()->create(['username' => 'writer']);
 
     $workspace = workspaceWithMember($reader);
-    $workspace->members()->attach($writer->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $writer, SystemRole::Member);
 
     $channel = channelWithMember($workspace, $reader);
     $channel->members()->attach($writer->id, ['joined_at' => now()]);

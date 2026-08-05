@@ -44,13 +44,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $workspace->members()->attach($sebastiaan->id, [
-            'role' => SystemRole::Owner->value,
+            'workspace_role_id' => $workspace->roles()->where('key', SystemRole::Owner->value)->value('id'),
             'joined_at' => now(),
         ]);
 
         foreach ($teammates as $teammate) {
             $workspace->members()->attach($teammate->id, [
-                'role' => SystemRole::Member->value,
+                'workspace_role_id' => $workspace->roles()->where('key', SystemRole::Member->value)->value('id'),
                 'joined_at' => now(),
             ]);
         }

@@ -120,10 +120,7 @@ it('lets a guest ask and answer', function () {
     [, $workspace, $channel] = pollChannel();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
 
     actingAs($guest)
@@ -268,10 +265,7 @@ it('does not let a bystander close somebody else poll', function () {
     [$asker, $workspace, $channel] = pollChannel();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
     $poll = Poll::factory()->create([
@@ -366,10 +360,7 @@ it('does not let a bystander reopen somebody else poll', function () {
     [$asker, $workspace, $channel] = pollChannel();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
     $poll = Poll::factory()->create([

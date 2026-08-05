@@ -28,10 +28,7 @@ function broadcastChannel(): array
     $channel->members()->attach($creator->id, ['joined_at' => now()]);
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 
     return [$member, $workspace, $channel];
@@ -76,7 +73,7 @@ it('lets a workspace admin post in a broadcast channel', function () {
     [$member, $workspace, $channel] = broadcastChannel();
 
     $workspace->members()->updateExistingPivot($member->id, [
-        'role' => SystemRole::Admin->value,
+        'workspace_role_id' => roleId($workspace, SystemRole::Admin),
     ]);
 
     postMessage($member, $workspace, $channel)->assertRedirect();

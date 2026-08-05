@@ -153,10 +153,7 @@ it('does not let a guest announce a transfer either', function () {
     [, $workspace] = senderInWorkspace();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
@@ -218,10 +215,7 @@ it('offers a guest nothing, even where the workspace has it on', function () {
     [, $workspace] = senderInWorkspace();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);

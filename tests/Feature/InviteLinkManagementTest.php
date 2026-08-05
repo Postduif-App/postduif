@@ -109,10 +109,7 @@ it('refuses somebody who may not invite', function () {
     [, $workspace] = workspaceHandingOutLinks();
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
 
     actingAs($guest)
         ->post(route('chat.invite-links.store', $workspace), [
@@ -127,10 +124,7 @@ it('does not let an admin hand out ownership by link', function () {
     [, $workspace] = workspaceHandingOutLinks();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     actingAs($admin)
         ->post(route('chat.invite-links.store', $workspace), [

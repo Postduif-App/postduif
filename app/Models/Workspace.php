@@ -248,6 +248,20 @@ class Workspace extends Model
     }
 
     /**
+     * The questionnaires this workspace has written.
+     *
+     * On the workspace rather than on a channel, unlike a poll: the same form
+     * may hang in three channels and behind a link at the same time, and none
+     * of those is where it lives.
+     *
+     * @return HasMany<Form, $this>
+     */
+    public function forms(): HasMany
+    {
+        return $this->hasMany(Form::class);
+    }
+
+    /**
      * The pictures this workspace made up for itself, by name.
      *
      * Ordered here rather than at each of the three places that read them — the
@@ -260,6 +274,21 @@ class Workspace extends Model
     public function customEmoji(): HasMany
     {
         return $this->hasMany(CustomEmoji::class)->orderBy('name');
+    }
+
+    /**
+     * The hours worked here, newest first.
+     *
+     * Against the workspace and not only against the member, because that is
+     * whose account it is: somebody who leaves takes their messages with them
+     * in the sense that they stay where they were written, and their hours are
+     * the same kind of record.
+     *
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class)->latest('started_at');
     }
 
     /** @return HasMany<Invitation, $this> */

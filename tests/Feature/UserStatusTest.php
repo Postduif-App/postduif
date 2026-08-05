@@ -170,7 +170,7 @@ it('carries a member status into the channel payload', function () {
     $user = User::factory()->create();
     $colleague = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel = channelWithMember($workspace, $user);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
@@ -189,7 +189,7 @@ it('puts the other person status on a one-on-one in the sidebar', function () {
     $user = User::factory()->create();
     $colleague = User::factory()->create();
     $workspace = workspaceWithMember($user);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     $dm = Channel::factory()->direct()->create(['workspace_id' => $workspace->id]);
     $dm->members()->attach([$user->id, $colleague->id], ['joined_at' => now()]);

@@ -16,10 +16,7 @@ it('tells everyone in your channels that your status changed', function () {
     $channel = channelWithMember($workspace, $me);
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     actingAs($me)->patch(route('status.update'), [
@@ -50,10 +47,7 @@ it('says nothing to a workspace member who shares no channel with you', function
     channelWithMember($workspace, $me);
 
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $stranger, SystemRole::Guest);
 
     actingAs($me)->patch(route('status.update'), [
         'status_text' => 'Koffie halen',

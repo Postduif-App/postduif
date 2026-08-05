@@ -27,10 +27,7 @@ function channelDeletionFixture(): array
     $channel->members()->attach($creator->id, ['joined_at' => now()]);
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 
     channelWithMember($workspace, $creator);
@@ -81,10 +78,7 @@ it('lets whoever runs the workspace delete a channel they never joined', functio
     [, , $workspace, $channel] = channelDeletionFixture();
 
     $owner = User::factory()->create();
-    $workspace->members()->attach($owner->id, [
-        'role' => SystemRole::Owner->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $owner, SystemRole::Owner);
 
     actingAs($owner)
         ->delete(route('chat.channels.destroy', [$workspace, $channel]))
@@ -108,10 +102,7 @@ it('does not delete a direct message', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user);
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $direct = Channel::factory()->direct()->create([
         'workspace_id' => $workspace->id,

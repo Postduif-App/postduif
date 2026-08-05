@@ -163,10 +163,7 @@ it('is a 404 for a scheduled message from another channel', function () {
 it('refuses scheduling by somebody who is not in the channel', function () {
     [, , $workspace, $channel] = settingsFixture();
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $stranger, SystemRole::Member);
 
     actingAs($stranger)->post(route('chat.channels.scheduled.store', [$workspace, $channel]), [
         'body' => 'Van buitenaf',

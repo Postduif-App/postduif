@@ -127,7 +127,7 @@ it('records a mention the same way the app does', function () {
     [$user, $workspace, $channel] = memberWhoCanPost();
 
     $colleague = User::factory()->create(['username' => 'fenna']);
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     ChatServer::actingAs($user)->tool(SendMessageTool::class, [

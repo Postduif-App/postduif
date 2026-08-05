@@ -40,6 +40,7 @@ use Laravel\Passport\HasApiTokens;
  * @property Availability $availability
  * @property int|null $status_rule_id
  * @property bool $status_is_manual
+ * @property bool $clock_sets_status
  * @property array<int, array{emoji: string|null, text: string}> $recent_statuses
  * @property int|null $notify_after_minutes
  * @property bool $notify_via_mail
@@ -126,6 +127,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
         'timezone' => self::DEFAULT_TIMEZONE,
         'availability' => Availability::Available->value,
         'recent_statuses' => '[]',
+        'clock_sets_status' => false,
     ];
 
     /**
@@ -144,6 +146,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'status_is_manual' => 'boolean',
+            'clock_sets_status' => 'boolean',
             'notify_via_mail' => 'boolean',
             'notify_via_pushover' => 'boolean',
             // A credential for somebody's own device. Encrypted rather than
@@ -262,7 +265,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
             ->using(WorkspaceMembership::class)
             // See Workspace::members() for why this is named.
             ->as('membership')
-            ->withPivot(['role', 'display_name', 'joined_at'])
+            ->withPivot(['workspace_role_id', 'display_name', 'joined_at'])
             ->withTimestamps();
     }
 
@@ -319,6 +322,35 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
     public function statusRules(): HasMany
     {
         return $this->hasMany(StatusRule::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * The hours this member clocked, across every workspace they work for.
+     *
+     * Every workspace, because the relation cannot sensibly be anything else —
+     * a member has one set of rows and the workspace is a column on them. Every
+     * screen that shows hours scopes to one workspace itself, and the shift
+     * that is running is asked for by openShiftIn() rather than found in here.
+     *
+     * @return HasMany<TimeEntry, $this>
+     */
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class)->latest('started_at');
+    }
+
+    /**
+     * The shift this member has running in a workspace, if any.
+     *
+     * At most one — the database says so with a partial unique index, so this
+     * may hand back a single row without wondering which of several it means.
+     */
+    public function openShiftIn(Workspace $workspace): ?TimeEntry
+    {
+        return $this->timeEntries()
+            ->where('workspace_id', $workspace->id)
+            ->running()
+            ->first();
     }
 
     /** @return BelongsToMany<Channel, $this, ChannelMembership, 'pivot'> */

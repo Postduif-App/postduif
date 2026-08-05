@@ -47,10 +47,7 @@ function memberOf(Workspace $workspace, Channel $channel, SystemRole $role): Use
 {
     $user = User::factory()->create();
 
-    $workspace->members()->attach($user->id, [
-        'role' => $role->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $user, $role);
     $channel->members()->attach($user->id, ['joined_at' => now()]);
 
     return $user;

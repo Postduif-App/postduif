@@ -20,10 +20,7 @@ function directFixture(): array
     $workspace = workspaceWithMember($me);
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $channel = app(StartDirectMessage::class)->handle($workspace, $me, $other);
 
@@ -100,10 +97,7 @@ it('refuses to hide a conversation somebody else is having', function () {
     [, , $workspace, $channel] = directFixture();
 
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $stranger, SystemRole::Member);
 
     actingAs($stranger)
         ->delete(route('chat.directs.destroy', [$workspace, $channel]))

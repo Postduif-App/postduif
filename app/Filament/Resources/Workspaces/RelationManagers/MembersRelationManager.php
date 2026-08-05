@@ -59,7 +59,14 @@ class MembersRelationManager extends RelationManager
 
                 TextColumn::make('role')
                     ->label('Rol')
-                    ->state(fn (User $record): SystemRole => SystemRole::from($record->membership->role))
+                    /*
+                     * The row this member holds, by name. Not SystemRole::from()
+                     * on the old string column: a workspace writes its own roles
+                     * now, and "Leverancier" is not a case of that enum — it
+                     * would throw rather than render.
+                     */
+                    ->state(fn (User $record): string => $this->getOwnerRecord()
+                        ->roleFor($record)?->name ?? '—')
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')
@@ -69,8 +76,17 @@ class MembersRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('role')
                     ->label('Rol')
-                    ->options(SystemRole::class)
-                    ->attribute('workspace_user.role'),
+                    /*
+                     * The workspace's own roles rather than the built-in four,
+                     * for the same reason as the column above — and filtering on
+                     * the pointer, which is what the membership actually holds.
+                     */
+                    ->options(fn (): array => $this->getOwnerRecord()
+                        ->roles()
+                        ->inOrder()
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->attribute('workspace_user.workspace_role_id'),
             ])
             ->headerActions([
                 AttachAction::make()

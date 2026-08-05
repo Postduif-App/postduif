@@ -103,10 +103,7 @@ it('lets an admin invite a member', function () {
     [, $workspace] = workspaceExpectingAMember();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
@@ -128,10 +125,7 @@ it('never lets an admin invite somebody as owner', function () {
     [, $workspace] = workspaceExpectingAMember();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     actingAs($admin)
         ->post(route('chat.invitations.store', $workspace), [
@@ -148,10 +142,7 @@ it('keeps an existing member at the standing they already have', function () {
     [$owner, $workspace] = workspaceExpectingAMember();
 
     $admin = User::factory()->create(['email' => 'beheerder@intern.nl']);
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     // Not through the controller: it refuses an address that is already in the
     // workspace. This is the row that would be left behind if somebody was

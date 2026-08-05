@@ -11,10 +11,7 @@ it('makes a public channel private and hides it from everyone outside it', funct
     [$creator, , $workspace, $channel] = settingsFixture();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     // Visible to the whole workspace while it is public.
     expect(Channel::visibleTo($outsider)->whereKey($channel->id)->exists())->toBeTrue();
@@ -43,10 +40,7 @@ it('puts a workspace admin in the channel they just closed', function () {
     [, , $workspace, $channel] = settingsFixture();
 
     $admin = User::factory()->create();
-    $workspace->members()->attach($admin->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $admin, SystemRole::Admin);
 
     expect($channel->members()->whereKey($admin->id)->exists())->toBeFalse();
 
@@ -65,10 +59,7 @@ it('opens a private channel back up to the workspace', function () {
     $channel->update(['type' => ChannelType::Private]);
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($creator)->patch(route('chat.channels.update', [$workspace, $channel]), [
         'type' => 'public',

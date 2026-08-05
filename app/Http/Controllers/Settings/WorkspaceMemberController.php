@@ -149,7 +149,6 @@ class WorkspaceMemberController extends Controller
         $this->guardTheLastManager($workspace, $user, $role);
 
         $workspace->members()->updateExistingPivot($user->id, [
-            'role' => $role->key,
             'workspace_role_id' => $role->id,
         ]);
 

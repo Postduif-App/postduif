@@ -27,6 +27,48 @@ enum WorkspaceAbility: string
     case SendTransfers = 'send-transfers';
     case BroadcastMention = 'broadcast-mention';
     case ManageWorkflows = 'manage-workflows';
+    case CreateForms = 'create-forms';
+
+    /**
+     * Handing a form to the world.
+     *
+     * Its own right rather than part of the one above, because the two differ
+     * in direction: making a form asks colleagues something, sharing it as a
+     * link invites the outside to write into this workspace. Somebody trusted
+     * to do the first is not automatically trusted to do the second — the same
+     * split SendTransfers is kept apart for.
+     */
+    case ShareFormsPublicly = 'share-forms-publicly';
+
+    /**
+     * Reading what the clock recorded about other people.
+     *
+     * Its own right, and off for every role until a workspace says otherwise —
+     * including for whoever manages the place. Managing a workspace is about
+     * its channels, its roles and its settings; looking at when a colleague
+     * started and stopped working is about a person, and the two do not follow
+     * from one another. A workspace that wants its manager to have it says so.
+     *
+     * Nobody needs it to see their own hours. That is not a right, it is the
+     * member reading their own row.
+     */
+    case SeeHours = 'see-hours';
+
+    /**
+     * Taking down what an integration said.
+     *
+     * A message from a bot is nobody's own words, so the rule that carries
+     * every other deletion — "your own words are yours" — has nothing to grip.
+     * Somebody has to be able to clear up a webhook that fired fifty times or a
+     * workflow that posted the wrong thing into the wrong channel.
+     *
+     * Until now that somebody was whoever configures the channel, on the
+     * reasoning that they also create and revoke its webhooks. That rule stays;
+     * this right sits beside it, because the two answer different questions.
+     * "Mag jij opruimen wat de bots posten" should not have to be answered with
+     * "dan geef ik je maar het hele kanaal".
+     */
+    case DeleteBotMessages = 'delete-bot-messages';
 
     public function label(): string
     {
@@ -38,6 +80,10 @@ enum WorkspaceAbility: string
             self::SendTransfers => __('enums.workspace-ability.label.SendTransfers'),
             self::BroadcastMention => __('enums.workspace-ability.label.BroadcastMention'),
             self::ManageWorkflows => __('enums.workspace-ability.label.ManageWorkflows'),
+            self::CreateForms => __('enums.workspace-ability.label.CreateForms'),
+            self::SeeHours => __('enums.workspace-ability.label.SeeHours'),
+            self::DeleteBotMessages => __('enums.workspace-ability.label.DeleteBotMessages'),
+            self::ShareFormsPublicly => __('enums.workspace-ability.label.ShareFormsPublicly'),
         };
     }
 
@@ -58,6 +104,10 @@ enum WorkspaceAbility: string
             self::SendTransfers => __('enums.workspace-ability.description.SendTransfers'),
             self::BroadcastMention => __('enums.workspace-ability.description.BroadcastMention'),
             self::ManageWorkflows => __('enums.workspace-ability.description.ManageWorkflows'),
+            self::CreateForms => __('enums.workspace-ability.description.CreateForms'),
+            self::SeeHours => __('enums.workspace-ability.description.SeeHours'),
+            self::DeleteBotMessages => __('enums.workspace-ability.description.DeleteBotMessages'),
+            self::ShareFormsPublicly => __('enums.workspace-ability.description.ShareFormsPublicly'),
         };
     }
 

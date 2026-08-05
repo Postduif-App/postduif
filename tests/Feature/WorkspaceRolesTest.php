@@ -93,10 +93,7 @@ it('points a new member at the role row, not only at the word', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create();
 
-    $workspace->members()->attach($user->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $user, SystemRole::Member);
 
     $membership = $workspace->members()->whereKey($user->id)->first()->membership;
 
@@ -107,12 +104,9 @@ it('moves the pointer along when somebody changes role', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create();
 
-    $workspace->members()->attach($user->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $user, SystemRole::Member);
 
-    $workspace->members()->updateExistingPivot($user->id, ['role' => SystemRole::Admin->value]);
+    $workspace->members()->updateExistingPivot($user->id, ['workspace_role_id' => roleId($workspace, SystemRole::Admin)]);
 
     $membership = $workspace->fresh()->members()->whereKey($user->id)->first()->membership;
 
@@ -150,8 +144,10 @@ it('points somebody at a role even when nobody named one', function () {
 
     $membership = $workspace->members()->whereKey($user->id)->first()->membership;
 
-    expect($membership->role)->toBe(SystemRole::Member->value)
-        ->and($membership->workspaceRole->key)->toBe(SystemRole::Member->value);
+    // The string column that used to carry this is gone; the pointer is the
+    // whole answer now, and it still has to be filled in for a caller who
+    // named no role at all.
+    expect($membership->workspaceRole->key)->toBe(SystemRole::Member->value);
 });
 
 /**
@@ -164,10 +160,7 @@ it('will not let somebody hand out a role that stands above their own', function
     $workspace = workspaceWithMember($admin, SystemRole::Admin);
 
     $member = User::factory()->create();
-    $workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $member, SystemRole::Member);
 
     $owner = $workspace->roles()->where('key', SystemRole::Owner->value)->first();
 

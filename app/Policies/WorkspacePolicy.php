@@ -3,8 +3,10 @@
 namespace App\Policies;
 
 use App\Enums\WorkspaceAbility;
+use App\Features\Forms;
 use App\Features\Polls;
 use App\Features\SecretRequests;
+use App\Features\Timeclock;
 use App\Features\Transfers;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Role;
@@ -140,6 +142,64 @@ class WorkspacePolicy
     public function createPoll(User $user, Workspace $workspace): bool
     {
         return $workspace->hasFeature(Polls::class) && $workspace->hasMember($user);
+    }
+
+    /**
+     * Whether this member may put a form together.
+     *
+     * Two gates, as everywhere: the workspace offers forms at all, and the role
+     * holds the right. Not open to everyone the way a poll is — a form gathers
+     * what people write and posts it on to somebody, which is a heavier thing
+     * to be able to start than a question with buttons.
+     *
+     * Editing and reading a particular form is FormPolicy's business; this only
+     * decides whether the "nieuw formulier" button exists.
+     */
+    public function createForm(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(Forms::class)) {
+            return false;
+        }
+
+        return $workspace->allows($user, WorkspaceAbility::CreateForms);
+    }
+
+    /**
+     * Whether this member may put themselves on the clock here.
+     *
+     * The feature first, as everywhere: a workspace that has not switched
+     * tijdregistratie on has no clock at all, and the route says the same in
+     * 404 form.
+     *
+     * Then everyone who properly belongs here, guests excluded. A guest is
+     * somebody else's employee sitting in one channel of yours; their hours are
+     * not this workspace's business, and offering them a clock would suggest
+     * otherwise. Not a right on the role, because a workplace where some
+     * colleagues may record their hours and others may not is not a thing this
+     * feature is for.
+     */
+    public function clock(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(Timeclock::class)) {
+            return false;
+        }
+
+        return $workspace->hasMember($user) && ! $workspace->isExternal($user);
+    }
+
+    /**
+     * Whether this member may read what the clock recorded about other people.
+     *
+     * Their own hours are never this question — that is the member reading
+     * their own row, and the screen shows it to everybody who may clock at all.
+     */
+    public function seeHours(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(Timeclock::class)) {
+            return false;
+        }
+
+        return $workspace->allows($user, WorkspaceAbility::SeeHours);
     }
 
     /**

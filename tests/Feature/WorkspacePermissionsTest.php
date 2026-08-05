@@ -2,6 +2,7 @@
 
 use App\Enums\AttachmentType;
 use App\Enums\SystemRole;
+use App\Models\Message;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
@@ -176,4 +177,107 @@ it('leaves link previews alone when the form does not mention them', function ()
     ]);
 
     expect($workspace->fresh()->link_previews_enabled)->toBeTrue();
+});
+
+it('shows the blocklist on the rules screen', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+    $workspace->update(['blocked_words' => ['sukkel', 'oude kaas']]);
+
+    actingAs($user)
+        ->get(route('workspace.permissions.edit'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('workspace.blockedWords', ['sukkel', 'oude kaas']));
+});
+
+it('saves the words the workspace wants struck out', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => ['', 'sukkel', 'oude kaas'],
+    ])->assertRedirect();
+
+    expect($workspace->fresh()->blocked_words)->toBe(['sukkel', 'oude kaas']);
+});
+
+/** The empty entry the form always sends is how an emptied list arrives. */
+it('empties the blocklist when only the blank entry comes in', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+    $workspace->update(['blocked_words' => ['sukkel']]);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => [''],
+    ])->assertRedirect();
+
+    expect($workspace->fresh()->blocked_words)->toBe([]);
+});
+
+it('keeps one spelling of a word that arrives twice', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => ['Sukkel', ' sukkel ', 'SUKKEL'],
+    ]);
+
+    expect($workspace->fresh()->blocked_words)->toBe(['Sukkel']);
+});
+
+/** A request that says nothing about words leaves the list standing. */
+it('leaves the blocklist alone when the form does not mention it', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+    $workspace->update(['blocked_words' => ['sukkel']]);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'link_previews_enabled' => '0',
+    ]);
+
+    expect($workspace->fresh()->blocked_words)->toBe(['sukkel']);
+});
+
+it('refuses a word longer than the field allows', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => [str_repeat('a', 41)],
+    ])->assertSessionHasErrors('blocked_words.0');
+
+    expect($workspace->fresh()->blocked_words)->toBe([]);
+});
+
+it('refuses to set the blocklist from a plain member', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Member);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => ['sukkel'],
+    ])->assertForbidden();
+
+    expect($workspace->fresh()->blocked_words)->toBe([]);
+});
+
+/** What is set here is what the chat actually strikes out. */
+it('strikes out a word the owner just added', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Owner);
+    $channel = channelWithMember($workspace, $user);
+
+    Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+        'body' => 'Wat een sukkel is dat',
+    ]);
+
+    actingAs($user)->patch(route('workspace.permissions.update'), [
+        'blocked_words' => ['sukkel'],
+    ]);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn ($page) => $page->where('messages.0.body', 'Wat een ****** is dat'));
 });

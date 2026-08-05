@@ -43,6 +43,14 @@ class WorkspacePermissionController extends Controller
                 'linkPreviewsEnabled' => $workspace->link_previews_enabled,
 
                 /*
+                 * The words this workspace masks. Kept here rather than behind
+                 * the admin panel: it is the workspace's own house rule, and
+                 * the person who has to defend it is the one running the
+                 * workspace, not us.
+                 */
+                'blockedWords' => $workspace->blocked_words,
+
+                /*
                  * The ceilings on a transfer, and whether they mean anything
                  * here. A limit shown for a feature this workspace does not
                  * have reads as a promise it can be used, so the screen asks
@@ -123,6 +131,26 @@ class WorkspacePermissionController extends Controller
              */
             'max_transfer_mb' => ['sometimes', 'integer', 'min:1', 'max:10240'],
             'max_transfer_days' => ['sometimes', 'integer', 'min:1', 'max:90'],
+
+            /*
+             * The blocklist. Sometimes again, so an older client that says
+             * nothing about words leaves the list standing — but the form
+             * always sends it, including an empty entry when the list is
+             * empty, because an emptied list has to be able to arrive as
+             * "none" rather than as "unchanged".
+             *
+             * Two hundred is a ceiling on the alternation CensorBlockedWords
+             * compiles: every message in a channel is scanned against it.
+             */
+            'blocked_words' => ['sometimes', 'array', 'max:200'],
+
+            /*
+             * Nullable, because that empty entry never arrives as an empty
+             * string: ConvertEmptyStringsToNull has already turned it into
+             * null by the time the rules run, and "the list is empty" would
+             * otherwise be the one message this form cannot send.
+             */
+            'blocked_words.*' => ['nullable', 'string', 'max:40'],
         ]);
 
         $workspace->update([
@@ -133,8 +161,40 @@ class WorkspacePermissionController extends Controller
             ...isset($validated['max_transfer_mb'])
                 ? ['max_transfer_kb' => $validated['max_transfer_mb'] * 1024]
                 : [],
+            ...array_key_exists('blocked_words', $validated)
+                ? ['blocked_words' => $this->tidyBlockedWords($validated['blocked_words'])]
+                : [],
         ]);
 
         return back()->with('status', __('flashes.settings.permissions_saved'));
+    }
+
+    /**
+     * The blocklist as it should be stored.
+     *
+     * Blank entries go — the form sends one to say "the list is empty", and a
+     * blank word would compile into a pattern that matches between every pair
+     * of letters. Duplicates go too, and case does not make a word a different
+     * one: the censor matches case-insensitively, so keeping both "Sukkel" and
+     * "sukkel" only makes the pattern longer.
+     *
+     * @param  array<int, mixed>  $words
+     * @return array<int, string>
+     */
+    private function tidyBlockedWords(array $words): array
+    {
+        $tidied = [];
+
+        foreach ($words as $word) {
+            $word = trim((string) $word);
+
+            if ($word === '' || array_key_exists(mb_strtolower($word), $tidied)) {
+                continue;
+            }
+
+            $tidied[mb_strtolower($word)] = $word;
+        }
+
+        return array_values($tidied);
     }
 }

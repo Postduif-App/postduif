@@ -60,7 +60,7 @@ it('keeps reactions from different people and different emoji apart', function (
     [$user, $workspace, $channel, $message] = reactionFixture();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
     $channel->members()->attach($other->id, ['joined_at' => now()]);
 
     actingAs($user)->post(reactionUrl($workspace, $channel, $message), ['emoji' => '👍']);
@@ -75,7 +75,7 @@ it('refuses a reaction from someone who is not a member of the channel', functio
     [, $workspace, $channel, $message] = reactionFixture();
 
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     actingAs($outsider)
         ->post(reactionUrl($workspace, $channel, $message), ['emoji' => '👍'])

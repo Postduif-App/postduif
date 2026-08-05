@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\WorkspaceAbility;
 use App\Models\Message;
 use App\Models\User;
 
@@ -81,13 +82,27 @@ class MessagePolicy
             return true;
         }
 
-        // A bot message is nobody's own words, so "the author" cannot clean it
-        // up. Without an owner it would take a platform moderator to remove a
-        // misfiring integration's output, which is too far away from the
-        // problem. Whoever may configure the channel — and therefore may create
-        // and revoke its webhooks — may also delete what they post.
+        /*
+         * A bot message is nobody's own words, so "the author" cannot clean it
+         * up. Without an owner it would take a platform moderator to remove a
+         * misfiring integration's output, which is too far away from the
+         * problem.
+         *
+         * Two answers, and either is enough. Whoever may configure the channel
+         * — and therefore may create and revoke its webhooks — may delete what
+         * they post there; that was the original rule and it stays, because
+         * taking it away would quietly remove something people already have.
+         *
+         * Beside it sits a right the workspace hands out, for the case that
+         * rule could not express: somebody who should be able to tidy up after
+         * the integrations without being handed the channel itself. Workspace
+         * wide rather than per channel, like every other ability — a right that
+         * had to be granted per channel would be a second permission system
+         * living beside the roles.
+         */
         if ($message->isFromBot()) {
-            return $user->can('manageSettings', $message->channel);
+            return $user->can('manageSettings', $message->channel)
+                || $message->workspace->allows($user, WorkspaceAbility::DeleteBotMessages);
         }
 
         return $message->user_id === $user->id;

@@ -21,7 +21,7 @@ function channelWithWebhook(): array
     $second = User::factory()->create(['username' => 'joris']);
 
     $workspace = workspaceWithMember($first);
-    $workspace->members()->attach($second->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $second, SystemRole::Member);
 
     $channel = channelWithMember($workspace, $first);
     $channel->members()->attach($second->id, ['joined_at' => now()]);

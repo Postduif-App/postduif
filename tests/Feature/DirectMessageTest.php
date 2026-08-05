@@ -19,10 +19,7 @@ function twoMembers(): array
     $initiator = User::factory()->create();
     $workspace = workspaceWithMember($initiator);
     $recipient = User::factory()->create();
-    $workspace->members()->attach($recipient->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $recipient, SystemRole::Member);
 
     return [$initiator, $recipient, $workspace];
 }
@@ -171,15 +168,9 @@ it('shows a guest only the people from their own channels', function () {
     $workspace = workspaceWithMember($guest, SystemRole::Guest);
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $stranger, SystemRole::Member);
 
     $shared = channelWithMember($workspace, $guest);
     $shared->members()->attach($colleague->id, ['joined_at' => now()]);
@@ -195,10 +186,7 @@ it('refuses a guest the person they share no channel with', function () {
     $guest = User::factory()->create();
     $workspace = workspaceWithMember($guest, SystemRole::Guest);
     $stranger = User::factory()->create();
-    $workspace->members()->attach($stranger->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $stranger, SystemRole::Member);
     channelWithMember($workspace, $guest);
 
     actingAs($guest)
@@ -212,10 +200,7 @@ it('lets a guest write to somebody from their own channel', function () {
     $guest = User::factory()->create();
     $workspace = workspaceWithMember($guest, SystemRole::Guest);
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $shared = channelWithMember($workspace, $guest);
     $shared->members()->attach($colleague->id, ['joined_at' => now()]);
 

@@ -135,12 +135,12 @@ it('answers an unknown token before looking at the payload at all', function () 
 it('keeps what arrived, so a path can be written against it', function () {
     [$webhook, $token] = pathWebhook(null);
 
-    postJsonToWebhook($token, ['text' => 'Hallo', 'repo' => ['name' => 'pcom']]);
+    postJsonToWebhook($token, ['text' => 'Hallo', 'repo' => ['name' => 'postduif']]);
 
     // Compared loosely: jsonb does not keep the key order it was given, so a
     // strict comparison would call this different from itself.
     expect($webhook->refresh()->last_payload)
-        ->toEqual(['text' => 'Hallo', 'repo' => ['name' => 'pcom']]);
+        ->toEqual(['text' => 'Hallo', 'repo' => ['name' => 'postduif']]);
 });
 
 /**

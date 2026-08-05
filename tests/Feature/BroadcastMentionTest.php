@@ -24,7 +24,7 @@ function channelWithThree(): array
 
     $workspace = workspaceWithMember($author, SystemRole::Owner);
     foreach ([$one, $two] as $member) {
-        $workspace->members()->attach($member->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+        joinWorkspace($workspace, $member, SystemRole::Member);
     }
 
     $channel = channelWithMember($workspace, $author);
@@ -66,7 +66,7 @@ it('never notifies the author of their own broadcast', function () {
 it('leaves out workspace members who are not in the channel', function () {
     [$author, $one, $two, $workspace, $channel] = channelWithThree();
     $outsider = User::factory()->create();
-    $workspace->members()->attach($outsider->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $outsider, SystemRole::Member);
 
     expect(mentionedBy($channel, $author, '@everyone even kijken'))
         ->toBe(collect([$one->id, $two->id])->sort()->values()->all())

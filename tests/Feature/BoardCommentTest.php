@@ -82,10 +82,7 @@ it('lets nobody rewrite another persons reply', function () {
     [$member, , $workspace] = boardFixture();
 
     $beheerder = User::factory()->create();
-    $workspace->members()->attach($beheerder->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $beheerder, SystemRole::Admin);
 
     $post = BoardPost::factory()->in($workspace)->create();
     $comment = BoardComment::factory()->on($post)->by($member)->create(['body' => 'Van mij']);
@@ -104,10 +101,7 @@ it('lets a beheerder take somebody elses reply off the board', function () {
     [$member, , $workspace] = boardFixture();
 
     $beheerder = User::factory()->create();
-    $workspace->members()->attach($beheerder->id, [
-        'role' => SystemRole::Admin->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $beheerder, SystemRole::Admin);
 
     $post = BoardPost::factory()->in($workspace)->create();
     $comment = BoardComment::factory()->on($post)->by($member)->create();
@@ -124,10 +118,7 @@ it('lets an ordinary member withdraw only their own reply', function () {
     [$member, , $workspace] = boardFixture();
 
     $other = User::factory()->create();
-    $workspace->members()->attach($other->id, [
-        'role' => SystemRole::Member->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $other, SystemRole::Member);
 
     $post = BoardPost::factory()->in($workspace)->create();
     $comment = BoardComment::factory()->on($post)->by($member)->create();

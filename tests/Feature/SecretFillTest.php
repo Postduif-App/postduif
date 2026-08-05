@@ -39,10 +39,7 @@ function fillableRequest(array $state = []): array
     ]);
 
     $guest = User::factory()->create();
-    $workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
-        'joined_at' => now(),
-    ]);
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
 
     return [$request->refresh(), $password, $token, $guest, $requester];

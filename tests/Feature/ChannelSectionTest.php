@@ -52,7 +52,7 @@ it('lets two members use the same name', function () {
     [$user, $workspace] = arrangeableChannels();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($user)->post(route('chat.sections.store', $workspace), ['name' => 'Klanten']);
     actingAs($colleague)
@@ -109,7 +109,7 @@ it('does not accept a group belonging to somebody else', function () {
     [$user, $workspace, $channel] = arrangeableChannels();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)->post(route('chat.sections.store', $workspace), ['name' => 'Van mij']);
     $theirs = ChannelSection::sole();
@@ -146,7 +146,7 @@ it('does not let somebody delete another member group', function () {
     [$user, $workspace] = arrangeableChannels();
 
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
 
     actingAs($colleague)->post(route('chat.sections.store', $workspace), ['name' => 'Van mij']);
     $theirs = ChannelSection::sole();
@@ -176,7 +176,7 @@ it('sends the groups along with the sidebar', function () {
 
     // And a colleague sees none of it.
     $colleague = User::factory()->create();
-    $workspace->members()->attach($colleague->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($workspace, $colleague, SystemRole::Member);
     $channel->members()->attach($colleague->id, ['joined_at' => now()]);
 
     actingAs($colleague)

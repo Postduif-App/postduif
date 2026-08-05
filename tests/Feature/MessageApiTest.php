@@ -225,7 +225,7 @@ it('lists the channels a token may reach, and says which it may write in', funct
 
     // And one in a workspace that lets no token in at all.
     $elsewhere = Workspace::factory()->create();
-    $elsewhere->members()->attach($user->id, ['role' => SystemRole::Member->value, 'joined_at' => now()]);
+    joinWorkspace($elsewhere, $user, SystemRole::Member);
     Channel::factory()->create(['workspace_id' => $elsewhere->id, 'name' => 'gesloten']);
 
     $listed = withHeader('Authorization', "Bearer {$token}")
