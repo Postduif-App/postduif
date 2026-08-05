@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Channels\RelationManagers;
 
-use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\User;
 use Filament\Actions\AttachAction;
@@ -54,7 +53,7 @@ class MembersRelationManager extends RelationManager
 
                 TextColumn::make('role')
                     ->label('Rol in de workspace')
-                    ->state(fn (User $record): ?WorkspaceRole => $channel->workspace->roleFor($record))
+                    ->state(fn (User $record): ?string => $channel->workspace->roleFor($record)?->name)
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')

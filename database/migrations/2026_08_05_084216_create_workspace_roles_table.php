@@ -160,9 +160,11 @@ return new class extends Migration
         $mentions = BroadcastMentionPolicy::tryFrom((string) $workspace->broadcast_mentions);
 
         $abilities = $set($abilities, WorkspaceAbility::BroadcastMention, match ($mentions) {
-            // Guests are left out of "everyone" on purpose: the policy this
-            // replaces asked the role first and the setting second.
-            BroadcastMentionPolicy::Everyone => ! $role->isExternal(),
+            // Everyone means everyone, people from outside included: the
+            // setting this replaces asked no question about the role at all,
+            // and a guest addressing the one channel they are in is the case
+            // that would otherwise quietly stop working.
+            BroadcastMentionPolicy::Everyone => true,
             BroadcastMentionPolicy::Nobody => false,
             default => $role->canManageWorkspace(),
         });

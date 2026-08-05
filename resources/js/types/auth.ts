@@ -42,11 +42,14 @@ export type Auth = {
     /** Whether the settings navigation should offer the workflow builder. */
     canManageWorkflows: boolean;
     /**
-     * The role held in that workspace, null for somebody in none. For what the
-     * interface says about you — every permission still comes from its own
-     * flag, so a new role cannot quietly grant anything.
+     * Whether the person is in that workspace from outside.
+     *
+     * A fact rather than the name of their role: a workspace writes its own
+     * roles now, so "is this a guest" cannot be answered by comparing against a
+     * string this side happens to know. Every permission still comes from its
+     * own flag, so this grants nothing on its own.
      */
-    workspaceRole: WorkspaceRole | null;
+    workspaceIsExternal: boolean;
     /** Everything the status picker offers, labelled server-side. */
     availabilityOptions: {
         value: Availability;
@@ -55,7 +58,7 @@ export type Auth = {
     }[];
 };
 
-export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
+export type SystemRole = 'owner' | 'admin' | 'member' | 'guest';
 
 /* @chisel-passkeys */
 export type Passkey = {

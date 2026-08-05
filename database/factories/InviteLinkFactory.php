@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\InviteLink;
 use App\Models\User;
 use App\Models\Workspace;
@@ -25,7 +25,7 @@ class InviteLinkFactory extends Factory
             'workspace_id' => Workspace::factory(),
             'created_by' => User::factory(),
             'token' => InviteLink::freshToken(),
-            'role' => WorkspaceRole::Member,
+            'role' => SystemRole::Member,
             'max_uses' => null,
             'expires_at' => now()->addDays(14),
             'uses' => 0,
@@ -35,7 +35,7 @@ class InviteLinkFactory extends Factory
     /** An external participant, who only gets the channels on the link. */
     public function guest(): static
     {
-        return $this->state(['role' => WorkspaceRole::Guest]);
+        return $this->state(['role' => SystemRole::Guest]);
     }
 
     /** No ceiling and no date: an open door until somebody withdraws it. */

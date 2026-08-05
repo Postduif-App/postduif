@@ -2,11 +2,12 @@
 
 namespace App\Policies;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\WorkspaceAbility;
 use App\Features\Polls;
 use App\Features\SecretRequests;
 use App\Features\Transfers;
 use App\Features\Workflows as WorkflowsFeature;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -53,7 +54,7 @@ class WorkspacePolicy
      */
     public function broadcastMention(User $user, Workspace $workspace): bool
     {
-        return $workspace->broadcast_mentions->allows($workspace, $user);
+        return $workspace->allows($user, WorkspaceAbility::BroadcastMention);
     }
 
     /**
@@ -61,7 +62,7 @@ class WorkspacePolicy
      */
     public function manage(User $user, Workspace $workspace): bool
     {
-        return $workspace->roleFor($user)?->canManageWorkspace() ?? false;
+        return $workspace->allows($user, WorkspaceAbility::ManageWorkspace);
     }
 
     /**
@@ -74,28 +75,21 @@ class WorkspacePolicy
      */
     public function invite(User $user, Workspace $workspace): bool
     {
-        return $workspace->roleFor($user)?->canInviteMembers() ?? false;
+        return $workspace->allows($user, WorkspaceAbility::InviteMembers);
     }
 
     /**
      * Whether this member may open a new channel here.
      *
-     * Two gates, and the order matters. The role decides first: a guest is
-     * present for the channels they were invited to, and a channel of their own
-     * making is not one of them — no workspace setting can hand them that.
-     * Only then does the workspace's own policy get a say, which is where a
-     * workspace that wants its channel list curated closes the door on plain
-     * members.
+     * One question now where there were two. Who may open a channel used to be
+     * a role predicate and a workspace setting that had to agree; both said the
+     * same thing in different words, and a workspace that wanted its channel
+     * list curated said it in the second. It is a right on a role now, and the
+     * setting seeded it.
      */
     public function createChannel(User $user, Workspace $workspace): bool
     {
-        $role = $workspace->roleFor($user);
-
-        if ($role === null || ! $role->canCreateChannels()) {
-            return false;
-        }
-
-        return $workspace->channel_creation->allows($role);
+        return $workspace->allows($user, WorkspaceAbility::CreateChannels);
     }
 
     /**
@@ -114,7 +108,7 @@ class WorkspacePolicy
             return false;
         }
 
-        return $workspace->roleFor($user)?->canSendTransfers() ?? false;
+        return $workspace->allows($user, WorkspaceAbility::SendTransfers);
     }
 
     /**
@@ -132,7 +126,7 @@ class WorkspacePolicy
             return false;
         }
 
-        return $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
+        return ! $workspace->isExternal($user);
     }
 
     /**
@@ -158,7 +152,7 @@ class WorkspacePolicy
      */
     public function broadcastToChannels(User $user, Workspace $workspace): bool
     {
-        return $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
+        return ! $workspace->isExternal($user);
     }
 
     /**
@@ -196,7 +190,7 @@ class WorkspacePolicy
             return false;
         }
 
-        if ($workspace->roleFor($user)?->canBrowseWorkspace() ?? false) {
+        if (! $workspace->isExternal($user)) {
             return true;
         }
 
@@ -224,14 +218,17 @@ class WorkspacePolicy
     /**
      * Whether this member may change somebody's standing, their own included.
      *
-     * Only an owner may touch an owner: an admin who could demote the owner
-     * would effectively outrank them, which is not what the roles say.
+     * Nobody may touch somebody whose role stands above their own — see
+     * Role::isUnder for what that means and why it is two questions. This used
+     * to read "only an owner may touch an owner", which is the same rule in a
+     * world with four fixed roles and no rule at all in one where a workspace
+     * writes its own.
      *
      * Editing your own row is allowed on purpose. Forbidding it looks safer but
      * leaves a sole owner unable to hand the workspace over — they can appoint
-     * a second owner and then never step down. What actually needs protecting
-     * is that an owner remains at all, and that is guarded when the change is
-     * applied rather than by who is making it.
+     * a second and then never step down. What actually needs protecting is that
+     * somebody who can manage the place remains at all, and that is guarded
+     * when the change is applied rather than by who is making it.
      */
     public function updateMemberRole(User $user, Workspace $workspace, User $target): bool
     {
@@ -240,25 +237,29 @@ class WorkspacePolicy
         }
 
         $targetRole = $workspace->roleFor($target);
+        $ownRole = $workspace->roleFor($user);
 
-        if ($targetRole === null) {
+        if ($targetRole === null || $ownRole === null) {
             return false;
         }
 
-        return $targetRole !== WorkspaceRole::Owner
-            || $workspace->roleFor($user) === WorkspaceRole::Owner;
+        return $targetRole->isUnder($ownRole);
     }
 
     /**
-     * Whether this member may grant a particular role.
+     * Whether this member may hand out a particular role.
      *
-     * Handing out ownership is the owner's alone; an admin who could appoint
-     * owners could appoint themselves.
+     * The rule that keeps custom roles from being a way to promote yourself:
+     * you may not give away a right you do not hold, nor a role that stands
+     * above your own. Without it, "make a role and assign it" is a two-step
+     * path from administrator to everything — and it is a path no screen can
+     * close, because the screen is where roles are made.
      */
-    public function grantRole(User $user, Workspace $workspace, WorkspaceRole $role): bool
+    public function grantRole(User $user, Workspace $workspace, Role $role): bool
     {
-        return $role !== WorkspaceRole::Owner
-            || $workspace->roleFor($user) === WorkspaceRole::Owner;
+        $ownRole = $workspace->roleFor($user);
+
+        return $ownRole !== null && $role->isUnder($ownRole);
     }
 
     /**
@@ -276,23 +277,23 @@ class WorkspacePolicy
             return false;
         }
 
-        return $workspace->roleFor($target)?->isGuest() ?? false;
+        return $workspace->isExternal($target);
     }
 
     /**
-     * Removing somebody follows the same shape as changing their role, with two
-     * additions.
-     *
-     * The owner cannot be removed at all. Ownership has to be handed over
-     * first, which keeps every workspace with somebody answerable for it.
-     *
-     * And nobody removes themselves from this screen. Walking out of a
+     * Removing somebody follows the same shape as changing their role, with one
+     * addition: nobody removes themselves from this screen. Walking out of a
      * workspace is a different thing from being shown the door, and it does not
      * belong on the page where you administer other people.
+     *
+     * An owner may now be shown the door, which they could not be before. There
+     * can be several, so refusing outright was protecting a rule that no longer
+     * holds — what has to survive is that somebody who can manage the place
+     * remains, and that is guarded where the change is applied.
      */
     public function removeMember(User $user, Workspace $workspace, User $target): bool
     {
-        if ($user->is($target) || $workspace->roleFor($target) === WorkspaceRole::Owner) {
+        if ($user->is($target)) {
             return false;
         }
 

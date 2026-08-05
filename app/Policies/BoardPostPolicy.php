@@ -29,7 +29,7 @@ class BoardPostPolicy
             return false;
         }
 
-        return $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
+        return ! $workspace->isExternal($user);
     }
 
     public function view(User $user, BoardPost $post): bool

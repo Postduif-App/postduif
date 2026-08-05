@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Workspaces\RelationManagers;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\User;
 use App\Models\Workspace;
 use Filament\Actions\AttachAction;
@@ -33,7 +33,7 @@ class MembersRelationManager extends RelationManager
             ->components([
                 Select::make('role')
                     ->label('Rol')
-                    ->options(WorkspaceRole::class)
+                    ->options(SystemRole::class)
                     ->selectablePlaceholder(false)
                     ->required(),
 
@@ -59,7 +59,7 @@ class MembersRelationManager extends RelationManager
 
                 TextColumn::make('role')
                     ->label('Rol')
-                    ->state(fn (User $record): WorkspaceRole => WorkspaceRole::from($record->membership->role))
+                    ->state(fn (User $record): SystemRole => SystemRole::from($record->membership->role))
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')
@@ -69,7 +69,7 @@ class MembersRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('role')
                     ->label('Rol')
-                    ->options(WorkspaceRole::class)
+                    ->options(SystemRole::class)
                     ->attribute('workspace_user.role'),
             ])
             ->headerActions([
@@ -80,8 +80,8 @@ class MembersRelationManager extends RelationManager
                         $action->getRecordSelect(),
                         Select::make('role')
                             ->label('Rol')
-                            ->options(WorkspaceRole::class)
-                            ->default(WorkspaceRole::Member)
+                            ->options(SystemRole::class)
+                            ->default(SystemRole::Member)
                             ->selectablePlaceholder(false)
                             ->required(),
                     ])

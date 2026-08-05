@@ -92,7 +92,7 @@ class TicketPolicy
             return false;
         }
 
-        return ! ($ticket->channel->workspace->roleFor($user)?->isGuest() ?? true);
+        return ! $ticket->channel->workspace->isExternal($user);
     }
 
     /**

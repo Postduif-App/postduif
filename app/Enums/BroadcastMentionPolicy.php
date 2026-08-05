@@ -30,7 +30,7 @@ enum BroadcastMentionPolicy: string implements HasLabel
 
         return match ($this) {
             self::Everyone => true,
-            self::Admins => $role->canManageWorkspace(),
+            self::Admins => $role->allows(WorkspaceAbility::ManageWorkspace),
             self::Nobody => false,
         };
     }

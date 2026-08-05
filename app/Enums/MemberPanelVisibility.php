@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Models\Role;
 use Filament\Support\Contracts\HasLabel;
 
 /**
@@ -26,20 +27,21 @@ enum MemberPanelVisibility: string implements HasLabel
     /**
      * Whether this role gets to see the panel.
      *
-     * A guest never does, whatever is chosen here — they are in the workspace
-     * for the channels they were invited to, and the membership list is not one
-     * of those. The same reasoning as the tags in BuildChatShell.
+     * Somebody from outside never does, whatever is chosen here — they are in
+     * the workspace for the channels they were invited to, and the membership
+     * list is not one of those. The same reasoning as the tags in
+     * BuildChatShell.
      */
-    public function allows(?SystemRole $role): bool
+    public function allows(?Role $role): bool
     {
-        if ($role === null || ! $role->canBrowseWorkspace()) {
+        if ($role === null || $role->is_external) {
             return false;
         }
 
         return match ($this) {
             self::Off => false,
             self::Everyone => true,
-            self::Admins => $role->canManageWorkspace(),
+            self::Admins => $role->allows(WorkspaceAbility::ManageWorkspace),
         };
     }
 

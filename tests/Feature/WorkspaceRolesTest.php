@@ -7,6 +7,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
+use function Pest\Laravel\actingAs;
+
 /**
  * A workspace with no roles is one nobody can be a member of, so the four are
  * an invariant of the model rather than a step somebody remembers to take.
@@ -171,4 +173,69 @@ it('points somebody at a role even when nobody named one', function () {
 
     expect($membership->role)->toBe(SystemRole::Member->value)
         ->and($membership->workspaceRole->key)->toBe(SystemRole::Member->value);
+});
+
+/**
+ * The rule that keeps custom roles from being a way to promote yourself, at the
+ * only place it can be enforced: an administrator may make roles, so no screen
+ * can close this path — only the policy can.
+ */
+it('will not let somebody hand out a role that stands above their own', function () {
+    $admin = User::factory()->create();
+    $workspace = workspaceWithMember($admin, SystemRole::Admin);
+
+    $member = User::factory()->create();
+    $workspace->members()->attach($member->id, [
+        'role' => SystemRole::Member->value,
+        'joined_at' => now(),
+    ]);
+
+    $owner = $workspace->roles()->where('key', SystemRole::Owner->value)->first();
+
+    /*
+     * Owner and administrator hold exactly the same rights here — the seed gives
+     * both all seven — so the rights alone say this is lateral. What refuses it
+     * is standing: owner sits above administrator in this workspace's order.
+     */
+    expect($admin->can('grantRole', [$workspace, $owner]))->toBeFalse();
+
+    actingAs($admin)
+        ->patch(route('workspace.members.update', $member), ['role' => $owner->id])
+        ->assertForbidden();
+
+    expect($workspace->roleFor($member)?->key)->toBe(SystemRole::Member->value);
+});
+
+it('will not let somebody invent a role with more than they hold and hand it out', function () {
+    $admin = User::factory()->create();
+    $workspace = workspaceWithMember($admin, SystemRole::Admin);
+
+    // The administrator's own rights, minus the one that reaches every other.
+    $workspace->roles()
+        ->where('key', SystemRole::Admin->value)
+        ->first()
+        ->update(['abilities' => [WorkspaceAbility::SeeMembers->value]]);
+
+    $invented = $workspace->roles()->create([
+        'key' => 'stagiair',
+        'name' => 'Stagiair',
+        'position' => 9,
+        'abilities' => WorkspaceAbility::values(),
+    ]);
+
+    /*
+     * Below them in the order and beyond them in rights. Both questions have to
+     * be asked, or "make a role and assign it" is a two-step path from
+     * administrator to everything.
+     */
+    expect($admin->can('grantRole', [$workspace, $invented]))->toBeFalse();
+});
+
+it('lets somebody hand out a role that is genuinely below their own', function () {
+    $admin = User::factory()->create();
+    $workspace = workspaceWithMember($admin, SystemRole::Admin);
+
+    $ordinary = $workspace->roles()->where('key', SystemRole::Member->value)->first();
+
+    expect($admin->can('grantRole', [$workspace, $ordinary]))->toBeTrue();
 });

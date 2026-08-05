@@ -2,7 +2,7 @@
 
 use App\Actions\Chat\SendMessage;
 use App\Enums\ChannelTicketPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Transfers;
 use App\Models\Channel;
 use App\Models\Message;
@@ -72,7 +72,19 @@ expect()->extend('toBeOne', function () {
  * A workspace with this user in it. Lives here rather than in one test file so
  * every suite can be run on its own with --filter.
  */
-function workspaceWithMember(User $user, WorkspaceRole $role = WorkspaceRole::Member): Workspace
+/**
+ * The id of one of a workspace's roles, which is what the screens post.
+ *
+ * Here rather than in the one test that needed it first: a role is a row now,
+ * so anything that changes somebody's standing sends an id, and that is several
+ * files.
+ */
+function roleId(Workspace $workspace, SystemRole $role): int
+{
+    return $workspace->roles()->where('key', $role->value)->value('id');
+}
+
+function workspaceWithMember(User $user, SystemRole $role = SystemRole::Member): Workspace
 {
     $workspace = Workspace::factory()->create();
     $workspace->members()->attach($user->id, ['role' => $role->value, 'joined_at' => now()]);
@@ -89,7 +101,7 @@ function workspaceWithMember(User $user, WorkspaceRole $role = WorkspaceRole::Me
  *
  * @return array{0: User, 1: Workspace}
  */
-function senderInWorkspace(WorkspaceRole $role = WorkspaceRole::Member): array
+function senderInWorkspace(SystemRole $role = SystemRole::Member): array
 {
     Storage::fake('local');
 
@@ -169,7 +181,7 @@ function ticketFixture(ChannelTicketPolicy $policy = ChannelTicketPolicy::Everyo
 
     $guest = User::factory()->create();
     $workspace->members()->attach($guest->id, [
-        'role' => WorkspaceRole::Guest->value,
+        'role' => SystemRole::Guest->value,
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);

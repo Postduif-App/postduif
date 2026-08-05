@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\ChannelType;
+use App\Enums\WorkspaceAbility;
 use App\Models\Channel;
 use App\Models\User;
 
@@ -45,7 +46,7 @@ class ChannelPolicy
             return false;
         }
 
-        if ($channel->type === ChannelType::Public && $role->canBrowseWorkspace()) {
+        if ($channel->type === ChannelType::Public && ! $role->is_external) {
             return true;
         }
 
@@ -126,7 +127,7 @@ class ChannelPolicy
             return $channel->members()->whereKey($user->id)->exists();
         }
 
-        return $channel->workspace->roleFor($user)?->canManageWorkspace() ?? false;
+        return $channel->workspace->allows($user, WorkspaceAbility::ManageWorkspace);
     }
 
     /**
@@ -184,7 +185,7 @@ class ChannelPolicy
             return $channel->members()->whereKey($user->id)->exists();
         }
 
-        return $channel->workspace->roleFor($user)?->canManageWorkspace() ?? false;
+        return $channel->workspace->allows($user, WorkspaceAbility::ManageWorkspace);
     }
 
     /**
@@ -197,20 +198,21 @@ class ChannelPolicy
     {
         return $channel->type === ChannelType::Public
             && $channel->archived_at === null
-            && ($channel->workspace->roleFor($user)?->canBrowseWorkspace() ?? false);
+            && ! $channel->workspace->isExternal($user);
     }
 
     /**
      * Opening the member list of a channel.
      *
-     * Everything a guest is not allowed to know about the workspace sits behind
-     * this one button: who is in the channel, and — for whoever may add people
-     * — a search box over every member of the workspace. So a guest does not
-     * get to open it at all, rather than getting a hollowed-out version of it.
+     * Everything somebody may not know about the workspace sits behind this one
+     * button: who is in the channel, and — for whoever may add people — a
+     * search box over every member of the workspace. So a role without that
+     * right does not get to open it at all, rather than getting a hollowed-out
+     * version of it.
      */
     public function viewMembers(User $user, Channel $channel): bool
     {
-        if (! ($channel->workspace->roleFor($user)?->canSeeChannelMembers() ?? false)) {
+        if (! $channel->workspace->allows($user, WorkspaceAbility::SeeMembers)) {
             return false;
         }
 

@@ -7,7 +7,7 @@ use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Tickets\PresentTicket;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\Tickets;
 use App\Models\Bookmark;
 use App\Models\Channel;
@@ -160,7 +160,7 @@ class ChatController extends Controller
                 // The labels on this channel. Empty for a guest: a tag says how
                 // the channel is filed internally — "klant", "escalatie" — and
                 // that is not the customer's business. See BuildChatShell.
-                'tags' => $workspace->roleFor($user)?->canBrowseWorkspace()
+                'tags' => ! $workspace->isExternal($user)
                     ? $channel->tags->pluck('name')->all()
                     : [],
                 // Drawn for everyone who can see the channel, guests included:
@@ -361,7 +361,7 @@ class ChatController extends Controller
     private function channelMembers(Workspace $workspace, Channel $channel): array
     {
         $guestIds = $workspace->members()
-            ->wherePivot('role', WorkspaceRole::Guest->value)
+            ->wherePivot('role', SystemRole::Guest->value)
             ->pluck('users.id')
             ->flip();
 

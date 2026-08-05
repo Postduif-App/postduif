@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Actions\Chat\SendMessage;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Reaction;
@@ -44,13 +44,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $workspace->members()->attach($sebastiaan->id, [
-            'role' => WorkspaceRole::Owner->value,
+            'role' => SystemRole::Owner->value,
             'joined_at' => now(),
         ]);
 
         foreach ($teammates as $teammate) {
             $workspace->members()->attach($teammate->id, [
-                'role' => WorkspaceRole::Member->value,
+                'role' => SystemRole::Member->value,
                 'joined_at' => now(),
             ]);
         }

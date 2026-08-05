@@ -144,7 +144,7 @@ it('onboards a guest who has no account yet', function () {
         // Reaching the link proves they read mail sent to that address, which
         // is the whole of what a verification mail establishes.
         ->and($guest->email_verified_at)->not->toBeNull()
-        ->and($workspace->roleFor($guest))->toBe(SystemRole::Guest)
+        ->and($workspace->roleFor($guest)?->key)->toBe(SystemRole::Guest->value)
         ->and($guest->channels->pluck('id')->all())->toBe([$invited->id])
         ->and($guest->channels->contains($offLimits))->toBeFalse();
 
@@ -174,7 +174,7 @@ it('lets somebody who is already signed in accept their own invitation', functio
         ->post(route('invitations.accept', $invitation->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($guest))->toBe(SystemRole::Guest)
+    expect($workspace->roleFor($guest)?->key)->toBe(SystemRole::Guest->value)
         ->and($guest->channels()->pluck('channels.id')->all())->toBe([$invited->id]);
 });
 

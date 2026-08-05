@@ -83,6 +83,68 @@ class Workspace extends Model
     protected static function booted(): void
     {
         static::created(fn (self $workspace) => $workspace->seedSystemRoles());
+
+        /*
+         * Two of the settings on this row are rights on a role now. The columns
+         * are still what the permissions screen and the admin panel write, so
+         * the translation happens here rather than in either of them — a
+         * dropdown that saves nothing is worse than one that is not there, and
+         * there is more than one place that writes these.
+         *
+         * Both go when the screen that edits roles directly arrives, and the
+         * columns with them.
+         */
+        static::saved(function (self $workspace): void {
+            if ($workspace->wasChanged(['broadcast_mentions', 'channel_creation'])) {
+                $workspace->applySettingsToRoles();
+            }
+        });
+    }
+
+    /**
+     * Write the two role-shaped settings on this row into the roles.
+     *
+     * The same translation the migration did once, for every time somebody
+     * changes their mind afterwards.
+     */
+    public function applySettingsToRoles(): void
+    {
+        foreach ($this->roles()->get() as $role) {
+            $manages = $role->allows(WorkspaceAbility::ManageWorkspace);
+
+            $abilities = $role->abilities()
+                ->reject(fn (WorkspaceAbility $ability): bool => in_array($ability, [
+                    WorkspaceAbility::BroadcastMention,
+                    WorkspaceAbility::CreateChannels,
+                ], true));
+
+            if (match ($this->broadcast_mentions) {
+                // Everyone means everyone, people from outside included: the
+                // setting this replaces asked no question about the role.
+                BroadcastMentionPolicy::Everyone => true,
+                BroadcastMentionPolicy::Nobody => false,
+                BroadcastMentionPolicy::Admins => $manages,
+            }) {
+                $abilities->push(WorkspaceAbility::BroadcastMention);
+            }
+
+            if (match ($this->channel_creation) {
+                ChannelCreationPolicy::Admins => $manages,
+                ChannelCreationPolicy::Everyone => ! $role->is_external,
+            }) {
+                $abilities->push(WorkspaceAbility::CreateChannels);
+            }
+
+            $role->update([
+                'abilities' => $abilities
+                    ->map(fn (WorkspaceAbility $ability): string => $ability->value)
+                    ->values()
+                    ->all(),
+            ]);
+        }
+
+        // The rows changed underneath whatever this request already read.
+        $this->rolesByUser = [];
     }
 
     /** @return array<string, string> */
@@ -300,9 +362,6 @@ class Workspace extends Model
     }
 
     /**
-     * Resolve a member's role, or null when the user does not belong here.
-     */
-    /**
      * The roles this workspace has, its own and the four it started with.
      *
      * @return HasMany<Role, $this>
@@ -357,7 +416,9 @@ class Workspace extends Model
             ], true));
 
         if (match ($this->broadcast_mentions) {
-            BroadcastMentionPolicy::Everyone => ! $role->isExternal(),
+            // Everyone means everyone, people from outside included: the
+            // setting this replaces asked no question about the role.
+            BroadcastMentionPolicy::Everyone => true,
             BroadcastMentionPolicy::Nobody => false,
             default => $role->canManageWorkspace(),
         }) {
@@ -377,13 +438,48 @@ class Workspace extends Model
             ->all();
     }
 
-    public function roleFor(User $user): ?SystemRole
-    {
-        // One column rather than the whole membership: this is asked on nearly
-        // every request, and the answer is a single string.
-        $role = $this->members()->whereKey($user->id)->value('workspace_user.role');
+    /**
+     * What somebody is here, or null when they do not belong.
+     *
+     * Remembered for the length of the request. Every policy asks this, several
+     * ask it more than once for the same person, and it used to be a query each
+     * time — cheap when the answer was one column, less so now that it is a row
+     * with a bag of rights on it.
+     *
+     * @var array<int, Role|null>
+     */
+    private array $rolesByUser = [];
 
-        return $role === null ? null : SystemRole::from($role);
+    public function roleFor(User $user): ?Role
+    {
+        return $this->rolesByUser[$user->id] ??= $this->roles()
+            ->whereHas('holders', fn (Builder $holders) => $holders->whereKey($user->id))
+            ->first();
+    }
+
+    /**
+     * Whether somebody here may do a particular thing.
+     *
+     * The question every policy actually has. Through the role rather than
+     * against it: what a role may do is a row a workspace edits, and a policy
+     * that compared against a name would go on being right about the four this
+     * application ships with and wrong about every other.
+     */
+    public function allows(User $user, WorkspaceAbility $ability): bool
+    {
+        return $this->roleFor($user)?->allows($ability) ?? false;
+    }
+
+    /**
+     * Whether somebody here is from outside.
+     *
+     * Its own question rather than one more ability, and the answer nearly
+     * every visibility check starts with — see scopeBrowsableBy for the same
+     * question in the form a query can ask it.
+     */
+    public function isExternal(User $user): bool
+    {
+        return $this->roleFor($user)?->is_external ?? true;
     }
 
     public function hasMember(User $user): bool
@@ -419,6 +515,14 @@ class Workspace extends Model
     {
         $query->whereHas('members', fn (Builder $members) => $members
             ->whereKey($user->id)
-            ->whereIn('workspace_user.role', SystemRole::browsingValues()));
+            /*
+             * Joined rather than asked of a list of role names. Which roles are
+             * external is a column now, so the query reads the same fact the
+             * policies do — a list of values here would be a second answer to
+             * the same question, and the day the two disagree is the day a
+             * guest sees every public channel.
+             */
+            ->join('workspace_roles', 'workspace_roles.id', '=', 'workspace_user.workspace_role_id')
+            ->where('workspace_roles.is_external', false));
     }
 }

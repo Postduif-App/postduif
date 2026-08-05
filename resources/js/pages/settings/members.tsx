@@ -49,7 +49,10 @@ import {
 import type { Availability } from '@/types/auth';
 
 interface Option {
-    value: string;
+    /** The role's id. Sent as a number and rendered as a string: a Select
+     *  compares its value by identity, and one side arriving as a number is
+     *  how a dropdown ends up showing nothing selected. */
+    value: number;
     label: string;
 }
 
@@ -57,8 +60,12 @@ interface WorkspaceMember {
     id: number;
     name: string;
     username: string;
-    role: string;
+    /** The id of the role row, which is what the select posts back. */
+    role: number;
     roleLabel: string;
+    /** What the badge draws with: an id says nothing about what a role is. */
+    roleManages: boolean;
+    roleIsExternal: boolean;
     joinedAt: string | null;
     statusEmoji: string | null;
     statusText: string | null;
@@ -103,7 +110,7 @@ const DEFAULT_SORT: Sort = { key: 'role', ascending: true };
  * are all sitting here already.
  *
  * The role column restores the order the server sent instead of ranking the
- * roles again: that ranking lives in WorkspaceRole::rank(), and a second copy
+ * roles again: that ranking lives in SystemRole::rank(), and a second copy
  * here would be the one that goes stale when a role is added.
  */
 function sortMembers(
@@ -227,7 +234,7 @@ function MemberRow({
             <td className="px-3 py-2">
                 {member.canChangeRole ? (
                     <Select
-                        value={member.role}
+                        value={String(member.role)}
                         onValueChange={(role) =>
                             router.patch(
                                 updateRole.url(member.id),
@@ -248,7 +255,7 @@ function MemberRow({
                             {roleOptions.map((option) => (
                                 <SelectItem
                                     key={option.value}
-                                    value={option.value}
+                                    value={String(option.value)}
                                 >
                                     {option.label}
                                 </SelectItem>
@@ -260,16 +267,15 @@ function MemberRow({
                         className={cn(
                             'inline-block rounded px-2 py-0.5 text-xs font-medium',
                             // Only the roles that carry authority get the
-                            // accent. A guest is set apart the other way:
-                            // outlined, because it says "external" rather than
-                            // "elevated".
-                            member.role === 'member' &&
+                            // accent. Somebody from outside is set apart the
+                            // other way: outlined, because it says "external"
+                            // rather than "elevated".
+                            !member.roleManages &&
+                                !member.roleIsExternal &&
                                 'bg-muted text-muted-foreground',
-                            member.role === 'guest' &&
+                            member.roleIsExternal &&
                                 'border border-amber-500/40 text-amber-700 dark:text-amber-400',
-                            (member.role === 'owner' ||
-                                member.role === 'admin') &&
-                                'bg-primary/10 text-primary',
+                            member.roleManages && 'bg-primary/10 text-primary',
                         )}
                     >
                         {member.roleLabel}

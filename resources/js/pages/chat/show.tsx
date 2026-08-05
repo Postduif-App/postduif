@@ -278,7 +278,7 @@ export default function ChatShow({
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
                 currentUsername={auth.user.username as string | undefined}
                 currentUserAvatarUrl={auth.avatarUrl}
-                currentUserIsGuest={auth.workspaceRole === 'guest'}
+                currentUserIsGuest={auth.workspaceIsExternal}
                 workspacePanelOpen={membersOpen}
                 onToggleWorkspacePanel={
                     workspace.showsMemberPanel

@@ -7,15 +7,16 @@ use App\Actions\Workspace\RestrictGuestChannelAccess;
 use App\Actions\Workspace\SyncGuestChannels;
 use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\ChannelType;
-use App\Enums\WorkspaceRole;
+use App\Enums\WorkspaceAbility;
 use App\Http\Controllers\Controller;
 use App\Models\Channel;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,6 +34,10 @@ class WorkspaceMemberController extends Controller
         $viewer = $request->user();
 
         $guestChannelIds = $this->guestChannelIds($workspace);
+
+        // Where each role sits in this workspace's own order, so the list can
+        // be sorted by standing without asking the database once per member.
+        $rolePositions = $workspace->roles()->pluck('position', 'id')->all();
 
         return Inertia::render('settings/members', [
             'workspaceName' => $workspace->name,
@@ -52,8 +57,16 @@ class WorkspaceMemberController extends Controller
                     'id' => $member->id,
                     'name' => $member->name,
                     'username' => $member->username,
-                    'role' => $member->membership->role,
-                    'roleLabel' => WorkspaceRole::from($member->membership->role)->getLabel(),
+                    'role' => $member->membership->workspace_role_id,
+                    'roleLabel' => $workspace->roleFor($member)?->name,
+                    /*
+                     * What the badge is drawing, which an id cannot say. Two
+                     * facts rather than a name: whether this role runs the
+                     * place, and whether it is somebody from outside — the two
+                     * things the colour has always meant.
+                     */
+                    'roleManages' => $workspace->allows($member, WorkspaceAbility::ManageWorkspace),
+                    'roleIsExternal' => $workspace->isExternal($member),
                     'joinedAt' => $member->membership->joined_at,
                     // What somebody is up to, as a column of its own. Managing
                     // members means knowing who is around to be handed
@@ -64,7 +77,7 @@ class WorkspaceMemberController extends Controller
                     // Only guests carry this: for everyone else the answer is
                     // "the whole workspace", and a list of channels next to
                     // their name would suggest a limit that is not there.
-                    'channelIds' => WorkspaceRole::from($member->membership->role)->isGuest()
+                    'channelIds' => $workspace->isExternal($member)
                         ? ($guestChannelIds[$member->id] ?? [])
                         : null,
                     // Worked out here rather than in the browser: the rules
@@ -74,20 +87,32 @@ class WorkspaceMemberController extends Controller
                     'canRemove' => $viewer->can('removeMember', [$workspace, $member]),
                     'canManageChannels' => $viewer->can('manageGuestChannels', [$workspace, $member]),
                 ])
-                // Sorted by standing rather than alphabetically: whoever runs
-                // the workspace is who you are looking for when something needs
-                // changing, and guests sort to the bottom.
+                /*
+                 * Sorted by standing rather than alphabetically: whoever runs
+                 * the workspace is who you are looking for when something needs
+                 * changing, and people from outside sort to the bottom.
+                 *
+                 * By the role's own position. A workspace decides the order of
+                 * its roles, so a ranking compiled in here would be this
+                 * application's opinion about a list it does not own.
+                 */
                 ->sortBy(fn (array $member) => [
-                    WorkspaceRole::from($member['role'])->rank(),
+                    $rolePositions[$member['role']] ?? PHP_INT_MAX,
                     mb_strtolower($member['name']),
                 ])
                 ->values()
                 ->all(),
-            'roleOptions' => collect(WorkspaceRole::cases())
-                ->filter(fn (WorkspaceRole $role) => $viewer->can('grantRole', [$workspace, $role]))
-                ->map(fn (WorkspaceRole $role): array => [
-                    'value' => $role->value,
-                    'label' => $role->getLabel(),
+            /*
+             * Only the roles this member could actually hand out. The policy
+             * refuses the rest anyway; leaving them in the dropdown would be
+             * offering a choice that answers 403.
+             */
+            'roleOptions' => $workspace->roles()
+                ->get()
+                ->filter(fn (Role $role): bool => $viewer->can('grantRole', [$workspace, $role]))
+                ->map(fn (Role $role): array => [
+                    'value' => $role->id,
+                    'label' => $role->name,
                 ])->values()->all(),
         ]);
     }
@@ -102,20 +127,36 @@ class WorkspaceMemberController extends Controller
         $this->authorize('updateMemberRole', [$workspace, $user]);
 
         $validated = $request->validate([
-            'role' => ['required', new Enum(WorkspaceRole::class)],
+            /*
+             * A role of this workspace, by its own id. Scoped in the rule
+             * rather than checked afterwards: without the workspace_id an id
+             * from somewhere else would name a role that exists, and the only
+             * thing standing between that and a promotion would be the policy
+             * below.
+             */
+            'role' => [
+                'required',
+                // Before the lookup: without it a word arrives at a bigint
+                // column and Postgres, not the validator, is what refuses it.
+                'integer',
+                Rule::exists('workspace_roles', 'id')->where('workspace_id', $workspace->id),
+            ],
         ]);
 
-        $role = WorkspaceRole::from($validated['role']);
+        $role = $workspace->roles()->findOrFail($validated['role']);
 
         $this->authorize('grantRole', [$workspace, $role]);
-        $this->guardTheLastOwner($workspace, $user, $role);
+        $this->guardTheLastManager($workspace, $user, $role);
 
-        $workspace->members()->updateExistingPivot($user->id, ['role' => $role->value]);
+        $workspace->members()->updateExistingPivot($user->id, [
+            'role' => $role->key,
+            'workspace_role_id' => $role->id,
+        ]);
 
-        // Becoming a guest has to reach the channels too, or the demotion
-        // changes the badge and nothing else — see the action for why public
+        // Moving somebody outside has to reach the channels too, or the change
+        // touches the badge and nothing else — see the action for why public
         // channels go and the rest stays.
-        $dropped = $role->isGuest()
+        $dropped = $role->is_external
             ? $restrictChannelAccess->handle($workspace, $user)
             : 0;
 
@@ -127,7 +168,7 @@ class WorkspaceMemberController extends Controller
          */
         return back()->with('status', trans_choice('flashes.member.role_changed', $dropped, [
             'name' => $user->name,
-            'role' => mb_strtolower($role->getLabel()),
+            'role' => mb_strtolower($role->name),
         ]));
     }
 
@@ -188,8 +229,10 @@ class WorkspaceMemberController extends Controller
      */
     private function guestChannelIds(Workspace $workspace): array
     {
+        $external = $workspace->roles()->where('is_external', true)->pluck('id');
+
         $guestIds = $workspace->members()
-            ->wherePivot('role', WorkspaceRole::Guest->value)
+            ->wherePivotIn('workspace_role_id', $external->all())
             ->pluck('users.id');
 
         if ($guestIds->isEmpty()) {
@@ -209,20 +252,31 @@ class WorkspaceMemberController extends Controller
     }
 
     /**
-     * A workspace without an owner has nobody who can hand out roles or settle
-     * a dispute, and no way back — so the last one cannot be stepped down.
+     * A workspace nobody can manage has no way back.
+     *
+     * Asked of the right rather than of a role called "eigenaar", which is what
+     * it was before: a workspace may now have three roles that can manage it
+     * and none of them named that, and it may take the right away from the one
+     * that was. What has to survive is that somebody, in some role, can still
+     * hand out roles and settle a dispute.
      */
-    private function guardTheLastOwner(Workspace $workspace, User $target, WorkspaceRole $role): void
+    private function guardTheLastManager(Workspace $workspace, User $target, Role $role): void
     {
-        if ($role === WorkspaceRole::Owner || $workspace->roleFor($target) !== WorkspaceRole::Owner) {
+        if ($role->allows(WorkspaceAbility::ManageWorkspace)) {
             return;
         }
 
-        $owners = $workspace->members()
-            ->wherePivot('role', WorkspaceRole::Owner->value)
+        $managing = $workspace->roles()
+            ->get()
+            ->filter(fn (Role $role): bool => $role->allows(WorkspaceAbility::ManageWorkspace))
+            ->pluck('id');
+
+        $remaining = $workspace->members()
+            ->wherePivotIn('workspace_role_id', $managing->all())
+            ->where('users.id', '!=', $target->id)
             ->count();
 
-        if ($owners <= 1) {
+        if ($remaining === 0) {
             throw ValidationException::withMessages([
                 'role' => __('requests.member.last_owner'),
             ]);

@@ -8,6 +8,7 @@ use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelCreationPolicy;
 use App\Features\Transfers;
 use App\Http\Controllers\Controller;
+use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;

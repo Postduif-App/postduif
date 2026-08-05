@@ -43,7 +43,7 @@ enum ChannelTicketPolicy: string implements HasLabel
         return match ($this) {
             self::Disabled => false,
             self::Everyone => true,
-            self::Members => ! ($channel->workspace->roleFor($user)?->isGuest() ?? true),
+            self::Members => ! $channel->workspace->isExternal($user),
         };
     }
 

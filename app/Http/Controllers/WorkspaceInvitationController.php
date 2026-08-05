@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Workspace\InviteToWorkspace;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
@@ -29,23 +29,29 @@ class WorkspaceInvitationController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255', $this->notAlreadyIn($workspace)],
-            'role' => ['required', new Enum(WorkspaceRole::class)],
+            'role' => ['required', new Enum(SystemRole::class)],
 
             // A guest sees nothing but the channels named here, so an empty
             // list would be an invitation into a workspace with nothing in it.
             'channel_ids' => [
                 'array',
                 'max:50',
-                Rule::requiredIf(fn (): bool => $request->input('role') === WorkspaceRole::Guest->value),
+                Rule::requiredIf(fn (): bool => $request->input('role') === SystemRole::Guest->value),
             ],
             'channel_ids.*' => ['integer'],
         ], [
             'channel_ids.required' => __('requests.invite.channels_required'),
         ]);
 
-        $role = WorkspaceRole::from($validated['role']);
+        $role = SystemRole::from($validated['role']);
 
-        $this->authorize('grantRole', [$workspace, $role]);
+        /*
+         * Authorised against this workspace's own row for that role, not
+         * against the name. An invitation still stores the name — that moves
+         * when the screens that pick one do — but who may hand it out is a
+         * question about a role, and only the row can answer it.
+         */
+        $this->authorize('grantRole', [$workspace, $workspace->roles()->where('key', $role->value)->firstOrFail()]);
 
         $inviteToWorkspace->handle(
             $workspace,

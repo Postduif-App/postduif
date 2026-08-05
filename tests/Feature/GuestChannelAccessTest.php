@@ -160,7 +160,7 @@ it('marks guests as guests in the payloads their name appears in', function () {
     actingAs($colleague)
         ->get(route('chat.show', [$workspace, $invited]))
         ->assertInertia(fn ($page) => $page
-            ->where('auth.workspaceRole', 'member')
+            ->where('auth.workspaceIsExternal', false)
             ->where('messages.0.author.isGuest', true)
             ->where('messages.1.author.isGuest', false)
             ->where('channel.members', fn ($members) => collect($members)
@@ -173,7 +173,7 @@ it('tells a guest what they are', function () {
 
     actingAs($guest)
         ->get(route('chat.show', [$workspace, $invited]))
-        ->assertInertia(fn ($page) => $page->where('auth.workspaceRole', 'guest'));
+        ->assertInertia(fn ($page) => $page->where('auth.workspaceIsExternal', true));
 });
 
 it('marks a guest in the candidate list of a channel', function () {

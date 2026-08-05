@@ -2,7 +2,7 @@
 
 namespace App\Actions\Chat;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\LinkPreview;
 use App\Models\Message;
 use App\Models\Poll;
@@ -600,7 +600,7 @@ class PresentMessage
             ->whereKey($workspaceId)
             ->firstOrFail()
             ->members()
-            ->wherePivot('role', WorkspaceRole::Guest->value)
+            ->wherePivot('role', SystemRole::Guest->value)
             ->pluck('users.id');
 
         // Built by hand rather than through flip()->map(): a set of ids is what

@@ -31,7 +31,7 @@ enum ChannelPostingPolicy: string implements HasLabel
         return match ($this) {
             self::Everyone => true,
             self::Admins => $channel->created_by === $user->id
-                || ($channel->workspace->roleFor($user)?->canManageWorkspace() ?? false),
+                || $channel->workspace->allows($user, WorkspaceAbility::ManageWorkspace),
         };
     }
 

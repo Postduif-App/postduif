@@ -25,29 +25,30 @@ function workspaceWithThreeRoles(): array
     return [$owner, $admin, $member, $workspace];
 }
 
-function roleOf(Workspace $workspace, User $user): ?SystemRole
+/** The key of the role somebody holds, which is what these tests compare. */
+function roleOf(Workspace $workspace, User $user): ?string
 {
-    return $workspace->roleFor($user);
+    return $workspace->roleFor($user)?->key;
 }
 
 it('promotes a member to admin', function () {
     [$owner, , $member, $workspace] = workspaceWithThreeRoles();
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $member), ['role' => 'admin'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Admin)])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin->value);
 });
 
 it('lets an admin manage ordinary members', function () {
     [, $admin, $member, $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
-        ->patch(route('workspace.members.update', $member), ['role' => 'admin'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Admin)])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Admin->value);
 });
 
 /**
@@ -58,20 +59,20 @@ it('never lets an admin touch the owner', function () {
     [$owner, $admin, , $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
-        ->patch(route('workspace.members.update', $owner), ['role' => 'member'])
+        ->patch(route('workspace.members.update', $owner), ['role' => roleId($workspace, SystemRole::Member)])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner);
+    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner->value);
 });
 
 it('never lets an admin hand out ownership', function () {
     [, $admin, $member, $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
-        ->patch(route('workspace.members.update', $member), ['role' => 'owner'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Owner)])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $member))->toBe(SystemRole::Member);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Member->value);
 });
 
 /**
@@ -82,15 +83,15 @@ it('lets an owner hand the workspace over', function () {
     [$owner, $admin, , $workspace] = workspaceWithThreeRoles();
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $admin), ['role' => 'owner'])
+        ->patch(route('workspace.members.update', $admin), ['role' => roleId($workspace, SystemRole::Owner)])
         ->assertRedirect();
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $owner), ['role' => 'admin'])
+        ->patch(route('workspace.members.update', $owner), ['role' => roleId($workspace, SystemRole::Admin)])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $admin))->toBe(SystemRole::Owner)
-        ->and(roleOf($workspace, $owner))->toBe(SystemRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Owner->value)
+        ->and(roleOf($workspace, $owner))->toBe(SystemRole::Admin->value);
 });
 
 /**
@@ -98,34 +99,54 @@ it('lets an owner hand the workspace over', function () {
  * back. The sole owner is the only person who could cause it, so this guard is
  * exactly what stops them.
  */
-it('refuses to step down the only owner', function () {
+/**
+ * What has to survive is not a role by that name but somebody who can run the
+ * place. A workspace may have three roles that manage it and none of them
+ * called "eigenaar", so the guard asks about the right rather than the name.
+ */
+it('lets the only owner step down to another role that can still manage', function () {
     [$owner, , , $workspace] = workspaceWithThreeRoles();
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $owner), ['role' => 'admin'])
+        ->patch(route('workspace.members.update', $owner), ['role' => roleId($workspace, SystemRole::Admin)])
+        ->assertRedirect();
+
+    expect(roleOf($workspace, $owner))->toBe(SystemRole::Admin->value);
+});
+
+it('refuses to leave a workspace with nobody who can manage it', function () {
+    [$owner, $admin, , $workspace] = workspaceWithThreeRoles();
+
+    // The administrator first, so the owner is the last one left who can.
+    actingAs($owner)
+        ->patch(route('workspace.members.update', $admin), ['role' => roleId($workspace, SystemRole::Member)])
+        ->assertRedirect();
+
+    actingAs($owner)
+        ->patch(route('workspace.members.update', $owner), ['role' => roleId($workspace, SystemRole::Member)])
         ->assertSessionHasErrors('role');
 
-    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner);
+    expect(roleOf($workspace, $owner))->toBe(SystemRole::Owner->value);
 });
 
 it('never lets an admin promote themselves to owner', function () {
     [, $admin, , $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
-        ->patch(route('workspace.members.update', $admin), ['role' => 'owner'])
+        ->patch(route('workspace.members.update', $admin), ['role' => roleId($workspace, SystemRole::Owner)])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin->value);
 });
 
 it('refuses a role change from a plain member', function () {
     [, $admin, $member, $workspace] = workspaceWithThreeRoles();
 
     actingAs($member)
-        ->patch(route('workspace.members.update', $admin), ['role' => 'member'])
+        ->patch(route('workspace.members.update', $admin), ['role' => roleId($workspace, SystemRole::Member)])
         ->assertForbidden();
 
-    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin);
+    expect(roleOf($workspace, $admin))->toBe(SystemRole::Admin->value);
 });
 
 it('removes a member from the workspace', function () {
@@ -248,10 +269,10 @@ it('turns a member into a guest', function () {
     [, $admin, $member, $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
-        ->patch(route('workspace.members.update', $member), ['role' => 'guest'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Guest)])
         ->assertRedirect();
 
-    expect(roleOf($workspace, $member))->toBe(SystemRole::Guest);
+    expect(roleOf($workspace, $member))->toBe(SystemRole::Guest->value);
 });
 
 it('refuses the settings screen to a guest', function () {
@@ -261,16 +282,21 @@ it('refuses the settings screen to a guest', function () {
     actingAs($guest)->get(route('workspace.members.index'))->assertForbidden();
 });
 
-it('offers an admin every role except owner', function () {
-    [, $admin] = workspaceWithThreeRoles();
+it('offers an admin every role except the one standing above them', function () {
+    [, $admin, , $workspace] = workspaceWithThreeRoles();
 
     actingAs($admin)
         ->get(route('workspace.members.index'))
         ->assertInertia(fn ($page) => $page
+            /*
+             * Three of the four. Owner is missing not because of its name but
+             * because it stands above the administrator in this workspace's own
+             * order — see Role::isUnder.
+             */
             ->has('roleOptions', 3)
-            ->where('roleOptions.0.value', 'admin')
-            ->where('roleOptions.1.value', 'member')
-            ->where('roleOptions.2.value', 'guest')
+            ->where('roleOptions.0.value', roleId($workspace, SystemRole::Admin))
+            ->where('roleOptions.1.value', roleId($workspace, SystemRole::Member))
+            ->where('roleOptions.2.value', roleId($workspace, SystemRole::Guest))
         );
 });
 

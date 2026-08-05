@@ -49,7 +49,7 @@ it('lists a guest with the channels they are in', function () {
     actingAs($owner)
         ->get(route('workspace.members.index'))
         ->assertInertia(fn ($page) => $page
-            ->where('members.1.role', 'guest')
+            ->where('members.1.roleIsExternal', true)
             ->where('members.1.channelIds', [$invited->id])
             ->where('members.1.canManageChannels', true)
             // The owner's own row has no channel list: for a full member the
@@ -186,7 +186,7 @@ it('drops public channel access when a member is demoted to guest', function () 
     }
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $member), ['role' => 'guest'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Guest)])
         ->assertRedirect();
 
     // The public channel they walked into themselves is gone; the private one
@@ -212,7 +212,7 @@ it('keeps a demoted member in the public channel they created themselves', funct
     $theirs->members()->attach($member->id, ['joined_at' => now()]);
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $member), ['role' => 'guest'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Guest)])
         ->assertRedirect();
 
     expect($theirs->members()->whereKey($member->id)->exists())->toBeTrue();
@@ -231,7 +231,7 @@ it('leaves channel membership alone when promoting instead of demoting', functio
     $open->members()->attach($member->id, ['joined_at' => now()]);
 
     actingAs($owner)
-        ->patch(route('workspace.members.update', $member), ['role' => 'admin'])
+        ->patch(route('workspace.members.update', $member), ['role' => roleId($workspace, SystemRole::Admin)])
         ->assertRedirect();
 
     expect($open->members()->whereKey($member->id)->exists())->toBeTrue();

@@ -2,7 +2,7 @@
 
 namespace App\Actions\Workspace;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Mail\WorkspaceInvitationMail;
 use App\Models\Invitation;
 use App\Models\User;
@@ -31,7 +31,7 @@ class InviteToWorkspace
         Workspace $workspace,
         User $inviter,
         string $email,
-        WorkspaceRole $role,
+        SystemRole $role,
         Collection|array $channelIds = [],
     ): Invitation {
         $email = mb_strtolower(trim($email));

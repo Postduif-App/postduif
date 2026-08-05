@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\StartDirectMessage;
-use App\Enums\WorkspaceRole;
 use App\Http\Requests\StartDirectMessageRequest;
 use App\Models\Channel;
 use App\Models\User;
@@ -36,7 +35,7 @@ class DirectMessageController extends Controller
 
         $candidates = $workspace->members()
             ->whereKeyNot($user->id)
-            ->unless($workspace->roleFor($user)?->canBrowseWorkspace() ?? false, $this->sharedChannelsOnly($workspace, $user))
+            ->unless(! $workspace->isExternal($user), $this->sharedChannelsOnly($workspace, $user))
             ->when($terms !== '', fn ($query) => $query->where(
                 fn ($search) => $search
                     ->where('users.name', 'ilike', "%{$terms}%")
@@ -52,7 +51,7 @@ class DirectMessageController extends Controller
                 'name' => $candidate->name,
                 'username' => $candidate->username,
                 'avatarUrl' => $candidate->avatarUrl(),
-                'isGuest' => WorkspaceRole::from($candidate->membership->role)->isGuest(),
+                'isGuest' => $workspace->isExternal($candidate),
                 'statusEmoji' => $candidate->status_emoji,
                 'statusText' => $candidate->status_text,
                 'availability' => $candidate->availability->value,

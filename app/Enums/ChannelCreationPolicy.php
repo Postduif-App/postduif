@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Models\Role;
 use Filament\Support\Contracts\HasLabel;
 
 /**
@@ -14,18 +15,18 @@ use Filament\Support\Contracts\HasLabel;
  * needs to be deliberate.
  *
  * Guests are outside this question entirely — they may never open a channel,
- * whatever is chosen here. See SystemRole::canCreateChannels().
+ * whatever is chosen here — see the is_external column on a role.
  */
 enum ChannelCreationPolicy: string implements HasLabel
 {
     case Everyone = 'everyone';
     case Admins = 'admins';
 
-    public function allows(SystemRole $role): bool
+    public function allows(Role $role): bool
     {
         return match ($this) {
             self::Everyone => true,
-            self::Admins => $role->canManageWorkspace(),
+            self::Admins => $role->allows(WorkspaceAbility::ManageWorkspace),
         };
     }
 

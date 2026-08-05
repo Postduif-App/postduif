@@ -465,7 +465,7 @@ export default function WorkspaceTickets({
                 // A guest does not get the field: their own problem is always
                 // urgent, so the value only means something once one person
                 // weighs all the tickets against each other.
-                canPrioritise={auth.workspaceRole !== 'guest'}
+                canPrioritise={!auth.workspaceIsExternal}
                 open={createTicketOpen}
                 onOpenChange={setCreateTicketOpen}
             />

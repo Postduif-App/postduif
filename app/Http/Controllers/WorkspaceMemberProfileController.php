@@ -71,8 +71,8 @@ class WorkspaceMemberProfileController extends Controller
                 // channels they are in is deliberately not here: that is the
                 // member list's business, per channel, and a profile page
                 // listing them would tell a guest where everybody else works.
-                'role' => $role?->value,
-                'roleLabel' => $role?->getLabel(),
+                'role' => $role?->key,
+                'roleLabel' => $role?->name,
                 'joinedAt' => $membership->membership->joined_at?->toIso8601String(),
                 'isYou' => $member->is($viewer),
             ],

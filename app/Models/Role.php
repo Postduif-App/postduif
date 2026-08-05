@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -66,6 +67,20 @@ class Role extends Model
     }
 
     /**
+     * The people who hold this role.
+     *
+     * Through the pivot rather than through the workspace, so "who is a
+     * Leverancier here" is one query — and so roleFor() can ask the question
+     * from the role's side.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function holders(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'workspace_user', 'workspace_role_id', 'user_id');
+    }
+
+    /**
      * Whether this role holds a particular right.
      *
      * The one question the policies ask. Anything not in the bag is a no,
@@ -106,6 +121,24 @@ class Role extends Model
     public function isWithin(self $other): bool
     {
         return $this->abilities()->every(fn (WorkspaceAbility $ability): bool => $other->allows($ability));
+    }
+
+    /**
+     * Whether somebody in that role may act on somebody in this one.
+     *
+     * Two questions, because the rights alone are not enough. An owner and an
+     * administrator hold exactly the same rights here — the difference between
+     * them is standing, not permission — so a rule that only compared the bags
+     * would let an administrator demote an owner and call it lateral.
+     *
+     * So the workspace's own order decides as well. Position is the list a
+     * workspace arranges its roles in, which makes seniority something it
+     * states rather than something this application assumes: a role sitting
+     * above yours is out of reach even when you hold everything it does.
+     */
+    public function isUnder(self $other): bool
+    {
+        return $this->position >= $other->position && $this->isWithin($other);
     }
 
     /** The role this workspace ships with, by the key the enum spells. */

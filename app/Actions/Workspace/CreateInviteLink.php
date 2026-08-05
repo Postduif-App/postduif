@@ -2,7 +2,7 @@
 
 namespace App\Actions\Workspace;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\InviteLink;
 use App\Models\User;
 use App\Models\Workspace;
@@ -31,7 +31,7 @@ class CreateInviteLink
     public function handle(
         Workspace $workspace,
         User $creator,
-        WorkspaceRole $role,
+        SystemRole $role,
         ?int $maxUses = null,
         ?int $validForDays = null,
         Collection|array $channelIds = [],

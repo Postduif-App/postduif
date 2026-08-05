@@ -93,7 +93,7 @@ it('lands an accepted member in the workspace with the public channels open', fu
 
     // The channel was never handed to them, but a member may browse the
     // workspace — which is the whole difference with a guest.
-    expect($workspace->roleFor($member))->toBe(SystemRole::Member)
+    expect($workspace->roleFor($member)?->key)->toBe(SystemRole::Member->value)
         ->and($workspace->channels()->visibleTo($member)->pluck('id')->all())
         ->toBe([$openToEveryone->id])
         ->and($openToEveryone->members()->whereKey($member->id)->exists())->toBeFalse();
@@ -167,5 +167,5 @@ it('keeps an existing member at the standing they already have', function () {
         ->post(route('invitations.accept', $invitation->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($admin))->toBe(SystemRole::Admin);
+    expect($workspace->roleFor($admin)?->key)->toBe(SystemRole::Admin->value);
 });

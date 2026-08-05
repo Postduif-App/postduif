@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\Tickets\FindStaleTickets;
 use App\Enums\Availability;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketNeedsAttention;
@@ -93,7 +93,7 @@ class NotifyStaleTickets extends Command
         return $ticket->channel->members()
             ->whereNull('suspended_at')
             ->whereNotIn('users.id', $ticket->channel->workspace->members()
-                ->wherePivot('role', WorkspaceRole::Guest->value)
+                ->wherePivot('role', SystemRole::Guest->value)
                 ->select('users.id'))
             ->pluck('users.id')
             ->all();

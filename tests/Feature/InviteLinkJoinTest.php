@@ -69,7 +69,7 @@ it('makes an account and joins in one go', function () {
 
     $user = User::where('email', 'nieuw@voorbeeld.nl')->sole();
 
-    expect($workspace->roleFor($user))->toBe(SystemRole::Member)
+    expect($workspace->roleFor($user)?->key)->toBe(SystemRole::Member->value)
         ->and($channel->members()->whereKey($user->id)->exists())->toBeTrue()
         ->and($link->fresh()->uses)->toBe(1)
         // Nothing proved the address, unlike a mailed invitation.
@@ -84,7 +84,7 @@ it('joins somebody who is already signed in', function () {
         ->post(route('invite-links.join', $link->token))
         ->assertRedirect(route('chat.index', $workspace));
 
-    expect($workspace->roleFor($user))->toBe(SystemRole::Member)
+    expect($workspace->roleFor($user)?->key)->toBe(SystemRole::Member->value)
         ->and($channel->members()->whereKey($user->id)->exists())->toBeTrue()
         ->and($link->fresh()->uses)->toBe(1);
 });
@@ -95,7 +95,7 @@ it('joins as a guest when the link says so', function () {
 
     actingAs($user)->post(route('invite-links.join', $link->token));
 
-    expect($workspace->roleFor($user))->toBe(SystemRole::Guest);
+    expect($workspace->roleFor($user)?->key)->toBe(SystemRole::Guest->value);
 });
 
 it('leaves an existing member where they are and spends no use', function () {
@@ -109,7 +109,7 @@ it('leaves an existing member where they are and spends no use', function () {
 
     actingAs($admin)->post(route('invite-links.join', $link->token));
 
-    expect($workspace->roleFor($admin))->toBe(SystemRole::Admin)
+    expect($workspace->roleFor($admin)?->key)->toBe(SystemRole::Admin->value)
         // The channels do get added: that is a reasonable thing to follow a
         // link for, and it costs nobody a place.
         ->and($channel->members()->whereKey($admin->id)->exists())->toBeTrue()

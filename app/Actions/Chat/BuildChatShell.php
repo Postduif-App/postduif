@@ -3,7 +3,7 @@
 namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\BoardPost;
 use App\Models\Channel;
 use App\Models\ChannelSection;
@@ -48,7 +48,7 @@ class BuildChatShell
          * disappears, the chips in the header draw nothing, and the broadcast
          * dialog offers no tags.
          */
-        $seesTags = $workspace->roleFor($user)?->canBrowseWorkspace() ?? false;
+        $seesTags = ! $workspace->isExternal($user);
 
         return [
             'workspace' => $this->workspace($workspace, $user),
@@ -188,7 +188,7 @@ class BuildChatShell
     private function workspaceMembers(Workspace $workspace): array
     {
         return $workspace->members()
-            ->wherePivot('role', '!=', WorkspaceRole::Guest->value)
+            ->wherePivot('role', '!=', SystemRole::Guest->value)
             ->orderBy('name')
             ->get()
             ->map(fn (User $member): array => [

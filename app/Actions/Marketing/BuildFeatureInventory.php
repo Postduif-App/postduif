@@ -5,7 +5,7 @@ namespace App\Actions\Marketing;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Features\WorkspaceFeature;
 use App\Mcp\Servers\ChatServer;
 use App\Workflows\WorkflowRegistry;
@@ -170,13 +170,13 @@ class BuildFeatureInventory
      *
      * Read off the enum for the same reason as above. The guest row is the
      * interesting one — it is the only role the application actively keeps out
-     * of things, and every one of those answers lives in WorkspaceRole.
+     * of things, and every one of those answers lives in SystemRole.
      *
      * @return array<int, array<string, mixed>>
      */
     public function roles(): array
     {
-        return array_map(fn (WorkspaceRole $role): array => [
+        return array_map(fn (SystemRole $role): array => [
             'value' => $role->value,
             'label' => $role->getLabel(),
             'canManageWorkspace' => $role->canManageWorkspace(),
@@ -184,6 +184,6 @@ class BuildFeatureInventory
             'canBrowseWorkspace' => $role->canBrowseWorkspace(),
             'canCreateChannels' => $role->canCreateChannels(),
             'canSendTransfers' => $role->canSendTransfers(),
-        ], WorkspaceRole::cases());
+        ], SystemRole::cases());
     }
 }

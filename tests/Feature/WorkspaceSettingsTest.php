@@ -98,7 +98,9 @@ it('sorts guests below ordinary members and labels them as such', function () {
             // is the rank talking rather than the name.
             ->where('members.1.name', 'Bram Bakker')
             ->where('members.2.name', 'Aad Aardema')
-            ->where('members.2.role', 'guest')
+            // By what the role is rather than by its name: a workspace may call
+            // an outside role anything it likes.
+            ->where('members.2.roleIsExternal', true)
             ->where('members.2.roleLabel', 'Gast')
         );
 });

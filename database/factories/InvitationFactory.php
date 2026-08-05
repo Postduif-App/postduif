@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\WorkspaceRole;
+use App\Enums\SystemRole;
 use App\Models\Invitation;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,7 +22,7 @@ class InvitationFactory extends Factory
             'workspace_id' => Workspace::factory(),
             'invited_by' => User::factory(),
             'email' => fake()->unique()->safeEmail(),
-            'role' => WorkspaceRole::Member,
+            'role' => SystemRole::Member,
             'token' => Invitation::freshToken(),
             'expires_at' => now()->addDays(Invitation::VALID_FOR_DAYS),
         ];
@@ -34,7 +34,7 @@ class InvitationFactory extends Factory
      */
     public function guest(): static
     {
-        return $this->state(['role' => WorkspaceRole::Guest]);
+        return $this->state(['role' => SystemRole::Guest]);
     }
 
     /**

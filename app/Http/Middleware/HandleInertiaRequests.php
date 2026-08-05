@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Actions\Workspace\BuildThemeStyles;
 use App\Enums\Availability;
+use App\Enums\WorkspaceAbility;
 use App\Enums\WorkspaceFont;
-use App\Enums\WorkspaceRole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Lang;
@@ -71,7 +71,7 @@ class HandleInertiaRequests extends Middleware
             ->oldest('workspace_user.joined_at')
             ->first();
 
-        $role = $workspace === null ? null : WorkspaceRole::from($workspace->membership->role);
+        $role = $workspace?->roleFor($request->user());
 
         return [
             ...parent::share($request),
@@ -109,8 +109,8 @@ class HandleInertiaRequests extends Middleware
                 // Decides whether the settings navigation lists the workspace
                 // section at all. Better than listing a screen that then
                 // refuses to open.
-                'canManageWorkspace' => $role?->canManageWorkspace() ?? false,
-                'canInviteToWorkspace' => $role?->canInviteMembers() ?? false,
+                'canManageWorkspace' => $role?->allows(WorkspaceAbility::ManageWorkspace) ?? false,
+                'canInviteToWorkspace' => $role?->allows(WorkspaceAbility::InviteMembers) ?? false,
                 /*
                  * Whether this workspace has workflows at all, so the settings
                  * navigation can leave the link out rather than offer a screen
@@ -125,7 +125,14 @@ class HandleInertiaRequests extends Middleware
                 // guest" without inferring it from a handful of false flags.
                 // Every actual permission still comes from those flags — this
                 // is for what the interface tells you, not what it lets you do.
-                'workspaceRole' => $role?->value,
+                /*
+                  * Whether the person is here from outside, rather than the
+                  * name of their role. The interface asked "is this a guest"
+                  * and a name cannot answer that once a workspace writes its
+                  * own roles — a "Leverancier" is every bit as external and
+                  * matches no string the browser knows.
+                  */
+                'workspaceIsExternal' => $role?->is_external ?? false,
                 // The status picker sits in the user menu, which is on every
                 // screen — so its options travel with the menu rather than each
                 // page having to remember to send them. The labels stay in the

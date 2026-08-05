@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\AddChannelMembers;
-use App\Enums\WorkspaceRole;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -45,7 +44,7 @@ class ChannelMemberController extends Controller
                 // Adding somebody from outside to a channel is a different
                 // decision from adding a colleague, so say which one this is
                 // before the click rather than after.
-                'isGuest' => WorkspaceRole::from($user->membership->role)->isGuest(),
+                'isGuest' => $channel->workspace->isExternal($user),
                 'statusEmoji' => $user->status_emoji,
                 'statusText' => $user->status_text,
                 'availability' => $user->availability->value,
