@@ -171,7 +171,7 @@ test('it lists the members of a channel', function () {
     $outsider = User::factory()->create();
 
     $channel->workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Guest),
         'joined_at' => now(),
     ]);
     $channel->members()->attach($guest->id, ['joined_at' => now()]);
@@ -190,7 +190,7 @@ test('it puts a guest into a channel from the panel', function () {
     $guest = User::factory()->create();
 
     $channel->workspace->members()->attach($guest->id, [
-        'role' => SystemRole::Guest->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Guest),
         'joined_at' => now(),
     ]);
 
@@ -227,7 +227,7 @@ test('it takes a member back out of a channel', function () {
     $member = User::factory()->create();
 
     $channel->workspace->members()->attach($member->id, [
-        'role' => SystemRole::Member->value,
+        'workspace_role_id' => roleId($channel->workspace, SystemRole::Member),
         'joined_at' => now(),
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
