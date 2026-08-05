@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Channel;
+use App\Rules\ReactionEmoji;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -22,21 +24,15 @@ class StoreReactionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            // A pill is a symbol, not a label. Refusing letters, digits and
-            // whitespace keeps "lgtm" out of the reaction row without pinning
-            // the column to a fixed emoji list the picker would outgrow.
-            'emoji' => ['required', 'string', 'max:32', 'not_regex:/[\s\w]/u'],
-        ];
-    }
+        /** @var Channel $channel */
+        $channel = $this->route('channel');
 
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
         return [
-            'emoji.not_regex' => __('requests.reaction.emoji_only'),
+            // What may be in it is ReactionEmoji's business — a pill is a
+            // symbol or a picture this workspace uploaded, never a label. The
+            // length is the column's, and a name is capped at thirty so that
+            // ":name:" always fits inside it.
+            'emoji' => ['required', 'string', 'max:32', new ReactionEmoji($channel->workspace_id)],
         ];
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\BoardPost;
+use App\Rules\ReactionEmoji;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -25,22 +27,14 @@ class StoreBoardReactionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            // The same rule the channel reactions use, word for word: a pill is
-            // a symbol, not a label. Refusing letters, digits and whitespace
-            // keeps "lgtm" out of the row without pinning the column to a fixed
-            // list the picker would outgrow.
-            'emoji' => ['required', 'string', 'max:32', 'not_regex:/[\s\w]/u'],
-        ];
-    }
+        /** @var BoardPost $post */
+        $post = $this->route('board_post');
 
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
         return [
-            'emoji.not_regex' => __('requests.reaction.emoji_only'),
+            // The same rule the channel reactions use — the same object now,
+            // rather than the same lines copied: a pill is a symbol or one of
+            // this workspace's own pictures, and never a label.
+            'emoji' => ['required', 'string', 'max:32', new ReactionEmoji($post->workspace_id)],
         ];
     }
 }
