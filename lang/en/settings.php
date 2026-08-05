@@ -58,7 +58,7 @@ return [
 
     'notifications' => [
         'title' => 'Notifications',
-        'description' => 'When Pcom may reach you while you are away',
+        'description' => 'When Postduif may reach you while you are away',
         'after' => 'Let me know when I have not opened a channel',
         'never' => 'Never',
         'longer_than' => 'for more than :duration',
@@ -126,7 +126,7 @@ return [
         'warning' => 'A token acts as you: it sees every channel you can see and can post wherever you can. It holds for all your workspaces and opens the API. So do not share one, and withdraw it as soon as you stop using it.',
         'endpoint' => 'Address for your AI client',
         'copy_endpoint' => 'Copy address',
-        'endpoint_hint' => 'No token needed here. Your client asks for permission itself, and you grant it on a screen of Pcom — which is also where you see what it may do.',
+        'endpoint_hint' => 'No token needed here. Your client asks for permission itself, and you grant it on a screen of Postduif — which is also where you see what it may do.',
         'new_token' => 'New token',
         'name_placeholder' => 'Where are you going to use it? For instance: Claude on my laptop',
         'create' => 'Create',

@@ -15,7 +15,7 @@ return [
 
     'webhooks' => [
         'heading' => 'Webhooks',
-        'explanation' => 'Laat iets buiten Pcom in dit kanaal posten, onder een eigen naam en herkenbaar als bot.',
+        'explanation' => 'Laat iets buiten Postduif in dit kanaal posten, onder een eigen naam en herkenbaar als bot.',
         'add' => 'Toevoegen',
         'name_label' => 'Naam',
         'name_hint' => 'Waar deze webhook voor is. Alleen jullie zien dit.',

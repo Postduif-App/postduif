@@ -10,7 +10,7 @@ return [
         'messages' => '{1}:count message|[2,*]:count messages',
         'mentions' => 'mentioned :countx',
         'open' => 'Open',
-        'open_in_app' => 'Open in Pcom',
+        'open_in_app' => 'Open in Postduif',
         'preferences' => 'You can set how often you get this under [Notifications](:url).',
     ],
 

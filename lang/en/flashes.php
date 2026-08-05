@@ -38,6 +38,16 @@ return [
         'withdrawn' => 'Message withdrawn.',
     ],
 
+    'form' => [
+        'saved' => 'Form saved.',
+        'deleted' => 'Form deleted.',
+        'closed' => 'Form closed.',
+        'reopened' => 'Form opened again.',
+        'shared' => 'There is a new shareable link. The previous one no longer works.',
+        'unshared' => 'The link has been withdrawn.',
+        'posted' => 'Form put in the channel.',
+    ],
+
     'poll' => [
         'closed' => 'Poll closed.',
         'reopened' => 'Poll reopened.',
@@ -103,5 +113,13 @@ return [
     'custom_emoji' => [
         'added' => ':name is in the picker now.',
         'removed' => ':name has been removed.',
+    ],
+
+    'timeclock' => [
+        'clocked_in' => 'You are clocked in.',
+        'clocked_out' => 'Clocked out after :duration.',
+        'not_clocked_in' => 'You were not clocked in.',
+        'adjusted' => 'The stretch has been adjusted.',
+        'removed' => 'The stretch has been removed.',
     ],
 ];

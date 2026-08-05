@@ -29,7 +29,7 @@ return [
     'authorize' => [
         'title' => 'Give :client access',
         'heading' => ':client wants to join in on your behalf',
-        'explanation' => 'This client gets access to Pcom as though it were you. Only approve it if you started this yourself just now.',
+        'explanation' => 'This client gets access to Postduif as though it were you. Only approve it if you started this yourself just now.',
         'as' => 'As',
         'scope' => 'Reading and writing in the channels you can see, and setting your status.',
         'limits' => 'Never more than you may do yourself. A private channel you are not in does not exist for this client either.',

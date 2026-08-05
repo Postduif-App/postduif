@@ -10,6 +10,8 @@ return [
         'saved' => 'Saved',
         'tickets' => 'Tickets',
         'transfers' => 'Sending',
+        'forms' => 'Forms',
+        'timeclock' => 'Time tracking',
         'broadcast' => 'Broadcast',
     ],
 

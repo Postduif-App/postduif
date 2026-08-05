@@ -5,6 +5,10 @@ return [
         'label' => 'AI access',
         'description' => 'AI clients may read along and join in with a token in this workspace.',
     ],
+    'forms' => [
+        'label' => 'Forms',
+        'description' => 'Questionnaires you can put in a channel or share as a link. The answers go by DM to whoever made the form.',
+    ],
     'invite-links' => [
         'label' => 'Invitation links',
         'description' => 'Joining through a shareable link, alongside an invitation by name.',
@@ -32,6 +36,10 @@ return [
     'secret-requests' => [
         'label' => 'Secrets',
         'description' => 'Ask for passwords and keys through a form, and send one that the recipient can view exactly once — instead of having them pasted into a conversation.',
+    ],
+    'timeclock' => [
+        'label' => 'Time tracking',
+        'description' => 'Members clock in and out, read their own hours back and can adjust a recorded stretch afterwards. Who may look at a colleague\'s hours is a right the workspace hands out.',
     ],
     'tickets' => [
         'label' => 'Tickets',

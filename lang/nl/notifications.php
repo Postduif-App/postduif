@@ -19,7 +19,7 @@ return [
         'messages' => '{1}:count bericht|[2,*]:count berichten',
         'mentions' => ':countx genoemd',
         'open' => 'Openen',
-        'open_in_app' => 'Openen in Pcom',
+        'open_in_app' => 'Openen in Postduif',
         'preferences' => 'Instellen hoe vaak je dit krijgt kan bij [Notificaties](:url).',
     ],
 

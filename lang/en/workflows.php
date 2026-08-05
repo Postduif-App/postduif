@@ -26,6 +26,18 @@ return [
             ],
         ],
 
+        'timeclock' => [
+            'label' => 'When somebody clocks in or out',
+            'description' => 'Runs the moment somebody puts themselves on the clock or takes themselves off it. Only in workspaces with time tracking switched on.',
+            'direction' => [
+                'label' => 'On what',
+                'hint' => 'With "both" the workflow runs twice per shift: once at the start and once at the end.',
+                'both' => 'Clocking in and out',
+                'in' => 'Clocking in only',
+                'out' => 'Clocking out only',
+            ],
+        ],
+
         'reaction' => [
             'label' => 'When somebody uses an emoji',
             'description' => 'Runs as soon as this emoji is put on a message. Removing and re-adding it runs the workflow again.',
@@ -37,6 +49,16 @@ return [
                 'label' => 'In which channel',
                 'hint' => 'Leaving this empty means anywhere in this workspace.',
             ],
+        ],
+
+        'form-submitted' => [
+            'label' => 'When somebody submits a form',
+            'description' => 'Runs as soon as an answer arrives on the form you choose.',
+            'form' => [
+                'label' => 'Which form',
+                'hint' => 'One form, because the answers are named differently in every form.',
+            ],
+            'anonymous' => 'anonymous',
         ],
 
         'link' => [
@@ -100,6 +122,18 @@ return [
         'reply-in-thread' => [
             'label' => 'Reply in a thread',
             'description' => 'Hangs a reply under a message instead of beside it.',
+        ],
+        'create-ticket' => [
+            'label' => 'Open a ticket',
+            'description' => "Puts work on a channel's ticket board, in the name of whoever wrote this workflow.",
+            'title' => [
+                'label' => 'What the ticket is about',
+                'hint' => 'The line that appears on the board. You can put things from the trigger in here.',
+            ],
+            'body' => [
+                'label' => 'The description',
+            ],
+            'priority' => 'How urgent',
         ],
         'add-reaction' => [
             'label' => 'Put an emoji on a message',
@@ -175,6 +209,9 @@ return [
         'message_not_found' => 'That message is gone.',
         'no_person_chosen' => 'This step was given no person.',
         'person_not_found' => 'That person is no longer in this workspace.',
+        'tickets_off' => 'This workspace no longer keeps tickets.',
+        'may_not_open_ticket' => 'The owner of this workflow may not open a ticket in :channel.',
+        'empty_ticket_title' => 'Nothing was left to name the ticket after.',
         'no_owner' => 'This workflow has no owner left.',
         'may_not_post' => 'This workflow\'s owner may not post in #:channel.',
         'may_not_dm' => 'This workflow\'s owner may not message this person.',
@@ -184,11 +221,11 @@ return [
         'may_not_create_channel' => 'This workflow\'s owner may not create channels.',
         'no_channel_name' => 'No name was left for the channel.',
         'empty_message' => 'No text was left to send.',
-        'url_unreadable' => 'That is not an address Pcom can do anything with.',
+        'url_unreadable' => 'That is not an address Postduif can do anything with.',
         'url_scheme' => 'Only http:// and https:// can be requested.',
         'url_not_public' => "This address is inside the server's own network. A workflow may not request that.",
         'url_unknown_host' => 'That address does not exist, or is not answering right now.',
-        'http_method' => 'Pcom does not know that kind of request.',
+        'http_method' => 'Postduif does not know that kind of request.',
         'http_unreachable' => 'Nothing came back. The address took too long or cannot be reached.',
         'delay_too_short' => 'Waiting takes at least a minute.',
         'delay_too_long' => 'Waiting longer than four weeks is not possible.',
@@ -199,6 +236,12 @@ return [
     ],
 
     'screen' => [
+        'avatar' => "The bot's face",
+        'avatar_hint' => 'Appears beside every message this workflow posts. Without a picture the default bot mark stays.',
+        'avatar_choose' => 'Choose a picture',
+        'avatar_remove' => 'Remove the picture',
+        'avatar_saved' => "The bot's face has been updated.",
+        'avatar_removed' => 'The picture has been removed.',
         'created' => 'Workflow created. Switch it on once the steps are right.',
         'saved' => 'Workflow saved.',
         'deleted' => 'Workflow deleted.',
@@ -214,7 +257,7 @@ return [
 
     'run' => [
         'no_longer_allowed' => 'This workflow is switched off or has no owner left, so the rest was not carried out.',
-        'unknown_action' => 'This step does something (:action) Pcom no longer knows.',
+        'unknown_action' => 'This step does something (:action) Postduif no longer knows.',
         'step_failed' => 'This step went wrong.',
         'went_round_in_circles' => 'This workflow runs in a circle and has been stopped.',
     ],
@@ -248,6 +291,10 @@ return [
             'id' => 'The message',
             'text' => 'What the message says',
         ],
+        'ticket' => [
+            'id' => 'The ticket',
+            'number' => 'The number of the ticket',
+        ],
         'channel' => [
             'topic' => 'The topic of the channel',
             'members' => 'How many members the channel has',
@@ -255,9 +302,22 @@ return [
             'id' => 'The channel',
             'name' => 'The name of the channel',
         ],
+        'punch' => [
+            'direction' => 'Whether it was clocking in or out',
+            'at' => 'At what time, on that person\'s own clock',
+        ],
+        'shift' => [
+            'hours' => 'How long the shift lasted, in hours (7.5)',
+            'duration' => 'How long the shift lasted, written out',
+            'started_at' => 'What time the shift began',
+        ],
         'user' => [
             'id' => 'Who did it',
             'name' => 'The name of who did it',
+        ],
+        'form' => [
+            'id' => 'The form',
+            'title' => 'The name of the form',
         ],
         'reactor' => [
             'id' => 'Who put the emoji there',
@@ -277,6 +337,7 @@ return [
         ],
         'emoji' => 'The emoji that was used',
         'keyword' => 'The word that was found',
+        'answers' => 'All the answers. Put the key of a question after it for one answer on its own, for instance answers.reden',
         'payload' => 'Everything that arrived',
     ],
 ];

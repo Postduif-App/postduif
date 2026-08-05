@@ -10,6 +10,15 @@
  */
 
 return [
+    /*
+     * The channel every workspace starts with. Slugged on the way in, so
+     * this is a name rather than an address.
+     */
+    'home' => [
+        'name' => 'algemeen',
+        'topic' => 'Alles wat niet ergens anders past',
+    ],
+
     'actions' => [
         'cancel' => 'Annuleren',
         'save' => 'Opslaan',

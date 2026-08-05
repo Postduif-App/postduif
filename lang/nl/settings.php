@@ -67,7 +67,7 @@ return [
 
     'notifications' => [
         'title' => 'Notificaties',
-        'description' => 'Wanneer Pcom je mag bereiken terwijl je er niet bent',
+        'description' => 'Wanneer Postduif je mag bereiken terwijl je er niet bent',
         'after' => 'Laat het weten als ik een kanaal niet heb geopend',
         'never' => 'Nooit',
         'longer_than' => 'langer dan :duration',
@@ -141,7 +141,7 @@ return [
         'warning' => 'Een token handelt als jij: het ziet elk kanaal dat jij kunt zien en kan berichten plaatsen waar jij dat kunt. Het geldt voor al je workspaces en opent de API. Deel er dus geen, en trek er een in zodra je hem niet meer gebruikt.',
         'endpoint' => 'Adres voor je AI-client',
         'copy_endpoint' => 'Adres kopiëren',
-        'endpoint_hint' => 'Hier hoeft geen token bij. Je client vraagt zelf toestemming, en die geef je op een scherm van Pcom — daar zie je ook wat hij mag.',
+        'endpoint_hint' => 'Hier hoeft geen token bij. Je client vraagt zelf toestemming, en die geef je op een scherm van Postduif — daar zie je ook wat hij mag.',
         'new_token' => 'Nieuw token',
         'name_placeholder' => 'Waar ga je hem gebruiken? Bijvoorbeeld: Claude op mijn laptop',
         'create' => 'Aanmaken',

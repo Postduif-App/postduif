@@ -186,6 +186,10 @@ return [
             'SendTransfers' => 'Bestanden versturen',
             'BroadcastMention' => '@here en @everyone gebruiken',
             'ManageWorkflows' => 'Workflows schrijven',
+            'CreateForms' => 'Formulieren maken',
+            'ShareFormsPublicly' => 'Formulieren buiten de workspace delen',
+            'SeeHours' => 'Uren van collega\'s inzien',
+            'DeleteBotMessages' => 'Berichten van bots verwijderen',
         ],
         'description' => [
             'ManageWorkspace' => 'De naam, de rollen, de rechten en het uiterlijk. Wie dit heeft, kan ook zichzelf en anderen meer geven — het is het enige recht dat bij alle andere kan.',
@@ -195,6 +199,10 @@ return [
             'SendTransfers' => 'Bestanden klaarzetten achter een link die ook buiten de workspace werkt.',
             'BroadcastMention' => 'Een heel kanaal in één keer een melding geven. Zonder dit zijn die vermeldingen niet te kiezen en bereiken ze niemand.',
             'ManageWorkflows' => 'Dingen schrijven die de workspace zelf doet. Ze lopen met de rechten van wie ze schreef.',
+            'CreateForms' => 'Een vragenlijst opstellen en in een kanaal zetten. De antwoorden komen bij de maker terecht.',
+            'ShareFormsPublicly' => 'Een formulier achter een link zetten die ook zonder account werkt. Wie dit heeft, laat mensen van buiten in deze workspace schrijven.',
+            'DeleteBotMessages' => 'Berichten weghalen die door een webhook of een workflow geplaatst zijn. Gaat niet over wat mensen zelf schrijven — dat blijft van henzelf. Wie een kanaal beheert kon dit al voor dat kanaal.',
+            'SeeHours' => 'Zien hoeveel uur collega\'s deze week geklokt hebben en wie er nu ingeklokt staat. Iedereen ziet sowieso zijn eigen uren; dit gaat over die van een ander.',
         ],
     ],
     'workspace-accent' => [

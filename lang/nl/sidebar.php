@@ -18,6 +18,8 @@ return [
         'saved' => 'Bewaard',
         'tickets' => 'Tickets',
         'transfers' => 'Versturen',
+        'forms' => 'Formulieren',
+        'timeclock' => 'Tijdregistratie',
         'broadcast' => 'Rondsturen',
     ],
 

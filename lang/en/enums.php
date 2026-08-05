@@ -178,6 +178,10 @@ return [
             'SendTransfers' => 'Send files',
             'BroadcastMention' => 'Use @here and @everyone',
             'ManageWorkflows' => 'Write workflows',
+            'CreateForms' => 'Make forms',
+            'ShareFormsPublicly' => 'Share forms outside the workspace',
+            'SeeHours' => "See colleagues' hours",
+            'DeleteBotMessages' => 'Delete messages from bots',
         ],
         'description' => [
             'ManageWorkspace' => 'The name, the roles, the permissions and the look. Whoever holds this can also give themselves and others more — it is the one right that reaches every other.',
@@ -187,6 +191,10 @@ return [
             'SendTransfers' => 'Put files behind a link that works outside the workspace too.',
             'BroadcastMention' => 'Notify a whole channel at once. Without it those mentions cannot be picked and reach nobody.',
             'ManageWorkflows' => 'Write the things the workspace does by itself. They run with the rights of whoever wrote them.',
+            'CreateForms' => 'Put a questionnaire together and place it in a channel. The answers land with whoever made it.',
+            'ShareFormsPublicly' => 'Put a form behind a link that works without an account. Whoever holds this lets people from outside write into this workspace.',
+            'DeleteBotMessages' => 'Remove messages posted by a webhook or a workflow. Not about what people write themselves — those stay their own. Whoever manages a channel could already do this for that channel.',
+            'SeeHours' => 'See how many hours colleagues clocked this week and who is clocked in right now. Everybody sees their own hours regardless; this is about somebody else\'s.',
         ],
     ],
     'workspace-accent' => [

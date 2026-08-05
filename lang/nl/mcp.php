@@ -30,7 +30,7 @@ return [
     'authorize' => [
         'title' => ':client toegang geven',
         'heading' => ':client wil meelezen namens jou',
-        'explanation' => 'Deze client krijgt toegang tot Pcom alsof jij het bent. Geef alleen toestemming als je dit zelf net in gang hebt gezet.',
+        'explanation' => 'Deze client krijgt toegang tot Postduif alsof jij het bent. Geef alleen toestemming als je dit zelf net in gang hebt gezet.',
         'as' => 'Als',
         'scope' => 'Lezen en schrijven in de kanalen die jij mag zien, en je status zetten.',
         'limits' => 'Nooit meer dan jij zelf mag. Een privékanaal waar jij niet in zit, bestaat voor deze client ook niet.',

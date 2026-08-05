@@ -1,6 +1,15 @@
 <?php
 
 return [
+    /*
+     * The channel every workspace starts with. Slugged on the way in, so
+     * this is a name rather than an address.
+     */
+    'home' => [
+        'name' => 'general',
+        'topic' => 'Anything that does not belong somewhere else',
+    ],
+
     'actions' => [
         'cancel' => 'Cancel',
         'save' => 'Save',

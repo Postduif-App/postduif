@@ -38,6 +38,18 @@ return [
             ],
         ],
 
+        'timeclock' => [
+            'label' => 'Als iemand in- of uitklokt',
+            'description' => 'Loopt zodra iemand zichzelf op de klok zet of eraf haalt. Alleen in workspaces waar tijdregistratie aanstaat.',
+            'direction' => [
+                'label' => 'Waarop',
+                'hint' => 'Bij "beide" loopt de workflow twee keer per dienst: één keer aan het begin en één keer aan het eind.',
+                'both' => 'In- én uitklokken',
+                'in' => 'Alleen inklokken',
+                'out' => 'Alleen uitklokken',
+            ],
+        ],
+
         'reaction' => [
             'label' => 'Als iemand een emoji gebruikt',
             'description' => 'Loopt zodra deze emoji op een bericht gezet wordt. Weghalen en opnieuw zetten laat hem opnieuw lopen.',
@@ -49,6 +61,16 @@ return [
                 'label' => 'In welk kanaal',
                 'hint' => 'Leeg laten betekent: overal in deze workspace.',
             ],
+        ],
+
+        'form-submitted' => [
+            'label' => 'Als iemand een formulier instuurt',
+            'description' => 'Loopt zodra er een inzending binnenkomt op het formulier dat je kiest.',
+            'form' => [
+                'label' => 'Welk formulier',
+                'hint' => 'Eén formulier, want de antwoorden heten per formulier anders.',
+            ],
+            'anonymous' => 'anoniem',
         ],
 
         'link' => [
@@ -117,6 +139,18 @@ return [
         'reply-in-thread' => [
             'label' => 'Antwoord in een thread',
             'description' => 'Hangt een antwoord onder een bericht in plaats van ernaast.',
+        ],
+        'create-ticket' => [
+            'label' => 'Ticket openen',
+            'description' => 'Zet werk op het ticketbord van een kanaal, op naam van wie deze workflow schreef.',
+            'title' => [
+                'label' => 'Waar gaat het ticket over',
+                'hint' => 'De regel die op het bord komt te staan. Je kunt hier gegevens uit de trigger in zetten.',
+            ],
+            'body' => [
+                'label' => 'De omschrijving',
+            ],
+            'priority' => 'Hoe urgent',
         ],
         'add-reaction' => [
             'label' => 'Emoji op een bericht zetten',
@@ -197,6 +231,9 @@ return [
         'message_not_found' => 'Dat bericht bestaat niet meer.',
         'no_person_chosen' => 'Deze stap heeft geen persoon gekregen.',
         'person_not_found' => 'Die persoon zit niet meer in deze workspace.',
+        'tickets_off' => 'Deze workspace houdt geen tickets meer bij.',
+        'may_not_open_ticket' => 'De eigenaar van deze workflow mag geen ticket openen in :channel.',
+        'empty_ticket_title' => 'Er bleef niets over om het ticket naar te noemen.',
         'no_owner' => 'Deze workflow heeft geen eigenaar meer.',
         'may_not_post' => 'De eigenaar van deze workflow mag niet posten in #:channel.',
         'may_not_dm' => 'De eigenaar van deze workflow mag deze persoon geen bericht sturen.',
@@ -206,11 +243,11 @@ return [
         'may_not_create_channel' => 'De eigenaar van deze workflow mag geen kanalen aanmaken.',
         'no_channel_name' => 'Er is geen naam voor het kanaal overgebleven.',
         'empty_message' => 'Er bleef geen tekst over om te versturen.',
-        'url_unreadable' => 'Dat is geen adres waar Pcom iets mee kan.',
+        'url_unreadable' => 'Dat is geen adres waar Postduif iets mee kan.',
         'url_scheme' => 'Alleen http:// en https:// kunnen opgevraagd worden.',
         'url_not_public' => 'Dit adres ligt binnen het eigen netwerk van de server. Dat mag een workflow niet opvragen.',
         'url_unknown_host' => 'Dat adres bestaat niet, of het antwoordt op dit moment niet.',
-        'http_method' => 'Dat soort verzoek kent Pcom niet.',
+        'http_method' => 'Dat soort verzoek kent Postduif niet.',
         'http_unreachable' => 'Er kwam geen antwoord. Het adres deed er te lang over of is niet bereikbaar.',
         'delay_too_short' => 'Wachten doe je minstens een minuut.',
         'delay_too_long' => 'Langer dan vier weken wachten kan niet.',
@@ -222,6 +259,12 @@ return [
 
     /* What the builder screen says back after a change. */
     'screen' => [
+        'avatar' => 'Gezicht van de bot',
+        'avatar_hint' => 'Staat naast elk bericht dat deze workflow plaatst. Zonder foto blijft het standaard botteken staan.',
+        'avatar_choose' => 'Foto kiezen',
+        'avatar_remove' => 'Foto weghalen',
+        'avatar_saved' => 'Het gezicht van de bot is bijgewerkt.',
+        'avatar_removed' => 'De foto is weggehaald.',
         'created' => 'Workflow aangemaakt. Zet hem aan zodra de stappen kloppen.',
         'saved' => 'Workflow opgeslagen.',
         'deleted' => 'Workflow verwijderd.',
@@ -238,7 +281,7 @@ return [
 
     'run' => [
         'no_longer_allowed' => 'Deze workflow staat uit of heeft geen eigenaar meer, dus de rest is niet uitgevoerd.',
-        'unknown_action' => 'Deze stap doet iets (:action) wat Pcom niet meer kent.',
+        'unknown_action' => 'Deze stap doet iets (:action) wat Postduif niet meer kent.',
         'step_failed' => 'Deze stap ging mis.',
         'went_round_in_circles' => 'Deze workflow loopt in een kring en is gestopt.',
     ],
@@ -277,6 +320,10 @@ return [
             'id' => 'Het bericht',
             'text' => 'Wat er in het bericht staat',
         ],
+        'ticket' => [
+            'id' => 'Het ticket',
+            'number' => 'Het nummer van het ticket',
+        ],
         'channel' => [
             'topic' => 'Het onderwerp van het kanaal',
             'members' => 'Hoeveel leden het kanaal heeft',
@@ -284,9 +331,22 @@ return [
             'id' => 'Het kanaal',
             'name' => 'De naam van het kanaal',
         ],
+        'punch' => [
+            'direction' => 'Of er in- of uitgeklokt werd',
+            'at' => 'Hoe laat, op de klok van diegene zelf',
+        ],
+        'shift' => [
+            'hours' => 'Hoe lang de dienst duurde, in uren (7,5)',
+            'duration' => 'Hoe lang de dienst duurde, uitgeschreven',
+            'started_at' => 'Hoe laat de dienst begon',
+        ],
         'user' => [
             'id' => 'Wie het deed',
             'name' => 'De naam van wie het deed',
+        ],
+        'form' => [
+            'id' => 'Het formulier',
+            'title' => 'De naam van het formulier',
         ],
         'reactor' => [
             'id' => 'Wie de emoji zette',
@@ -306,6 +366,7 @@ return [
         ],
         'emoji' => 'De emoji die gebruikt werd',
         'keyword' => 'Het woord dat gevonden werd',
+        'answers' => 'Alle antwoorden. Eén los antwoord haal je op met de sleutel van de vraag erachter, bijvoorbeeld answers.reden',
         'payload' => 'Alles wat er binnenkwam',
     ],
 ];

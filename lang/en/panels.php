@@ -4,7 +4,7 @@ return [
 
     'webhooks' => [
         'heading' => 'Webhooks',
-        'explanation' => 'Let something outside Pcom post in this channel, under a name of its own and plainly marked as a bot.',
+        'explanation' => 'Let something outside Postduif post in this channel, under a name of its own and plainly marked as a bot.',
         'add' => 'Add',
         'name_label' => 'Name',
         'name_hint' => 'What this webhook is for. Only your lot see this.',

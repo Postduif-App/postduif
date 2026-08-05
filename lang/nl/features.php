@@ -12,6 +12,10 @@ return [
         'label' => 'AI-toegang',
         'description' => 'AI-clients mogen met een token meelezen en meepraten in deze workspace.',
     ],
+    'forms' => [
+        'label' => 'Formulieren',
+        'description' => 'Vragenlijsten die in een kanaal geplaatst of als link gedeeld kunnen worden. De antwoorden gaan per DM naar wie het formulier maakte.',
+    ],
     'invite-links' => [
         'label' => 'Uitnodigingslinks',
         'description' => 'Meedoen via een deelbare link, naast een uitnodiging op naam.',
@@ -39,6 +43,10 @@ return [
     'secret-requests' => [
         'label' => 'Geheimen',
         'description' => 'Wachtwoorden en sleutels opvragen via een formulier, en er zelf één versturen die de ontvanger precies één keer kan bekijken — in plaats van ze in een gesprek te laten plakken.',
+    ],
+    'timeclock' => [
+        'label' => 'Tijdregistratie',
+        'description' => 'Leden klokken in en uit, zien hun eigen uren terug en kunnen een geklokte periode achteraf bijstellen. Wie de uren van collega\'s mag inzien, bepaalt de workspace met een recht op de rol.',
     ],
     'tickets' => [
         'label' => 'Tickets',

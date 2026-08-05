@@ -38,6 +38,16 @@ return [
         'withdrawn' => 'Bericht ingetrokken.',
     ],
 
+    'form' => [
+        'saved' => 'Formulier opgeslagen.',
+        'deleted' => 'Formulier verwijderd.',
+        'closed' => 'Formulier gesloten.',
+        'reopened' => 'Formulier weer opengezet.',
+        'shared' => 'Er is een nieuwe deelbare link. De vorige werkt niet meer.',
+        'unshared' => 'De link is ingetrokken.',
+        'posted' => 'Formulier in het kanaal gezet.',
+    ],
+
     'poll' => [
         'closed' => 'Poll gesloten.',
         'reopened' => 'Poll heropend.',
@@ -106,5 +116,13 @@ return [
     'custom_emoji' => [
         'added' => ':name staat nu in de picker.',
         'removed' => ':name is weggehaald.',
+    ],
+
+    'timeclock' => [
+        'clocked_in' => 'Je staat ingeklokt.',
+        'clocked_out' => 'Uitgeklokt na :duration.',
+        'not_clocked_in' => 'Je stond niet ingeklokt.',
+        'adjusted' => 'De periode is bijgesteld.',
+        'removed' => 'De periode is verwijderd.',
     ],
 ];
