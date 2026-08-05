@@ -1,7 +1,30 @@
-# Postduif
+<p align="center">
+  <img src="resources/images/readme-banner.svg" alt="Postduif" width="820">
+</p>
 
-Team messaging for workspaces — channels, threads, direct messages, tickets and
-presence, in a single self-hosted Laravel application.
+<p align="center">
+  <img src="https://img.shields.io/badge/PHP-8.3+-16160F?style=flat-square&labelColor=16160F&color=E8C81E" alt="PHP 8.3+">
+  <img src="https://img.shields.io/badge/Laravel-13-16160F?style=flat-square&labelColor=16160F&color=E8C81E" alt="Laravel 13">
+  <img src="https://img.shields.io/badge/React-19-16160F?style=flat-square&labelColor=16160F&color=E8C81E" alt="React 19">
+  <img src="https://img.shields.io/badge/Pest-5-16160F?style=flat-square&labelColor=16160F&color=E8C81E" alt="Pest 5">
+  <img src="https://img.shields.io/badge/license-MIT-16160F?style=flat-square&labelColor=16160F&color=E8C81E" alt="MIT license">
+</p>
+
+<p align="center">
+  Team messaging for workspaces — channels, threads, direct messages, tickets
+  and presence, in a single self-hosted Laravel application.
+</p>
+
+<p align="center">
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#stack">Stack</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#when-it-does-not-work">Troubleshooting</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#testing">Testing</a>
+</p>
+
+---
 
 Postduif is built around one idea: a workspace decides what it offers. Which
 parts of the product are switched on, who may create a channel, who may post in
@@ -59,7 +82,7 @@ Requirements: Docker with Compose v2. Nothing else — no PHP, no Node, no
 database on your machine.
 
 ```bash
-git clone git@github.com:SebastiaanKloos/postduif.git pcom && cd pcom
+git clone git@github.com:SebastiaanKloos/postduif.git postduif && cd postduif
 docker compose up
 ```
 
@@ -127,7 +150,7 @@ without that volume a deployment would take them with it.
 Requirements: PHP 8.3 or newer, Composer, Node 22+, PostgreSQL, Redis.
 
 ```bash
-git clone git@github.com:SebastiaanKloos/postduif.git pcom && cd pcom
+git clone git@github.com:SebastiaanKloos/postduif.git postduif && cd postduif
 composer setup      # install, .env, key, migrate, npm install, npm run build
 ```
 
@@ -141,7 +164,7 @@ composer dev        # serves the app, queue, Reverb and Vite together
 
 Alternatively, if you use [Solo](https://soloterm.com), `solo.yml` in the repo
 root starts Reverb, the queue listener, Vite and `pail` in one screen — it
-assumes the app itself is served by Valet at `https://pcom.test`.
+assumes the app itself is served by Valet at `https://postduif.test`.
 
 Outside production, `routes/dev.php` adds a quick-login endpoint so you can hop
 between seeded users without typing a password.
