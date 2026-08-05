@@ -116,7 +116,7 @@ class FetchLinkPreview
             return ['failed_reason' => 'Dit is geen webpagina.'];
         }
 
-        return $this->parse($this->firstBytes($response->toPsrResponse()->getBody()));
+        return $this->parse($this->firstBytes($response->toPsrResponse()->getBody()), $url);
     }
 
     /**
@@ -144,7 +144,7 @@ class FetchLinkPreview
      *
      * @return array<string, mixed>
      */
-    private function parse(string $html): array
+    private function parse(string $html, string $pageUrl): array
     {
         $title = $this->meta($html, 'og:title')
             ?? $this->titleTag($html);
@@ -159,10 +159,85 @@ class FetchLinkPreview
                 $this->meta($html, 'og:description') ?? $this->meta($html, 'description') ?? '',
                 400,
             ) ?: null,
-            'image_url' => Str::limit($this->meta($html, 'og:image') ?? '', 2000) ?: null,
+            'image_url' => $this->image($html, $pageUrl),
             'site_name' => Str::limit($this->meta($html, 'og:site_name') ?? '', 190) ?: null,
             'fetched_at' => now(),
         ];
+    }
+
+    /**
+     * The picture the page offers, as an address a browser can actually load.
+     *
+     * Two things have to happen to it. An og:image is very often relative —
+     * "/og/home.png" — and stored as it stands it would point at *our* origin,
+     * which is a broken image at best and a request to ourselves at worst. So
+     * it is resolved against the page it came from.
+     *
+     * And then it is held to the same rule as the page was. The address check
+     * on the page stops our server from being aimed at the inside of our own
+     * network; without this, a page could still name an og:image on a private
+     * address and have every reader's browser fetch it — a smaller thing,
+     * because it is their network and not ours, but the same shape of trick and
+     * we already have the answer to it lying around.
+     */
+    private function image(string $html, string $pageUrl): ?string
+    {
+        $image = $this->meta($html, 'og:image');
+
+        if ($image === null) {
+            return null;
+        }
+
+        $absolute = $this->absolute($image, $pageUrl);
+
+        if ($absolute === null || $this->publicUrl->refuse($absolute) !== null) {
+            return null;
+        }
+
+        return Str::limit($absolute, 2000, '');
+    }
+
+    /**
+     * A possibly relative address, against the page that named it.
+     *
+     * Hand-resolved rather than through a library, because only three shapes
+     * turn up in practice: an absolute URL, one starting at the root, and one
+     * relative to the page's own directory. Anything else — a data: URI, a
+     * protocol nobody previews — comes back null and the card simply has no
+     * picture, which is a better answer than a guess.
+     */
+    private function absolute(string $image, string $pageUrl): ?string
+    {
+        if (preg_match('/^https?:\/\//i', $image) === 1) {
+            return $image;
+        }
+
+        // Protocol-relative: //cdn.example/og.png takes the page's own scheme.
+        if (str_starts_with($image, '//')) {
+            return (parse_url($pageUrl, PHP_URL_SCHEME) ?: 'https').':'.$image;
+        }
+
+        // Anything that is not a path at all — data:, mailto:, javascript: —
+        // is not a picture we are going to point a browser at.
+        if (preg_match('/^[a-z][a-z0-9+.-]*:/i', $image) === 1) {
+            return null;
+        }
+
+        $parts = parse_url($pageUrl);
+
+        if (! isset($parts['scheme'], $parts['host'])) {
+            return null;
+        }
+
+        $origin = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+
+        if (str_starts_with($image, '/')) {
+            return $origin.$image;
+        }
+
+        $directory = rtrim(dirname($parts['path'] ?? '/'), '/');
+
+        return $origin.$directory.'/'.$image;
     }
 
     private function meta(string $html, string $property): ?string
@@ -202,10 +277,16 @@ class FetchLinkPreview
      */
     private function remember(string $url, array $attributes): LinkPreview
     {
-        return LinkPreview::create([
-            'url' => Str::limit($url, 2000, ''),
-            'url_hash' => LinkPreview::hash($url),
-            ...$attributes,
-        ]);
+        /*
+         * firstOrCreate rather than create, because url_hash is unique and two
+         * jobs can be in the air for the same link — the check at the top of
+         * handle() and the insert down here are not one moment. Whoever loses
+         * that race gets the row the other one wrote, which says the same
+         * thing: this link has been looked at.
+         */
+        return LinkPreview::firstOrCreate(
+            ['url_hash' => LinkPreview::hash($url)],
+            ['url' => Str::limit($url, 2000, ''), ...$attributes],
+        );
     }
 }

@@ -1,12 +1,16 @@
 <?php
 
+use App\Actions\Chat\AnnounceLinkPreview;
 use App\Actions\Chat\FetchLinkPreview;
+use App\Events\LinkPreviewAttached;
 use App\Jobs\FetchLinkPreviewJob;
 use App\Models\LinkPreview;
 use App\Models\Message;
 use App\Models\User;
 use App\Support\Dns\HostResolver;
 use App\Support\PublicUrl;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -303,4 +307,180 @@ it('draws nothing for a link that could not be read', function () {
         ->get(route('chat.show', [$workspace, $channel]))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('messages.0.linkPreview', null));
+});
+
+it('makes a relative og:image an address a browser can load', function () {
+    Http::fake(['*' => Http::response(
+        '<html><head><meta property="og:title" content="Artikel">'
+        .'<meta property="og:image" content="/og/artikel.png"></head></html>',
+        200,
+        ['Content-Type' => 'text/html'],
+    )]);
+
+    $preview = app(FetchLinkPreview::class)->handle('https://voorbeeld.test/blog/artikel');
+
+    expect($preview->image_url)->toBe('https://voorbeeld.test/og/artikel.png');
+});
+
+it('resolves an og:image beside the page it came from', function () {
+    Http::fake(['*' => Http::response(
+        '<html><head><title>Artikel</title>'
+        .'<meta property="og:image" content="plaatje.png"></head></html>',
+        200,
+        ['Content-Type' => 'text/html'],
+    )]);
+
+    $preview = app(FetchLinkPreview::class)->handle('https://voorbeeld.test/blog/artikel');
+
+    expect($preview->image_url)->toBe('https://voorbeeld.test/blog/plaatje.png');
+});
+
+it('takes the page its own scheme for a protocol-relative image', function () {
+    Http::fake(['*' => Http::response(
+        '<html><head><title>Artikel</title>'
+        .'<meta property="og:image" content="//voorbeeld.test/og.png"></head></html>',
+        200,
+        ['Content-Type' => 'text/html'],
+    )]);
+
+    $preview = app(FetchLinkPreview::class)->handle('https://voorbeeld.test/artikel');
+
+    expect($preview->image_url)->toBe('https://voorbeeld.test/og.png');
+});
+
+it('leaves out a picture that is not an address worth pointing a browser at', function (string $image) {
+    Http::fake(['*' => Http::response(
+        '<html><head><title>Artikel</title>'
+        .'<meta property="og:image" content="'.$image.'"></head></html>',
+        200,
+        ['Content-Type' => 'text/html'],
+    )]);
+
+    $preview = app(FetchLinkPreview::class)->handle('https://voorbeeld.test/artikel');
+
+    expect($preview->title)->toBe('Artikel')
+        ->and($preview->image_url)->toBeNull();
+})->with([
+    'a data URI' => 'data:image/png;base64,iVBORw0KGgo=',
+    'something on the inside' => 'http://127.0.0.1/og.png',
+]);
+
+it('keeps a workspace that never asked for previews out of the cache', function () {
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+        'body' => 'Zie https://voorbeeld.test/artikel',
+    ]);
+
+    // Fetched for somebody else entirely: the cache is one table for the whole
+    // platform, and this workspace said it does not do this.
+    LinkPreview::create([
+        'url' => 'https://voorbeeld.test/artikel',
+        'url_hash' => LinkPreview::hash('https://voorbeeld.test/artikel'),
+        'title' => 'Een goed artikel',
+        'fetched_at' => now(),
+    ]);
+
+    actingAs($user)
+        ->get(route('chat.show', [$workspace, $channel]))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('messages.0.linkPreview', null));
+});
+
+it('tells the conversation once the look-up is in', function () {
+    Event::fake([LinkPreviewAttached::class]);
+
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $workspace->update(['link_previews_enabled' => true]);
+    $channel = channelWithMember($workspace, $user);
+
+    $message = Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+        'body' => 'Zie https://voorbeeld.test/artikel',
+    ]);
+
+    Http::fake(['*' => Http::response(
+        '<html><head><meta property="og:title" content="Artikel"></head></html>',
+        200,
+        ['Content-Type' => 'text/html'],
+    )]);
+
+    (new FetchLinkPreviewJob('https://voorbeeld.test/artikel'))
+        ->handle(app(FetchLinkPreview::class), app(AnnounceLinkPreview::class));
+
+    Event::assertDispatched(
+        LinkPreviewAttached::class,
+        fn (LinkPreviewAttached $event): bool => $event->message->is($message),
+    );
+});
+
+it('says nothing to a workspace that does not draw cards', function () {
+    Event::fake([LinkPreviewAttached::class]);
+
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+        'body' => 'Zie https://voorbeeld.test/artikel',
+    ]);
+
+    $preview = LinkPreview::create([
+        'url' => 'https://voorbeeld.test/artikel',
+        'url_hash' => LinkPreview::hash('https://voorbeeld.test/artikel'),
+        'title' => 'Artikel',
+        'fetched_at' => now(),
+    ]);
+
+    app(AnnounceLinkPreview::class)->handle($preview);
+
+    Event::assertNotDispatched(LinkPreviewAttached::class);
+});
+
+it('says nothing about a message that has moved out of sight', function () {
+    Event::fake([LinkPreviewAttached::class]);
+
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $workspace->update(['link_previews_enabled' => true]);
+    $channel = channelWithMember($workspace, $user);
+
+    Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'user_id' => $user->id,
+        'body' => 'Zie https://voorbeeld.test/artikel',
+        'created_at' => now()->subHours(3),
+    ]);
+
+    $preview = LinkPreview::create([
+        'url' => 'https://voorbeeld.test/artikel',
+        'url_hash' => LinkPreview::hash('https://voorbeeld.test/artikel'),
+        'title' => 'Artikel',
+        'fetched_at' => now(),
+    ]);
+
+    app(AnnounceLinkPreview::class)->handle($preview);
+
+    Event::assertNotDispatched(LinkPreviewAttached::class);
+});
+
+it('keeps one look-up per link in flight, not one per message', function () {
+    // The interface is the whole fix: uniqueId() on its own is a method
+    // Laravel never calls, so without it ten channels given the same new link
+    // meant ten outgoing requests.
+    expect(FetchLinkPreviewJob::class)->toImplement(ShouldBeUnique::class)
+        ->and((new FetchLinkPreviewJob('https://voorbeeld.test/a'))->uniqueId())
+        ->toBe('https://voorbeeld.test/a');
 });

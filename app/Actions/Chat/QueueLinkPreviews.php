@@ -41,27 +41,16 @@ class QueueLinkPreviews
     }
 
     /**
-     * The links in a message, in the order they appear.
+     * The links worth looking at, which is the front of the list.
      *
-     * Deliberately strict about what counts: only http and https, and only up
-     * to whitespace. Anything cleverer would start matching things nobody
-     * meant as a link.
+     * What counts as a link is LinkPreview::urlsIn's business, so the queuer
+     * and the card agree about where a URL ends without either of them holding
+     * a copy of the expression.
      *
-     * @return array<int, string>
+     * @return list<string>
      */
     private function urlsIn(string $body): array
     {
-        preg_match_all('/\bhttps?:\/\/[^\s<>"\']+/i', $body, $matches);
-
-        return array_slice(
-            array_values(array_unique(array_map(
-                // Trailing punctuation is almost always the sentence, not the
-                // URL: "kijk op https://voorbeeld.nl." ends with a full stop.
-                fn (string $url): string => rtrim($url, '.,;:!?)'),
-                $matches[0],
-            ))),
-            0,
-            self::PER_MESSAGE,
-        );
+        return array_slice(LinkPreview::urlsIn($body), 0, self::PER_MESSAGE);
     }
 }

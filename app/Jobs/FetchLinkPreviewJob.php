@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Actions\Chat\AnnounceLinkPreview;
 use App\Actions\Chat\FetchLinkPreview;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -14,7 +16,7 @@ use Illuminate\Foundation\Queue\Queueable;
  * able to fail the request that sent it. Everything that can go wrong is
  * already written to the row by the action, so this job has nothing to retry.
  */
-class FetchLinkPreviewJob implements ShouldQueue
+class FetchLinkPreviewJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -26,13 +28,25 @@ class FetchLinkPreviewJob implements ShouldQueue
 
     public function __construct(public readonly string $url) {}
 
-    public function handle(FetchLinkPreview $fetchLinkPreview): void
+    public function handle(FetchLinkPreview $fetchLinkPreview, AnnounceLinkPreview $announceLinkPreview): void
     {
-        $fetchLinkPreview->handle($this->url);
+        /*
+         * Fetch, then go back and tell the conversations that already have the
+         * message on screen. Without the second half the card only appears on
+         * the next reload, which is how a working feature reads as a broken
+         * one — see LinkPreviewAttached.
+         */
+        $announceLinkPreview->handle($fetchLinkPreview->handle($this->url));
     }
 
     /**
      * One job per URL in flight, rather than one per message that carries it.
+     *
+     * This only means anything because of ShouldBeUnique above — uniqueId() on
+     * its own is a method Laravel never calls. Without the interface, ten
+     * channels being given the same new link in the same minute was ten
+     * outgoing requests: the row that would have stopped the second one does
+     * not exist until the first has finished.
      */
     public function uniqueId(): string
     {

@@ -49,4 +49,39 @@ class LinkPreview extends Model
     {
         return $this->failed_reason === null && $this->title !== null;
     }
+
+    /**
+     * The links in a message, in the order they appear.
+     *
+     * The single place that reads the syntax, for the reason
+     * CustomEmoji::nameFromShortcode is: three places used to carry this
+     * expression — the one that queues a look-up, the one that draws a card,
+     * and the one that decides which messages to tell about a preview — and the
+     * moment two of them disagreed about where a URL ends, a link would be
+     * fetched under one spelling and looked up under another. Nothing would
+     * break loudly; the card would simply never appear.
+     *
+     * Deliberately strict about what counts: only http and https, and only up
+     * to whitespace. Anything cleverer starts matching things nobody meant as a
+     * link.
+     *
+     * @return list<string>
+     */
+    public static function urlsIn(string $body): array
+    {
+        preg_match_all('/\bhttps?:\/\/[^\s<>"\']+/i', $body, $matches);
+
+        return array_values(array_unique(array_map(
+            // Trailing punctuation is almost always the sentence, not the URL:
+            // "kijk op https://voorbeeld.nl." ends with a full stop.
+            fn (string $url): string => rtrim($url, '.,;:!?)'),
+            $matches[0],
+        )));
+    }
+
+    /** The first link in a message, or null when it carries none. */
+    public static function firstUrlIn(string $body): ?string
+    {
+        return self::urlsIn($body)[0] ?? null;
+    }
 }
