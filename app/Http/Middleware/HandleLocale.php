@@ -24,6 +24,15 @@ class HandleLocale
     /** The languages this application actually has translations for. */
     public const SUPPORTED = ['nl', 'en'];
 
+    /**
+     * Where a visitor's own choice is kept.
+     *
+     * A cookie because the people who need it have no account to save it
+     * against — see LocaleController. Left unencrypted in bootstrap/app.php,
+     * like the appearance cookie: there is nothing in "nl" worth hiding.
+     */
+    public const COOKIE = 'locale';
+
     public function handle(Request $request, Closure $next): Response
     {
         app()->setLocale($this->resolve($request));
@@ -37,6 +46,19 @@ class HandleLocale
 
         if ($chosen !== null && in_array($chosen, self::SUPPORTED, true)) {
             return $chosen;
+        }
+
+        /*
+         * Below the member's own setting and above the browser's. It is a
+         * deliberate choice, so it beats a header nobody remembers setting —
+         * but the settings screen asks the same question outright, and an
+         * answer given there should not be overruled by a link somebody
+         * pressed on the public site.
+         */
+        $switched = $request->cookie(self::COOKIE);
+
+        if (is_string($switched) && in_array($switched, self::SUPPORTED, true)) {
+            return $switched;
         }
 
         // getPreferredLanguage picks the best match from Accept-Language and
