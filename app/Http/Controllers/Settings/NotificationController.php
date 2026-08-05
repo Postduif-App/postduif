@@ -10,7 +10,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * When Pcom is allowed to reach somebody who is not looking at it.
+ * When Postduif is allowed to reach somebody who is not looking at it.
  *
  * A member's own setting rather than a workspace one: how much interruption you
  * want is not something an administrator gets to decide for you.

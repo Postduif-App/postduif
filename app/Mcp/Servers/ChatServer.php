@@ -22,7 +22,7 @@ use Laravel\Mcp\Server\Tool;
  * private channel the member cannot open in the browser does not exist here
  * either.
  */
-#[Name('Pcom chat')]
+#[Name('Postduif chat')]
 #[Version('1.0.0')]
 #[Instructions(<<<'TEXT'
 Deze server geeft toegang tot de chat van één gebruiker: de kanalen die zij

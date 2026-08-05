@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-const STORAGE_KEY = 'pcom.recent-emoji';
+const STORAGE_KEY = 'postduif.recent-emoji';
 const LIMIT = 8;
 
 function read(): string[] {

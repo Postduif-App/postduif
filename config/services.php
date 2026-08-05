@@ -30,7 +30,7 @@ return [
 
     /**
      * Pushover turns a notification into a push on a member's own phone. The
-     * application token identifies Pcom; the key of the device it goes to is a
+     * application token identifies Postduif; the key of the device it goes to is a
      * per-member setting.
      */
     'pushover' => [

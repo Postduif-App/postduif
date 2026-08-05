@@ -1,26 +1,8 @@
-# Visit https://soloterm.com to learn more
 name: Postduif
 icon: null
 processes:
-  # No HTTP server here: Valet serves https://pcom.test.
-  Reverb:
-    command: php artisan reverb:start
-    working_dir: null
-    auto_start: true
-    auto_restart: true
-    restart_when_changed:
-      - config/reverb.php
-      - config/broadcasting.php
-    env: {}
-  Queue:
-    command: php artisan queue:listen --tries=1 --timeout=0
-    working_dir: null
-    auto_start: true
-    auto_restart: true
-    restart_when_changed: []
-    env: {}
-  Vite:
-    command: npm run dev
+  Schedule:
+    command: php artisan schedule:work
     working_dir: null
     auto_start: true
     auto_restart: false
@@ -31,5 +13,28 @@ processes:
     working_dir: null
     auto_start: false
     auto_restart: false
+    restart_when_changed: []
+    env: {}
+  Reverb:
+    command: php artisan reverb:start
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed:
+    - config/reverb.php
+    - config/broadcasting.php
+    env: {}
+  Vite:
+    command: npm run dev
+    working_dir: null
+    auto_start: true
+    auto_restart: false
+    restart_when_changed: []
+    env: {}
+  Queue:
+    command: php artisan queue:listen --tries=1 --timeout=0
+    working_dir: null
+    auto_start: true
+    auto_restart: true
     restart_when_changed: []
     env: {}

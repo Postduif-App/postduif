@@ -78,16 +78,16 @@ describe('sealSecret / openSecret', () => {
 describe('the key in the link', () => {
     it('writes and reads back the same key', async () => {
         const { key } = await sealSecret('hunter2');
-        const url = linkWithKey('https://pcom.test/geheim/01kz', key);
+        const url = linkWithKey('https://postduif.test/geheim/01kz', key);
 
         expect(keyFromFragment(new URL(url).hash)).toBe(key);
     });
 
     it('puts the key behind the hash, where it stays out of the request', () => {
-        const url = linkWithKey('https://pcom.test/geheim/01kz', 'abc123');
+        const url = linkWithKey('https://postduif.test/geheim/01kz', 'abc123');
 
         // Everything before the "#" is what the browser actually sends.
-        expect(url.split('#')[0]).toBe('https://pcom.test/geheim/01kz');
+        expect(url.split('#')[0]).toBe('https://postduif.test/geheim/01kz');
         expect(url).toContain('#k=abc123');
     });
 

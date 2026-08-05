@@ -26,7 +26,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('Pcom Admin')
+            ->brandName('Postduif Admin')
             ->colors([
                 'primary' => Color::Zinc,
             ])

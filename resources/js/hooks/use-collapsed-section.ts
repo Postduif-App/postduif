@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-const STORAGE_PREFIX = 'pcom.collapsed.';
+const STORAGE_PREFIX = 'postduif.collapsed.';
 
 function read(key: string): boolean {
     // The page is server-rendered too, where there is no localStorage.
