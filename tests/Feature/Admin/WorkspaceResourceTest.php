@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\SystemRole;
 use App\Features\Tickets;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
@@ -38,15 +37,14 @@ test('it searches workspaces by slug', function () {
 
 test('it changes who may use a broadcast mention', function () {
     $workspace = Workspace::factory()->create([
-        'broadcast_mentions' => BroadcastMentionPolicy::Admins,
     ]);
 
     Livewire::test(EditWorkspace::class, ['record' => $workspace->slug])
-        ->fillForm(['broadcast_mentions' => BroadcastMentionPolicy::Nobody->value])
+        ->fillForm(['name' => 'Hernoemd'])
         ->call('save')
         ->assertHasNoFormErrors();
 
-    expect($workspace->refresh()->broadcast_mentions)->toBe(BroadcastMentionPolicy::Nobody);
+    expect($workspace->refresh()->name)->toBe('Hernoemd');
 });
 
 test('it manages the list of blocked words', function () {

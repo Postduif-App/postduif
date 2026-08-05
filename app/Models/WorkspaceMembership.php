@@ -53,6 +53,18 @@ class WorkspaceMembership extends Pivot
              * one, and a pointer that only filled itself in once would go on
              * naming the role they used to have.
              */
+            /*
+             * Nothing to work out when the caller named the role themselves.
+             * The screens that hand somebody a role of the workspace's own
+             * making write the pointer and not the word — there is no word for
+             * "Leverancier" to write — and recomputing it from the string would
+             * quietly put them back in whichever built-in role that string
+             * names.
+             */
+            if ($membership->isDirty('workspace_role_id')) {
+                return;
+            }
+
             if ($membership->exists && ! $membership->isDirty('role')) {
                 return;
             }

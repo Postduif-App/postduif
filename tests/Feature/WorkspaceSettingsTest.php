@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
@@ -49,7 +49,7 @@ it('tells the chat screen whether broadcasting is allowed', function () {
         ->get(route('chat.show', [$workspace, $channel]))
         ->assertInertia(fn ($page) => $page->where('workspace.canBroadcastMention', false));
 
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Everyone]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true, SystemRole::Member);
 
     actingAs($user)
         ->get(route('chat.show', [$workspace, $channel]))

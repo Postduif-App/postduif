@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
-use App\Enums\BroadcastMentionPolicy;
+use App\Enums\WorkspaceAbility;
 use App\Models\InboxItem;
 use App\Models\User;
 use App\Models\Webhook;
@@ -83,7 +83,7 @@ it('lets a bot mention a member without being mentionable itself', function () {
 it('refuses @everyone from a bot even when the workspace allows it', function () {
     $user = User::factory()->create(['username' => 'fenna']);
     $workspace = workspaceWithMember($user);
-    $workspace->forceFill(['broadcast_mentions' => BroadcastMentionPolicy::Everyone])->save();
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true);
 
     $channel = channelWithMember($workspace, $user);
     $webhook = Webhook::factory()->for($channel)->create(['bot_name' => 'Buildbot']);

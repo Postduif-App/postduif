@@ -9,6 +9,7 @@ use App\Models\InboxItem;
 use App\Models\PollOption;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,8 +23,9 @@ use Inertia\Response;
  * — is exactly what a badge cannot say.
  *
  * Inside the chat shell, like the ticket list: same sidebar, same unread counts,
- * same live connection. Nothing is marked read here — that happens by opening
- * the channel, which is where the answer gets written.
+ * same live connection. A row is marked off by being opened — see open() — and
+ * a mention additionally by reading past it in its channel, which is the same
+ * event arrived at from the other side.
  */
 class WorkspaceInboxController extends Controller
 {
@@ -50,6 +52,75 @@ class WorkspaceInboxController extends Controller
     public function mentions(Request $request, Workspace $workspace): Response
     {
         return $this->render($request, $workspace, InboxItemType::Mention);
+    }
+
+    /**
+     * Open a row: mark it off, then go where it points.
+     *
+     * The destination is worked out here rather than in the browser because
+     * this is already the place that knows what a row hangs off — the same
+     * knowledge survives() uses to decide a row is still worth showing. It
+     * also means the mark and the jump are one request, so a row cannot end
+     * up read at a page the member never reached, or reached and left unread.
+     *
+     * Marked read even when it already was: an inbox row is opened far more
+     * often than it is first opened, and a branch here would only buy a
+     * write.
+     */
+    public function open(Request $request, Workspace $workspace, InboxItem $item): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($workspace->hasMember($user), 403, __('chat.not_a_member'));
+
+        /*
+         * Somebody else's row is a 404 rather than a 403: that a row exists at
+         * all is already something about who was named where, and an inbox id
+         * is a small enough number to walk.
+         */
+        abort_unless($item->user_id === $user->id, 404);
+
+        // The same fence the list stands behind. Being named in a channel you
+        // were since removed from leaves the row, and this is the door it
+        // would otherwise open.
+        abort_unless(
+            $this->buildChatShell->visibleChannels($workspace, $user)
+                ->pluck('id')
+                ->contains($item->channel_id),
+            404,
+        );
+
+        $item->forceFill(['read_at' => now()])->save();
+
+        return redirect()->to($this->destination($workspace, $item));
+    }
+
+    /**
+     * Where a row points.
+     *
+     * Straight to the message rather than to the channel: the point of the
+     * list is to answer somebody, and landing at the bottom of a busy channel
+     * means finding the line again yourself. A poll is the odd one out — it is
+     * reached through a link in a message body rather than through a column,
+     * so the poll itself is its own destination.
+     *
+     * Whatever it pointed at may be gone by now, in which case the honest
+     * answer is the list it came from.
+     */
+    private function destination(Workspace $workspace, InboxItem $item): string
+    {
+        if ($item->type === InboxItemType::PollVote) {
+            return $item->poll === null
+                ? route('chat.inbox.index', $workspace)
+                : route('chat.polls.show', [$workspace, $item->poll]);
+        }
+
+        if ($item->message === null || $item->message->isDeleted()) {
+            return route('chat.inbox.index', $workspace);
+        }
+
+        return route('chat.show', [$workspace, $item->message->channel_id])
+            .'#message-'.$item->message_id;
     }
 
     private function requestedType(Request $request): ?InboxItemType

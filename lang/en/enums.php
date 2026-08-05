@@ -29,19 +29,6 @@ return [
             'DoNotDisturb' => 'Do not disturb',
         ],
     ],
-    'broadcast-mention-policy' => [
-        'label' => [
-            'Everyone' => 'Everyone in the workspace',
-            'Admins' => 'Only admins and the owner',
-            'Nobody' => 'Nobody',
-        ],
-    ],
-    'channel-creation-policy' => [
-        'label' => [
-            'Everyone' => 'Everyone in the workspace',
-            'Admins' => 'Only admins and the owner',
-        ],
-    ],
     'channel-layout' => [
         'description' => [
             'Chat' => 'Messages one under the other, like an ordinary conversation.',

@@ -50,7 +50,7 @@ class WorkspacePolicy
 
     /**
      * Whether this member may use a mention that reaches the whole channel at
-     * once. The workspace decides how open that is; see BroadcastMentionPolicy.
+     * once. Which roles may is a right the workspace hands out.
      */
     public function broadcastMention(User $user, Workspace $workspace): bool
     {

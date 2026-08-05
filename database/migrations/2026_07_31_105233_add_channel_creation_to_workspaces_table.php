@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\ChannelCreationPolicy;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +12,10 @@ return new class extends Migration
             // Everyone, so existing workspaces keep working exactly as they did
             // before the setting existed.
             $table->string('channel_creation')
-                ->default(ChannelCreationPolicy::Everyone->value)
+                // The enum that spelled this is gone; a migration reads the value
+                // it wrote at the time, not a class the application has since
+                // dropped.
+                ->default('everyone')
                 ->after('broadcast_mentions');
         });
     }

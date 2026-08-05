@@ -289,6 +289,20 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->name('inbox.index');
 
             /*
+             * Opening a row: mark it off, then go where it points.
+             *
+             * A GET that writes, which is normally the wrong shape — but the
+             * write is idempotent and the alternative is worse. A POST would
+             * have to be followed by the navigation, and Inertia cancels an
+             * in-flight visit when a new one starts, so the two would race.
+             * More plainly: this has to stay a link. Middle-click, open in a
+             * new tab and the address on hover are how a list of things to
+             * read gets used, and a button has none of them.
+             */
+            Route::get('inbox/{item}/openen', [WorkspaceInboxController::class, 'open'])
+                ->name('inbox.open');
+
+            /*
              * The inbox with the mentions tab already chosen. Kept as its own
              * path because it is where the sidebar badge has always pointed and
              * where somebody's bookmarks still go — the page moved, the address

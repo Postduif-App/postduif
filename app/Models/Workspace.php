@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Enums\AttachmentType;
-use App\Enums\BroadcastMentionPolicy;
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\MemberPanelVisibility;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
@@ -28,8 +26,6 @@ use Laravel\Pennant\Feature;
  * @property string $name
  * @property string $slug
  * @property string|null $avatar_path
- * @property BroadcastMentionPolicy $broadcast_mentions
- * @property ChannelCreationPolicy $channel_creation
  * @property MemberPanelVisibility $member_panel
  * @property array<int, string> $blocked_words
  * @property bool $uploads_enabled
@@ -47,7 +43,7 @@ use Laravel\Pennant\Feature;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'slug', 'owner_id', 'broadcast_mentions', 'blocked_words', 'accent', 'font', 'channel_creation', 'member_panel', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'max_transfer_kb', 'max_transfer_days', 'link_previews_enabled'])]
+#[Fillable(['name', 'slug', 'owner_id', 'blocked_words', 'accent', 'font', 'member_panel', 'uploads_enabled', 'allowed_attachment_types', 'max_attachment_kb', 'max_transfer_kb', 'max_transfer_days', 'link_previews_enabled'])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -61,8 +57,6 @@ class Workspace extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-        'channel_creation' => ChannelCreationPolicy::Everyone->value,
         'member_panel' => MemberPanelVisibility::Off->value,
         'blocked_words' => '[]',
         'uploads_enabled' => true,
@@ -83,76 +77,12 @@ class Workspace extends Model
     protected static function booted(): void
     {
         static::created(fn (self $workspace) => $workspace->seedSystemRoles());
-
-        /*
-         * Two of the settings on this row are rights on a role now. The columns
-         * are still what the permissions screen and the admin panel write, so
-         * the translation happens here rather than in either of them — a
-         * dropdown that saves nothing is worse than one that is not there, and
-         * there is more than one place that writes these.
-         *
-         * Both go when the screen that edits roles directly arrives, and the
-         * columns with them.
-         */
-        static::saved(function (self $workspace): void {
-            if ($workspace->wasChanged(['broadcast_mentions', 'channel_creation'])) {
-                $workspace->applySettingsToRoles();
-            }
-        });
-    }
-
-    /**
-     * Write the two role-shaped settings on this row into the roles.
-     *
-     * The same translation the migration did once, for every time somebody
-     * changes their mind afterwards.
-     */
-    public function applySettingsToRoles(): void
-    {
-        foreach ($this->roles()->get() as $role) {
-            $manages = $role->allows(WorkspaceAbility::ManageWorkspace);
-
-            $abilities = $role->abilities()
-                ->reject(fn (WorkspaceAbility $ability): bool => in_array($ability, [
-                    WorkspaceAbility::BroadcastMention,
-                    WorkspaceAbility::CreateChannels,
-                ], true));
-
-            if (match ($this->broadcast_mentions) {
-                // Everyone means everyone, people from outside included: the
-                // setting this replaces asked no question about the role.
-                BroadcastMentionPolicy::Everyone => true,
-                BroadcastMentionPolicy::Nobody => false,
-                BroadcastMentionPolicy::Admins => $manages,
-            }) {
-                $abilities->push(WorkspaceAbility::BroadcastMention);
-            }
-
-            if (match ($this->channel_creation) {
-                ChannelCreationPolicy::Admins => $manages,
-                ChannelCreationPolicy::Everyone => ! $role->is_external,
-            }) {
-                $abilities->push(WorkspaceAbility::CreateChannels);
-            }
-
-            $role->update([
-                'abilities' => $abilities
-                    ->map(fn (WorkspaceAbility $ability): string => $ability->value)
-                    ->values()
-                    ->all(),
-            ]);
-        }
-
-        // The rows changed underneath whatever this request already read.
-        $this->rolesByUser = [];
     }
 
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
-            'broadcast_mentions' => BroadcastMentionPolicy::class,
-            'channel_creation' => ChannelCreationPolicy::class,
             'member_panel' => MemberPanelVisibility::class,
             'blocked_words' => 'array',
             'uploads_enabled' => 'boolean',
@@ -387,55 +317,12 @@ class Workspace extends Model
                 'is_external' => $role->isExternal(),
                 'is_system' => true,
                 'position' => $position,
-                'abilities' => $this->seedAbilitiesFor($role),
+                'abilities' => array_map(
+                    fn (WorkspaceAbility $ability): string => $ability->value,
+                    $role->defaultAbilities(),
+                ),
             ]);
         }
-    }
-
-    /**
-     * What a system role starts with here, rather than in general.
-     *
-     * Two of the seven are already a decision this workspace has made in a
-     * column of its own — who may open a channel, and who may notify a whole
-     * one — so the seed reads those rather than the role's default, which would
-     * quietly undo the setting.
-     *
-     * The migration that gave the existing workspaces their roles does the same
-     * translation in its own copy, as a migration has to: it runs against a
-     * schema this model may since have outgrown. Both copies go together when
-     * the two columns do.
-     *
-     * @return list<string>
-     */
-    private function seedAbilitiesFor(SystemRole $role): array
-    {
-        $abilities = collect($role->defaultAbilities())
-            ->reject(fn (WorkspaceAbility $ability): bool => in_array($ability, [
-                WorkspaceAbility::BroadcastMention,
-                WorkspaceAbility::CreateChannels,
-            ], true));
-
-        if (match ($this->broadcast_mentions) {
-            // Everyone means everyone, people from outside included: the
-            // setting this replaces asked no question about the role.
-            BroadcastMentionPolicy::Everyone => true,
-            BroadcastMentionPolicy::Nobody => false,
-            default => $role->canManageWorkspace(),
-        }) {
-            $abilities->push(WorkspaceAbility::BroadcastMention);
-        }
-
-        if (match ($this->channel_creation) {
-            ChannelCreationPolicy::Admins => $role->canManageWorkspace(),
-            default => ! $role->isExternal(),
-        }) {
-            $abilities->push(WorkspaceAbility::CreateChannels);
-        }
-
-        return $abilities
-            ->map(fn (WorkspaceAbility $ability): string => $ability->value)
-            ->values()
-            ->all();
     }
 
     /**

@@ -14,6 +14,7 @@ return [
         'api_tokens' => 'API tokens',
         'general' => 'General',
         'permissions' => 'Permissions',
+        'roles' => 'Roles',
         'theme' => 'Theme',
         'members' => 'Members',
         'invitations' => 'Invitations',

@@ -1,9 +1,9 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\ChannelType;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\Message;
@@ -203,7 +203,6 @@ it('refuses a guest the workspace settings screen', function () {
     actingAs($guest)
         ->patch(route('workspace.update'), [
             'name' => 'Overgenomen',
-            'broadcast_mentions' => 'admins',
         ])
         ->assertForbidden();
 });
@@ -318,7 +317,7 @@ it('refuses a guest posting in a public channel they were not invited to', funct
 it('keeps a broadcast mention by a guest inside their own channel', function () {
     [$guest, $workspace, $invited, $openToEveryone] = guestWithOneChannel();
 
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Everyone]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true);
 
     $roommate = User::factory()->create(['username' => 'roommate']);
     $stranger = User::factory()->create(['username' => 'stranger']);

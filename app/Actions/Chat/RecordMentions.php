@@ -128,7 +128,7 @@ class RecordMentions
         }
 
         // A webhook never gets to summon the whole channel. It has no member
-        // behind it to hold responsible, and BroadcastMentionPolicy has no
+        // behind it to hold responsible, and a role-held right has no
         // answer for something that is not a member of the workspace.
         if ($message->isFromBot()) {
             return new Collection;

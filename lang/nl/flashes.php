@@ -96,4 +96,10 @@ return [
         'updated' => 'Regel bijgewerkt.',
         'removed' => 'Regel verwijderd.',
     ],
+
+    'role' => [
+        'created' => 'De rol :name is aangemaakt.',
+        'saved' => 'De rol :name is opgeslagen.',
+        'deleted' => 'De rol :name is verwijderd.',
+    ],
 ];

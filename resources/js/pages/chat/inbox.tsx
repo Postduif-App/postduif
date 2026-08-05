@@ -14,10 +14,11 @@ import { useFormats } from '@/hooks/use-formats';
 import { useSessionGuard } from '@/hooks/use-session-guard';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import { show } from '@/routes/chat';
-import { index as inboxIndex } from '@/routes/chat/inbox';
+import {
+    index as inboxIndex,
+    open as inboxOpen,
+} from '@/routes/chat/inbox';
 import { index as mentionsIndex } from '@/routes/chat/mentions';
-import { show as pollShow } from '@/routes/chat/polls';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -138,10 +139,16 @@ function RowMeta({ item }: { item: InboxRow }) {
 /**
  * One row, wherever it points.
  *
- * A poll row is the odd one out and deliberately so: it has no message to jump
- * to, because a poll is reached through a link in a message body rather than
- * through a column. Its destination is the poll itself, which is also the only
- * place the answer it is reporting can be read.
+ * Every row leads to the same address — the row itself — and the server marks
+ * it off and forwards from there. Kept a link rather than a button that posts,
+ * because middle-click and open-in-a-new-tab are how a list of things to read
+ * gets used, and because a separate mark-read request would race the
+ * navigation: Inertia cancels an in-flight visit when a new one starts.
+ *
+ * Which is also why nothing here knows where a row goes. A poll row and a
+ * message row have genuinely different destinations, and that is a fact about
+ * what the row hangs off — the same knowledge the server already needs to
+ * decide the row is still worth showing at all.
  */
 function InboxCard({
     item,
@@ -152,54 +159,38 @@ function InboxCard({
 }) {
     const formats = useFormats();
 
-    const className = cn(
-        'flex flex-col gap-1 rounded-lg border p-3 transition-colors hover:bg-muted/50',
-        item.readAt === null && 'border-primary/40 bg-primary/5',
-    );
-
-    if (item.type === 'poll-vote') {
-        return (
-            <Link
-                href={pollShow({
-                    workspace: workspaceSlug,
-                    poll: item.poll.id,
-                })}
-                className={className}
-            >
-                <RowMeta item={item} />
-                <span className="text-sm break-words text-foreground/90">
-                    {item.poll.question}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                    {item.poll.voterCount === 1
-                        ? '1 iemand heeft gestemd'
-                        : `${item.poll.voterCount} mensen hebben gestemd`}
-                </span>
-            </Link>
-        );
-    }
-
     return (
-        /*
-            Straight to the message, not just to the channel: the point of the
-            list is to answer somebody, and landing at the bottom of a busy
-            channel means finding the line again yourself.
-        */
         <Link
-            href={`${show.url({
-                workspace: workspaceSlug,
-                channel: item.channel.id,
-            })}#message-${item.messageId}`}
-            className={className}
+            href={inboxOpen({ workspace: workspaceSlug, item: item.id })}
+            className={cn(
+                'flex flex-col gap-1 rounded-lg border p-3 transition-colors hover:bg-muted/50',
+                item.readAt === null && 'border-primary/40 bg-primary/5',
+            )}
         >
             <RowMeta item={item} />
-            <span className="text-sm break-words text-foreground/90">
-                {item.snippet}
-            </span>
-            {item.lastReplyAt && (
-                <span className="text-xs text-muted-foreground">
-                    {formats.moment.format(new Date(item.lastReplyAt))}
-                </span>
+
+            {item.type === 'poll-vote' ? (
+                <>
+                    <span className="text-sm break-words text-foreground/90">
+                        {item.poll.question}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {item.poll.voterCount === 1
+                            ? '1 iemand heeft gestemd'
+                            : `${item.poll.voterCount} mensen hebben gestemd`}
+                    </span>
+                </>
+            ) : (
+                <>
+                    <span className="text-sm break-words text-foreground/90">
+                        {item.snippet}
+                    </span>
+                    {item.lastReplyAt && (
+                        <span className="text-xs text-muted-foreground">
+                            {formats.moment.format(new Date(item.lastReplyAt))}
+                        </span>
+                    )}
+                </>
             )}
         </Link>
     );

@@ -37,19 +37,6 @@ return [
             'DoNotDisturb' => 'Niet storen',
         ],
     ],
-    'broadcast-mention-policy' => [
-        'label' => [
-            'Everyone' => 'Iedereen in de workspace',
-            'Admins' => 'Alleen beheerders en de eigenaar',
-            'Nobody' => 'Niemand',
-        ],
-    ],
-    'channel-creation-policy' => [
-        'label' => [
-            'Everyone' => 'Iedereen in de workspace',
-            'Admins' => 'Alleen beheerders en de eigenaar',
-        ],
-    ],
     'channel-layout' => [
         'description' => [
             'Chat' => 'Berichten onder elkaar, zoals een gewoon gesprek.',

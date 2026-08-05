@@ -1,8 +1,6 @@
 <?php
 
 use App\Enums\AttachmentType;
-use App\Enums\BroadcastMentionPolicy;
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\SystemRole;
 use App\Models\User;
 
@@ -17,10 +15,6 @@ it('shows both rules with everything they can be set to', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workspace-permissions')
-            ->where('workspace.broadcastMentions', BroadcastMentionPolicy::Admins->value)
-            ->where('workspace.channelCreation', ChannelCreationPolicy::Everyone->value)
-            ->has('broadcastMentionOptions', count(BroadcastMentionPolicy::cases()))
-            ->has('channelCreationOptions', count(ChannelCreationPolicy::cases()))
         );
 });
 
@@ -31,22 +25,6 @@ it('refuses the rules screen to a plain member', function () {
     actingAs($user)->get(route('workspace.permissions.edit'))->assertForbidden();
 });
 
-it('saves both rules at once', function () {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, SystemRole::Admin);
-
-    actingAs($user)
-        ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Everyone->value,
-            'channel_creation' => ChannelCreationPolicy::Admins->value,
-        ])
-        ->assertRedirect();
-
-    expect($workspace->fresh())
-        ->broadcast_mentions->toBe(BroadcastMentionPolicy::Everyone)
-        ->channel_creation->toBe(ChannelCreationPolicy::Admins);
-});
-
 it('leaves the name alone — that is the other screen', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, SystemRole::Owner);
@@ -54,30 +32,11 @@ it('leaves the name alone — that is the other screen', function () {
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
             'name' => 'Gekaapt',
-            'broadcast_mentions' => BroadcastMentionPolicy::Nobody->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
         ])
         ->assertRedirect();
 
     expect($workspace->fresh()->name)->not->toBe('Gekaapt');
 });
-
-it('refuses a rule that is not one of the options', function (string $field) {
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, SystemRole::Owner);
-
-    actingAs($user)
-        ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
-            $field => 'anyone-really',
-        ])
-        ->assertSessionHasErrors($field);
-
-    expect($workspace->fresh())
-        ->broadcast_mentions->toBe(BroadcastMentionPolicy::Admins)
-        ->channel_creation->toBe(ChannelCreationPolicy::Everyone);
-})->with(['broadcast_mentions', 'channel_creation']);
 
 it('refuses a rule change from a plain member', function () {
     $user = User::factory()->create();
@@ -85,12 +44,10 @@ it('refuses a rule change from a plain member', function () {
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Everyone->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
+            'uploads_enabled' => 0,
         ])
         ->assertForbidden();
 
-    expect($workspace->fresh()->broadcast_mentions)->toBe(BroadcastMentionPolicy::Admins);
 });
 
 it('shows what the workspace accepts as an attachment', function () {
@@ -114,8 +71,6 @@ it('saves what may be shared and how large', function () {
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
             'uploads_enabled' => '1',
             'allowed_attachment_types' => [AttachmentType::Images->value],
             'max_attachment_mb' => 25,
@@ -139,8 +94,6 @@ it('keeps the earlier choices when sharing is switched off', function () {
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
             'uploads_enabled' => '0',
         ])
         ->assertRedirect();
@@ -158,8 +111,6 @@ it('refuses to allow sharing with nothing allowed', function () {
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
             'uploads_enabled' => '1',
             'allowed_attachment_types' => [],
             'max_attachment_mb' => 10,
@@ -174,8 +125,6 @@ it('refuses a size nobody could actually upload', function () {
 
     actingAs($user)
         ->patch(route('workspace.permissions.update'), [
-            'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-            'channel_creation' => ChannelCreationPolicy::Everyone->value,
             'uploads_enabled' => '1',
             'allowed_attachment_types' => [AttachmentType::Images->value],
             'max_attachment_mb' => 5000,
@@ -200,8 +149,6 @@ it('turns link previews on and off again', function () {
     $workspace = workspaceWithMember($user, SystemRole::Admin);
 
     $rules = [
-        'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-        'channel_creation' => ChannelCreationPolicy::Everyone->value,
     ];
 
     actingAs($user)->patch(route('workspace.permissions.update'), [
@@ -226,8 +173,6 @@ it('leaves link previews alone when the form does not mention them', function ()
     $workspace->update(['link_previews_enabled' => true]);
 
     actingAs($user)->patch(route('workspace.permissions.update'), [
-        'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-        'channel_creation' => ChannelCreationPolicy::Everyone->value,
     ]);
 
     expect($workspace->fresh()->link_previews_enabled)->toBeTrue();

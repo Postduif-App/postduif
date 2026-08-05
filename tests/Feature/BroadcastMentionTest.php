@@ -2,8 +2,8 @@
 
 use App\Actions\Chat\ChannelPresence;
 use App\Actions\Chat\SendMessage;
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\User;
@@ -95,7 +95,7 @@ it('reaches nobody with here when nobody is looking', function () {
  */
 it('notifies nobody when the author may not broadcast', function () {
     [$author, , , $workspace, $channel] = channelWithThree();
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Nobody]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, false);
 
     $message = app(SendMessage::class)->handle($channel, $author, 'Toch maar @everyone');
 
@@ -108,7 +108,7 @@ it('lets a plain member broadcast once the workspace opens it up', function () {
 
     expect(mentionedBy($channel, $one, 'Mag ik @everyone'))->toBe([]);
 
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Everyone]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true);
 
     expect(mentionedBy($channel, $one, 'En nu @everyone'))->toContain($two->id);
 });

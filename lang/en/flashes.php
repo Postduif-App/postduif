@@ -93,4 +93,10 @@ return [
         'updated' => 'Rule updated.',
         'removed' => 'Rule removed.',
     ],
+
+    'role' => [
+        'created' => 'The role :name has been created.',
+        'saved' => 'The role :name has been saved.',
+        'deleted' => 'The role :name has been deleted.',
+    ],
 ];

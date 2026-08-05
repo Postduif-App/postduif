@@ -23,6 +23,7 @@ return [
         'api_tokens' => 'API-tokens',
         'general' => 'Algemeen',
         'permissions' => 'Rechten',
+        'roles' => 'Rollen',
         'theme' => 'Thema',
         'members' => 'Leden',
         'invitations' => 'Uitnodigingen',

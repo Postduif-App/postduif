@@ -1,5 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
-import { Hash, Link2, Megaphone, Paperclip, Send } from 'lucide-react';
+import { Link2, Paperclip, Send } from 'lucide-react';
 import { useState } from 'react';
 
 import Heading from '@/components/heading';
@@ -25,8 +25,6 @@ interface AttachmentTypeOption extends Option {
 interface WorkspacePermissionsProps {
     workspace: {
         name: string;
-        broadcastMentions: string;
-        channelCreation: string;
         uploadsEnabled: boolean;
         allowedAttachmentTypes: string[];
         maxAttachmentKb: number;
@@ -35,59 +33,11 @@ interface WorkspacePermissionsProps {
         maxTransferKb: number;
         maxTransferDays: number;
     };
-    broadcastMentionOptions: Option[];
-    channelCreationOptions: Option[];
     attachmentTypeOptions: AttachmentTypeOption[];
 }
 
 /** The field is in megabytes; the server counts in kilobytes. */
 const KB_PER_MB = 1024;
-
-/**
- * One choice per question, each rendered as a list of cards rather than a
- * select: there are only ever a handful of options and every one of them needs
- * a sentence of explanation, which is exactly what a dropdown has no room for.
- */
-function PolicyChoice({
-    name,
-    options,
-    current,
-    error,
-    children,
-}: {
-    name: string;
-    options: Option[];
-    current: string;
-    error?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <fieldset className="grid gap-2">
-            {children}
-
-            {options.map((option) => (
-                <label
-                    key={option.value}
-                    className={cn(
-                        'flex max-w-sm cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors',
-                        current === option.value
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:bg-muted/50',
-                    )}
-                >
-                    <input
-                        type="radio"
-                        name={name}
-                        value={option.value}
-                        defaultChecked={current === option.value}
-                    />
-                    {option.label}
-                </label>
-            ))}
-            <InputError message={error} />
-        </fieldset>
-    );
-}
 
 /**
  * Whether files may be shared here, which kinds, and how large.
@@ -317,8 +267,6 @@ function TransferSettings({
 
 export default function WorkspacePermissions({
     workspace,
-    broadcastMentionOptions,
-    channelCreationOptions,
     attachmentTypeOptions,
 }: WorkspacePermissionsProps) {
     const { t } = useTranslate();
@@ -339,36 +287,6 @@ export default function WorkspacePermissions({
                 <Form {...update.form()} options={{ preserveScroll: true }}>
                     {({ processing, errors, recentlySuccessful }) => (
                         <div className="space-y-6">
-                            <PolicyChoice
-                                name="broadcast_mentions"
-                                options={broadcastMentionOptions}
-                                current={workspace.broadcastMentions}
-                                error={errors.broadcast_mentions}
-                            >
-                                <legend className="flex items-center gap-1.5 text-sm font-medium">
-                                    <Megaphone className="size-4 text-muted-foreground" />
-                                    {t('settings.permissions.broadcast')}
-                                </legend>
-                                <p className="text-sm text-muted-foreground">
-                                    {t('settings.permissions.broadcast_hint')}
-                                </p>
-                            </PolicyChoice>
-
-                            <PolicyChoice
-                                name="channel_creation"
-                                options={channelCreationOptions}
-                                current={workspace.channelCreation}
-                                error={errors.channel_creation}
-                            >
-                                <legend className="flex items-center gap-1.5 text-sm font-medium">
-                                    <Hash className="size-4 text-muted-foreground" />
-                                    {t('settings.permissions.channels')}
-                                </legend>
-                                <p className="text-sm text-muted-foreground">
-                                    {t('settings.permissions.channels_hint')}
-                                </p>
-                            </PolicyChoice>
-
                             <AttachmentSettings
                                 workspace={workspace}
                                 options={attachmentTypeOptions}

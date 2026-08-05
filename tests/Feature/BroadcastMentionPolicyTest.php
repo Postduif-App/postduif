@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -15,14 +15,19 @@ function workspaceWithRole(SystemRole $role): array
     return [$user, workspaceWithMember($user, $role)];
 }
 
-it('defaults to admins only', function () {
-    expect(Workspace::factory()->create()->broadcast_mentions)
-        ->toBe(BroadcastMentionPolicy::Admins);
+it('defaults to whoever runs the workspace', function () {
+    $workspace = Workspace::factory()->create();
+
+    $holders = $workspace->roles()->get()
+        ->filter(fn ($role) => $role->allows(WorkspaceAbility::BroadcastMention))
+        ->pluck('key');
+
+    expect($holders->all())->toBe(['owner', 'admin']);
 });
 
 it('lets everyone broadcast when the workspace is open', function (SystemRole $role) {
     [$user, $workspace] = workspaceWithRole($role);
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Everyone]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true);
 
     expect($user->can('broadcastMention', $workspace))->toBeTrue();
 })->with([
@@ -43,7 +48,7 @@ it('limits broadcasting to who runs the workspace by default', function (SystemR
 
 it('lets nobody broadcast when the workspace is closed', function (SystemRole $role) {
     [$user, $workspace] = workspaceWithRole($role);
-    $workspace->update(['broadcast_mentions' => BroadcastMentionPolicy::Nobody]);
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, false);
 
     expect($user->can('broadcastMention', $workspace))->toBeFalse();
 })->with([
@@ -54,9 +59,9 @@ it('lets nobody broadcast when the workspace is closed', function (SystemRole $r
 
 it('never lets an outsider broadcast, however open the workspace is', function () {
     $outsider = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'broadcast_mentions' => BroadcastMentionPolicy::Everyone,
-    ]);
+    $workspace = Workspace::factory()->create();
+
+    setAbility($workspace, WorkspaceAbility::BroadcastMention, true);
 
     expect($outsider->can('broadcastMention', $workspace))->toBeFalse();
 });

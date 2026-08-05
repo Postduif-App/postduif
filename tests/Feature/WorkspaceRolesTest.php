@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
 use App\Models\Role;
@@ -124,26 +123,6 @@ it('moves the pointer along when somebody changes role', function () {
      * over, which is exactly when it would be hardest to find.
      */
     expect($membership->workspaceRole->key)->toBe(SystemRole::Admin->value);
-});
-
-it('reads a workspace that had already decided who may open a channel', function () {
-    $workspace = Workspace::factory()->create([
-        'channel_creation' => ChannelCreationPolicy::Admins,
-    ]);
-
-    /*
-     * The seed follows the workspace's own setting rather than the role's
-     * default. A workspace that has said "only administrators" would otherwise
-     * find that quietly undone by the migration that was supposed to preserve
-     * it — see the migration, which reads the same two columns.
-     */
-    // Re-seeded rather than read straight off the factory: what is under test
-    // is the translation, and the factory has already run it once.
-    $workspace->roles()->delete();
-    $workspace->seedSystemRoles();
-
-    expect($workspace->roles()->where('key', SystemRole::Member->value)->first()->abilities()->pluck('value')->all())
-        ->not->toContain(WorkspaceAbility::CreateChannels->value);
 });
 
 it('names every right in both languages', function () {

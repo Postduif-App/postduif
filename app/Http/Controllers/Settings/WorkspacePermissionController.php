@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Settings;
 
 use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\AttachmentType;
-use App\Enums\BroadcastMentionPolicy;
-use App\Enums\ChannelCreationPolicy;
 use App\Features\Transfers;
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
@@ -36,8 +34,6 @@ class WorkspacePermissionController extends Controller
         return Inertia::render('settings/workspace-permissions', [
             'workspace' => [
                 'name' => $workspace->name,
-                'broadcastMentions' => $workspace->broadcast_mentions->value,
-                'channelCreation' => $workspace->channel_creation->value,
                 'uploadsEnabled' => $workspace->uploads_enabled,
                 'allowedAttachmentTypes' => array_map(
                     fn (AttachmentType $type): string => $type->value,
@@ -62,16 +58,6 @@ class WorkspacePermissionController extends Controller
                     'label' => $type->label(),
                     'hint' => $type->hint(),
                 ])->all(),
-            'broadcastMentionOptions' => collect(BroadcastMentionPolicy::cases())
-                ->map(fn (BroadcastMentionPolicy $policy): array => [
-                    'value' => $policy->value,
-                    'label' => $policy->label(),
-                ])->all(),
-            'channelCreationOptions' => collect(ChannelCreationPolicy::cases())
-                ->map(fn (ChannelCreationPolicy $policy): array => [
-                    'value' => $policy->value,
-                    'label' => $policy->label(),
-                ])->all(),
         ]);
     }
 
@@ -80,8 +66,6 @@ class WorkspacePermissionController extends Controller
         $workspace = $this->currentWorkspace($request);
 
         $validated = $request->validate([
-            'broadcast_mentions' => ['required', new Enum(BroadcastMentionPolicy::class)],
-            'channel_creation' => ['required', new Enum(ChannelCreationPolicy::class)],
             /*
              * Sometimes rather than required: this endpoint has served the two
              * rules above since before files existed, and a request that says

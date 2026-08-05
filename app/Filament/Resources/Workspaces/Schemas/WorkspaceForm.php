@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Workspaces\Schemas;
 
-use App\Enums\BroadcastMentionPolicy;
 use App\Enums\MemberPanelVisibility;
 use App\Models\User;
 use Filament\Forms\Components\Select;
@@ -44,14 +43,6 @@ class WorkspaceForm
                             ->searchable(['name', 'username', 'email'])
                             ->preload()
                             ->required(),
-
-                        Select::make('broadcast_mentions')
-                            ->label('Wie mag @channel gebruiken')
-                            ->options(BroadcastMentionPolicy::class)
-                            ->default(BroadcastMentionPolicy::Admins)
-                            ->selectablePlaceholder(false)
-                            ->required()
-                            ->helperText('Bepaalt wie een mention mag plaatsen die het hele channel notificeert.'),
 
                         Select::make('member_panel')
                             ->label('Ledenlijst naast het gesprek')

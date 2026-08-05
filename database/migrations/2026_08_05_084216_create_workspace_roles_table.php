@@ -1,7 +1,5 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
 use Illuminate\Database\Migrations\Migration;
@@ -157,22 +155,24 @@ return new class extends Migration
             return $holds ? [...$abilities, $ability->value] : $abilities;
         };
 
-        $mentions = BroadcastMentionPolicy::tryFrom((string) $workspace->broadcast_mentions);
-
-        $abilities = $set($abilities, WorkspaceAbility::BroadcastMention, match ($mentions) {
+        /*
+         * The two settings read as plain strings rather than through their
+         * enums. Those classes are gone now — this screen replaced them — and a
+         * migration has to keep running against the schema of its own moment
+         * rather than against whatever the application has become since.
+         */
+        $abilities = $set($abilities, WorkspaceAbility::BroadcastMention, match ((string) $workspace->broadcast_mentions) {
             // Everyone means everyone, people from outside included: the
             // setting this replaces asked no question about the role at all,
             // and a guest addressing the one channel they are in is the case
             // that would otherwise quietly stop working.
-            BroadcastMentionPolicy::Everyone => true,
-            BroadcastMentionPolicy::Nobody => false,
+            'everyone' => true,
+            'nobody' => false,
             default => $role->canManageWorkspace(),
         });
 
-        $channels = ChannelCreationPolicy::tryFrom((string) $workspace->channel_creation);
-
-        return $set($abilities, WorkspaceAbility::CreateChannels, match ($channels) {
-            ChannelCreationPolicy::Admins => $role->canManageWorkspace(),
+        return $set($abilities, WorkspaceAbility::CreateChannels, match ((string) $workspace->channel_creation) {
+            'admins' => $role->canManageWorkspace(),
             default => ! $role->isExternal(),
         });
     }

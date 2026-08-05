@@ -3,6 +3,7 @@
 use App\Actions\Chat\SendMessage;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Features\Transfers;
 use App\Models\Channel;
 use App\Models\Message;
@@ -72,6 +73,32 @@ expect()->extend('toBeOne', function () {
  * A workspace with this user in it. Lives here rather than in one test file so
  * every suite can be run on its own with --filter.
  */
+/**
+ * Give a right to some of a workspace's roles, or take it away.
+ *
+ * Rights live on the role now, so a test that used to set a column on the
+ * workspace sets them here instead. Naming no role means every role, which is
+ * what "iedereen mag dit" used to mean when it was a dropdown.
+ */
+function setAbility(Workspace $workspace, WorkspaceAbility $ability, bool $holds, SystemRole ...$roles): void
+{
+    $keys = array_map(fn (SystemRole $role): string => $role->value, $roles);
+
+    foreach ($workspace->roles()->get() as $role) {
+        if ($keys !== [] && ! in_array($role->key, $keys, true)) {
+            continue;
+        }
+
+        $abilities = collect($role->abilities)->reject(fn (string $held): bool => $held === $ability->value);
+
+        $role->update([
+            'abilities' => $holds
+                ? [...$abilities->values()->all(), $ability->value]
+                : $abilities->values()->all(),
+        ]);
+    }
+}
+
 /**
  * The id of one of a workspace's roles, which is what the screens post.
  *

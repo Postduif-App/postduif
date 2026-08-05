@@ -1,7 +1,5 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\SystemRole;
 use App\Features\Transfers;
 use App\Models\User;
@@ -20,8 +18,6 @@ use function Pest\Laravel\actingAs;
 function standingRules(): array
 {
     return [
-        'broadcast_mentions' => BroadcastMentionPolicy::Admins->value,
-        'channel_creation' => ChannelCreationPolicy::Everyone->value,
     ];
 }
 

@@ -18,6 +18,7 @@ import { edit as editWorkspace } from '@/routes/workspace';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
 import { edit as editWorkspacePermissions } from '@/routes/workspace/permissions';
+import { index as workspaceRoles } from '@/routes/workspace/roles';
 import { edit as editWorkspaceTheme } from '@/routes/workspace/theme';
 import type { Auth, NavItem } from '@/types';
 
@@ -80,6 +81,10 @@ export default function SettingsLayout({
                   {
                       title: t('settings.nav.permissions'),
                       href: editWorkspacePermissions(),
+                  },
+                  {
+                      title: t('settings.nav.roles'),
+                      href: workspaceRoles(),
                   },
                   {
                       title: t('settings.nav.theme'),

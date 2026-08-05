@@ -13,6 +13,7 @@ use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
 use App\Http\Controllers\Settings\WorkspacePermissionController;
+use App\Http\Controllers\Settings\WorkspaceRoleController;
 use App\Http\Controllers\Settings\WorkspaceThemeController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -90,6 +91,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.permissions.edit');
     Route::patch('app/settings/workspace/permissions', [WorkspacePermissionController::class, 'update'])
         ->name('workspace.permissions.update');
+
+    /*
+     * The roles a workspace writes for itself. Its own screen rather than a
+     * block on the permissions page: naming a role and deciding what it may do
+     * is a thing you sit down to, and the page it would have shared is a list
+     * of switches you flick on the way past.
+     */
+    Route::get('app/settings/workspace/roles', [WorkspaceRoleController::class, 'index'])
+        ->name('workspace.roles.index');
+    Route::post('app/settings/workspace/roles', [WorkspaceRoleController::class, 'store'])
+        ->name('workspace.roles.store');
+    Route::patch('app/settings/workspace/roles/{role}', [WorkspaceRoleController::class, 'update'])
+        ->name('workspace.roles.update');
+    Route::delete('app/settings/workspace/roles/{role}', [WorkspaceRoleController::class, 'destroy'])
+        ->name('workspace.roles.destroy');
 
     Route::get('app/settings/workspace/theme', [WorkspaceThemeController::class, 'edit'])
         ->name('workspace.theme.edit');

@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\ChannelCreationPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\Channel;
 use App\Models\User;
 
@@ -10,8 +10,6 @@ use function Pest\Laravel\actingAs;
 it('lets anybody who belongs here open a channel by default', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, SystemRole::Member);
-
-    expect($workspace->channel_creation)->toBe(ChannelCreationPolicy::Everyone);
 
     actingAs($user)
         ->post(route('chat.channels.store', $workspace), [
@@ -26,7 +24,7 @@ it('lets anybody who belongs here open a channel by default', function () {
 it('closes channel creation to plain members once the workspace says so', function (SystemRole $role, bool $allowed) {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, $role);
-    $workspace->update(['channel_creation' => ChannelCreationPolicy::Admins]);
+    setAbility($workspace, WorkspaceAbility::CreateChannels, false, SystemRole::Member);
 
     $response = actingAs($user)->post(route('chat.channels.store', $workspace), [
         'name' => 'marketing',
@@ -46,7 +44,7 @@ it('closes channel creation to plain members once the workspace says so', functi
 it('keeps a guest out even when everybody else may', function () {
     $user = User::factory()->create();
     $workspace = workspaceWithMember($user, SystemRole::Guest);
-    $workspace->update(['channel_creation' => ChannelCreationPolicy::Everyone]);
+    setAbility($workspace, WorkspaceAbility::CreateChannels, true, SystemRole::Member);
 
     actingAs($user)
         ->post(route('chat.channels.store', $workspace), [
@@ -65,7 +63,7 @@ it('stops offering the button to whoever may no longer use it', function () {
         ->get(route('chat.show', [$workspace, $channel]))
         ->assertInertia(fn ($page) => $page->where('workspace.canCreateChannel', true));
 
-    $workspace->update(['channel_creation' => ChannelCreationPolicy::Admins]);
+    setAbility($workspace, WorkspaceAbility::CreateChannels, false, SystemRole::Member);
 
     actingAs($user)
         ->get(route('chat.show', [$workspace, $channel]))

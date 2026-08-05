@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\BroadcastMentionPolicy;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +10,10 @@ return new class extends Migration
     {
         Schema::table('workspaces', function (Blueprint $table) {
             $table->string('broadcast_mentions')
-                ->default(BroadcastMentionPolicy::Admins->value)
+                // The enum that spelled this is gone; a migration reads the value
+                // it wrote at the time, not a class the application has since
+                // dropped.
+                ->default('admins')
                 ->after('slug');
         });
     }
