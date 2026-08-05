@@ -2,7 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
+import { ChoiceText } from '@/components/choice-text';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -153,14 +154,17 @@ function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
                                 disabled={!role.editable || !ability.held}
                                 className="mt-0.5"
                             />
-                            <span className="min-w-0">
-                                <span className="block text-sm">
-                                    {ability.label}
-                                </span>
-                                <span className="block text-xs text-muted-foreground">
-                                    {ability.description}
-                                </span>
-                            </span>
+                            {/*
+                                subtle: this list runs to every ability the
+                                workspace has, and a bold line per row would be
+                                the texture of the screen rather than emphasis
+                                on anything.
+                            */}
+                            <ChoiceText
+                                subtle
+                                title={ability.label}
+                                hint={ability.description}
+                            />
                         </label>
                     </li>
                 ))}
@@ -223,15 +227,18 @@ export default function WorkspaceRoles({
         <>
             <Head title={t('workspace_roles.title')} />
 
-            <div className="space-y-6">
-                <Heading
-                    title={t('workspace_roles.title')}
-                    description={t('workspace_roles.description', {
-                        workspace,
-                    })}
-                />
-
-                <p className="max-w-[68ch] text-sm text-muted-foreground">
+            {/*
+                Was the one settings screen using Heading's large variant, so
+                its title sat a size bigger than the same title on every
+                neighbouring page.
+            */}
+            <SettingsSection
+                title={t('workspace_roles.title')}
+                description={t('workspace_roles.description', {
+                    workspace,
+                })}
+            >
+                <p className="max-w-prose text-sm text-muted-foreground">
                     {t('workspace_roles.explanation')}
                 </p>
 
@@ -245,7 +252,7 @@ export default function WorkspaceRoles({
                     ))}
                 </div>
 
-                <div className="space-y-3 rounded-lg border p-4">
+                <div className="space-y-3 rounded-lg border border-dashed p-4">
                     <Label htmlFor="new-role">{t('workspace_roles.new')}</Label>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -284,7 +291,7 @@ export default function WorkspaceRoles({
                         </Button>
                     </div>
                 </div>
-            </div>
+            </SettingsSection>
         </>
     );
 }

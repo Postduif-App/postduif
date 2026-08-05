@@ -1,8 +1,8 @@
 import { Form, Head } from '@inertiajs/react';
 
 import { AvatarField } from '@/components/avatar-field';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,15 +32,12 @@ export default function WorkspaceSettings({
         <>
             <Head title={t('settings.workspace.head')} />
 
-            <div className="space-y-8">
-                <Heading
-                    variant="small"
-                    title={t('settings.workspace.title')}
-                    description={t('settings.workspace.description', {
-                        workspace: workspace.name,
-                    })}
-                />
-
+            <SettingsSection
+                title={t('settings.workspace.title')}
+                description={t('settings.workspace.description', {
+                    workspace: workspace.name,
+                })}
+            >
                 <AvatarField
                     name={workspace.name}
                     avatarUrl={workspace.avatarUrl}
@@ -73,7 +70,7 @@ export default function WorkspaceSettings({
                                 <InputError message={errors.name} />
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 pt-2">
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
                                     {t('settings.actions.save')}
@@ -87,7 +84,7 @@ export default function WorkspaceSettings({
                         </div>
                     )}
                 </Form>
-            </div>
+            </SettingsSection>
         </>
     );
 }

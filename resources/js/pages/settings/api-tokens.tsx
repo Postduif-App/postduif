@@ -2,8 +2,8 @@ import { Form, Head, router } from '@inertiajs/react';
 import { Bot, Check, Copy, X } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { SettingsSection } from '@/components/settings-section';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -83,14 +83,11 @@ export default function ApiTokens({
         <>
             <Head title={t('settings.api_tokens.title')} />
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.api_tokens.title')}
-                    description={t('settings.api_tokens.description')}
-                />
-
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+            <SettingsSection
+                title={t('settings.api_tokens.title')}
+                description={t('settings.api_tokens.description')}
+            >
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
                     <p className="font-medium">
                         {t('settings.api_tokens.warning_title')}
                     </p>
@@ -99,53 +96,62 @@ export default function ApiTokens({
                     </p>
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="mcp-endpoint">
-                        {t('settings.api_tokens.endpoint')}
-                    </Label>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id="mcp-endpoint"
-                            value={endpoint}
-                            readOnly
-                            className="font-mono text-xs"
-                        />
-                        <CopyButton
-                            value={endpoint}
-                            label={t('settings.api_tokens.copy_endpoint')}
-                        />
-                    </div>
-                    {/*
+                {/*
+                    The two addresses in one block. They are reference rather
+                    than something to fill in, and loose among the fields they
+                    read as four more things this screen wants from you.
+                */}
+                <div className="grid gap-5 rounded-lg border bg-muted/30 p-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="mcp-endpoint">
+                            {t('settings.api_tokens.endpoint')}
+                        </Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="mcp-endpoint"
+                                value={endpoint}
+                                readOnly
+                                className="font-mono text-xs"
+                            />
+                            <CopyButton
+                                value={endpoint}
+                                label={t('settings.api_tokens.copy_endpoint')}
+                            />
+                        </div>
+                        {/*
                         Said here rather than left to be discovered: a token is
                         the first thing somebody reaches for on this screen, and
                         this is the one address that does not want one.
                     */}
-                    <p className="text-xs text-muted-foreground">
-                        {t('settings.api_tokens.endpoint_hint')}
-                    </p>
-                </div>
+                        <p className="text-xs text-muted-foreground">
+                            {t('settings.api_tokens.endpoint_hint')}
+                        </p>
+                    </div>
 
-                {/*
+                    {/*
                     Beside the MCP address rather than on a page of its own:
                     somebody who has just made a token is exactly who needs to
                     know where to point it. The two doors take different
                     credentials — this is the one the token is for.
                 */}
-                <div className="grid gap-2">
-                    <Label htmlFor="api-endpoint">
-                        {t('settings.api_tokens.api_endpoint')}
-                    </Label>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id="api-endpoint"
-                            value={apiEndpoint}
-                            readOnly
-                            className="font-mono text-xs"
-                        />
-                        <CopyButton
-                            value={apiEndpoint}
-                            label={t('settings.api_tokens.copy_api_endpoint')}
-                        />
+                    <div className="grid gap-2">
+                        <Label htmlFor="api-endpoint">
+                            {t('settings.api_tokens.api_endpoint')}
+                        </Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="api-endpoint"
+                                value={apiEndpoint}
+                                readOnly
+                                className="font-mono text-xs"
+                            />
+                            <CopyButton
+                                value={apiEndpoint}
+                                label={t(
+                                    'settings.api_tokens.copy_api_endpoint',
+                                )}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -257,7 +263,7 @@ export default function ApiTokens({
                         ))}
                     </ul>
                 )}
-            </div>
+            </SettingsSection>
 
             <AlertDialog
                 open={revoking !== null}

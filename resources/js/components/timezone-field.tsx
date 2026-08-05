@@ -73,7 +73,7 @@ export function TimezoneField({
                 name="timezone"
                 value={selected}
                 onChange={(event) => setSelected(event.target.value)}
-                className="mt-1 block w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:ring-2 focus-visible:outline-none"
+                className="block h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
                 {regions.map(([region, zones]) => (
                     <optgroup key={region} label={region}>
@@ -107,7 +107,7 @@ export function TimezoneField({
                     )}
             </p>
 
-            <InputError className="mt-2" message={error} />
+            <InputError message={error} />
         </div>
     );
 }

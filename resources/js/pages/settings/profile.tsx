@@ -5,9 +5,9 @@ import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import { AvatarField } from '@/components/avatar-field';
 import DeleteUser from '@/components/delete-user';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { LocaleField } from '@/components/locale-field';
+import { SettingsSection } from '@/components/settings-section';
 import { TimezoneField } from '@/components/timezone-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,10 @@ function BioField({ value, error }: { value: string | null; error?: string }) {
                 defaultValue={value ?? ''}
                 onChange={(event) => setLength(event.target.value.length)}
                 placeholder={t('settings.profile.bio_placeholder')}
-                className="mt-1 block w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                // Borrowed from Input rather than invented: a textarea drawn
+                // with a plainer border beside a text box that has a shadow and
+                // a focus ring read as two different form kits on one screen.
+                className="block w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
             />
 
             <div className="flex items-start justify-between gap-4">
@@ -75,7 +78,7 @@ function BioField({ value, error }: { value: string | null; error?: string }) {
                 )}
             </div>
 
-            <InputError className="mt-2" message={error} />
+            <InputError message={error} />
         </div>
     );
 }
@@ -99,13 +102,10 @@ export default function Profile({
 
             <h1 className="sr-only">{t('settings.profile.title')}</h1>
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.profile.title')}
-                    description={t('settings.profile.description')}
-                />
-
+            <SettingsSection
+                title={t('settings.profile.title')}
+                description={t('settings.profile.description')}
+            >
                 <AvatarField name={auth.user.name} avatarUrl={auth.avatarUrl} />
 
                 <Form
@@ -124,7 +124,7 @@ export default function Profile({
 
                                 <Input
                                     id="name"
-                                    className="mt-1 block w-full"
+                                    className="block w-full"
                                     defaultValue={auth.user.name}
                                     name="name"
                                     required
@@ -134,10 +134,7 @@ export default function Profile({
                                     )}
                                 />
 
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.name}
-                                />
+                                <InputError message={errors.name} />
                             </div>
 
                             <div className="grid gap-2">
@@ -148,7 +145,7 @@ export default function Profile({
                                 <Input
                                     id="email"
                                     type="email"
-                                    className="mt-1 block w-full"
+                                    className="block w-full"
                                     defaultValue={auth.user.email}
                                     name="email"
                                     required
@@ -158,32 +155,15 @@ export default function Profile({
                                     )}
                                 />
 
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.email}
-                                />
-                            </div>
-
-                            <BioField
-                                value={auth.user.bio}
-                                error={errors.bio}
-                            />
-
-                            <TimezoneField
-                                timezones={timezones}
-                                value={auth.user.timezone}
-                                error={errors.timezone}
-                            />
-
-                            <LocaleField
-                                value={auth.user.locale}
-                                error={errors.locale}
-                            />
-
-                            {mustVerifyEmail &&
-                                auth.user.email_verified_at === null && (
-                                    <div>
-                                        <p className="-mt-4 text-sm text-muted-foreground">
+                                {/*
+                                    Under the address it is about. It used to
+                                    sit at the foot of the form, pulled back up
+                                    with a negative margin to look attached to
+                                    something it was three fields away from.
+                                */}
+                                {mustVerifyEmail &&
+                                    auth.user.email_verified_at === null && (
+                                        <p className="text-xs text-muted-foreground">
                                             {t('settings.profile.unverified')}{' '}
                                             <Link
                                                 href={send()}
@@ -193,17 +173,51 @@ export default function Profile({
                                                 {t('settings.profile.resend')}
                                             </Link>
                                         </p>
+                                    )}
 
-                                        {status ===
-                                            'verification-link-sent' && (
-                                            <div className="mt-2 text-sm font-medium text-green-600">
-                                                {t('settings.profile.resent')}
-                                            </div>
-                                        )}
-                                    </div>
+                                {status === 'verification-link-sent' && (
+                                    <p className="text-xs font-medium text-green-600">
+                                        {t('settings.profile.resent')}
+                                    </p>
                                 )}
 
-                            <div className="flex items-center gap-4">
+                                <InputError message={errors.email} />
+                            </div>
+
+                            <BioField
+                                value={auth.user.bio}
+                                error={errors.bio}
+                            />
+
+                            {/*
+                                Side by side from the small breakpoint up. Both
+                                are one short dropdown answering the same kind
+                                of question — where you are and what you read —
+                                and stacked they cost two full rows on a page
+                                that was already long enough to scroll.
+                            */}
+                            {/*
+                                items-start, or the two cells stretch to the
+                                taller of them and each spreads its own rows to
+                                fill it — which drops the language dropdown a
+                                line below the timezone one it is meant to sit
+                                beside, because the timezone field has a hint
+                                under it and this one does not.
+                            */}
+                            <div className="grid items-start gap-6 sm:grid-cols-2">
+                                <TimezoneField
+                                    timezones={timezones}
+                                    value={auth.user.timezone}
+                                    error={errors.timezone}
+                                />
+
+                                <LocaleField
+                                    value={auth.user.locale}
+                                    error={errors.locale}
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-4 pt-2">
                                 <Button
                                     disabled={processing}
                                     data-test="update-profile-button"
@@ -214,7 +228,7 @@ export default function Profile({
                         </>
                     )}
                 </Form>
-            </div>
+            </SettingsSection>
 
             <DeleteUser />
         </>

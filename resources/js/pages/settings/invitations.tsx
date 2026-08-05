@@ -1,12 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { MailPlus, RotateCw, X } from 'lucide-react';
 
-import Heading from '@/components/heading';
 import type {
     InvitableChannel,
     InviteLink,
 } from '@/components/invite-links-section';
 import { InviteLinksSection } from '@/components/invite-links-section';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
@@ -50,15 +50,12 @@ export default function WorkspaceInvitations({
         <>
             <Head title={t('settings.invitations.head')} />
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.invitations.title')}
-                    description={t('settings.invitations.description', {
-                        workspace: workspaceName,
-                    })}
-                />
-
+            <SettingsSection
+                title={t('settings.invitations.title')}
+                description={t('settings.invitations.description', {
+                    workspace: workspaceName,
+                })}
+            >
                 {invitations.length === 0 ? (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <MailPlus className="mx-auto size-6 text-muted-foreground" />
@@ -161,30 +158,28 @@ export default function WorkspaceInvitations({
                         ))}
                     </ul>
                 )}
+            </SettingsSection>
 
-                {/*
-                    Below the mailed invitations rather than on a tab of its
-                    own: both are ways in that are still open, and what you come
-                    to this page for is to see all of them at once.
-                */}
-                {inviteLinksEnabled && (
-                    <>
-                        <Heading
-                            variant="small"
-                            title={t('settings.invitations.links')}
-                            description={t(
-                                'settings.invitations.links_description',
-                            )}
-                        />
-
-                        <InviteLinksSection
-                            workspaceSlug={workspaceSlug}
-                            links={inviteLinks}
-                            channels={channels}
-                        />
-                    </>
-                )}
-            </div>
+            {/*
+                Below the mailed invitations rather than on a tab of its own:
+                both are ways in that are still open, and what you come to this
+                page for is to see all of them at once. Behind a rule, though —
+                its heading used to sit one list-gap under the invitations and
+                read as part of them.
+            */}
+            {inviteLinksEnabled && (
+                <SettingsSection
+                    separated
+                    title={t('settings.invitations.links')}
+                    description={t('settings.invitations.links_description')}
+                >
+                    <InviteLinksSection
+                        workspaceSlug={workspaceSlug}
+                        links={inviteLinks}
+                        channels={channels}
+                    />
+                </SettingsSection>
+            )}
         </>
     );
 }

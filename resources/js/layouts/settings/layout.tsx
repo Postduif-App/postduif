@@ -182,9 +182,24 @@ export default function SettingsLayout({
             </aside>
 
             <ScrollArea className="flex-1">
+                {/*
+                    The rhythm between whatever a page puts on screen lives
+                    here, not on the page. A page that renders three blocks —
+                    a form, then the passkey list, then the danger zone — used
+                    to space the first two itself and leave the third touching
+                    its neighbour, because the wrapper it spaced them with did
+                    not contain it. One column, one gap, no page can get it
+                    wrong.
+                */}
                 <div
                     className={cn(
-                        'mx-auto px-6 py-8',
+                        // A flex gap rather than `space-y`: most of these pages
+                        // open with a screen-reader-only <h1>, which is
+                        // positioned out of flow. `space-y` would still hang
+                        // its margin on the block after it and push the whole
+                        // page down; a flex gap skips it, as it skips anything
+                        // absolutely positioned.
+                        'mx-auto flex flex-col gap-10 px-8 py-10 pb-20',
                         wide ? 'max-w-6xl' : 'max-w-2xl',
                     )}
                 >

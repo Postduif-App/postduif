@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import { GuestChannelsDialog } from '@/components/guest-channels-dialog';
 import type { ChannelOption } from '@/components/guest-channels-dialog';
-import Heading from '@/components/heading';
+import { SettingsSection } from '@/components/settings-section';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -415,17 +415,14 @@ export default function WorkspaceMembers({
         <>
             <Head title={t('settings.members.head')} />
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.members.title', {
-                        count: members.length,
-                    })}
-                    description={t('settings.members.description', {
-                        workspace: workspaceName,
-                    })}
-                />
-
+            <SettingsSection
+                title={t('settings.members.title', {
+                    count: members.length,
+                })}
+                description={t('settings.members.description', {
+                    workspace: workspaceName,
+                })}
+            >
                 {members.length >= FILTER_FROM && (
                     <div className="relative max-w-sm">
                         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -523,7 +520,7 @@ export default function WorkspaceMembers({
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </SettingsSection>
 
             <GuestChannelsDialog
                 guest={

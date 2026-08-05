@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, CalendarClock, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -296,15 +296,12 @@ export default function StatusRules({
         <>
             <Head title={t('settings.status_rules.title')} />
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.status_rules.title')}
-                    description={t('settings.status_rules.description', {
-                        timezone,
-                    })}
-                />
-
+            <SettingsSection
+                title={t('settings.status_rules.title')}
+                description={t('settings.status_rules.description', {
+                    timezone,
+                })}
+            >
                 {rules.length === 0 && !adding && (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <CalendarClock className="mx-auto size-6 text-muted-foreground" />
@@ -378,7 +375,7 @@ export default function StatusRules({
                                             </span>
                                         )}
                                     </span>
-                                    <span className="block text-xs text-muted-foreground">
+                                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                                         {describe(rule, t)}
                                     </span>
                                 </button>
@@ -410,7 +407,7 @@ export default function StatusRules({
                         {t('settings.status_rules.add')}
                     </Button>
                 )}
-            </div>
+            </SettingsSection>
         </>
     );
 }

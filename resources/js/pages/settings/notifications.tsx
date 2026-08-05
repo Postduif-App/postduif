@@ -1,8 +1,9 @@
 import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
+import { ChoiceText } from '@/components/choice-text';
 import InputError from '@/components/input-error';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,18 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useTranslate } from '@/hooks/use-translate';
+import { cn } from '@/lib/utils';
 import { update } from '@/routes/notifications';
+
+/**
+ * A choice you tick, drawn as a card.
+ *
+ * The same bordered row the invite dialog and the workflow form use for picking
+ * something, so that "where should this reach me" looks like every other choice
+ * in the application rather than a bare checkbox beside two lines of grey text.
+ */
+const CHOICE_ROW =
+    'flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors hover:bg-accent/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:hover:bg-transparent';
 
 interface Threshold {
     value: number;
@@ -60,13 +72,10 @@ export default function Notifications({
 
             <h1 className="sr-only">{t('settings.notifications.title')}</h1>
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.notifications.title')}
-                    description={t('settings.notifications.description')}
-                />
-
+            <SettingsSection
+                title={t('settings.notifications.title')}
+                description={t('settings.notifications.description')}
+            >
                 <Form
                     {...update.form()}
                     options={{ preserveScroll: true }}
@@ -127,16 +136,26 @@ export default function Notifications({
                                 />
                             </div>
 
+                            {/*
+                                Dimmed as a whole while nothing is being sent,
+                                rather than each row dimming itself: with the
+                                threshold on "Nooit" these choices have no
+                                effect, and saying that once is quieter than
+                                three greyed-out lines that look broken.
+                            */}
                             <fieldset
-                                className="grid gap-3"
+                                className={cn(
+                                    'grid gap-3 transition-opacity',
+                                    !on && 'opacity-60',
+                                )}
                                 disabled={!on}
                                 aria-disabled={!on}
                             >
-                                <legend className="text-sm font-medium">
+                                <legend className="mb-1 text-sm font-medium">
                                     {t('settings.notifications.where')}
                                 </legend>
 
-                                <label className="flex items-start gap-3 text-sm">
+                                <label className={CHOICE_ROW}>
                                     <input
                                         type="checkbox"
                                         className="mt-0.5"
@@ -145,19 +164,15 @@ export default function Notifications({
                                             setViaMail(event.target.checked)
                                         }
                                     />
-                                    <span>
-                                        <span className="block font-medium">
-                                            {t('settings.notifications.mail')}
-                                        </span>
-                                        <span className="block text-xs text-muted-foreground">
-                                            {t(
-                                                'settings.notifications.mail_hint',
-                                            )}
-                                        </span>
-                                    </span>
+                                    <ChoiceText
+                                        title={t('settings.notifications.mail')}
+                                        hint={t(
+                                            'settings.notifications.mail_hint',
+                                        )}
+                                    />
                                 </label>
 
-                                <label className="flex items-start gap-3 text-sm">
+                                <label className={CHOICE_ROW}>
                                     <input
                                         type="checkbox"
                                         className="mt-0.5"
@@ -167,25 +182,30 @@ export default function Notifications({
                                             setViaPushover(event.target.checked)
                                         }
                                     />
-                                    <span>
-                                        <span className="block font-medium">
-                                            {t(
-                                                'settings.notifications.pushover',
-                                            )}
-                                        </span>
-                                        <span className="block text-xs text-muted-foreground">
-                                            {pushoverAvailable
+                                    <ChoiceText
+                                        title={t(
+                                            'settings.notifications.pushover',
+                                        )}
+                                        hint={
+                                            pushoverAvailable
                                                 ? t(
                                                       'settings.notifications.pushover_hint',
                                                   )
                                                 : t(
                                                       'settings.notifications.pushover_missing',
-                                                  )}
-                                        </span>
-                                    </span>
+                                                  )
+                                        }
+                                    />
                                 </label>
+
+                                {/*
+                                    Indented under the choice it belongs to, and
+                                    only once that choice is made: the key is
+                                    Pushover's business and has nothing to say
+                                    to somebody who picked mail.
+                                */}
                                 {viaPushover && pushoverAvailable && (
-                                    <div className="grid gap-2 pl-7">
+                                    <div className="grid gap-2 border-l-2 border-border py-1 pl-4">
                                         <Label htmlFor="pushover-key">
                                             {t(
                                                 'settings.notifications.pushover_key',
@@ -246,7 +266,7 @@ export default function Notifications({
                                 value={viaPushover ? 1 : 0}
                             />
 
-                            <div className="flex justify-start">
+                            <div className="flex justify-start pt-2">
                                 <Button type="submit" disabled={processing}>
                                     {processing && <Spinner />}
                                     {t('settings.actions.save')}
@@ -255,7 +275,7 @@ export default function Notifications({
                         </>
                     )}
                 </Form>
-            </div>
+            </SettingsSection>
         </>
     );
 }

@@ -2,8 +2,8 @@ import { Form, Head, router } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { SettingsSection } from '@/components/settings-section';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,15 +53,13 @@ export default function WorkspaceEmojiPage({
         <>
             <Head title={t('workspace_emoji.title')} />
 
-            <div className="space-y-8">
-                <Heading
-                    title={t('workspace_emoji.title')}
-                    description={t('workspace_emoji.description', {
-                        workspace,
-                    })}
-                />
-
-                <p className="max-w-[68ch] text-sm text-muted-foreground">
+            <SettingsSection
+                title={t('workspace_emoji.title')}
+                description={t('workspace_emoji.description', {
+                    workspace,
+                })}
+            >
+                <p className="max-w-prose text-sm text-muted-foreground">
                     {t('workspace_emoji.explanation')}
                 </p>
 
@@ -75,7 +73,9 @@ export default function WorkspaceEmojiPage({
                     {...store.form()}
                     resetOnSuccess
                     options={{ preserveScroll: true }}
-                    className="space-y-4 rounded-lg border p-4"
+                    // Dashed, like the box that adds a role: it is where
+                    // something new comes from, not another thing in the list.
+                    className="space-y-4 rounded-lg border border-dashed p-4"
                 >
                     {({ processing, errors }) => (
                         <>
@@ -211,7 +211,7 @@ export default function WorkspaceEmojiPage({
                         </ul>
                     </div>
                 )}
-            </div>
+            </SettingsSection>
 
             <AlertDialog
                 open={removing !== null}

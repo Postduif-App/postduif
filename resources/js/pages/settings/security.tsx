@@ -1,13 +1,13 @@
 import { Form, Head } from '@inertiajs/react';
 import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
 import ManagePasskeys from '@/components/manage-passkeys';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
 import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useTranslate } from '@/hooks/use-translate';
@@ -28,13 +28,10 @@ export default function Security(props: Props) {
 
             <h1 className="sr-only">{t('settings.security.title')}</h1>
 
-            <div className="space-y-6">
-                <Heading
-                    variant="small"
-                    title={t('settings.security.title')}
-                    description={t('settings.security.description')}
-                />
-
+            <SettingsSection
+                title={t('settings.security.title')}
+                description={t('settings.security.description')}
+            >
                 <Form
                     {...SecurityController.update.form()}
                     options={{
@@ -68,7 +65,6 @@ export default function Security(props: Props) {
                                     id="current_password"
                                     ref={currentPasswordInput}
                                     name="current_password"
-                                    className="mt-1 block w-full"
                                     autoComplete="current-password"
                                     placeholder={t(
                                         'settings.security.current_password',
@@ -87,7 +83,6 @@ export default function Security(props: Props) {
                                     id="password"
                                     ref={passwordInput}
                                     name="password"
-                                    className="mt-1 block w-full"
                                     autoComplete="new-password"
                                     placeholder={t(
                                         'settings.security.new_password',
@@ -106,7 +101,6 @@ export default function Security(props: Props) {
                                 <PasswordInput
                                     id="password_confirmation"
                                     name="password_confirmation"
-                                    className="mt-1 block w-full"
                                     autoComplete="new-password"
                                     placeholder={t(
                                         'settings.security.confirm_password',
@@ -119,7 +113,7 @@ export default function Security(props: Props) {
                                 />
                             </div>
 
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4 pt-2">
                                 <Button
                                     disabled={processing}
                                     data-test="update-password-button"
@@ -130,7 +124,7 @@ export default function Security(props: Props) {
                         </>
                     )}
                 </Form>
-            </div>
+            </SettingsSection>
 
             <ManageTwoFactor
                 canManageTwoFactor={props.canManageTwoFactor}
