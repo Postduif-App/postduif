@@ -24,53 +24,44 @@ use Illuminate\Support\Facades\RateLimiter;
 class BuildApiReference
 {
     /**
-     * What each endpoint is for, and what it wants.
+     * The shape of each endpoint, and nothing anybody reads.
      *
      * Keyed by route name. The router supplies the method, the path and the
-     * limit; none of that is repeated here, so none of it can disagree.
+     * limit; the sentences live in lang/*\/marketing.php under the same route
+     * name with its dots turned into underscores. So this holds what is true of
+     * the API — which keys exist, what they take, what comes back — and the
+     * prose that explains it is translated beside the rest of the public site.
      *
-     * @var array<string, array{summary: string, auth: string, params?: array<int, array{name: string, rule: string, about: string}>, returns?: string}>
+     * That pairing is tested in both directions: a new route with no entry, or
+     * an entry naming a route that no longer exists, fails ApiReferenceTest
+     * rather than quietly shipping a page missing an endpoint or inventing one.
+     *
+     * @var array<string, array{auth: string, params?: list<string>, returns?: string}>
      */
     private const NOTES = [
         'api.v1.status.show' => [
-            'summary' => 'De status van de member wiens token je stuurt.',
             'auth' => 'token',
             'returns' => 'emoji, text, availability, label, isManual',
         ],
         'api.v1.status.update' => [
-            'summary' => 'Zet je eigen status. Loopt langs dezelfde actie als het scherm, dus een statusregel die later aan de beurt is neemt het weer over.',
             'auth' => 'token',
-            'params' => [
-                ['name' => 'availability', 'rule' => 'verplicht', 'about' => 'available, away of do-not-disturb'],
-                ['name' => 'emoji', 'rule' => 'optioneel, max 16', 'about' => 'Eén emoji; meerdere code points tellen als één teken niet mee'],
-                ['name' => 'text', 'rule' => 'optioneel, max 100', 'about' => 'Wat je aan het doen bent'],
-            ],
+            'params' => ['availability', 'emoji', 'text'],
             'returns' => 'emoji, text, availability, label, isManual',
         ],
         'api.v1.channels.index' => [
-            'summary' => 'De kanalen die dit token kan zien, om er een id uit te halen. Het chatscherm laat geen ids zien, dus zonder deze lijst is de volgende aanroep niet te doen.',
             'auth' => 'token',
-            'params' => [
-                ['name' => 'search', 'rule' => 'optioneel, query', 'about' => 'Filtert op naam, hoofdletterongevoelig'],
-            ],
-            'returns' => 'id, name, label, type, topic, workspace, canPost — hoogstens 50',
+            'params' => ['search'],
+            'returns' => 'id, name, label, type, topic, workspace, canPost',
         ],
         'api.v1.messages.store' => [
-            'summary' => 'Zeg iets in een kanaal. Hetzelfde bericht als vanaf het scherm: het draagt je naam, je kunt het bewerken en verwijderen, en niets markeert het als afkomstig van een script.',
             'auth' => 'token',
-            'params' => [
-                ['name' => 'channel_id', 'rule' => 'verplicht', 'about' => 'Uit GET /v1/channels'],
-                ['name' => 'body', 'rule' => 'verplicht, max 4000', 'about' => 'De tekst zelf; bijlagen kunnen hier niet'],
-                ['name' => 'parent_id', 'rule' => 'optioneel, ULID', 'about' => 'Antwoord in een bestaande thread in hetzelfde kanaal'],
-            ],
+            'params' => ['channel_id', 'body', 'parent_id'],
             'returns' => 'id, channelId, body, parentId, sentAt',
         ],
         'webhooks.messages.store' => [
-            'summary' => 'Een bericht posten zonder token van een persoon. De sleutel zit in het pad, want dat is wat de tools die hierop wijzen verwachten — en dat is ook waarom een webhook in te trekken en opnieuw te maken is.',
             'auth' => 'webhook',
         ],
         'workflows.webhook' => [
-            'summary' => 'Zet een workflow aan. Strakker begrensd dan een bericht-webhook: hierachter zit geen enkel bericht maar een rij stappen die in meerdere kanalen kan posten en mensen kan toevoegen.',
             'auth' => 'webhook',
         ],
     ];
@@ -101,6 +92,9 @@ class BuildApiReference
                 continue;
             }
 
+            $note = self::NOTES[$name];
+            $line = self::line($name);
+
             $endpoints[] = [
                 'name' => $name,
                 // HEAD rides along with every GET and says nothing anybody
@@ -108,7 +102,20 @@ class BuildApiReference
                 'method' => implode(', ', array_diff($route->methods(), ['HEAD'])),
                 'path' => '/'.ltrim($route->uri(), '/'),
                 'limiter' => $this->limiterFor($name),
-                ...self::NOTES[$name],
+                'auth' => $note['auth'],
+                'summary' => __("{$line}.summary"),
+                /*
+                 * The name is the API's and stays as it is; what a parameter
+                 * asks for and what it means are sentences, so they are
+                 * translated. Keeping the names here rather than in the lang
+                 * file means a translator cannot rename a query parameter.
+                 */
+                'params' => array_map(fn (string $param): array => [
+                    'name' => $param,
+                    'rule' => __("{$line}.params.{$param}.rule"),
+                    'about' => __("{$line}.params.{$param}.about"),
+                ], $note['params'] ?? []),
+                'returns' => $note['returns'] ?? null,
             ];
         }
 
@@ -128,6 +135,17 @@ class BuildApiReference
     public static function documented(): array
     {
         return array_keys(self::NOTES);
+    }
+
+    /**
+     * Where a route's sentences live.
+     *
+     * A route name is dotted and so is a translation key, so the dots are
+     * swapped for underscores rather than letting one nest inside the other.
+     */
+    private static function line(string $name): string
+    {
+        return 'marketing.api.'.str_replace('.', '_', $name);
     }
 
     private function limiterFor(string $name): string

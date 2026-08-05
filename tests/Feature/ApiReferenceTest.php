@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Marketing\BuildApiReference;
+use App\Http\Middleware\HandleLocale;
 use Illuminate\Routing\Router;
 use Inertia\Testing\AssertableInertia;
 
@@ -96,4 +97,47 @@ it('sorts each endpoint under the key that opens it', function () {
     expect($byName['api.v1.messages.store']['auth'])->toBe('token')
         ->and($byName['webhooks.messages.store']['auth'])->toBe('webhook')
         ->and($byName['workflows.webhook']['auth'])->toBe('webhook');
+});
+
+it('has a sentence for every endpoint, in every language it offers', function () {
+    /*
+     * The prose moved out of the action and into the lang files, so the pairing
+     * that used to be one array is now two things that must agree. A route with
+     * no sentence renders its own key as the summary — which reads as a bug
+     * only if somebody happens to look at that page in that language.
+     */
+    foreach (HandleLocale::SUPPORTED as $locale) {
+        app()->setLocale($locale);
+
+        $reference = app(BuildApiReference::class)->handle(app(Router::class));
+
+        foreach ($reference['endpoints'] as $endpoint) {
+            expect($endpoint['summary'])
+                ->not->toStartWith('marketing.api.', "[{$locale}] {$endpoint['name']} has no summary");
+
+            foreach ($endpoint['params'] as $param) {
+                expect($param['rule'])
+                    ->not->toStartWith('marketing.api.', "[{$locale}] {$endpoint['name']}.{$param['name']} has no rule")
+                    ->and($param['about'])
+                    ->not->toStartWith('marketing.api.', "[{$locale}] {$endpoint['name']}.{$param['name']} has no description");
+            }
+        }
+    }
+});
+
+it('keeps parameter names out of the translations', function () {
+    app()->setLocale('en');
+    $english = app(BuildApiReference::class)->handle(app(Router::class));
+
+    app()->setLocale('nl');
+    $dutch = app(BuildApiReference::class)->handle(app(Router::class));
+
+    // A translator must not be able to rename a query parameter, so the names
+    // stay in the action and only the sentences around them move.
+    $names = fn (array $reference): array => collect($reference['endpoints'])
+        ->flatMap(fn (array $endpoint): array => array_column($endpoint['params'], 'name'))
+        ->all();
+
+    expect($names($english))->toBe($names($dutch))
+        ->and($names($english))->toContain('channel_id');
 });

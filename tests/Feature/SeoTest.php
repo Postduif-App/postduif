@@ -23,6 +23,10 @@ it('gives the homepage a description, a canonical address and a card image', fun
 });
 
 it('does not put the app name in the title twice', function () {
+    // The title is written by Inertia's head, which only reaches the HTML when
+    // the renderer is running.
+    skipWithoutSsr();
+
     // Inertia appends " - Postduif" to whatever a page asks for, so a page that
     // asks for "Postduif" gets it said twice — which is a wasted title tag.
     $response = $this->get(route('home'));

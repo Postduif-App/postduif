@@ -39,8 +39,8 @@ class MarketingController extends Controller
 
             'seo' => $this->seo(
                 route('home'),
-                'Postduif — het gesprek en het werk op één plek',
-                'Kanalen en threads, tickets voor wat er blijft liggen, en bestanden die te groot zijn om mee te sturen. Klanten doen mee als gast en zien alleen hun eigen kanalen.',
+                __('marketing.seo.home.title'),
+                __('marketing.seo.home.description'),
                 [
                     /*
                      * SoftwareApplication rather than Organization: what is
@@ -91,8 +91,8 @@ class MarketingController extends Controller
 
             'seo' => $this->seo(
                 route('docs'),
-                'De API van Postduif',
-                'Elke aanroep loopt langs dezelfde regels als het scherm. Methodes, paden, parameters en de limieten per minuut — gelezen uit de router, niet overgetypt.',
+                __('marketing.seo.docs.title'),
+                __('marketing.seo.docs.description'),
             ),
         ]);
     }

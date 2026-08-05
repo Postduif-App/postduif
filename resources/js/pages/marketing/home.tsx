@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 
 import { DoveMark } from '@/components/marketing/logo';
 import {
@@ -8,7 +8,9 @@ import {
     SectionHead,
 } from '@/components/marketing/prose';
 import type { Described } from '@/components/marketing/prose';
-import { register } from '@/routes';
+import { useTranslate } from '@/hooks/use-translate';
+import { login, register } from '@/routes';
+import type { TranslationKey } from '@/types/translations';
 
 interface Feature {
     key: string;
@@ -44,9 +46,17 @@ interface HomeProps {
 }
 
 function Mark({ on }: { on: boolean }) {
+    const { t } = useTranslate();
+
     return (
         <span
-            aria-label={on ? 'ja' : 'nee'}
+            // A dot and a dash carry the answer visually; a screen reader needs
+            // the word, and the word is not the same in both languages.
+            aria-label={
+                on
+                    ? t('marketing.home.roles.yes')
+                    : t('marketing.home.roles.no')
+            }
             style={{
                 fontFamily: 'var(--pd-mono)',
                 fontSize: 13,
@@ -80,9 +90,16 @@ export default function MarketingHome({
 }: HomeProps) {
     const optIn = features.filter((feature) => !feature.onByDefault);
 
+    // Shared by HandleInertiaRequests rather than passed by the controller: the
+    // navbar above this page reads the same flag, and one of them being a page
+    // prop is how the two would come to disagree.
+    const { registrationOpen } = usePage<{ registrationOpen: boolean }>().props;
+
+    const { t, tChoice } = useTranslate();
+
     return (
         <>
-            <Head title="Het gesprek en het werk op één plek" />
+            <Head title={t('marketing.home.head')} />
 
             {/*
                 Hero, on ink, with the 48px grid the huisstijl uses.
@@ -135,7 +152,7 @@ export default function MarketingHome({
                                 background: 'var(--pd-geel)',
                             }}
                         />
-                        Gasten van buiten, zonder ze de rest te laten zien
+                        {t('marketing.home.eyebrow')}
                     </div>
 
                     <h1
@@ -148,7 +165,7 @@ export default function MarketingHome({
                             textWrap: 'balance',
                         }}
                     >
-                        Het gesprek en het werk op één plek.
+                        {t('marketing.home.headline')}
                     </h1>
 
                     <p
@@ -160,13 +177,24 @@ export default function MarketingHome({
                             textWrap: 'pretty',
                         }}
                     >
-                        Kanalen en threads, tickets voor wat er blijft liggen,
-                        en bestanden die te groot zijn om mee te sturen. Klanten
-                        doen mee als gast en zien alleen hun eigen kanalen.
+                        {t('marketing.home.intro')}
                     </p>
 
                     <div className="mb-16 flex flex-wrap items-center gap-3.5">
-                        <Link href={register()} className="pd-button">
+                        {/*
+                            Where this points depends on whether the door is
+                            open. An installation that closed registration
+                            answers /register with a 404, and the button that
+                            says "Beginnen" is exactly the one somebody presses
+                            first — so it becomes the way in that does work,
+                            rather than being taken away and leaving a landing
+                            page with nothing to press. The button in the navbar
+                            follows the same rule; see the marketing layout.
+                        */}
+                        <Link
+                            href={registrationOpen ? register() : login()}
+                            className="pd-button"
+                        >
                             <span
                                 style={{
                                     fontFamily: 'var(--pd-mono)',
@@ -179,7 +207,9 @@ export default function MarketingHome({
                                     display: 'inline-block',
                                 }}
                             >
-                                Beginnen →
+                                {registrationOpen
+                                    ? t('marketing.home.cta_start')
+                                    : t('marketing.home.cta_login')}
                             </span>
                         </Link>
                         <span
@@ -189,8 +219,15 @@ export default function MarketingHome({
                                 color: 'var(--pd-steen)',
                             }}
                         >
-                            {features.length} onderdelen · {optIn.length}{' '}
-                            standaard uit
+                            {tChoice(
+                                'marketing.home.feature_count',
+                                features.length,
+                            )}{' '}
+                            ·{' '}
+                            {tChoice(
+                                'marketing.home.opt_in_count',
+                                optIn.length,
+                            )}
                         </span>
                     </div>
 
@@ -201,8 +238,8 @@ export default function MarketingHome({
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="01"
-                    title="Wat er in zit"
-                    lead="Elk onderdeel hieronder staat als klasse in de code, met deze naam en deze omschrijving. Wat er niet in staat, staat er niet."
+                    title={t('marketing.home.features.title')}
+                    lead={t('marketing.home.features.lead')}
                 />
 
                 <ul className="grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2">
@@ -235,7 +272,9 @@ export default function MarketingHome({
                                                 fontWeight: 600,
                                             }}
                                         >
-                                            STANDAARD UIT
+                                            {t(
+                                                'marketing.home.features.off_by_default',
+                                            )}
                                         </span>
                                     )}
                                 </div>
@@ -259,8 +298,8 @@ export default function MarketingHome({
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
                         number="02"
-                        title="Jij zet het aan"
-                        lead="Deze onderdelen staan uit tot iemand ze aanzet. Het zijn precies de onderdelen die iets buiten je workspace laten reiken."
+                        title={t('marketing.home.opt_in.title')}
+                        lead={t('marketing.home.opt_in.lead')}
                     />
 
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
@@ -305,8 +344,8 @@ export default function MarketingHome({
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="03"
-                    title="Een kanaal naar de vorm van het gesprek"
-                    lead="Een kanaal is niets dat je aanzet, dus het staat niet in de lijst hierboven — terwijl het wel is waar je de hele dag in zit. Dit zijn de knoppen eronder."
+                    title={t('marketing.home.channels.title')}
+                    lead={t('marketing.home.channels.lead')}
                 />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -321,7 +360,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Weergave
+                            {t('marketing.home.channels.layout')}
                         </div>
                         <DescribedList items={channelSettings.layout} />
                     </Card>
@@ -337,7 +376,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Wie er post
+                            {t('marketing.home.channels.posting')}
                         </div>
                         <DescribedList items={channelSettings.posting} />
                     </Card>
@@ -353,7 +392,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Tickets
+                            {t('marketing.home.channels.tickets')}
                         </div>
                         <DescribedList items={channelSettings.tickets} />
                     </Card>
@@ -363,8 +402,11 @@ export default function MarketingHome({
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="04"
-                    title="Dingen die je workspace zelf doet"
-                    lead={`Een workflow is één aanleiding en daarna een reeks stappen, met voorwaarden en splitsingen ertussen. ${workflow.triggers.length} aanleidingen en ${workflow.actions.length} stappen om uit te kiezen.`}
+                    title={t('marketing.home.workflow.title')}
+                    lead={t('marketing.home.workflow.lead', {
+                        triggers: workflow.triggers.length,
+                        actions: workflow.actions.length,
+                    })}
                 />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -379,7 +421,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Wanneer
+                            {t('marketing.home.workflow.when')}
                         </div>
                         <DescribedList items={workflow.triggers} />
                     </Card>
@@ -395,7 +437,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Wat er dan gebeurt
+                            {t('marketing.home.workflow.then')}
                         </div>
                         <DescribedList items={workflow.actions} />
                     </Card>
@@ -405,8 +447,8 @@ export default function MarketingHome({
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="05"
-                    title="Voor je eigen script en je AI-client"
-                    lead="Twee deuren, elk met hun eigen sleutel: een persoonlijk token voor je eigen script, OAuth voor een AI-client die zichzelf aanmeldt. Wat erachter zit is precies wat jij mag zien — elke aanroep loopt langs dezelfde regels als het scherm."
+                    title={t('marketing.home.api.title')}
+                    lead={t('marketing.home.api.lead')}
                 />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -421,7 +463,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            De API
+                            {t('marketing.home.api.endpoints')}
                         </div>
                         <ul className="m-0 grid list-none gap-2 p-0">
                             {token.endpoints.map((endpoint) => (
@@ -458,7 +500,7 @@ export default function MarketingHome({
                                 textTransform: 'uppercase',
                             }}
                         >
-                            Wat een AI-client kan, na jouw toestemming
+                            {t('marketing.home.api.tools')}
                         </div>
                         <DescribedList
                             items={token.tools.map((tool) => ({
@@ -469,20 +511,14 @@ export default function MarketingHome({
                     </Card>
                 </div>
 
-                <Note>
-                    Een AI-client meldt zich met OAuth aan en vraagt jou om
-                    toestemming; je ziet op een scherm van Postduif wat hij mag
-                    en trekt het met één klik weer in. En het staat per
-                    workspace standaard uit: zolang die schakelaar uit is, komt
-                    er langs deze kant niets naar binnen of naar buiten.
-                </Note>
+                <Note>{t('marketing.home.api.note')}</Note>
             </div>
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="06"
-                    title="Wie wat mag"
-                    lead="Een gast is iemand van buiten: een klant, een leverancier. Ze zien alleen de kanalen waarvoor ze zijn uitgenodigd."
+                    title={t('marketing.home.roles.title')}
+                    lead={t('marketing.home.roles.lead')}
                 />
 
                 <div className="overflow-x-auto">
@@ -496,14 +532,16 @@ export default function MarketingHome({
                                     borderBottom: '1px solid var(--pd-zand)',
                                 }}
                             >
-                                {[
-                                    'Rol',
-                                    'Beheren',
-                                    'Uitnodigen',
-                                    'Workspace zien',
-                                    'Kanalen maken',
-                                    'Bestanden versturen',
-                                ].map((head) => (
+                                {(
+                                    [
+                                        'marketing.home.roles.role',
+                                        'marketing.home.roles.manage',
+                                        'marketing.home.roles.invite',
+                                        'marketing.home.roles.browse',
+                                        'marketing.home.roles.create_channels',
+                                        'marketing.home.roles.send_files',
+                                    ] as TranslationKey[]
+                                ).map((head) => (
                                     <th
                                         key={head}
                                         className="py-3 text-left"
@@ -516,7 +554,7 @@ export default function MarketingHome({
                                             textTransform: 'uppercase',
                                         }}
                                     >
-                                        {head}
+                                        {t(head)}
                                     </th>
                                 ))}
                             </tr>
@@ -561,10 +599,7 @@ export default function MarketingHome({
                     </table>
                 </div>
 
-                <Note>
-                    Deze tabel komt uit dezelfde code die de rechten afdwingt.
-                    Verandert de regel, dan verandert de tabel.
-                </Note>
+                <Note>{t('marketing.home.roles.note')}</Note>
             </div>
         </>
     );

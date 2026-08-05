@@ -2,9 +2,54 @@ import { Link, usePage } from '@inertiajs/react';
 import type { ComponentProps, PropsWithChildren } from 'react';
 
 import { Wordmark } from '@/components/marketing/logo';
+import { useTranslate } from '@/hooks/use-translate';
 import { docs, login, register } from '@/routes';
+// Wayfinder cannot export a function called `switch`, so it names it
+// switchMethod; aliased here so the call site reads like the route does.
 import { home as openApp } from '@/routes/chat';
+import { switchMethod as switchLocale } from '@/routes/locale';
 import type { Auth } from '@/types';
+
+/**
+ * Which language the page is in, and the way to the other one.
+ *
+ * Two links rather than a dropdown: there are exactly two, and a dropdown
+ * would hide the one thing somebody who cannot read this page is looking for.
+ * The current one is not a link — it is where you already are.
+ */
+function LanguageChoice({ current }: { current: string }) {
+    return (
+        <span
+            className="flex items-center gap-1.5"
+            style={{
+                fontFamily: 'var(--pd-mono)',
+                fontSize: 12,
+                color: 'var(--pd-steen)',
+            }}
+        >
+            {['nl', 'en'].map((locale) =>
+                locale === current ? (
+                    <span
+                        key={locale}
+                        aria-current="true"
+                        style={{ color: 'var(--pd-inkt)', fontWeight: 600 }}
+                    >
+                        {locale.toUpperCase()}
+                    </span>
+                ) : (
+                    <Link
+                        key={locale}
+                        href={switchLocale(locale)}
+                        className="pd-plain"
+                        style={{ color: 'var(--pd-steen)' }}
+                    >
+                        {locale.toUpperCase()}
+                    </Link>
+                ),
+            )}
+        </span>
+    );
+}
 
 /** The huisstijl's button: Plex Mono, 600, radius 6, ink and yellow. */
 function BrandButton({
@@ -61,10 +106,13 @@ function BrandButton({
  * and auth.workspace are both null. Here that is the normal case.
  */
 export default function MarketingLayout({ children }: PropsWithChildren) {
-    const { auth, registrationOpen } = usePage<{
+    const { auth, registrationOpen, locale } = usePage<{
         auth: Auth;
         registrationOpen: boolean;
+        locale: string;
     }>().props;
+
+    const { t } = useTranslate();
 
     return (
         <div className="postduif flex min-h-screen flex-col">
@@ -81,6 +129,8 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                     </Link>
 
                     <div className="flex items-center gap-3">
+                        <LanguageChoice current={locale} />
+
                         {/*
                             A plain link rather than a button: the two buttons
                             beside it are the one thing this page is asking for,
@@ -97,7 +147,7 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                                 color: 'var(--pd-steen)',
                             }}
                         >
-                            API
+                            {t('marketing.nav.api')}
                         </Link>
 
                         {/*
@@ -108,7 +158,7 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                         */}
                         {auth.user ? (
                             <BrandButton href={openApp.url()}>
-                                Naar de app
+                                {t('marketing.nav.to_app')}
                             </BrandButton>
                         ) : (
                             <>
@@ -126,11 +176,11 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                                         registrationOpen ? 'outline' : 'solid'
                                     }
                                 >
-                                    Inloggen
+                                    {t('marketing.nav.login')}
                                 </BrandButton>
                                 {registrationOpen && (
                                     <BrandButton href={register()}>
-                                        Beginnen
+                                        {t('marketing.nav.start')}
                                     </BrandButton>
                                 )}
                             </>
@@ -164,8 +214,7 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                                 color: '#b6b4a5',
                             }}
                         >
-                            Een werkplek voor gesprekken, het werk dat eruit
-                            volgt en de bestanden die erbij horen.
+                            {t('marketing.footer.tagline')}
                         </p>
                     </div>
 
@@ -183,9 +232,9 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                             className="pd-plain"
                             style={{ color: 'var(--pd-steen)' }}
                         >
-                            API
+                            {t('marketing.nav.api')}
                         </Link>
-                        <span>augustus 2026</span>
+                        <span>{t('marketing.footer.edition')}</span>
                     </div>
                 </div>
             </footer>

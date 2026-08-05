@@ -7,6 +7,7 @@ import {
     Note,
     SectionHead,
 } from '@/components/marketing/prose';
+import { useTranslate } from '@/hooks/use-translate';
 
 /** One parameter a call takes. */
 interface Param {
@@ -69,6 +70,8 @@ function EndpointCard({
     endpoint: Endpoint;
     perMinute?: number;
 }) {
+    const { t, tChoice } = useTranslate();
+
     return (
         <Card>
             <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -97,7 +100,7 @@ function EndpointCard({
 
             {endpoint.params && endpoint.params.length > 0 && (
                 <div className="mt-5">
-                    <CardLabel>Wat het wil</CardLabel>
+                    <CardLabel>{t('marketing.docs.wants')}</CardLabel>
                     <DescribedList
                         items={endpoint.params.map((param) => ({
                             label: `${param.name} · ${param.rule}`,
@@ -109,7 +112,7 @@ function EndpointCard({
 
             {endpoint.returns && (
                 <div className="mt-5">
-                    <CardLabel>Wat het teruggeeft</CardLabel>
+                    <CardLabel>{t('marketing.docs.returns')}</CardLabel>
                     <code
                         style={{
                             fontFamily: 'var(--pd-mono)',
@@ -131,7 +134,7 @@ function EndpointCard({
                         color: '#8b8a7b',
                     }}
                 >
-                    Hoogstens {perMinute} per minuut
+                    {tChoice('marketing.docs.rate_limit', perMinute)}
                 </p>
             )}
         </Card>
@@ -153,6 +156,8 @@ function EndpointCard({
  * afternoon.
  */
 export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
+    const { t } = useTranslate();
+
     const tokenEndpoints = endpoints.filter(
         (endpoint) => endpoint.auth === 'token',
     );
@@ -162,7 +167,7 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
 
     return (
         <>
-            <Head title="API" />
+            <Head title={t('marketing.docs.head')} />
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <h1
@@ -175,7 +180,7 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                         textWrap: 'balance',
                     }}
                 >
-                    De API
+                    {t('marketing.docs.title')}
                 </h1>
 
                 <p
@@ -187,22 +192,19 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                         textWrap: 'pretty',
                     }}
                 >
-                    Klein en met opzet klein gehouden. Elke aanroep loopt langs
-                    dezelfde regels als het scherm: wat jij niet mag zien, geeft
-                    dit ook niet terug, en een bericht dat hier binnenkomt gaat
-                    door dezelfde actie als een bericht dat je typt.
+                    {t('marketing.docs.intro')}
                 </p>
             </div>
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="01"
-                    title="Aanmelden"
-                    lead="Een persoonlijk token hoort bij jou, niet bij een workspace. Je maakt er een bij Instellingen → API-tokens, en je ziet hem één keer."
+                    title={t('marketing.docs.auth.title')}
+                    lead={t('marketing.docs.auth.lead')}
                 />
 
                 <Card>
-                    <CardLabel>De header</CardLabel>
+                    <CardLabel>{t('marketing.docs.auth.header')}</CardLabel>
                     <pre
                         className="m-0 overflow-x-auto"
                         style={{
@@ -216,19 +218,14 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                     </pre>
                 </Card>
 
-                <Note>
-                    Elke mislukking geeft hetzelfde antwoord: 401, zonder te
-                    zeggen of het token niet bestaat, is ingetrokken of bij een
-                    verwijderd account hoort. Dat is met opzet — het verschil
-                    vertellen is iemand vertellen welke gok dichterbij was.
-                </Note>
+                <Note>{t('marketing.docs.auth.note')}</Note>
             </div>
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
                     number="02"
-                    title="Met je eigen token"
-                    lead="Alles hieronder gaat over de member wiens token je stuurt. Daarom staat er nergens een id in het pad: er is geen manier om bij iemand anders uit te komen."
+                    title={t('marketing.docs.token.title')}
+                    lead={t('marketing.docs.token.lead')}
                 />
 
                 <div className="grid grid-cols-1 gap-6">
@@ -241,21 +238,15 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                     ))}
                 </div>
 
-                <Note>
-                    Een workspace laat standaard niets met een token binnen.
-                    Zolang die schakelaar uit staat, geeft de kanalenlijst er
-                    niets uit terug en antwoordt posten er met 404 — hetzelfde
-                    antwoord als een kanaal dat niet bestaat, want het verschil
-                    zou verklappen wat er wél is.
-                </Note>
+                <Note>{t('marketing.docs.token.note')}</Note>
             </div>
 
             {webhookEndpoints.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
                         number="03"
-                        title="Zonder token van een persoon"
-                        lead="Een webhook draagt zijn sleutel in het pad, want dat is wat de tools die erop wijzen verwachten. Hij komt dus in logs terecht — en dat is precies waarom hij in te trekken en opnieuw te maken is."
+                        title={t('marketing.docs.webhooks.title')}
+                        lead={t('marketing.docs.webhooks.lead')}
                     />
 
                     <div className="grid grid-cols-1 gap-6">
@@ -274,12 +265,12 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
                         number="04"
-                        title="Voor een AI-client"
-                        lead="Een AI-client meldt zich met OAuth aan en vraagt jou om toestemming. Dit is wat hij daarna kan — dezelfde regels, dezelfde grenzen."
+                        title={t('marketing.docs.ai.title')}
+                        lead={t('marketing.docs.ai.lead')}
                     />
 
                     <Card>
-                        <CardLabel>De tools</CardLabel>
+                        <CardLabel>{t('marketing.docs.ai.tools')}</CardLabel>
                         <DescribedList
                             items={tools.map((tool) => ({
                                 label: tool.name,

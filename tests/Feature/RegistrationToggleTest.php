@@ -49,6 +49,31 @@ it('tells the login screen not to offer a way in', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page->where('registrationOpen', false));
 });
 
+it('does not leave the landing page pointing at a door that answers 404', function () {
+    skipWithoutSsr();
+
+    closeRegistration();
+
+    /*
+     * The navbar button was already conditional; the one in the hero was not,
+     * and that is the button somebody presses first. A call to action that
+     * lands on a 404 is worse than one that is missing, so it becomes the way
+     * in that does work rather than disappearing.
+     */
+    $html = $this->get(route('home'))->getContent();
+
+    expect($html)->not->toContain('href="/register"')
+        ->and($html)->toContain('href="/login"');
+});
+
+it('offers the way in on the landing page while the door is open', function () {
+    skipWithoutSsr();
+
+    $html = $this->get(route('home'))->getContent();
+
+    expect($html)->toContain('href="/register"');
+});
+
 it('still lets an invited person make an account', function () {
     closeRegistration();
 

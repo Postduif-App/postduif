@@ -4,6 +4,7 @@ use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
+use App\Features\Forms;
 use App\Features\Transfers;
 use App\Features\WorkspaceFeature;
 use App\Models\User;
@@ -62,13 +63,15 @@ it('says which features only exist once somebody switches them on', function () 
         ->all();
 
     expect($off)->toContain(Transfers::key())
+        ->toContain(Forms::key())
         /*
-         * Four, and each one hands out something a workspace should grant on
-         * purpose rather than find already granted: three that let something
-         * reach past the workspace, and workflows — which stay inside it, but
-         * act on channels with the rights of whoever wrote them.
+         * Six, and each one hands out something a workspace should grant on
+         * purpose rather than find already granted: the ones that let something
+         * reach past the workspace — transfers, secrets, a form behind a public
+         * link — workflows, which stay inside it but act on channels with the
+         * rights of whoever wrote them, and the clock, which records people.
          */
-        ->toHaveCount(4);
+        ->toHaveCount(6);
 });
 
 it('describes the roles as the code defines them', function () {
