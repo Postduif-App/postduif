@@ -46,6 +46,7 @@ return [
         'dialog_description' => 'Zoek een emoji',
         'placeholder' => 'Zoek een emoji…',
         'none' => 'Geen emoji gevonden.',
+        'custom' => 'Van deze workspace',
     ],
 
     'code' => [

@@ -14,6 +14,7 @@ return [
         'command' => 'Kies een opdracht',
         'channel' => 'Verwijs naar een kanaal',
         'member' => 'Vermeld een lid',
+        'custom_emoji' => 'emoji van deze workspace',
         'here' => 'wie dit kanaal nu open heeft',
         'everyone' => 'alle :count leden',
     ],

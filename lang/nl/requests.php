@@ -113,8 +113,16 @@ return [
     ],
 
     'reaction' => [
-        // Channel reactions and board reactions, word for word the same rule.
+        // Channel reactions and board reactions, through one rule object.
         'emoji_only' => 'Een reactie moet een emoji zijn.',
+        // Een shortcode die deze workspace niet kent. Meestal een emoji die
+        // net verwijderd is, of er een uit een andere workspace.
+        'unknown_emoji' => 'Deze workspace heeft geen emoji met die naam.',
+    ],
+
+    'custom_emoji' => [
+        'name' => 'Gebruik alleen kleine letters, cijfers, - en _. Maximaal 30 tekens.',
+        'taken' => 'Er is hier al een emoji met die naam.',
     ],
 
     'ticket' => [

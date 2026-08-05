@@ -37,6 +37,7 @@ return [
         'dialog_description' => 'Find an emoji',
         'placeholder' => 'Find an emoji…',
         'none' => 'No emoji found.',
+        'custom' => 'From this workspace',
     ],
 
     'code' => [

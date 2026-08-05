@@ -99,4 +99,9 @@ return [
         'saved' => 'The role :name has been saved.',
         'deleted' => 'The role :name has been deleted.',
     ],
+
+    'custom_emoji' => [
+        'added' => ':name is in the picker now.',
+        'removed' => ':name has been removed.',
+    ],
 ];

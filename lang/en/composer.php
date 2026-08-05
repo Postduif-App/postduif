@@ -5,6 +5,7 @@ return [
         'command' => 'Pick a command',
         'channel' => 'Refer to a channel',
         'member' => 'Mention a member',
+        'custom_emoji' => 'emoji from this workspace',
         'here' => 'whoever has this channel open now',
         'everyone' => 'all :count members',
     ],

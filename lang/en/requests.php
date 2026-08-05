@@ -113,8 +113,16 @@ return [
     ],
 
     'reaction' => [
-        // Channel reactions and board reactions, word for word the same rule.
+        // Channel reactions and board reactions, through one rule object.
         'emoji_only' => 'A reaction has to be an emoji.',
+        // A shortcode this workspace does not know. Usually one that was just
+        // deleted, or one carried over from somewhere else.
+        'unknown_emoji' => 'This workspace has no emoji by that name.',
+    ],
+
+    'custom_emoji' => [
+        'name' => 'Use lower case letters, digits, - and _ only. 30 characters at most.',
+        'taken' => 'There is already an emoji here by that name.',
     ],
 
     'ticket' => [

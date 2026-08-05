@@ -102,4 +102,9 @@ return [
         'saved' => 'De rol :name is opgeslagen.',
         'deleted' => 'De rol :name is verwijderd.',
     ],
+
+    'custom_emoji' => [
+        'added' => ':name staat nu in de picker.',
+        'removed' => ':name is weggehaald.',
+    ],
 ];
