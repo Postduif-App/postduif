@@ -2,7 +2,10 @@ import { Link } from '@inertiajs/react';
 import { Hash, Megaphone, Ticket as TicketIcon } from 'lucide-react';
 
 import { CodeBlock } from '@/components/chat/code-block';
+import { CustomEmoji } from '@/components/chat/custom-emoji';
 import { splitCodeBlocks } from '@/lib/code-blocks';
+import type { CustomEmojiEntry } from '@/lib/custom-emoji';
+import { indexCustomEmoji, splitCustomEmoji } from '@/lib/custom-emoji';
 import { parseInline } from '@/lib/inline-markdown';
 import type { InlineNode } from '@/lib/inline-markdown';
 import { cn } from '@/lib/utils';
@@ -46,6 +49,8 @@ interface ReferenceContext {
     workspace: ChatWorkspace;
     byHandle: Map<string, ChannelMember>;
     bySlug: Map<string, ChannelSummary>;
+    /** This workspace's own emoji, so ":shipit:" can become a picture. */
+    byEmojiName: Map<string, CustomEmojiEntry>;
     ticketChannelId?: number | null;
     currentUsername?: string;
 }
@@ -68,12 +73,15 @@ export function MessageBody({
                 .filter((channel) => channel.name !== null)
                 .map((channel) => [channel.name!.toLowerCase(), channel]),
         ),
+        byEmojiName: indexCustomEmoji(workspace.customEmoji ?? []),
         ticketChannelId,
         currentUsername,
     };
 
     /*
-        Three passes, in this order, and the order is the whole design.
+        Three passes, in this order, and the order is the whole design. (A
+        fourth, the workspace's own emoji, runs inside the last of them — see
+        renderNodes for why it belongs there rather than beside them.)
 
         Fenced blocks come off first, because a code block is the one part of a
         message that means "leave this alone" — nothing below it gets to look
@@ -116,9 +124,33 @@ function renderNodes(
         const key = `${path}${index}`;
 
         if (node.type === 'text') {
+            /*
+                A fourth pass, inside the third. The workspace's own emoji are
+                found in the plain text that survived the fences and the
+                formatting — never inside a code block, where ":shipit:" is a
+                label in somebody's YAML — and the text left over on either side
+                still goes through the reference pass, so "@fenna :shipit:"
+                gets both. Unknown names come back as text and cost nothing.
+            */
             return (
                 <span key={key}>
-                    {renderReferences(node.value, context, key)}
+                    {splitCustomEmoji(node.value, context.byEmojiName).map(
+                        (part, partIndex) =>
+                            part.type === 'emoji' ? (
+                                <CustomEmoji
+                                    key={`${key}-e${partIndex}`}
+                                    entry={part.entry}
+                                />
+                            ) : (
+                                <span key={`${key}-t${partIndex}`}>
+                                    {renderReferences(
+                                        part.value,
+                                        context,
+                                        `${key}-t${partIndex}`,
+                                    )}
+                                </span>
+                            ),
+                    )}
                 </span>
             );
         }

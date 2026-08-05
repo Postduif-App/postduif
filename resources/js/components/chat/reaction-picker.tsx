@@ -1,6 +1,7 @@
 import { Search, SmilePlus } from 'lucide-react';
 import { useState } from 'react';
 
+import { CustomEmoji, ReactionEmoji } from '@/components/chat/custom-emoji';
 import { messageToolbarButton } from '@/components/chat/message-toolbar';
 import {
     CommandDialog,
@@ -17,6 +18,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCustomEmoji } from '@/hooks/use-custom-emoji';
 import { useRecentEmoji } from '@/hooks/use-recent-emoji';
 import { useTranslate } from '@/hooks/use-translate';
 import { EMOJI_GROUPS, QUICK_EMOJI } from '@/lib/emoji';
@@ -59,6 +61,7 @@ export function ReactionPicker({
     const { t } = useTranslate();
     const [browsing, setBrowsing] = useState(false);
     const [recent, remember] = useRecentEmoji();
+    const { entries: custom } = useCustomEmoji();
 
     const label = given ?? t('chat_ui.reactions.pick');
 
@@ -96,7 +99,12 @@ export function ReactionPicker({
                             aria-label={`${label}: ${emoji}`}
                             className="justify-center p-1.5 text-base leading-none"
                         >
-                            {emoji}
+                            {/*
+                                What you last reached for may well be one of
+                                this workspace's own, so the row draws whatever
+                                the stored string turns out to be.
+                            */}
+                            <ReactionEmoji emoji={emoji} />
                         </DropdownMenuItem>
                     ))}
 
@@ -132,6 +140,33 @@ export function ReactionPicker({
                         <CommandEmpty>
                             {t('chat_ui.reactions.none')}
                         </CommandEmpty>
+
+                        {/*
+                            This workspace's own, first. They are the ones
+                            somebody came here for — the curated set below is
+                            the same on every installation, and a logo nobody
+                            else has is worth more than a second smiley.
+                        */}
+                        {custom.length > 0 && (
+                            <CommandGroup
+                                heading={t('chat_ui.reactions.custom')}
+                            >
+                                {custom.map((entry) => (
+                                    <CommandItem
+                                        key={`custom-${entry.name}`}
+                                        value={`:${entry.name}: ${entry.name}`}
+                                        onSelect={() =>
+                                            choose(`:${entry.name}:`)
+                                        }
+                                    >
+                                        <CustomEmoji entry={entry} />
+                                        <span className="text-xs text-muted-foreground">
+                                            :{entry.name}:
+                                        </span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        )}
 
                         {EMOJI_GROUPS.map((group) => (
                             <CommandGroup

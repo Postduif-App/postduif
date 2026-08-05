@@ -19,8 +19,10 @@ import {
     useSyncExternalStore,
 } from 'react';
 
+import { ReactionEmoji } from '@/components/chat/custom-emoji';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { Button } from '@/components/ui/button';
+import { useCustomEmoji } from '@/hooks/use-custom-emoji';
 import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
 import { useTranslate } from '@/hooks/use-translate';
@@ -202,7 +204,11 @@ function SuggestionIcon({
     if (icon === 'emoji') {
         return (
             <span className="flex size-6 shrink-0 items-center justify-center text-base leading-none">
-                {name}
+                {/*
+                    A symbol or one of this workspace's own pictures — the row
+                    is offered for both, and only the stored string knows which.
+                */}
+                <ReactionEmoji emoji={name} />
             </span>
         );
     }
@@ -261,6 +267,7 @@ export function Composer({
 }: ComposerProps) {
     const { t } = useTranslate();
     const formats = useFormats();
+    const { entries: custom } = useCustomEmoji();
 
     /*
      * The draft is the field.
@@ -374,21 +381,44 @@ export function Composer({
                 return [];
             }
 
-            return EMOJI_GROUPS.flatMap((group) => group.entries)
-                .filter((entry) =>
-                    entry.keywords.some((keyword) =>
-                        keyword.startsWith(active.query),
-                    ),
-                )
-                .slice(0, MAX_SUGGESTIONS)
+            /*
+             * This workspace's own first, matched on the name people type.
+             * They are the ones somebody is reaching for when they open the
+             * colon at all — the unicode set below is on every keyboard, and
+             * ":shipit" is not.
+             */
+            const own: Suggestion[] = custom
+                .filter((entry) => entry.name.startsWith(active.query))
                 .map((entry) => ({
-                    key: `emoji-${entry.emoji}`,
-                    insert: entry.emoji,
-                    primary: entry.emoji,
-                    secondary: entry.keywords.join(', '),
+                    key: `custom-${entry.name}`,
+                    // The colons stay in the message: they are what turns the
+                    // name back into a picture wherever it is read.
+                    insert: `:${entry.name}:`,
+                    primary: `:${entry.name}:`,
+                    secondary: t('composer.suggestions.custom_emoji'),
                     icon: 'emoji' as const,
                     replacesTrigger: true,
                 }));
+
+            return own
+                .concat(
+                    EMOJI_GROUPS.flatMap((group) => group.entries)
+                        .filter((entry) =>
+                            entry.keywords.some((keyword) =>
+                                keyword.startsWith(active.query),
+                            ),
+                        )
+                        .slice(0, MAX_SUGGESTIONS)
+                        .map((entry) => ({
+                            key: `emoji-${entry.emoji}`,
+                            insert: entry.emoji,
+                            primary: entry.emoji,
+                            secondary: entry.keywords.join(', '),
+                            icon: 'emoji' as const,
+                            replacesTrigger: true,
+                        })),
+                )
+                .slice(0, MAX_SUGGESTIONS);
         }
 
         if (active.char === '@') {

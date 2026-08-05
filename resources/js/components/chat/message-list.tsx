@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { ReactionEmoji } from '@/components/chat/custom-emoji';
 import { GuestBadge } from '@/components/chat/guest-badge';
 import { LinkPreviewCard } from '@/components/chat/link-preview-card';
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
@@ -373,7 +374,7 @@ export function MessageReactions({
                                     onReact && 'hover:border-primary/40',
                                 )}
                             >
-                                <span>{reaction.emoji}</span>
+                                <ReactionEmoji emoji={reaction.emoji} />
                                 <span className="text-muted-foreground">
                                     {reaction.count}
                                 </span>

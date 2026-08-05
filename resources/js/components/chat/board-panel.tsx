@@ -11,6 +11,7 @@ import {
 import { useRef, useState } from 'react';
 
 import { Composer } from '@/components/chat/composer';
+import { ReactionEmoji } from '@/components/chat/custom-emoji';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -418,7 +419,7 @@ function BoardReactions({
                                 onToggle && 'hover:border-primary/40',
                             )}
                         >
-                            <span>{reaction.emoji}</span>
+                            <ReactionEmoji emoji={reaction.emoji} />
                             <span className="text-muted-foreground">
                                 {reaction.count}
                             </span>

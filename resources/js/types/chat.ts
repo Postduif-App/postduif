@@ -1,3 +1,4 @@
+import type { CustomEmojiEntry } from '@/lib/custom-emoji';
 import type { Availability } from '@/types/auth';
 
 export type ChannelType = 'public' | 'private' | 'dm';
@@ -92,6 +93,13 @@ export interface ChatWorkspace {
         /** A hint for the file dialog; the server decides for real. */
         accept: string;
     } | null;
+    /**
+     * The pictures this workspace named for itself, for the picker to offer,
+     * the composer to suggest and every message to draw. Sent whole with the
+     * page: a list that arrived later would show a screenful of chat as bare
+     * text for a moment and then rearrange it.
+     */
+    customEmoji: CustomEmojiEntry[];
 }
 
 /**
