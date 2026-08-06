@@ -55,6 +55,18 @@ class SendFormAnswers implements ShouldQueue
      */
     public int $tries = 1;
 
+    /**
+     * Beside the notifications rather than on the default queue.
+     *
+     * This is a delivery somebody is waiting for — a form was filled in and the
+     * person who asked the questions has not heard yet — so it belongs with the
+     * short work rather than behind a workflow or a link being fetched.
+     */
+    public function viaQueue(): string
+    {
+        return 'notifications';
+    }
+
     public function __construct(
         private readonly StartDirectMessage $startDirectMessage,
         private readonly SendMessage $sendMessage,

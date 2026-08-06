@@ -37,7 +37,10 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
     public function __construct(
         public readonly Workspace $workspace,
         public readonly Collection $channels,
-    ) {}
+    ) {
+        // Ahead of the slow work: somebody is waiting for this one.
+        $this->onQueue('notifications');
+    }
 
     /**
      * @return array<int, string>

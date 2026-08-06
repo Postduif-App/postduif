@@ -32,7 +32,10 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
      */
     public function __construct(
         public readonly Collection $tickets,
-    ) {}
+    ) {
+        // Ahead of the slow work: somebody is waiting for this one.
+        $this->onQueue('notifications');
+    }
 
     /**
      * @return array<int, string>

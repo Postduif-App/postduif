@@ -26,7 +26,18 @@ class FetchLinkPreviewJob implements ShouldBeUnique, ShouldQueue
      */
     public int $tries = 1;
 
-    public function __construct(public readonly string $url) {}
+    /**
+     * Its own queue, because this one talks to the open internet.
+     *
+     * A page that takes its five seconds to answer, times ten links in a busy
+     * afternoon, is a worker that is not free for the notification somebody is
+     * actually waiting on. Nothing here is urgent: the card appears when it
+     * appears, and the message it belongs to was posted long before.
+     */
+    public function __construct(public readonly string $url)
+    {
+        $this->onQueue('previews');
+    }
 
     public function handle(FetchLinkPreview $fetchLinkPreview, AnnounceLinkPreview $announceLinkPreview): void
     {

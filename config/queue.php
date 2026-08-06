@@ -68,7 +68,24 @@ return [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 90),
+            /*
+             * Sized to the slowest thing on any of this connection's queues,
+             * which is a workflow run: up to 25 steps, each of which may wait
+             * out the ten seconds config/workflows.php allows an HTTP request.
+             *
+             * retry_after is what Redis waits before deciding a job was
+             * abandoned and handing it to somebody else, and it is a property
+             * of the connection rather than of the queue — so the longest job
+             * sets it for all four. Too low and a run that is still walking its
+             * steps gets picked up a second time; every Horizon supervisor's
+             * timeout stays under this on purpose.
+             *
+             * The cost is on the other side: a worker that dies mid-job leaves
+             * that job invisible for this long. All of them try once, so what
+             * follows is a failed job rather than a repeat, and none of this is
+             * work anybody is watching a clock for.
+             */
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 660),
             'block_for' => null,
             'after_commit' => false,
         ],

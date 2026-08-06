@@ -33,7 +33,22 @@ class RunWorkflowJob implements ShouldQueue
      */
     public int $tries = 1;
 
-    public function __construct(public readonly int $runId) {}
+    /**
+     * Its own queue, because a run is the slowest thing this application
+     * queues and the least urgent: a link card, and a notification somebody is
+     * waiting for, should not sit behind three workflows walking their steps.
+     *
+     * The queue only, and not a connection to go with it. How long a run may
+     * take is a retry_after question, and retry_after belongs to the
+     * connection — see config/queue.php, where the shared one is sized to this
+     * job. Naming a connection here would also override whatever the
+     * environment chose, which is how a suite that runs its queues
+     * synchronously would quietly stop doing so.
+     */
+    public function __construct(public readonly int $runId)
+    {
+        $this->onQueue('workflows');
+    }
 
     public function handle(RunWorkflow $runWorkflow): void
     {
