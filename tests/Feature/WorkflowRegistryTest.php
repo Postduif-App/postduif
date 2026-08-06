@@ -79,6 +79,8 @@ it('offers every trigger the application was built with', function () {
         'form-submitted',
         'timeclock',
         'link',
+        'slash-command',
+        'button',
         'schedule',
         'webhook',
     ]);
@@ -105,10 +107,17 @@ it('builds an action out of the container so it can ask for what it needs', func
     expect($registry->resolveAction('made-up-action'))->toBeInstanceOf(MadeUpAction::class);
 });
 
-it('lets a variable into a text field and keeps it out of a channel picker', function () {
+it('lets a variable into the fields that can be resolved, and keeps it out of the rest', function () {
     expect(WorkflowField::text('body', 'Tekst')->acceptsVariables())->toBeTrue()
         ->and(WorkflowField::longText('body', 'Tekst')->acceptsVariables())->toBeTrue()
-        ->and(WorkflowField::channel('channel_id', 'Kanaal')->acceptsVariables())->toBeFalse()
+        /*
+         * The channel is in because a step looks it up inside its own
+         * workspace, by name or by id — so a variable can only ever find
+         * something this workspace owns. See WorkflowFieldType.
+         */
+        ->and(WorkflowField::channel('channel_id', 'Kanaal')->acceptsVariables())->toBeTrue()
+        // And the form stays out: a ULID with no name to fall back on.
+        ->and(WorkflowField::form('form_id', 'Formulier')->acceptsVariables())->toBeFalse()
         ->and(WorkflowField::number('minutes', 'Minuten')->acceptsVariables())->toBeFalse()
         ->and(WorkflowField::member('user_id', 'Wie')->acceptsVariables())->toBeFalse();
 });

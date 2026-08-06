@@ -6,7 +6,6 @@ use App\Actions\Timeclock\SummariseHours;
 use App\Enums\Availability;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
-use App\Features\Timeclock;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Workspace;
@@ -15,25 +14,6 @@ use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
-
-/**
- * Somebody in a workspace that has the clock switched on.
- *
- * Activated by hand, like the transfers helper it is modelled on, and for the
- * same reason: tijdregistratie is off until a workspace says otherwise, so a
- * test that wants one has to say so too.
- *
- * @return array{0: User, 1: Workspace}
- */
-function clockingMember(SystemRole $role = SystemRole::Member): array
-{
-    $user = User::factory()->create(['timezone' => 'Europe/Amsterdam']);
-    $workspace = workspaceWithMember($user, $role);
-
-    Feature::for($workspace)->activate(Timeclock::class);
-
-    return [$user, $workspace];
-}
 
 it('records a shift from clocking in to clocking out', function () {
     [$user, $workspace] = clockingMember();

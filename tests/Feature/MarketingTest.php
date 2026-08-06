@@ -14,6 +14,14 @@ use App\Workflows\WorkflowRegistry;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 
+/*
+ * The public site is what an installed platform shows a stranger. An empty one
+ * shows the onboarding screen instead, on these very addresses — see
+ * RedirectToInstallation — so every test below needs the platform to exist
+ * before it can say anything about the pages it serves.
+ */
+beforeEach(fn () => installedPlatform());
+
 it('opens for somebody with no account at all', function () {
     get(route('home'))
         ->assertOk()
@@ -65,13 +73,14 @@ it('says which features only exist once somebody switches them on', function () 
     expect($off)->toContain(Transfers::key())
         ->toContain(Forms::key())
         /*
-         * Six, and each one hands out something a workspace should grant on
+         * Seven, and each one hands out something a workspace should grant on
          * purpose rather than find already granted: the ones that let something
          * reach past the workspace — transfers, secrets, a form behind a public
          * link — workflows, which stay inside it but act on channels with the
-         * rights of whoever wrote them, and the clock, which records people.
+         * rights of whoever wrote them, the clock, which records people, and
+         * huddles, which need a relay arranged before they work for everybody.
          */
-        ->toHaveCount(6);
+        ->toHaveCount(7);
 });
 
 it('describes the roles as the code defines them', function () {
@@ -117,6 +126,8 @@ it('still opens for somebody who is signed in', function () {
  * than the application's own look.
  */
 it('dresses the external screens in the house style', function (string $route) {
+    skipWithoutSsr();
+
     $response = get(route($route))->assertOk();
 
     expect($response->getContent())

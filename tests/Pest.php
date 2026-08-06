@@ -1,17 +1,30 @@
 <?php
 
+use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\SendMessage;
+use App\Actions\Workflows\RunWorkflow;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
+use App\Features\Forms;
+use App\Features\Huddles as HuddlesFeature;
+use App\Features\SecretRequests;
+use App\Features\Timeclock;
 use App\Features\Transfers;
+use App\Features\Workflows as WorkflowsFeature;
+use App\Models\ApiToken;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\Role;
+use App\Models\SecretRequest;
+use App\Models\SecretRequestKey;
 use App\Models\Transfer;
 use App\Models\User;
+use App\Models\Workflow;
+use App\Models\WorkflowRun;
+use App\Models\WorkflowStep;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -136,7 +149,7 @@ function setAbility(Workspace $workspace, WorkspaceAbility $ability, bool $holds
  */
 function roleId(Workspace $workspace, SystemRole $role): int
 {
-    return $workspace->roles()->where('key', $role->value)->value('id');
+    return Role::idFor($workspace, $role);
 }
 
 function workspaceWithMember(User $user, SystemRole $role = SystemRole::Member): Workspace
@@ -222,12 +235,51 @@ function waitingTransfer(array $state = [], int $files = 1): array
     return [$transfer->refresh(), $workspace, $sender];
 }
 
+/**
+ * A platform that somebody has already set up.
+ *
+ * For tests about the public screens — the home page, the login and sign-up
+ * forms — which are the three addresses RedirectToInstallation takes over while
+ * the platform is empty. They were written against a database with nothing in
+ * it, which is now the one state in which those pages are not the pages that
+ * answer.
+ *
+ * One account is the whole of it: see Installation, which reads an empty
+ * platform as one with no accounts rather than one with no workspaces. Nobody
+ * is signed in as this person and no workspace is made for them — a visitor who
+ * is not logged in has to stay a visitor, which is exactly what several of
+ * these tests are checking.
+ */
+function installedPlatform(): User
+{
+    return User::factory()->create();
+}
+
 function channelWithMember(Workspace $workspace, User $user): Channel
 {
     $channel = Channel::factory()->create(['workspace_id' => $workspace->id]);
     $channel->members()->attach($user->id, ['joined_at' => now()]);
 
     return $channel;
+}
+
+/**
+ * A beheerder of a workspace that has workflows switched on.
+ *
+ * Here rather than in the test file that first needed it: a fixture reached
+ * from a second file is one an isolated run of that file has to hope somebody
+ * else loaded.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function workflowBeheerder(): array
+{
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, SystemRole::Admin);
+
+    Feature::for($workspace)->activate(WorkflowsFeature::class);
+
+    return [$user, $workspace];
 }
 
 /**
@@ -325,19 +377,285 @@ function pollFixture(bool $allowsMultiple = false): array
     return [$asker, $voter, $poll, $options[0], $options[1]];
 }
 
-/**
- * The id of a workspace's built-in role, for a factory that has only the id of
- * the workspace to go on.
- *
- * A factory attribute may be handed a workspace that is itself still a factory,
- * so this resolves whatever it is given rather than insisting on a model.
- */
-function roleIdFor(mixed $workspace, SystemRole $role): int
-{
-    $id = $workspace instanceof Workspace ? $workspace->id : $workspace;
+/*
+|--------------------------------------------------------------------------
+| Fixtures reached from more than one file
+|--------------------------------------------------------------------------
+|
+| Each of these was written in the test file that first needed it and then
+| borrowed by a second — which works only for as long as PHP happens to have
+| loaded the first file. Under the parallel runner it does not: a worker loads
+| only the files it was handed, so the borrower dies on "call to undefined
+| function", and which files land together changes from run to run. The same
+| goes for running one file with --filter.
+|
+| So they live here, where every file can see them, alongside the fixtures that
+| were already moved for exactly that reason.
+|
+*/
 
-    return Role::query()
-        ->where('workspace_id', $id)
-        ->where('key', $role->value)
-        ->value('id');
+/**
+ * A workspace with a prikbord, somebody who may read it, and a guest who may
+ * not.
+ *
+ * The channel comes along because the rail is only ever drawn on a real chat
+ * screen: chat.index redirects to whichever channel was busiest, so a test that
+ * wants to look at the sidebar has to have somewhere for it to land.
+ *
+ * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
+ */
+function boardFixture(): array
+{
+    $member = User::factory()->create();
+    $workspace = workspaceWithMember($member);
+
+    $guest = User::factory()->create();
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
+
+    $channel = Channel::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $member->id,
+    ]);
+    $channel->members()->attach([$member->id, $guest->id], ['joined_at' => now()]);
+
+    return [$member, $guest, $workspace, $channel];
+}
+
+/**
+ * A channel with its creator and one ordinary member in it.
+ *
+ * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
+ */
+function settingsFixture(): array
+{
+    $creator = User::factory()->create();
+    $workspace = workspaceWithMember($creator);
+
+    $channel = Channel::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $creator->id,
+    ]);
+    $channel->members()->attach($creator->id, ['joined_at' => now()]);
+
+    $member = User::factory()->create();
+    joinWorkspace($workspace, $member, SystemRole::Member);
+    $channel->members()->attach($member->id, ['joined_at' => now()]);
+
+    return [$creator, $member, $workspace, $channel];
+}
+
+/**
+ * A member, a channel they belong to, and a message in it.
+ *
+ * @return array{0: User, 1: Channel, 2: Message}
+ */
+function inboxFixture(): array
+{
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    $message = Message::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+    ]);
+
+    return [$user, $channel, $message];
+}
+
+/**
+ * A workspace that keeps forms, and somebody in it who may write one.
+ *
+ * The feature is switched on by hand, which is the point of it: forms are off
+ * until a workspace says otherwise, so every test that wants one says so too.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function formAuthor(SystemRole $role = SystemRole::Admin): array
+{
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, $role);
+
+    Feature::for($workspace)->activate(Forms::class);
+
+    return [$user, $workspace];
+}
+
+/**
+ * A workspace that switched asking on, with a channel and somebody in it.
+ *
+ * Turned on by hand every time, like the transfer fixtures: it is off by
+ * default, and that is the point of it being a decision.
+ *
+ * @return array{0: User, 1: Workspace, 2: Channel}
+ */
+function requesterInChannel(): array
+{
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    Feature::for($workspace)->activate(SecretRequests::class);
+
+    return [$user, $workspace, $channel];
+}
+
+/**
+ * A request waiting for answers, and a guest who can reach it.
+ *
+ * The guest is the fixture rather than an extra step: the customer holding the
+ * credentials is who this whole feature is for.
+ *
+ * @return array{0: SecretRequest, 1: SecretRequestKey, 2: SecretRequestKey, 3: User, 4: User}
+ */
+function fillableRequest(array $state = []): array
+{
+    [$requester, $workspace, $channel] = requesterInChannel();
+
+    $request = SecretRequest::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $requester->id,
+        ...$state,
+    ]);
+
+    $password = SecretRequestKey::factory()->create([
+        'secret_request_id' => $request->id,
+        'name' => 'DB_PASSWORD',
+        'position' => 0,
+    ]);
+    $token = SecretRequestKey::factory()->create([
+        'secret_request_id' => $request->id,
+        'name' => 'API_TOKEN',
+        'position' => 1,
+    ]);
+
+    $guest = User::factory()->create();
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
+    $channel->members()->attach($guest->id, ['joined_at' => now()]);
+
+    return [$request->refresh(), $password, $token, $guest, $requester];
+}
+
+/**
+ * Somebody in a workspace that has the clock switched on.
+ *
+ * Activated by hand, like the transfers helper it is modelled on, and for the
+ * same reason: tijdregistratie is off until a workspace says otherwise, so a
+ * test that wants one has to say so too.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function clockingMember(SystemRole $role = SystemRole::Member): array
+{
+    $user = User::factory()->create(['timezone' => 'Europe/Amsterdam']);
+    $workspace = workspaceWithMember($user, $role);
+
+    Feature::for($workspace)->activate(Timeclock::class);
+
+    return [$user, $workspace];
+}
+
+/**
+ * A workspace with workflows switched on, a beheerder who owns them, and a
+ * channel that beheerder is in.
+ *
+ * @return array{0: Workflow, 1: Workspace, 2: User, 3: Channel}
+ */
+function workflowWithChannel(): array
+{
+    $owner = User::factory()->create();
+    $workspace = workspaceWithMember($owner, SystemRole::Admin);
+
+    Feature::for($workspace)->activate(WorkflowsFeature::class);
+
+    $channel = channelWithMember($workspace, $owner);
+
+    $workflow = Workflow::factory()->enabled()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $owner->id,
+        'name' => 'Storingsmelder',
+    ]);
+
+    return [$workflow, $workspace, $owner, $channel];
+}
+
+/** Run one step and hand back the run, so a test can read what happened. */
+function runStep(Workflow $workflow, string $action, array $config, array $context = []): WorkflowRun
+{
+    WorkflowStep::factory()->for($workflow)->at(0)->doing($action, $config)->create();
+
+    $run = WorkflowRun::factory()->for($workflow)->create([
+        'context' => $context + ['depth' => 1],
+    ]);
+
+    app(RunWorkflow::class)->handle($run);
+
+    return $run->fresh();
+}
+
+/** A switched-on workflow with one harmless step, so a run has something to do. */
+function listeningWorkflow(User $owner, string $trigger, array $config, Channel $target): Workflow
+{
+    $workflow = Workflow::factory()->enabled()->triggeredBy($trigger, $config)->create([
+        'workspace_id' => $target->workspace_id,
+        'created_by' => $owner->id,
+        'name' => 'Melder',
+    ]);
+
+    WorkflowStep::factory()->for($workflow)->at(0)->doing('get-channel-info', [
+        'channel_id' => $target->id,
+    ])->create();
+
+    return $workflow;
+}
+
+/**
+ * A member and a token that speaks for them.
+ *
+ * @return array{0: User, 1: string}
+ */
+function tokenFor(User $user): array
+{
+    $token = new ApiToken(['user_id' => $user->id, 'name' => 'Script op mijn laptop']);
+    $token->user_id = $user->id;
+    $plain = $token->regenerateToken();
+    $token->save();
+
+    return [$user, $plain];
+}
+
+/**
+ * A channel with somebody in it. Polls are on by default, so nothing is
+ * switched on here — that is the point of the default.
+ *
+ * @return array{0: User, 1: Workspace, 2: Channel}
+ */
+function pollChannel(): array
+{
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user);
+    $channel = channelWithMember($workspace, $user);
+
+    return [$user, $workspace, $channel];
+}
+
+/**
+ * A channel with huddles switched on, a member and a guest in it.
+ *
+ * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
+ */
+function huddleFixture(): array
+{
+    [$member, $guest, $workspace, $channel] = ticketFixture();
+
+    Feature::for($workspace)->activate(HuddlesFeature::class);
+
+    return [$member, $guest, $workspace, $channel];
+}
+
+/** A message as the screens receive it. */
+function present(Message $message): array
+{
+    return app(PresentMessage::class)->handle($message);
 }

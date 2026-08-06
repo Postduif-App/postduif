@@ -7,7 +7,6 @@ use App\Enums\SystemRole;
 use App\Enums\WorkflowRunStatus;
 use App\Events\ChannelActivity;
 use App\Events\MessageSent;
-use App\Features\Workflows as WorkflowsFeature;
 use App\Jobs\RunWorkflowJob;
 use App\Models\Channel;
 use App\Models\Message;
@@ -19,45 +18,6 @@ use App\Models\Workspace;
 use App\Workflows\WorkflowRegistry;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
-
-/**
- * A workspace with workflows switched on, a beheerder who owns them, and a
- * channel that beheerder is in.
- *
- * @return array{0: Workflow, 1: Workspace, 2: User, 3: Channel}
- */
-function workflowWithChannel(): array
-{
-    $owner = User::factory()->create();
-    $workspace = workspaceWithMember($owner, SystemRole::Admin);
-
-    Feature::for($workspace)->activate(WorkflowsFeature::class);
-
-    $channel = channelWithMember($workspace, $owner);
-
-    $workflow = Workflow::factory()->enabled()->create([
-        'workspace_id' => $workspace->id,
-        'created_by' => $owner->id,
-        'name' => 'Storingsmelder',
-    ]);
-
-    return [$workflow, $workspace, $owner, $channel];
-}
-
-/** Run one step and hand back the run, so a test can read what happened. */
-function runStep(Workflow $workflow, string $action, array $config, array $context = []): WorkflowRun
-{
-    WorkflowStep::factory()->for($workflow)->at(0)->doing($action, $config)->create();
-
-    $run = WorkflowRun::factory()->for($workflow)->create([
-        'context' => $context + ['depth' => 1],
-    ]);
-
-    app(RunWorkflow::class)->handle($run);
-
-    return $run->fresh();
-}
 
 it('posts in a channel as a bot under the workflow name, not as the person who wrote it', function () {
     [$workflow, , $owner, $channel] = workflowWithChannel();
@@ -544,4 +504,49 @@ it('gives every action a name and a sentence in both languages', function () {
             }
         }
     }
+});
+
+it('finds the channel by the name people call it, not only by its id', function () {
+    [$workflow, , , $channel] = workflowWithChannel();
+
+    // What a variable usually resolves to is trigger.channel.name — "meld dit
+    // in #storingen" is how somebody thinks about it, and carrying an id
+    // through a workflow is carrying something you cannot read back.
+    $run = runStep($workflow, 'send-channel-message', [
+        'channel_id' => $channel->name,
+        'body' => 'Op naam gevonden.',
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($channel->messages()->latest()->first()->body)->toBe('Op naam gevonden.');
+});
+
+it('takes the hash people type in front of a channel name', function () {
+    [$workflow, , , $channel] = workflowWithChannel();
+
+    $run = runStep($workflow, 'send-channel-message', [
+        'channel_id' => '#'.mb_strtoupper($channel->name),
+        'body' => 'Met hek en in hoofdletters.',
+    ]);
+
+    // The hash is punctuation in the chat rather than part of the name, and a
+    // name typed by a person is not case-sensitive to that person.
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($channel->messages()->latest()->first()->body)->toBe('Met hek en in hoofdletters.');
+});
+
+it('refuses a channel name from another workspace', function () {
+    [$workflow] = workflowWithChannel();
+
+    $elsewhere = Channel::factory()->create(['name' => 'ergens-anders']);
+
+    // The property that makes a variable safe in a channel field at all: it can
+    // only ever find something this workspace owns.
+    $run = runStep($workflow, 'send-channel-message', [
+        'channel_id' => 'ergens-anders',
+        'body' => 'Zou niet aan moeten komen.',
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($elsewhere->messages()->count())->toBe(0);
 });

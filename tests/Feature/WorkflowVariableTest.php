@@ -53,7 +53,7 @@ it('leaves a gap rather than the path itself when it points at nothing', functio
     expect($filled['body'])->toBe('Hoi !');
 });
 
-it('keeps a variable out of a field that holds an id', function () {
+it('fills a variable in a channel field, because that is how you answer where it came from', function () {
     $config = ['channel_id' => '{{ trigger.channel.id }}', 'body' => '{{ trigger.channel.id }}'];
 
     $filled = app(ResolveVariables::class)->handle(
@@ -62,8 +62,23 @@ it('keeps a variable out of a field that holds an id', function () {
         runContext(),
     );
 
-    expect($filled['channel_id'])->toBe('{{ trigger.channel.id }}')
+    expect($filled['channel_id'])->toBe('7')
         ->and($filled['body'])->toBe('7');
+});
+
+it('keeps a variable out of a field that holds a form', function () {
+    /*
+     * The one picker that still refuses. A form id is a ULID with no name to
+     * fall back on, so a variable there is an opaque string that either matches
+     * or silently does not — see WorkflowFieldType::acceptsVariables().
+     */
+    $filled = app(ResolveVariables::class)->handle(
+        ['form_id' => '{{ trigger.channel.id }}'],
+        [WorkflowField::form('form_id', 'Formulier')],
+        runContext(),
+    );
+
+    expect($filled['form_id'])->toBe('{{ trigger.channel.id }}');
 });
 
 it('writes a whole branch out as json rather than as the word Array', function () {

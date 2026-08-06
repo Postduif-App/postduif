@@ -21,7 +21,6 @@ use App\Workflows\WorkflowRegistry;
 use App\Workflows\WorkflowStepContext;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Pennant\Feature;
-use RuntimeException;
 
 /** Writes down that it ran, and hands the next step something to read. */
 class NotingAction extends WorkflowAction

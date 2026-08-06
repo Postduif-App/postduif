@@ -314,3 +314,70 @@ it('refuses a rewrite by a guest who did not raise the ticket', function () {
 
     expect($ticket->fresh()->title)->not->toBe('Van mij nu');
 });
+
+it('deletes a ticket, taking it off the board without touching its comments', function () {
+    [$member, , $workspace, $channel] = ticketFixture();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'opened_by' => $member->id,
+    ]);
+    $comment = TicketComment::factory()->create(['ticket_id' => $ticket->id]);
+
+    actingAs($member)
+        ->from(route('chat.show', [$workspace, $channel]))
+        ->delete(route('chat.tickets.destroy', [$workspace, $channel, $ticket]))
+        ->assertRedirect(route('chat.show', [$workspace, $channel]));
+
+    expect(Ticket::whereKey($ticket->id)->exists())->toBeFalse()
+        ->and(Ticket::withTrashed()->whereKey($ticket->id)->exists())->toBeTrue()
+        // Withdrawing a comment means something else on a ticket — a tombstone
+        // in the timeline — so a deleted ticket must not withdraw all of them.
+        ->and($comment->fresh()->deleted_at)->toBeNull();
+});
+
+it('refuses a delete by the guest who raised the ticket', function () {
+    [, $guest, $workspace, $channel] = ticketFixture();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'opened_by' => $guest->id,
+    ]);
+
+    actingAs($guest)
+        ->delete(route('chat.tickets.destroy', [$workspace, $channel, $ticket]))
+        ->assertForbidden();
+
+    expect(Ticket::whereKey($ticket->id)->exists())->toBeTrue();
+});
+
+it('refuses a delete of a ticket from another channel', function () {
+    [$member, , $workspace, $channel] = ticketFixture();
+    $elsewhere = Channel::factory()->create(['workspace_id' => $workspace->id]);
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $elsewhere->id,
+        'opened_by' => $member->id,
+    ]);
+
+    actingAs($member)
+        ->delete(route('chat.tickets.destroy', [$workspace, $channel, $ticket]))
+        ->assertNotFound();
+
+    expect(Ticket::whereKey($ticket->id)->exists())->toBeTrue();
+});
+
+it('drops a deleted ticket from the board it was open on', function () {
+    [$member, , $workspace, $channel] = ticketFixture();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'opened_by' => $member->id,
+    ]);
+
+    actingAs($member)->delete(route('chat.tickets.destroy', [$workspace, $channel, $ticket]));
+
+    // The ?ticket= that is still in the URL now resolves to nothing, which is
+    // what closes the panel — see TicketController::destroy().
+    actingAs($member)
+        ->get(route('chat.show', [$workspace, $channel, 'view' => 'tickets', 'ticket' => $ticket->number]))
+        ->assertInertia(fn ($page) => $page
+            ->where('ticket', null)
+            ->where('tickets.rows', []));
+});

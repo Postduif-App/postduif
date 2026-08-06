@@ -9,29 +9,6 @@ use App\Models\Workspace;
 
 use function Pest\Laravel\actingAs;
 
-/**
- * A channel with its creator and one ordinary member in it.
- *
- * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
- */
-function settingsFixture(): array
-{
-    $creator = User::factory()->create();
-    $workspace = workspaceWithMember($creator);
-
-    $channel = Channel::factory()->create([
-        'workspace_id' => $workspace->id,
-        'created_by' => $creator->id,
-    ]);
-    $channel->members()->attach($creator->id, ['joined_at' => now()]);
-
-    $member = User::factory()->create();
-    joinWorkspace($workspace, $member, SystemRole::Member);
-    $channel->members()->attach($member->id, ['joined_at' => now()]);
-
-    return [$creator, $member, $workspace, $channel];
-}
-
 function saveSettings(User $user, Workspace $workspace, Channel $channel, string $policy)
 {
     return actingAs($user)->patch(

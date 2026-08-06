@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelType;
 use App\Models\Channel;
 use App\Models\Workspace;
@@ -26,6 +27,11 @@ class ChannelFactory extends Factory
         return [
             'workspace_id' => Workspace::factory(),
             'type' => ChannelType::Public,
+            // Spelled out rather than left to the column default, which the
+            // database only fills in on the way in: the model handed back by
+            // create() would carry null, and Channel types this as an enum and
+            // reads it without asking.
+            'posting_policy' => ChannelPostingPolicy::Everyone,
             'name' => $name,
             'slug' => $name,
             'topic' => fake()->optional()->sentence(),

@@ -10,6 +10,10 @@ use App\Actions\Marketing\BuildFeatureInventory;
  * something that does not run JavaScript, so a tag that only appeared after
  * hydration would be a tag nobody outside a browser ever sees.
  */
+// The home page only answers on a platform somebody has set up; an empty one
+// redirects it to the onboarding screen. See RedirectToInstallation.
+beforeEach(fn () => installedPlatform());
+
 it('gives the homepage a description, a canonical address and a card image', function () {
     $response = $this->get(route('home'));
 

@@ -11,7 +11,7 @@
  * reports "deadlock detected" — dozens of red tests that have nothing to do
  * with the code, and a round of investigating before anybody realises.
  *
- * PCOM_TEST_DB in the real environment takes over. Nothing to set up for one
+ * POSTDUIF_TEST_DB in the real environment takes over. Nothing to set up for one
  * person working alone; a second one exports it and gets their own.
  */
 
@@ -30,9 +30,21 @@ foreach ($_ENV as $key => $value) {
     $_SERVER[$key] = $value;
 }
 
-$database = getenv('PCOM_TEST_DB');
+$database = getenv('POSTDUIF_TEST_DB');
+$database = is_string($database) && $database !== '' ? $database : null;
 
-if (is_string($database) && $database !== '') {
+/*
+ * The parallel runner hands every worker process a TEST_TOKEN of its own, and
+ * Laravel appends it to the database name and to the Storage::fake() root. That
+ * is the same mechanism this file borrows below, so the two have to share it
+ * rather than take turns overwriting each other.
+ */
+$worker = getenv('TEST_TOKEN');
+$worker = is_string($worker) && $worker !== '' ? $worker : null;
+
+$token = null;
+
+if ($database !== null) {
     $_ENV['DB_DATABASE'] = $database;
     $_SERVER['DB_DATABASE'] = $database;
     putenv("DB_DATABASE={$database}");
@@ -50,15 +62,28 @@ if (is_string($database) && $database !== '') {
      * sequential run nothing else reads it: the provider that would rename the
      * database is deferred, and its callbacks only fire under the parallel
      * runner.
+     *
+     * Under that runner both halves have to hold at once, so the worker's own
+     * number goes on the end rather than in place of the database: two people
+     * each running --parallel would otherwise land on tokens 1..n apiece and
+     * share every faked disk between them, which is the exact hazard above.
      */
-    $_SERVER['TEST_TOKEN'] = $database;
+    $token = $worker === null ? $database : "{$database}_{$worker}";
 
-    /*
-     * And the one place TEST_TOKEN does not reach: media-library writes its
-     * image conversions through a temporary directory of its own, which
-     * defaults to a fixed path under storage. Same hazard, so the same answer.
-     */
-    $temp = __DIR__."/../storage/media-library/temp-{$database}";
+    $_SERVER['TEST_TOKEN'] = $token;
+} elseif ($worker !== null) {
+    $token = $worker;
+}
+
+/*
+ * The one place TEST_TOKEN does not reach on its own: media-library writes its
+ * image conversions through a temporary directory of its own, which defaults to
+ * a fixed path under storage. Same hazard, so the same answer — and it applies
+ * to a parallel worker just as much as to a second person running the suite,
+ * which is why it sits outside the branch above.
+ */
+if ($token !== null) {
+    $temp = __DIR__."/../storage/media-library/temp-{$token}";
 
     $_ENV['MEDIA_TEMPORARY_DIRECTORY_PATH'] = $temp;
     $_SERVER['MEDIA_TEMPORARY_DIRECTORY_PATH'] = $temp;

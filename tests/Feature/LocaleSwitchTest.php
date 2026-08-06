@@ -34,7 +34,11 @@ it('remembers the language somebody asked for', function () {
 
 it('answers in the language the cookie asked for, over the browser', function () {
     // The header is a preference expressed once and forgotten; the cookie is
-    // somebody pressing a button on this page a moment ago.
+    // somebody pressing a button on this page a moment ago. The account is only
+    // there so the home page is the page that answers — see
+    // RedirectToInstallation.
+    installedPlatform();
+
     $html = $this->withUnencryptedCookie(HandleLocale::COOKIE, 'en')
         ->withHeader('Accept-Language', 'nl')
         ->get(route('home'))

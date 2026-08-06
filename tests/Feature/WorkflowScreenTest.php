@@ -13,23 +13,7 @@ use App\Models\Workflow;
 use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\WorkflowStepRun;
-use App\Models\Workspace;
 use Laravel\Pennant\Feature;
-
-/**
- * A beheerder of a workspace that has workflows switched on.
- *
- * @return array{0: User, 1: Workspace}
- */
-function workflowBeheerder(): array
-{
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, SystemRole::Admin);
-
-    Feature::for($workspace)->activate(WorkflowsFeature::class);
-
-    return [$user, $workspace];
-}
 
 it('hands the builder the questions a form asks, under the keys they arrive as', function () {
     [$admin, $workspace] = workflowBeheerder();
@@ -88,7 +72,7 @@ it('lists a workspace his workflows without drawing any of them', function () {
             ->missing('workflows.0.steps')
             // Only the triggers, because the only thing built here is a new
             // workflow's first question.
-            ->has('triggers', 8)
+            ->has('triggers', 10)
             ->missing('catalogue')
         );
 });
@@ -106,7 +90,7 @@ it('shows a beheerder the builder with everything it can be built from', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workflow-edit')
-            ->has('catalogue.triggers', 8)
+            ->has('catalogue.triggers', 10)
             ->has('catalogue.actions', 15)
             // The fields come down with them: a builder that had to ask for
             // them would drift from what the runner reads.

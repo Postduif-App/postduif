@@ -1,6 +1,5 @@
 <?php
 
-use App\Actions\Chat\PresentMessage;
 use App\Enums\TransferAudience;
 use App\Models\Message;
 use App\Models\Transfer;
@@ -38,11 +37,6 @@ function messageWithTransferLink(array $state = [], int $files = 2): array
     ]);
 
     return [$message, $transfer->refresh()];
-}
-
-function present(Message $message): array
-{
-    return app(PresentMessage::class)->handle($message);
 }
 
 it('says what a transfer link is carrying instead of showing a bare token', function () {

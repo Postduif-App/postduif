@@ -14,24 +14,6 @@ use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
-/**
- * A workspace that keeps forms, and somebody in it who may write one.
- *
- * The feature is switched on by hand, which is the point of it: forms are off
- * until a workspace says otherwise, so every test that wants one says so too.
- *
- * @return array{0: User, 1: Workspace}
- */
-function formAuthor(SystemRole $role = SystemRole::Admin): array
-{
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, $role);
-
-    Feature::for($workspace)->activate(Forms::class);
-
-    return [$user, $workspace];
-}
-
 /** A form with one question, which is the least it takes to be fillable. */
 function askableForm(Workspace $workspace, User $author, array $state = []): Form
 {

@@ -35,22 +35,6 @@ function triggerScene(): array
     ];
 }
 
-/** A switched-on workflow with one harmless step, so a run has something to do. */
-function listeningWorkflow(User $owner, string $trigger, array $config, Channel $target): Workflow
-{
-    $workflow = Workflow::factory()->enabled()->triggeredBy($trigger, $config)->create([
-        'workspace_id' => $target->workspace_id,
-        'created_by' => $owner->id,
-        'name' => 'Melder',
-    ]);
-
-    WorkflowStep::factory()->for($workflow)->at(0)->doing('get-channel-info', [
-        'channel_id' => $target->id,
-    ])->create();
-
-    return $workflow;
-}
-
 it('starts a workflow when somebody says one of its words', function () {
     [$owner, , $channel] = triggerScene();
 

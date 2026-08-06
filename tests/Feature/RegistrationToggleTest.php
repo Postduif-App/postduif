@@ -13,6 +13,14 @@ function closeRegistration(): void
     Config::set('auth.registration_open', false);
 }
 
+/*
+ * Whether the sign-up door is open is a question about an installed platform.
+ * On an empty one the answer is neither yes nor no: the form is the onboarding
+ * screen, and the first account made is the moderator. See
+ * RedirectToInstallation.
+ */
+beforeEach(fn () => installedPlatform());
+
 it('offers the sign-up page while the door is open', function () {
     $this->get(route('register'))
         ->assertOk()

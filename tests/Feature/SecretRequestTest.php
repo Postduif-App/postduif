@@ -13,25 +13,6 @@ use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
-/**
- * A workspace that switched asking on, with a channel and somebody in it.
- *
- * Turned on by hand every time, like the transfer fixtures: it is off by
- * default, and that is the point of it being a decision.
- *
- * @return array{0: User, 1: Workspace, 2: Channel}
- */
-function requesterInChannel(): array
-{
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user);
-    $channel = channelWithMember($workspace, $user);
-
-    Feature::for($workspace)->activate(SecretRequests::class);
-
-    return [$user, $workspace, $channel];
-}
-
 /** @return array<string, mixed> */
 function secretPayload(array $overrides = []): array
 {

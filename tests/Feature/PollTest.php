@@ -14,21 +14,6 @@ use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
-/**
- * A channel with somebody in it. Polls are on by default, so nothing is
- * switched on here — that is the point of the default.
- *
- * @return array{0: User, 1: Workspace, 2: Channel}
- */
-function pollChannel(): array
-{
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user);
-    $channel = channelWithMember($workspace, $user);
-
-    return [$user, $workspace, $channel];
-}
-
 /** @return array<string, mixed> */
 function pollPayload(array $overrides = []): array
 {

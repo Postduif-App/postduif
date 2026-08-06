@@ -3,39 +3,11 @@
 use App\Enums\SystemRole;
 use App\Features\MessageBoard;
 use App\Models\BoardPost;
-use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
 use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
-
-/**
- * A workspace with a prikbord, somebody who may read it, and a guest who may
- * not.
- *
- * The channel comes along because the rail is only ever drawn on a real chat
- * screen: chat.index redirects to whichever channel was busiest, so a test that
- * wants to look at the sidebar has to have somewhere for it to land.
- *
- * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
- */
-function boardFixture(): array
-{
-    $member = User::factory()->create();
-    $workspace = workspaceWithMember($member);
-
-    $guest = User::factory()->create();
-    joinWorkspace($workspace, $guest, SystemRole::Guest);
-
-    $channel = Channel::factory()->create([
-        'workspace_id' => $workspace->id,
-        'created_by' => $member->id,
-    ]);
-    $channel->members()->attach([$member->id, $guest->id], ['joined_at' => now()]);
-
-    return [$member, $guest, $workspace, $channel];
-}
 
 it('lists what is on the board', function () {
     [$member, , $workspace] = boardFixture();

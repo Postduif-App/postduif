@@ -9,21 +9,6 @@ use function Pest\Laravel\actingAs;
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\withHeader;
 
-/**
- * A member and a token that speaks for them.
- *
- * @return array{0: User, 1: string}
- */
-function tokenFor(User $user): array
-{
-    $token = new ApiToken(['user_id' => $user->id, 'name' => 'Script op mijn laptop']);
-    $token->user_id = $user->id;
-    $plain = $token->regenerateToken();
-    $token->save();
-
-    return [$user, $plain];
-}
-
 it('says what somebody is up to', function () {
     [$user, $token] = tokenFor(User::factory()->create([
         'status_emoji' => '📅',

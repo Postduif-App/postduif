@@ -14,6 +14,10 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered()
     {
+        // A platform with no accounts at all answers this address with the
+        // onboarding screen instead — see RedirectToInstallation.
+        User::factory()->create();
+
         $response = $this->get(route('login'));
 
         $response->assertOk();

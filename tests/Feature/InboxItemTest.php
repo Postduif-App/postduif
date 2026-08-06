@@ -12,25 +12,6 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
-/**
- * A member, a channel they belong to, and a message in it.
- *
- * @return array{0: User, 1: Channel, 2: Message}
- */
-function inboxFixture(): array
-{
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user);
-    $channel = channelWithMember($workspace, $user);
-
-    $message = Message::factory()->create([
-        'workspace_id' => $workspace->id,
-        'channel_id' => $channel->id,
-    ]);
-
-    return [$user, $channel, $message];
-}
-
 it('lets one message reach the same member for more than one reason', function () {
     [$user, $channel, $message] = inboxFixture();
 

@@ -1,49 +1,9 @@
 <?php
 
-use App\Enums\SystemRole;
-use App\Models\SecretRequest;
-use App\Models\SecretRequestKey;
 use App\Models\SecretValue;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
-
-/**
- * A request waiting for answers, and a guest who can reach it.
- *
- * The guest is the fixture rather than an extra step: the customer holding the
- * credentials is who this whole feature is for.
- *
- * @return array{0: SecretRequest, 1: SecretRequestKey, 2: SecretRequestKey, 3: User, 4: User}
- */
-function fillableRequest(array $state = []): array
-{
-    [$requester, $workspace, $channel] = requesterInChannel();
-
-    $request = SecretRequest::factory()->create([
-        'workspace_id' => $workspace->id,
-        'channel_id' => $channel->id,
-        'created_by' => $requester->id,
-        ...$state,
-    ]);
-
-    $password = SecretRequestKey::factory()->create([
-        'secret_request_id' => $request->id,
-        'name' => 'DB_PASSWORD',
-        'position' => 0,
-    ]);
-    $token = SecretRequestKey::factory()->create([
-        'secret_request_id' => $request->id,
-        'name' => 'API_TOKEN',
-        'position' => 1,
-    ]);
-
-    $guest = User::factory()->create();
-    joinWorkspace($workspace, $guest, SystemRole::Guest);
-    $channel->members()->attach($guest->id, ['joined_at' => now()]);
-
-    return [$request->refresh(), $password, $token, $guest, $requester];
-}
 
 it('shows the customer what is being asked, and nothing more', function () {
     [$request, , , $guest] = fillableRequest();

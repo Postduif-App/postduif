@@ -55,7 +55,11 @@ it('ignores a language it has no words for', function () {
 
 it('serves somebody without an account too', function () {
     // A download link, a request for a password, the public site: visited by
-    // people who have nowhere to have set anything.
+    // people who have nowhere to have set anything. The account is only there
+    // so the login screen is the screen that answers — see
+    // RedirectToInstallation — and nobody is signed in as it.
+    installedPlatform();
+
     $this->withHeader('Accept-Language', 'en-GB,en;q=0.9')
         ->get(route('login'))
         ->assertOk();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -19,6 +20,11 @@ class RegistrationTest extends TestCase
 
     public function test_registration_screen_can_be_rendered()
     {
+        // On a platform with no accounts this address is the onboarding screen,
+        // where the first person through becomes the moderator. See
+        // RedirectToInstallation.
+        User::factory()->create();
+
         $response = $this->get(route('register'));
 
         $response->assertOk();

@@ -27,6 +27,22 @@ it('offers the seeded accounts on the login screen', function () {
         );
 });
 
+/**
+ * The URL comes from the server rather than from Wayfinder in the browser.
+ * routes/dev.php is not registered in production, so a bundle that imported
+ * `dev.login` would fail to build there — which is a deployment failure caused
+ * entirely by a development convenience.
+ */
+it('sends the sign-in URL along with each account', function () {
+    $user = User::factory()->create();
+
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('devAccounts.0.url', route('dev.login', $user))
+        );
+});
+
 it('does not sign in someone who already has a session', function () {
     $user = User::factory()->create();
 

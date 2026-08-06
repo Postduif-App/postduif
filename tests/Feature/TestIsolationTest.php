@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Storage;
 /**
  * That a second suite running at the same time cannot reach into this one.
  *
- * PCOM_TEST_DB has always given a session its own database — see
+ * POSTDUIF_TEST_DB has always given a session its own database — see
  * tests/bootstrap.php. What it did not give was its own filesystem, and that
  * gap had a symptom nobody would trace back to it: Storage::fake() empties its
  * root before every use and works that root out from a fixed path, so one
@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\Storage;
  * default database shares nothing with anybody and has nothing to prove.
  */
 beforeEach(function () {
-    if (($_SERVER['PCOM_TEST_DB'] ?? getenv('PCOM_TEST_DB') ?: '') === '') {
+    if (($_SERVER['POSTDUIF_TEST_DB'] ?? getenv('POSTDUIF_TEST_DB') ?: '') === '') {
         $this->markTestSkipped('Only a session that asked for its own database has anything to isolate.');
     }
 });
 
 it('gives the faked disk a root of its own', function () {
-    $database = $_SERVER['PCOM_TEST_DB'] ?? getenv('PCOM_TEST_DB');
+    $database = $_SERVER['POSTDUIF_TEST_DB'] ?? getenv('POSTDUIF_TEST_DB');
 
     Storage::fake('local');
 
@@ -32,7 +32,7 @@ it('gives the faked disk a root of its own', function () {
 });
 
 it('gives media-library a conversion directory of its own', function () {
-    $database = $_SERVER['PCOM_TEST_DB'] ?? getenv('PCOM_TEST_DB');
+    $database = $_SERVER['POSTDUIF_TEST_DB'] ?? getenv('POSTDUIF_TEST_DB');
 
     /*
      * The one path TEST_TOKEN does not reach: media-library resolves this
