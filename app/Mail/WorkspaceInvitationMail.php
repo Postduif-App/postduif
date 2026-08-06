@@ -33,7 +33,7 @@ class WorkspaceInvitationMail extends Mailable
                 'invitation' => $this->invitation,
                 'workspace' => $this->invitation->workspace,
                 'inviter' => $this->invitation->inviter,
-                'isGuest' => $this->invitation->workspaceRole?->is_external ?? false,
+                'isGuest' => $this->invitation->workspaceRole->is_external ?? false,
                 'channels' => $this->invitation->channels()->orderBy('name')->get(),
                 'url' => route('invitations.show', $this->invitation->token),
             ],

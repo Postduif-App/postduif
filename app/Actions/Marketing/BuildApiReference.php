@@ -85,7 +85,7 @@ class BuildApiReference
     {
         $endpoints = [];
 
-        foreach ($router->getRoutes() as $route) {
+        foreach ($router->getRoutes()->getRoutes() as $route) {
             $name = (string) $route->getName();
 
             if (! array_key_exists($name, self::NOTES)) {

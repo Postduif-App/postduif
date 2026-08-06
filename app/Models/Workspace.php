@@ -463,7 +463,7 @@ class Workspace extends Model
      */
     public function isExternal(User $user): bool
     {
-        return $this->roleFor($user)?->is_external ?? true;
+        return $this->roleFor($user)->is_external ?? true;
     }
 
     public function hasMember(User $user): bool

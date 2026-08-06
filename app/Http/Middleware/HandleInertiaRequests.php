@@ -66,12 +66,20 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
-        $workspace = $request->user()
+        /*
+         * Asked once and held, rather than a dozen times down the array below.
+         * A visitor who is not signed in is null here, and every line that
+         * follows says so in one shape — which is also what lets the workspace
+         * and the role be worked out before anything is drawn.
+         */
+        $user = $request->user();
+
+        $workspace = $user
             ?->workspaces()
             ->oldest('workspace_user.joined_at')
             ->first();
 
-        $role = $workspace?->roleFor($request->user());
+        $role = $user === null ? null : $workspace?->roleFor($user);
 
         return [
             ...parent::share($request),
@@ -91,14 +99,14 @@ class HandleInertiaRequests extends Middleware
             // not to offer a way to a door that is shut.
             'registrationOpen' => (bool) config('auth.registration_open'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
                 /*
                  * Beside the user rather than appended to it: an appended
                  * attribute rides along on every serialisation of a user,
                  * including the admin panel's lists, and this is only ever
                  * drawn for the signed-in member.
                  */
-                'avatarUrl' => $request->user()?->avatarUrl(),
+                'avatarUrl' => $user?->avatarUrl(),
                 // The settings screens live inside the application rather than
                 // in a shell of their own, so they need to know which workspace
                 // you came from — for the way back, and to name the section.
@@ -119,8 +127,9 @@ class HandleInertiaRequests extends Middleware
                  * this is the only one that has to be known before a link is
                  * drawn.
                  */
-                'canManageWorkflows' => $workspace !== null
-                    && ($request->user()?->can('manageWorkflows', $workspace) ?? false),
+                'canManageWorkflows' => $user !== null
+                    && $workspace !== null
+                    && $user->can('manageWorkflows', $workspace),
                 // The role itself, so a screen can say "you are here as a
                 // guest" without inferring it from a handful of false flags.
                 // Every actual permission still comes from those flags — this
@@ -132,7 +141,7 @@ class HandleInertiaRequests extends Middleware
                   * own roles — a "Leverancier" is every bit as external and
                   * matches no string the browser knows.
                   */
-                'workspaceIsExternal' => $role?->is_external ?? false,
+                'workspaceIsExternal' => $role->is_external ?? false,
                 /*
                  * The clock, for the button in the user menu.
                  *
@@ -146,8 +155,8 @@ class HandleInertiaRequests extends Middleware
                  * The open shift is only looked up once the policy has said
                  * yes, so a workspace without the feature pays no query for it.
                  */
-                'timeclock' => $workspace !== null && ($request->user()?->can('clock', $workspace) ?? false)
-                    ? ['runningSince' => $request->user()?->openShiftIn($workspace)?->started_at->toIso8601String()]
+                'timeclock' => $user !== null && $workspace !== null && $user->can('clock', $workspace)
+                    ? ['runningSince' => $user->openShiftIn($workspace)?->started_at->toIso8601String()]
                     : null,
                 // The status picker sits in the user menu, which is on every
                 // screen — so its options travel with the menu rather than each

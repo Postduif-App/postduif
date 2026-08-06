@@ -110,7 +110,7 @@ return new class extends Migration
             });
     }
 
-    private function seed(object $workspace): void
+    private function seed(stdClass $workspace): void
     {
         $now = now();
 
@@ -129,7 +129,7 @@ return new class extends Migration
                 'is_external' => $role->isExternal(),
                 'is_system' => true,
                 'position' => $position,
-                'abilities' => json_encode(array_values($abilities)),
+                'abilities' => json_encode($abilities),
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -147,7 +147,7 @@ return new class extends Migration
      * @param  list<string>  $abilities
      * @return list<string>
      */
-    private function applyWorkspaceSettings(array $abilities, SystemRole $role, object $workspace): array
+    private function applyWorkspaceSettings(array $abilities, SystemRole $role, stdClass $workspace): array
     {
         $set = function (array $abilities, WorkspaceAbility $ability, bool $holds): array {
             $abilities = array_values(array_diff($abilities, [$ability->value]));

@@ -67,6 +67,24 @@ class Role extends Model
     }
 
     /**
+     * The id of one of a workspace's built-in roles.
+     *
+     * What anything holding a membership has to write: the pivot points at a
+     * row, and the four this application ships with are known by their key
+     * rather than their id, which is a workspace's own.
+     *
+     * Takes an id as readily as a model, because the caller is often a factory
+     * whose parent has only just been made and who has nothing but the key.
+     */
+    public static function idFor(Workspace|int $workspace, SystemRole $role): int
+    {
+        return static::query()
+            ->where('workspace_id', $workspace instanceof Workspace ? $workspace->id : $workspace)
+            ->where('key', $role->value)
+            ->value('id');
+    }
+
+    /**
      * The people who hold this role.
      *
      * Through the pivot rather than through the workspace, so "who is a

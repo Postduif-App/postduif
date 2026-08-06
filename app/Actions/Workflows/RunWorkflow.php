@@ -152,7 +152,7 @@ class RunWorkflow
 
         $this->record($run, $step, WorkflowStepStatus::Succeeded, result: ['lane' => $lane->value]);
 
-        return $step->lane($lane)->pluck('id')->all();
+        return array_values(array_map(intval(...), $step->lane($lane)->pluck('id')->all()));
     }
 
     /**
@@ -167,7 +167,7 @@ class RunWorkflow
     private function plan(WorkflowRun $run): array
     {
         if (is_array($run->resume_plan)) {
-            return array_values(array_map(intval(...), $run->resume_plan));
+            return $run->resume_plan;
         }
 
         /*
@@ -176,10 +176,10 @@ class RunWorkflow
          * where they left off rather than start over, and written by nothing
          * any more.
          */
-        return $run->workflow->topSteps()
+        return array_values(array_map(intval(...), $run->workflow->topSteps()
             ->where('position', '>=', $run->resume_position)
             ->pluck('id')
-            ->all();
+            ->all()));
     }
 
     /**

@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
 
 class ChannelsRelationManager extends RelationManager
 {
+    use InteractsWithWorkspace;
+
     protected static string $relationship = 'channels';
 
     protected static ?string $title = 'Channels';
@@ -81,7 +83,7 @@ class ChannelsRelationManager extends RelationManager
                              * through to the constraint.
                              */
                             ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
-                                $taken = $this->getOwnerRecord()
+                                $taken = $this->workspace()
                                     ->channels()
                                     ->where('slug', Str::slug((string) $value))
                                     ->exists();
@@ -124,8 +126,8 @@ class ChannelsRelationManager extends RelationManager
                      * would show a stranger in its member list.
                      */
                     ->using(fn (array $data): Channel => app(CreateChannel::class)->handle(
-                        workspace: $this->getOwnerRecord(),
-                        creator: $this->getOwnerRecord()->owner,
+                        workspace: $this->workspace(),
+                        creator: $this->workspace()->owner,
                         name: $data['name'],
                         type: ChannelType::from($data['type']),
                         topic: $data['topic'] ?: null,

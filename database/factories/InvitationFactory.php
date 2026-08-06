@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\SystemRole;
 use App\Models\Invitation;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,7 +25,7 @@ class InvitationFactory extends Factory
     public function configure(): static
     {
         return $this->afterMaking(function (Invitation $row): void {
-            $row->workspace_role_id ??= roleIdFor($row->workspace_id, SystemRole::Member);
+            $row->workspace_role_id ??= Role::idFor($row->workspace_id, SystemRole::Member);
         });
     }
 
@@ -48,7 +49,7 @@ class InvitationFactory extends Factory
      */
     public function guest(): static
     {
-        return $this->afterMaking(fn (Invitation $row) => $row->workspace_role_id = roleIdFor($row->workspace_id, SystemRole::Guest));
+        return $this->afterMaking(fn (Invitation $row) => $row->workspace_role_id = Role::idFor($row->workspace_id, SystemRole::Guest));
     }
 
     /**

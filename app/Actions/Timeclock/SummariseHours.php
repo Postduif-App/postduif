@@ -77,11 +77,10 @@ class SummariseHours
             'until' => $until->copy()->subDay()->toDateString(),
             'seconds' => $this->total($entries),
             'days' => $days,
-            'entries' => $entries
+            'entries' => array_values($entries
                 ->sortByDesc('started_at')
                 ->map(fn (TimeEntry $entry): array => $this->present($entry, $member))
-                ->values()
-                ->all(),
+                ->all()),
         ];
     }
 
@@ -194,40 +193,51 @@ class SummariseHours
             ->with('user:id,name,timezone')
             ->get();
 
-        return $entries
+        return array_values($entries
             ->groupBy('user_id')
-            ->map(function (Collection $ofMember) use ($anchor): array {
-                /** @var TimeEntry $first */
-                $first = $ofMember->first();
-                $member = $first->user;
-
-                /*
-                 * Each member's week is read on their own clock, not the
-                 * reader's. Somebody in Lissabon whose Monday began an hour
-                 * later than yours still worked a Monday, and the overlapping
-                 * query is deliberately generous so that both zones' editions
-                 * of the week come back and each is then trimmed to its own.
-                 */
-                [$memberFrom, $memberUntil] = $this->week($member, $anchor);
-
-                $counted = $ofMember->filter(
-                    fn (TimeEntry $entry): bool => $entry->localDate($member) >= $memberFrom->toDateString()
-                        && $entry->localDate($member) < $memberUntil->toDateString()
-                );
-
-                $running = $ofMember->first(fn (TimeEntry $entry): bool => $entry->isRunning());
-
-                return [
-                    'id' => $member->id,
-                    'name' => $member->name,
-                    'seconds' => $this->total($counted),
-                    'running' => $running !== null,
-                    'since' => $running?->started_at->toIso8601String(),
-                ];
-            })
+            ->map(fn (Collection $ofMember): array => $this->lineFor($ofMember, $anchor))
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
-            ->values()
-            ->all();
+            ->all());
+    }
+
+    /**
+     * One member's line: what they worked this week, and whether they are on
+     * the clock right now.
+     *
+     * A method rather than the closure it used to be, so the group it is handed
+     * can say what is in it — a bare Collection makes every entry read from it
+     * a mixed, and the shape this hands back is the one the screen draws.
+     *
+     * @param  Collection<int, TimeEntry>  $ofMember
+     * @return array{id: int, name: string, seconds: int, running: bool, since: string|null}
+     */
+    private function lineFor(Collection $ofMember, ?Carbon $anchor): array
+    {
+        $member = $ofMember->firstOrFail()->user;
+
+        /*
+         * Each member's week is read on their own clock, not the reader's.
+         * Somebody in Lissabon whose Monday began an hour later than yours
+         * still worked a Monday, and the overlapping query is deliberately
+         * generous so that both zones' editions of the week come back and each
+         * is then trimmed to its own.
+         */
+        [$memberFrom, $memberUntil] = $this->week($member, $anchor);
+
+        $counted = $ofMember->filter(
+            fn (TimeEntry $entry): bool => $entry->localDate($member) >= $memberFrom->toDateString()
+                && $entry->localDate($member) < $memberUntil->toDateString()
+        );
+
+        $running = $ofMember->first(fn (TimeEntry $entry): bool => $entry->isRunning());
+
+        return [
+            'id' => $member->id,
+            'name' => $member->name,
+            'seconds' => $this->total($counted),
+            'running' => $running !== null,
+            'since' => $running?->started_at->toIso8601String(),
+        ];
     }
 
     /**

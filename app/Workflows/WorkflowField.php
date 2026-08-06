@@ -17,7 +17,7 @@ final class WorkflowField
 {
     /**
      * @param  string  $key  Where the value lands in the step's configuration.
-     * @param  array<string, string>  $options  For a Choice: value => what it reads as.
+     * @param  array<int|string, string>  $options  For a Choice: value => what it reads as.
      */
     public function __construct(
         public readonly string $key,
@@ -69,7 +69,11 @@ final class WorkflowField
     }
 
     /**
-     * @param  array<string, string>  $options
+     * The keys are int|string rather than string because PHP will not hold a
+     * numeric one as anything else: the weekday field is keyed '1'..'7' and
+     * arrives here as ints whatever it was written as.
+     *
+     * @param  array<int|string, string>  $options
      */
     public static function choice(string $key, string $label, array $options, ?string $hint = null, bool $required = true): self
     {

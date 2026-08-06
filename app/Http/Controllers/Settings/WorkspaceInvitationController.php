@@ -90,7 +90,7 @@ class WorkspaceInvitationController extends Controller
                 'id' => $link->id,
                 'url' => route('invite-links.show', $link->token),
                 'roleLabel' => $link->workspaceRole?->name,
-                'isGuest' => $link->workspaceRole?->is_external ?? false,
+                'isGuest' => $link->workspaceRole->is_external ?? false,
                 'createdBy' => $link->creator?->name,
                 'uses' => $link->uses,
                 'maxUses' => $link->max_uses,

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\SystemRole;
 use App\Models\InviteLink;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,7 +25,7 @@ class InviteLinkFactory extends Factory
     public function configure(): static
     {
         return $this->afterMaking(function (InviteLink $row): void {
-            $row->workspace_role_id ??= roleIdFor($row->workspace_id, SystemRole::Member);
+            $row->workspace_role_id ??= Role::idFor($row->workspace_id, SystemRole::Member);
         });
     }
 
@@ -49,7 +50,7 @@ class InviteLinkFactory extends Factory
     /** An external participant, who only gets the channels on the link. */
     public function guest(): static
     {
-        return $this->afterMaking(fn (InviteLink $row) => $row->workspace_role_id = roleIdFor($row->workspace_id, SystemRole::Guest));
+        return $this->afterMaking(fn (InviteLink $row) => $row->workspace_role_id = Role::idFor($row->workspace_id, SystemRole::Guest));
     }
 
     /** No ceiling and no date: an open door until somebody withdraws it. */

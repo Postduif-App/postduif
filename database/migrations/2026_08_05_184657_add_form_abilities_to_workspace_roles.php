@@ -61,16 +61,20 @@ return new class extends Migration
         });
     }
 
-    /** @param  list<string>  $abilities */
-    private function write(object $role, array $abilities): void
+    /**
+     * @param  list<string>  $abilities
+     */
+    private function write(stdClass $role, array $abilities): void
     {
         DB::table('workspace_roles')
             ->where('id', $role->id)
             ->update(['abilities' => json_encode($abilities)]);
     }
 
-    /** @return list<string> */
-    private function held(object $role): array
+    /**
+     * @return list<string>
+     */
+    private function held(stdClass $role): array
     {
         $decoded = json_decode((string) $role->abilities, true);
 

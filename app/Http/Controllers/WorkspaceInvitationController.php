@@ -60,7 +60,7 @@ class WorkspaceInvitationController extends Controller
             'channel_ids.required' => __('requests.invite.channels_required'),
         ]);
 
-        $role = $workspace->roles()->findOrFail($validated['role']);
+        $role = $workspace->roles()->whereKey($validated['role'])->firstOrFail();
 
         $this->authorize('grantRole', [$workspace, $role]);
 

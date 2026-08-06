@@ -118,7 +118,7 @@ class BuildFeatureInventory
     {
         $endpoints = [];
 
-        foreach ($router->getRoutes() as $route) {
+        foreach ($router->getRoutes()->getRoutes() as $route) {
             if (! str_starts_with((string) $route->getName(), 'api.v1.')) {
                 continue;
             }

@@ -143,7 +143,7 @@ class WorkspaceMemberController extends Controller
             ],
         ]);
 
-        $role = $workspace->roles()->findOrFail($validated['role']);
+        $role = $workspace->roles()->whereKey($validated['role'])->firstOrFail();
 
         $this->authorize('grantRole', [$workspace, $role]);
         $this->guardTheLastManager($workspace, $user, $role);

@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Workspaces\Pages;
 
 use App\Actions\Workspace\CreateHomeChannel;
 use App\Filament\Resources\Workspaces\WorkspaceResource;
+use App\Models\Workspace;
 use Filament\Resources\Pages\CreateRecord;
+use RuntimeException;
 
 class CreateWorkspace extends CreateRecord
 {
@@ -20,6 +22,12 @@ class CreateWorkspace extends CreateRecord
      */
     protected function afterCreate(): void
     {
-        app(CreateHomeChannel::class)->handle($this->getRecord());
+        $workspace = $this->getRecord();
+
+        if (! $workspace instanceof Workspace) {
+            throw new RuntimeException('This page creates workspaces and has just created something else.');
+        }
+
+        app(CreateHomeChannel::class)->handle($workspace);
     }
 }

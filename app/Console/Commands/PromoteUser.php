@@ -121,7 +121,7 @@ class PromoteUser extends Command
      * again on every keystroke, so an unbounded query would grow into a table
      * scan per letter on a platform of any size.
      *
-     * @return array<string, string>
+     * @return array<int, string>
      */
     private function matching(string $term): array
     {

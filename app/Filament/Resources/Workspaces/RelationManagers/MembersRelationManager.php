@@ -18,6 +18,8 @@ use Filament\Tables\Table;
 
 class MembersRelationManager extends RelationManager
 {
+    use InteractsWithWorkspace;
+
     protected static string $relationship = 'members';
 
     protected static ?string $title = 'Leden';
@@ -65,8 +67,8 @@ class MembersRelationManager extends RelationManager
                      * now, and "Leverancier" is not a case of that enum — it
                      * would throw rather than render.
                      */
-                    ->state(fn (User $record): string => $this->getOwnerRecord()
-                        ->roleFor($record)?->name ?? '—')
+                    ->state(fn (User $record): string => $this->workspace()
+                        ->roleFor($record)->name ?? '—')
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')
@@ -81,7 +83,7 @@ class MembersRelationManager extends RelationManager
                      * for the same reason as the column above — and filtering on
                      * the pointer, which is what the membership actually holds.
                      */
-                    ->options(fn (): array => $this->getOwnerRecord()
+                    ->options(fn (): array => $this->workspace()
                         ->roles()
                         ->inOrder()
                         ->pluck('name', 'id')
@@ -127,9 +129,6 @@ class MembersRelationManager extends RelationManager
 
     private function isOwner(User $user): bool
     {
-        /** @var Workspace $workspace */
-        $workspace = $this->getOwnerRecord();
-
-        return $workspace->owner_id === $user->id;
+        return $this->workspace()->owner_id === $user->id;
     }
 }

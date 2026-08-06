@@ -22,4 +22,18 @@ return [
      */
     'thread_limit' => 25,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Workspace om mee te spelen
+    |--------------------------------------------------------------------------
+    |
+    | Which workspace WorkspaceMembersSeeder fills with colleagues. Here rather
+    | than read from the environment in the seeder itself: a cached config
+    | leaves env() answering null, and a seeder that then looks for a workspace
+    | with no slug reports "geen workspace" about a database that has one.
+    |
+    */
+
+    'seed_workspace' => env('SEED_WORKSPACE_SLUG', 'jow'),
+
 ];
