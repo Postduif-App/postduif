@@ -35,9 +35,9 @@ class ResolveVariables
     {
         foreach ($fields as $field) {
             /*
-             * Only the free-text fields. A channel picker holds an id, and
-             * letting a variable through there would let a run point a step at
-             * a channel nobody chose — including one in another workspace.
+             * What the type says it accepts — the free-text fields and the
+             * channel. See WorkflowFieldType::acceptsVariables() for why a
+             * channel is safe here and a form is not.
              */
             if (! $field->acceptsVariables()) {
                 continue;
@@ -55,6 +55,8 @@ class ResolveVariables
 
     /**
      * One string, with every path in it replaced.
+     *
+     * @param  array<string, mixed>  $context
      */
     public function fill(string $text, array $context): string
     {

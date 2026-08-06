@@ -16,6 +16,7 @@ use App\Models\FormField;
 use App\Models\Workflow;
 use App\Models\WorkflowStep;
 use App\Workflows\Actions\HttpRequest;
+use App\Workflows\Triggers\SlashCommandTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use App\Workflows\WorkflowTrigger;
@@ -24,6 +25,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -322,6 +324,12 @@ class WorkflowController extends Controller
             __('workflows.screen.too_many_steps', ['count' => self::MAX_STEPS]),
         );
 
+        $data['trigger_config'] = $this->settleSlashCommand(
+            $workflow,
+            $data['trigger_type'],
+            $data['trigger_config'] ?? [],
+        );
+
         DB::transaction(function () use ($workflow, $data): void {
             $workflow->update([
                 'name' => $data['name'],
@@ -514,7 +522,7 @@ class WorkflowController extends Controller
         ?WorkflowBranch $branch,
         int $position,
     ): int {
-        foreach (array_values($steps) as $step) {
+        foreach ($steps as $step) {
             $kind = WorkflowStepKind::from($step['kind'] ?? WorkflowStepKind::Action->value);
 
             $row = $workflow->steps()->create([
@@ -697,7 +705,7 @@ class WorkflowController extends Controller
      */
     private function presentSteps(Collection $level, Collection $all): array
     {
-        return $level->values()->map(fn (WorkflowStep $step): array => [
+        return array_values($level->map(fn (WorkflowStep $step): array => [
             'kind' => $step->kind->value,
             'actionType' => $step->action_type,
             'config' => (object) $step->config,
@@ -708,7 +716,7 @@ class WorkflowController extends Controller
                     'else' => $this->presentSteps($this->laneOf($all, $step, WorkflowBranch::Else), $all),
                 ]
                 : null,
-        ])->all();
+        ])->all());
     }
 
     /**
@@ -730,6 +738,50 @@ class WorkflowController extends Controller
      * nothing can ever reach. Existing tokens are left alone: re-minting on
      * every save would break every integration each time somebody fixed a typo.
      */
+    /**
+     * The trigger config with a slash command tidied up and checked.
+     *
+     * Here rather than in the rules above because a command has to be
+     * normalised before it can be judged: "/Storing" and "storing" are the same
+     * name, and a uniqueness rule that compared what was typed would let the
+     * second one through. Everything is spelled by the trigger itself — see
+     * SlashCommandTrigger — so this only decides *when* to ask.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    private function settleSlashCommand(Workflow $workflow, string $triggerType, array $config): array
+    {
+        if ($triggerType !== SlashCommandTrigger::key()) {
+            return $config;
+        }
+
+        $command = SlashCommandTrigger::normalise((string) ($config['command'] ?? ''));
+
+        throw_unless(
+            SlashCommandTrigger::isWellFormed($command),
+            ValidationException::withMessages([
+                'trigger_config.command' => __('workflows.triggers.slash-command.command.malformed'),
+            ]),
+        );
+
+        throw_if(
+            in_array($command, SlashCommandTrigger::RESERVED, strict: true),
+            ValidationException::withMessages([
+                'trigger_config.command' => __('workflows.triggers.slash-command.command.reserved', ['command' => $command]),
+            ]),
+        );
+
+        throw_if(
+            SlashCommandTrigger::taken($workflow, $command),
+            ValidationException::withMessages([
+                'trigger_config.command' => __('workflows.triggers.slash-command.command.taken', ['command' => $command]),
+            ]),
+        );
+
+        return [...$config, 'command' => $command];
+    }
+
     private function mintWebhookTokenIfNeeded(Workflow $workflow, WorkflowRegistry $registry): void
     {
         /** @var class-string<WorkflowTrigger>|null $trigger */

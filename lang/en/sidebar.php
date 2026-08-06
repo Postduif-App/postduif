@@ -4,6 +4,7 @@ return [
     'toolbar' => 'Toolbar',
 
     'rail' => [
+        'channels' => 'Channels',
         'inbox' => 'Inbox',
         'board' => 'Board',
         'secrets' => 'Secrets',
@@ -24,6 +25,7 @@ return [
 
     'channel' => [
         'muted' => 'Notifications are off',
+        'huddling' => '{1}1 person is talking here|[2,*]:count people are talking here',
         'open_tickets' => '{1}1 open ticket|[2,*]:count open tickets',
         'threads_show' => 'Show threads in :channel',
         'threads_hide' => 'Hide threads in :channel',

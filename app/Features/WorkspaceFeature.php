@@ -38,6 +38,7 @@ abstract class WorkspaceFeature
         Timeclock::class,
         Polls::class,
         Forms::class,
+        Huddles::class,
         Webhooks::class,
         Workflows::class,
         InviteLinks::class,

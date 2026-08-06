@@ -32,9 +32,9 @@
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>
         <env name="DB_CONNECTION" value="pgsql" force="true"/>
-        <!-- The default. tests/bootstrap.php lets PCOM_TEST_DB take over, so
+        <!-- The default. tests/bootstrap.php lets POSTDUIF_TEST_DB take over, so
              a second session can run the suite without deadlocking on this one. -->
-        <env name="DB_DATABASE" value="pcom_testing" force="true"/>
+        <env name="DB_DATABASE" value="postduif_testing" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>

@@ -19,6 +19,7 @@
   <a href="#what-it-does">What it does</a> ·
   <a href="#stack">Stack</a> ·
   <a href="#getting-started">Getting started</a> ·
+  <a href="#on-ploi">Deploying</a> ·
   <a href="#when-it-does-not-work">Troubleshooting</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#testing">Testing</a>
@@ -40,6 +41,11 @@ previews are fetched in the background; blocked words are censored on the way in
 **Presence and status.** Live presence per channel over WebSockets, a manual
 availability status, and status rules that set it for you on a schedule ("away
 after 18:00").
+
+**Huddles.** Talking in a channel at the press of a button, with audio and
+optionally video, without scheduling anything. Browsers connect to each other
+directly; the offers and answers ride the presence channel the conversation is
+already on. Needs `HUDDLE_STUN_URLS` — see **Environment notes**.
 
 **Tickets.** A channel can double as a queue. Tickets carry a status, a
 priority, a timeline of events, comments and attachments, and nag their channel
@@ -169,6 +175,210 @@ assumes the app itself is served by Valet at `https://postduif.test`.
 Outside production, `routes/dev.php` adds a quick-login endpoint so you can hop
 between seeded users without typing a password.
 
+### On Ploi
+
+[Ploi](https://ploi.io) provisions the server and you arrange the rest. What it
+does not give you by default is the part that matters here: this application is
+four long-running processes beside php-fpm, not one.
+
+Create the server with **PHP 8.4**, **PostgreSQL** and **Redis** — MySQL is not
+an option, `DB_CONNECTION` is `pgsql`. Then check the extensions, because the
+image only ships the usual ones:
+
+```bash
+php8.4 -m | grep -E "pgsql|redis|gd|exif|intl|bcmath|pcntl|zip"
+```
+
+`gd` has to be built with webp (attachments get a webp preview, see
+`Message::registerMediaConversions`), and `pcntl` is what the queue worker and
+Reverb use to catch the signal that tells them to stop. Without it neither shuts
+down cleanly, and a deploy leaves the old code running.
+
+Create the site with web directory `/public`, install the repository, request a
+certificate, and fill in the environment. Two settings differ from the example
+file in a way that is easy to miss: `BROADCAST_CONNECTION` must be `reverb`
+rather than `log`, and the `REVERB_*` values split into two pairs — the daemon
+listens on `REVERB_SERVER_HOST=0.0.0.0` and `REVERB_SERVER_PORT=8080`, while the
+browser is told `REVERB_HOST=chat.example.com`, `REVERB_PORT=443` and
+`REVERB_SCHEME=https`. nginx sits between the two.
+
+#### The deploy script
+
+```bash
+cd /home/ploi/chat.example.com
+
+git pull origin main
+
+composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+# Wayfinder runs `php artisan` from inside the Vite build, so the autoloader and
+# the package manifest have to exist before npm does anything. Not an
+# optimisation: the frontend build fails without it.
+php artisan package:discover --ansi
+php artisan filament:upgrade
+php artisan translations:types
+
+npm ci --no-audit --no-fund
+npm run build
+npm run build:ssr
+
+php artisan migrate --force
+php artisan optimize
+php artisan filament:optimize
+
+php artisan queue:restart
+php artisan reverb:restart
+php artisan inertia:stop-ssr || true
+
+echo "" | sudo -S service php8.4-fpm reload
+```
+
+`node_modules` stays where it is. `npm run build:ssr` uses the plain Vite config,
+which leaves dependencies out of the bundle and imports them at runtime — only
+the Docker variant (`vite.config.ssr.ts`) bundles them in.
+
+#### Daemons and cron
+
+Three daemons, all in the site directory as user `ploi`:
+
+| Daemon | Command | Processes |
+| --- | --- | --- |
+| Queue | `php8.4 artisan queue:work --sleep=3 --tries=3 --max-time=3600` | 2 |
+| Reverb | `php8.4 artisan reverb:start --host=0.0.0.0 --port=8080` | 1 |
+| SSR | `node bootstrap/ssr/app.js` | 1 |
+
+`--max-time` because a worker that never restarts holds code from before the
+deploy in memory. The SSR renderer is the one you can lose without anybody
+noticing much: pages then render in the browser instead.
+
+And one cron, every minute:
+
+```
+cd /home/ploi/chat.example.com && php8.4 artisan schedule:run >> /dev/null 2>&1
+```
+
+Ten things stand still without it — see [Scheduled work](#scheduled-work).
+
+#### Letting the websocket through
+
+In the site's nginx configuration, above the existing `location /`:
+
+```nginx
+location ~ ^/(app|apps) {
+    proxy_pass          http://127.0.0.1:8080;
+    proxy_http_version  1.1;
+    proxy_set_header    Host $host;
+    proxy_set_header    X-Real-IP $remote_addr;
+    proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header    X-Forwarded-Proto $scheme;
+    proxy_set_header    Upgrade $http_upgrade;
+    proxy_set_header    Connection "Upgrade";
+    proxy_read_timeout  60s;
+}
+```
+
+Both paths, not just the first: Reverb serves the client on `/app/{key}` and its
+HTTP API on `/apps/{id}/events`, and that second one is what the application
+itself calls to publish an event.
+
+### On Ploi Cloud
+
+[Ploi Cloud](https://ploi.cloud) is the other product — a managed platform where
+the application is a container and everything beside it is a service you add
+rather than a daemon you write. Nothing above applies; the shape of the
+deployment does.
+
+Point it at the repository, pick **PHP 8.4** and **Node 22** (the Node version is
+a setting, and without it the frontend cannot be built), then add the services:
+
+| Service | What it is |
+| --- | --- |
+| PostgreSQL | The database. Credentials are injected as secrets. |
+| Redis | Sessions, cache and the queue. |
+| Worker | `php artisan queue:work --sleep=3 --tries=3` |
+| Laravel Reverb | A worker type of its own, on port 6001. |
+| Inertia SSR | Custom service → Rendering → `php artisan inertia:start-ssr` |
+
+The scheduler is a switch in the application's settings rather than a service —
+turn it on, and `schedule:run` goes every minute.
+
+PHP extensions come from `ploi.yaml` in the repository root, through
+`php.extensions`. The same list the Dockerfile installs applies:
+
+```yaml
+php:
+    extensions:
+        - bcmath
+        - exif
+        - gd
+        - intl
+        - pcntl
+        - pdo_pgsql
+        - redis
+        - zip
+```
+
+#### Build and init
+
+Build commands run while the image is made, init commands run before every
+start. The split matters more here than on a server, and in one direction:
+`php artisan config:cache` belongs in **init**, never in the build. Cache the
+configuration before the services exist and you bake a database password that is
+an empty string.
+
+```bash
+# Build
+composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+php artisan package:discover --ansi && php artisan filament:upgrade
+php artisan translations:types
+npm ci --no-audit --no-fund
+npm run build
+npm run build:ssr
+
+# Init
+php artisan migrate --force
+```
+
+Ploi Cloud keeps one list of secrets and hands it to both the build and the
+runtime, which is what makes `VITE_REVERB_APP_KEY` and `VITE_REVERB_HOST` work
+at all: they are compiled into the bundle, so they have to be readable while
+Vite runs. It also means a redeploy is not enough after changing either one —
+the image has to be rebuilt.
+
+#### Storage
+
+The container filesystem is ephemeral and every instance has its own, so
+attachments, transfers and secrets need a **persistent volume** on
+`/storage/app`. Without one they survive until the next deploy and no longer.
+Add it before the first upload: creating a volume replaces the contents of the
+directory it mounts over.
+
+`MEDIA_DISK` stays `local` — the files are served through a route that checks
+whether you may see the channel, and the volume is shared across instances, so
+scaling out does not break it. S3 is the alternative if the volume outgrows
+being convenient, with the bucket kept private for the same reason.
+
+#### Behind the load balancer
+
+TLS ends at Ploi Cloud's load balancer and the request reaches the application
+over plain HTTP with `X-Forwarded-Proto: https`. Nothing in `bootstrap/app.php`
+trusts that header yet, because neither Docker nor Valet needs it, so this is a
+change you make before the first deploy:
+
+```php
+->withMiddleware(function (Middleware $middleware): void {
+    // Only the load balancer can reach the container, so there is no untrusted
+    // hop for a client to forge these from.
+    $middleware->trustProxies(at: '*');
+
+    // ...
+})
+```
+
+Without it every generated URL, redirect and mail link comes out as `http://` —
+and a browser on an https page refuses to open the websocket those URLs point
+at. On Ploi the same applies with `at: '127.0.0.1'`, since nginx is on the box.
+
 ### When it does not work
 
 #### Ports are taken
@@ -231,6 +441,38 @@ your own machine and commit the result.
   their own device key in their notification settings.
 - Serving over HTTPS means Reverb needs TLS as well — point `REVERB_TLS_CERT`
   and `REVERB_TLS_KEY` at your Valet certificate.
+- `HUDDLE_STUN_URLS` is what makes huddles work at all. Empty leaves the feature
+  switched off rather than half working — see below.
+
+#### Huddles need somewhere to look
+
+A browser in a huddle talks to the other browsers directly, so both sides have
+to know where to send the audio. On the same network they work that out
+themselves. Anywhere else they cannot: what a browser sees as its own address is
+a number on the inside of a router, and telling that to somebody on the other
+end of the internet is useless.
+
+- **STUN** (`HUDDLE_STUN_URLS`) is a server that answers one question: *what
+  does my address look like from where you are standing?* That is enough for
+  most home connections. It is also the floor — without it the only huddle that
+  connects is one between two people on the same wifi, so the button is hidden
+  entirely rather than offered and left to fail. Comma-separate several;
+  `stun:stun.l.google.com:19302` is the usual free one to start with.
+- **TURN** (`HUDDLE_TURN_URLS`) is a relay that carries the audio when there is
+  no direct path to find at all — symmetric NAT, which is what a good many
+  company networks and mobile providers do. Optional, but without it a share of
+  your colleagues will watch "Connecting…" and never get further.
+- **`HUDDLE_TURN_SECRET`** is coturn's shared secret (`static-auth-secret` in
+  its config). Rather than every member getting a fixed relay login — a login
+  anybody who opens the page can use for anything, indefinitely — the
+  application signs a username that expires, currently after
+  `HUDDLE_TURN_TTL_MINUTES` (120). The secret itself never leaves the server.
+  Leave it empty if your relay wants a plain username and password.
+
+Both lists are read per request in `App\Actions\Huddles\IceServers` rather than
+compiled into the frontend, so moving to another relay is an env change and a
+restart, not a rebuild. Only somebody who may actually join gets them — a TURN
+credential is a working relay for as long as it lasts.
 
 ## Architecture
 
@@ -288,7 +530,7 @@ composer test                                 # lint + phpstan + tests
 composer ci:check                             # everything CI runs
 ```
 
-Tests are Pest 5 and run against a real PostgreSQL database (`pcom_testing`,
+Tests are Pest 5 and run against a real PostgreSQL database (`postduif_testing`,
 see `phpunit.xml`). Coverage is feature-first: over a hundred feature test files
 exercise the HTTP surface, and unit tests are reserved for logic worth isolating.
 
@@ -298,8 +540,8 @@ Postgres reports `SQLSTATE[40P01]: Deadlock detected` in whichever run lost.
 Give the second one its own:
 
 ```bash
-createdb pcom_testing_b
-PCOM_TEST_DB=pcom_testing_b php artisan test --compact
+createdb postduif_testing_b
+POSTDUIF_TEST_DB=postduif_testing_b php artisan test --compact
 ```
 
 `tests/bootstrap.php` picks that variable up after `phpunit.xml` has had its

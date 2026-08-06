@@ -36,6 +36,11 @@ return [
     'ticket' => [
         'unknown' => 'Onbekend',
         'close' => 'Ticket sluiten',
+        'delete' => 'Ticket verwijderen',
+        'delete_title' => 'Ticket #:number verwijderen?',
+        // Wat er met de reacties gebeurt staat erbij: dat is het deel dat
+        // mensen zich achteraf pas afvragen.
+        'delete_confirm' => 'Dit ticket verwijderen? De reacties erop verdwijnen mee.',
         'title_field' => 'Titel',
         'edit_title' => 'Titel aanpassen',
         'body_field' => 'Omschrijving',

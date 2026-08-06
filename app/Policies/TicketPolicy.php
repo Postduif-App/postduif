@@ -18,9 +18,22 @@ class TicketPolicy
         return $user->isAdmin();
     }
 
+    /**
+     * Taking a ticket off the board altogether.
+     *
+     * Narrower than update(), which the opener also gets: rewriting a bad title
+     * leaves the work visible, and this makes it vanish for everybody. So it
+     * stays with whoever manages the channel's tickets — a customer who could
+     * delete their own ticket could also delete the record of what was promised
+     * about it.
+     *
+     * Deliberately not tied to the ticket's status. A ticket is usually deleted
+     * because it should never have existed, and that is most obvious the moment
+     * it is opened.
+     */
     public function delete(User $user, Ticket $ticket): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $this->manage($user, $ticket);
     }
 
     /**

@@ -27,6 +27,9 @@ return [
     'ticket' => [
         'unknown' => 'Unknown',
         'close' => 'Close ticket',
+        'delete' => 'Delete ticket',
+        'delete_title' => 'Delete ticket #:number?',
+        'delete_confirm' => 'Delete this ticket? Its replies go with it.',
         'title_field' => 'Title',
         'edit_title' => 'Change the title',
         'body_field' => 'Description',

@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
+import ChatLayout from '@/layouts/chat-layout';
 import MarketingLayout from '@/layouts/marketing/layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { initializeWorkspaceTheme } from '@/lib/workspace-theme';
@@ -41,15 +42,29 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
                 return null;
+            /*
+             * Setting up a platform that has nothing in it yet. No shell at
+             * all: the auth card is built for somebody arriving at an
+             * application that exists, and this screen has to explain what is
+             * about to exist beside the form that makes it. It brings its own
+             * two halves — see pages/install/welcome.
+             */
+            case name === 'install/welcome':
+                return null;
             // The public site brings its own shell. Its own rather than a
             // variation on the app's: the two have different jobs, and sharing
             // one would make every change to the app's chrome a change to the
             // marketing site.
             case name.startsWith('marketing/'):
                 return MarketingLayout;
-            // The chat page owns the full viewport and brings its own chrome.
+            /*
+             * The chat page owns the full viewport and brings its own chrome,
+             * so its shell adds no frame at all — only the banner that warns
+             * every chat screen at once when the socket they all live on is
+             * gone.
+             */
             case name.startsWith('chat/'):
-                return null;
+                return ChatLayout;
             case name.startsWith('auth/'):
                 return AuthLayout;
             // Making your first workspace. The auth shell rather than the chat
@@ -84,10 +99,14 @@ createInertiaApp({
              */
             case name.startsWith('forms/'):
                 return AuthLayout;
-            // The member list manages a table rather than a form, so it gets
-            // the room a table needs. Every other settings page stays at
-            // reading width.
+            /*
+             * The two settings pages that manage a table rather than a form, so
+             * they get the room a table needs: the member list, and the channel
+             * table whose counts and typed-in topics do not fit a reading
+             * column either. Every other settings page stays at reading width.
+             */
             case name === 'settings/members':
+            case name === 'settings/workspace-channels':
                 return WideSettingsLayout;
             /*
              * The workflow builder and its run history, for the same reason as

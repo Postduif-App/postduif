@@ -31,7 +31,10 @@ class ChannelLinkController extends Controller
 
         $channel->links()->create([
             'label' => $request->string('label')->trim()->value(),
-            'url' => $request->string('url')->trim()->value(),
+            // One or the other. Which of the two arrived has already been
+            // settled by the request; what is left is to leave the other empty.
+            'url' => $request->filled('url') ? $request->string('url')->trim()->value() : null,
+            'workflow_id' => $request->integer('workflow_id') ?: null,
             // Onto the end. Somebody adding a button has said nothing about
             // where it belongs, and the front of the bar is the one place it
             // certainly does not.
@@ -51,7 +54,19 @@ class ChannelLinkController extends Controller
 
         $link->update([
             ...$request->has('label') ? ['label' => $request->string('label')->trim()->value()] : [],
-            ...$request->has('url') ? ['url' => $request->string('url')->trim()->value()] : [],
+            /*
+             * Pointing a button somewhere else empties where it pointed before.
+             * Both columns move together or the row would carry a URL and a
+             * workflow at once, which the database refuses outright.
+             */
+            ...$request->has('url') ? [
+                'url' => $request->string('url')->trim()->value(),
+                'workflow_id' => null,
+            ] : [],
+            ...$request->has('workflow_id') ? [
+                'workflow_id' => $request->integer('workflow_id'),
+                'url' => null,
+            ] : [],
         ]);
 
         return back();

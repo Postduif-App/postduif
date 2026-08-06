@@ -21,7 +21,16 @@ import { cn } from '@/lib/utils';
  */
 export function MessageToolbar({ children }: PropsWithChildren) {
     return (
-        <div className="absolute -top-2.5 right-2 flex items-center divide-x overflow-hidden rounded-md border bg-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100">
+        /*
+         * Always there on a device that cannot hover.
+         *
+         * Hiding it until the pointer arrives is right with a mouse and quietly
+         * disastrous on a phone: there is no hover, so reacting, replying,
+         * saving and deleting a message simply do not exist. The media query
+         * asks about the input rather than the width, which is the actual
+         * question — a touchscreen laptop is narrow about neither.
+         */
+        <div className="absolute -top-2.5 right-2 flex items-center divide-x overflow-hidden rounded-md border bg-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
             {children}
         </div>
     );

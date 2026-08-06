@@ -3,6 +3,7 @@
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\CustomEmojiController;
 use App\Http\Controllers\IndexingController;
+use App\Http\Controllers\InstallController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\InviteLinkJoinController;
 use App\Http\Controllers\LocaleController;
@@ -25,6 +26,26 @@ use Illuminate\Support\Facades\Route;
  * always logged in and break for everybody else.
  */
 Route::get('/', [MarketingController::class, 'home'])->name('home');
+
+/**
+ * Setting up a platform that has never been set up.
+ *
+ * Outside auth, like the invitation and transfer links below, and for a
+ * stronger version of the same reason: there is not only no account yet, there
+ * is nobody who could ever have made one. What stands in for a token here is
+ * the state of the platform itself — see EnsureInstallationIsPending, which
+ * takes both of these away the moment a workspace or a moderator exists.
+ *
+ * Throttled like the other doors that create accounts. It answers 404 once the
+ * platform is set up, so the ceiling only ever applies to the handful of
+ * minutes in which the address is real at all.
+ */
+Route::middleware('install.pending')->group(function () {
+    Route::get('installeren', [InstallController::class, 'show'])->name('install.show');
+    Route::post('installeren', [InstallController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('install.store');
+});
 
 /*
  * What the API answers to, for somebody about to point a script at it. Public

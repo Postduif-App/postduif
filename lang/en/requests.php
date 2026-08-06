@@ -63,6 +63,7 @@ return [
         'label_required' => 'Give the button a name.',
         'url_required' => 'Enter an address.',
         'url_scheme' => 'This has to be an address starting with http:// or https://.',
+        'workflow_unknown' => 'Pick a workflow that runs on the button trigger.',
     ],
 
     'channel_tags' => [
@@ -140,6 +141,10 @@ return [
     'scheduled_message' => [
         'body_required' => 'Write a message first.',
         'send_at_past' => 'Pick a moment that is still to come.',
+    ],
+
+    'installation' => [
+        'workspace_required' => 'Give your first workspace a name.',
     ],
 
     'board_post' => [

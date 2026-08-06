@@ -94,12 +94,49 @@ return [
         'empty' => 'Nog geen knoppen. Voeg er hieronder een toe.',
         'new' => 'Nieuwe knop',
         'address' => 'Adres',
+        'target' => 'Wat de knop doet',
+        'target_url' => 'Een adres openen',
+        // Kan alleen als de workflow net weg is en de pagina nog niet ververst.
+        'workflow_gone' => 'Deze workflow bestaat niet meer',
         'add' => 'Knop toevoegen',
         'move_up' => ':label naar voren',
         'move_down' => ':label naar achteren',
         'open' => 'Openen',
         'open_named' => ':label openen',
         'remove' => ':label verwijderen',
+    ],
+
+    /*
+     * De regels die maar een iemand ziet: het antwoord op iets dat je zelf net
+     * deed. Bewust kort — het staat onder het gesprek, niet erin.
+     */
+    'notice' => [
+        'only_you' => 'Alleen jij ziet dit',
+        'dismiss' => 'Wegklikken',
+    ],
+
+    /* De balk boven het gesprek als er gepraat wordt, of gepraat kan worden. */
+    'huddle' => [
+        'talking' => '{1}is aan het praten|[2,*]zijn aan het praten',
+        'alone' => 'Je wacht tot er iemand bij komt.',
+        'starting' => 'Bezig met verbinden…',
+        'start' => 'Huddle starten',
+        'join' => 'Meedoen',
+        'leave' => 'Weggaan',
+        'mute' => 'Microfoon uit',
+        'unmute' => 'Microfoon aan',
+        'no_microphone' => 'Geen toegang tot de microfoon.',
+        'no_camera' => 'Geen toegang tot de camera.',
+        'camera_on' => 'Camera aan',
+        'camera_off' => 'Camera uit',
+        'you' => 'Jij',
+        'expand' => 'Groot',
+        'pick_microphone' => 'Kies een microfoon',
+        'pick_camera' => 'Kies een camera',
+        'unnamed_device' => 'Naamloos apparaat',
+        'shrink' => 'Kleiner',
+        'too_many_cameras' => 'Met meer dan :count camera\'s wordt het zwaar voor de browsers.',
+        'full' => 'Een huddle gaat tot :count mensen.',
     ],
 
     'payload' => [
@@ -162,5 +199,15 @@ return [
     'tickets' => [
         'none_outstanding' => 'Niets meer openstaand.',
         'none_with_status' => 'Geen tickets met deze status.',
+    ],
+
+    /*
+     * De balk boven de app als de socket weg is. Geen woord over websockets of
+     * Reverb: wat je merkt is dat er niets meer binnenkomt, en dat is wat er
+     * staat.
+     */
+    'connection' => [
+        'offline' => 'Geen verbinding met de server — nieuwe berichten komen nu niet binnen.',
+        'reload' => 'Opnieuw laden',
     ],
 ];

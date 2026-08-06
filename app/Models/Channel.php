@@ -39,22 +39,6 @@ class Channel extends Model
     /** @use HasFactory<ChannelFactory> */
     use HasFactory;
 
-    /**
-     * The column has the same default, but a model that has just been created
-     * would otherwise carry null until it is read back — and the posting rules
-     * ask this enum a question the moment a channel exists.
-     *
-     * @var array<string, mixed>
-     */
-    protected $attributes = [
-        'layout' => ChannelLayout::Chat->value,
-        'posting_policy' => ChannelPostingPolicy::Everyone->value,
-        'replies_open' => true,
-        'ticket_policy' => ChannelTicketPolicy::Disabled->value,
-        'ticket_announcements' => true,
-        'ticket_status_announcements' => false,
-    ];
-
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -123,6 +107,33 @@ class Channel extends Model
     public function links(): HasMany
     {
         return $this->hasMany(ChannelLink::class)->inOrder();
+    }
+
+    /**
+     * The huddles held in this channel, the live one and the ones that are
+     * over. Newest first, because the only one anybody asks for by hand is the
+     * one going on now.
+     *
+     * @return HasMany<Huddle, $this>
+     */
+    public function huddles(): HasMany
+    {
+        return $this->hasMany(Huddle::class)->latest('id');
+    }
+
+    /**
+     * What individual people were told here and nobody else was.
+     *
+     * Never fetched whole: the one query that reads these narrows to a single
+     * member first — see ChatController — because a notice is only ever for
+     * one, and a relation that returns everybody's is a relation somebody will
+     * eventually loop over.
+     *
+     * @return HasMany<EphemeralNotice, $this>
+     */
+    public function notices(): HasMany
+    {
+        return $this->hasMany(EphemeralNotice::class);
     }
 
     /**

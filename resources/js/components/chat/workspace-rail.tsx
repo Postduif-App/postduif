@@ -7,6 +7,7 @@ import {
     Inbox,
     KeyRound,
     Megaphone,
+    Menu,
     Pin,
     Send,
     TicketIcon,
@@ -117,6 +118,7 @@ export function WorkspaceRail({
     formsActive = false,
     timeclockActive = false,
     onBroadcast,
+    onOpenChannels,
 }: {
     workspace: ChatWorkspace;
     /** Everything unread in the inbox, of every kind. */
@@ -134,6 +136,11 @@ export function WorkspaceRail({
     formsActive?: boolean;
     timeclockActive?: boolean;
     onBroadcast?: () => void;
+    /**
+     * Opens the channel list, on a screen too narrow to keep it standing.
+     * Absent above lg, where the list is simply there.
+     */
+    onOpenChannels?: () => void;
 }) {
     const { t } = useTranslate();
 
@@ -152,6 +159,23 @@ export function WorkspaceRail({
                 here because the rail is the leftmost column of the application
                 and that is where a product puts its name.
             */}
+            {/*
+                The way to the channel list on a phone, above the mark rather
+                than in the conversation's header: the rail is what stays put on
+                every one of these screens, and a hamburger repeated in twelve
+                headers is twelve places to forget one.
+            */}
+            {onOpenChannels && (
+                <button
+                    type="button"
+                    onClick={onOpenChannels}
+                    aria-label={t('sidebar.rail.channels')}
+                    className="mb-1 flex size-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:outline-none lg:hidden"
+                >
+                    <Menu className="size-5" />
+                </button>
+            )}
+
             <span
                 aria-hidden
                 /*

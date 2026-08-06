@@ -5,13 +5,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useInitials } from '@/hooks/use-initials';
 import { useTranslate } from '@/hooks/use-translate';
-import { login } from '@/routes/dev';
 
 export interface DevAccount {
     id: number;
     name: string;
     email: string;
     role: string | null;
+    /** Where to post to sign in as this account — see FortifyServiceProvider. */
+    url: string;
 }
 
 /**
@@ -19,6 +20,10 @@ export interface DevAccount {
  *
  * The server sends an empty list outside local development, so there is no
  * environment flag for this component to check — no accounts, no buttons.
+ *
+ * It sends the URL along too, rather than this file importing Wayfinder's
+ * `dev.login`: routes/dev.php is not registered in production, so that helper
+ * is not generated there and the import would fail the build.
  */
 export function DevQuickLogin({ accounts }: { accounts: DevAccount[] }) {
     const getInitials = useInitials();
@@ -47,7 +52,7 @@ export function DevQuickLogin({ accounts }: { accounts: DevAccount[] }) {
                         onClick={() => {
                             setBusyId(account.id);
                             router.post(
-                                login.url(account.id),
+                                account.url,
                                 {},
                                 { onFinish: () => setBusyId(null) },
                             );

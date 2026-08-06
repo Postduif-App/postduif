@@ -63,6 +63,7 @@ return [
         'label_required' => 'Geef de knop een naam.',
         'url_required' => 'Geef een adres op.',
         'url_scheme' => 'Dit moet een adres zijn dat met http:// of https:// begint.',
+        'workflow_unknown' => 'Kies een workflow die op de knop-trigger staat.',
     ],
 
     'channel_tags' => [
@@ -140,6 +141,10 @@ return [
     'scheduled_message' => [
         'body_required' => 'Schrijf eerst een bericht.',
         'send_at_past' => 'Kies een moment dat nog moet komen.',
+    ],
+
+    'installation' => [
+        'workspace_required' => 'Geef je eerste workspace een naam.',
     ],
 
     'board_post' => [

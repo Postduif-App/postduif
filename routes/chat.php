@@ -8,6 +8,7 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\ChannelFavoriteController;
 use App\Http\Controllers\ChannelFormController;
 use App\Http\Controllers\ChannelLinkController;
+use App\Http\Controllers\ChannelLinkWorkflowController;
 use App\Http\Controllers\ChannelMemberController;
 use App\Http\Controllers\ChannelMuteController;
 use App\Http\Controllers\ChannelSectionController;
@@ -15,7 +16,9 @@ use App\Http\Controllers\ChannelTagController;
 use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DirectMessageController;
+use App\Http\Controllers\EphemeralNoticeController;
 use App\Http\Controllers\FormFillController;
+use App\Http\Controllers\HuddleController;
 use App\Http\Controllers\InviteLinkController;
 use App\Http\Controllers\MessageAttachmentController;
 use App\Http\Controllers\MessageBookmarkController;
@@ -31,6 +34,7 @@ use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecretRequestController;
 use App\Http\Controllers\SentSecretController;
+use App\Http\Controllers\SlashCommandController;
 use App\Http\Controllers\ThreadClosureController;
 use App\Http\Controllers\ThreadMuteController;
 use App\Http\Controllers\TicketCommentAttachmentController;
@@ -527,6 +531,58 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->scopeBindings()
                 ->name('channels.links.destroy');
 
+            /*
+             * Talking in a channel. Behind the feature flag because it needs a
+             * relay server arranged before it works for everybody — see the
+             * Huddles feature.
+             */
+            Route::middleware('feature:huddles')->group(function () {
+                Route::post('c/{channel}/huddle', [HuddleController::class, 'store'])
+                    ->name('huddles.store');
+                /*
+                 * "Ik ben er nog", every half minute from every browser in a
+                 * huddle. Not throttled with the others: this is the signal a
+                 * huddle uses to notice that somebody's browser is gone, and
+                 * refusing it would be manufacturing the very silence the
+                 * sweeper reads as death.
+                 */
+                Route::patch('c/{channel}/huddle/{huddle}', [HuddleController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('huddles.ping');
+
+                Route::delete('c/{channel}/huddle/{huddle}', [HuddleController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('huddles.destroy');
+            });
+
+            /*
+             * Typing a workflow's command in the message field. Throttled like
+             * the button: a command that seems to do nothing gets typed again.
+             */
+            Route::post('c/{channel}/commands', [SlashCommandController::class, 'store'])
+                ->middleware(['feature:workflows', 'throttle:20,1'])
+                ->name('commands.store');
+
+            /*
+             * Throwing away something you alone were told. No store beside it:
+             * a notice is written by whatever it is a receipt for — a command,
+             * a button — and never by somebody asking for one.
+             */
+            Route::delete('c/{channel}/notices/{notice}', [EphemeralNoticeController::class, 'destroy'])
+                ->scopeBindings()
+                ->name('notices.destroy');
+
+            /*
+             * Pressing one of those buttons, which is the one thing here an
+             * ordinary member may do rather than whoever manages the channel.
+             * Throttled because a button is a thing people press again when
+             * nothing visibly happens, and every press is a workflow run.
+             */
+            Route::post('c/{channel}/links/{link}/run', [ChannelLinkWorkflowController::class, 'store'])
+                ->scopeBindings()
+                ->middleware(['feature:workflows', 'throttle:20,1'])
+                ->name('channels.links.run');
+
             /* Het beheer; het endpoint dat een webhook gebruikt zit in api.php. */
             Route::middleware('feature:webhooks')->group(function () {
                 Route::get('c/{channel}/webhooks', [ChannelWebhookController::class, 'index'])->name('channels.webhooks.index');
@@ -560,6 +616,10 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::patch('c/{channel}/tickets/{ticket}', [TicketController::class, 'update'])
                     ->scopeBindings()
                     ->name('tickets.update');
+
+                Route::delete('c/{channel}/tickets/{ticket}', [TicketController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('tickets.destroy');
 
                 Route::post('c/{channel}/tickets/{ticket}/comments', [TicketCommentController::class, 'store'])
                     ->scopeBindings()

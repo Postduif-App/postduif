@@ -3,10 +3,12 @@
 namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
+use App\Features\Huddles as HuddlesFeature;
 use App\Models\BoardPost;
 use App\Models\Channel;
 use App\Models\ChannelSection;
 use App\Models\CustomEmoji;
+use App\Models\HuddleParticipant;
 use App\Models\InboxItem;
 use App\Models\Message;
 use App\Models\Role;
@@ -413,6 +415,27 @@ class BuildChatShell
             ->groupBy('channel_id')
             ->pluck('total', 'channel_id');
 
+        /*
+         * Which channels have somebody talking in them, and how many. One query
+         * for the whole sidebar rather than one per row, the same way the
+         * ticket counts above are taken — a badge is not worth a query each.
+         *
+         * Only where the workspace has huddles at all; elsewhere this is an
+         * empty list and every row reads zero. The workspace is read off the
+         * rows themselves — they are all of one, and this method is handed
+         * channels rather than the workspace they belong to.
+         */
+        $huddling = $channels->first()?->workspace?->hasFeature(HuddlesFeature::class)
+            ? HuddleParticipant::query()
+                ->join('huddles', 'huddles.id', '=', 'huddle_participants.huddle_id')
+                ->whereIn('huddles.channel_id', $channels->pluck('id'))
+                ->whereNull('huddles.ended_at')
+                ->whereNull('huddle_participants.left_at')
+                ->selectRaw('huddles.channel_id, count(*) as total')
+                ->groupBy('huddles.channel_id')
+                ->pluck('total', 'channel_id')
+            : collect();
+
         $present = fn (Channel $channel): array => [
             'id' => $channel->id,
             'type' => $channel->type->value,
@@ -433,6 +456,13 @@ class BuildChatShell
             // question as the count above: a channel can keep tickets and have
             // none outstanding.
             'hasTickets' => $channel->hasTickets(),
+            /*
+             * How many people are talking in here right now, zero for the rest.
+             * A count rather than names: the sidebar has a row's width, and
+             * what it has to say is "er gebeurt hier iets" — the names are in
+             * the channel itself.
+             */
+            'huddleCount' => (int) ($huddling[$channel->id] ?? 0),
             // What the sidebar filters on. Empty for a guest, and for a DM,
             // which never carries any — absent would make every reader of this
             // payload check for it.

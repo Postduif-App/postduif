@@ -167,7 +167,52 @@ export interface ComposerCommand {
     /** Typed after the slash, and what the list filters on. */
     name: string;
     description: string;
-    run: () => void;
+    /** Whatever was typed after the name, trimmed. Empty for most commands. */
+    run: (args: string) => void;
+    /**
+     * Whether anything may follow the name.
+     *
+     * The difference is what choosing it from the list does. A command that
+     * takes nothing — /poll, /geheim — opens its dialog there and then. One
+     * that does is written into the field instead, with a space after it, so
+     * the next thing typed is the argument. Either way Enter is what fires it,
+     * which is how somebody who typed the whole line without looking at the
+     * list gets the same behaviour.
+     */
+    takesArguments?: boolean;
+}
+
+/**
+ * The command a typed line is, with whatever followed it — or null when the
+ * line is an ordinary message.
+ *
+ * Exported so the rule can be read back in a test: the awkward parts are that
+ * "/storing" and "/storing iets" are the same command, while "/storingen" is
+ * not the first of them, and that a slash anywhere but the start is a slash.
+ */
+export function commandIn(
+    line: string,
+    commands: ComposerCommand[],
+): { command: ComposerCommand; args: string } | null {
+    /*
+     * The name, then everything else exactly as it was typed. Split on the
+     * first stretch of whitespace only: an argument may be a pasted paragraph,
+     * and rebuilding it from words would quietly turn it into one line with
+     * single spaces in it.
+     */
+    const match = line.match(/^\/([^\s]+)(?:\s([\s\S]*))?$/);
+
+    if (match === null) {
+        return null;
+    }
+
+    const command = commands.find(
+        (candidate) => candidate.name === match[1].toLowerCase(),
+    );
+
+    return command === undefined
+        ? null
+        : { command, args: (match[2] ?? '').trim() };
 }
 
 interface Suggestion {
@@ -187,7 +232,9 @@ interface Suggestion {
      * presence is what tells complete() to run something and empty the field
      * rather than write into it.
      */
-    run?: () => void;
+    run?: (args: string) => void;
+    /** See ComposerCommand: a command with an argument is written, not run. */
+    takesArguments?: boolean;
 }
 
 function SuggestionIcon({
@@ -373,6 +420,7 @@ export function Composer({
                     secondary: command.description,
                     icon: 'command' as const,
                     run: command.run,
+                    takesArguments: command.takesArguments,
                 }));
         }
 
@@ -503,6 +551,23 @@ export function Composer({
 
     const complete = (suggestion: Suggestion) => {
         /*
+         * A command that takes an argument is written into the field rather
+         * than run: what it needs has not been typed yet. The trailing space is
+         * the point — it closes the palette and leaves the caret where the
+         * argument goes.
+         */
+        if (suggestion.run && suggestion.takesArguments) {
+            write(`/${suggestion.insert} `);
+            setActive(null);
+            requestAnimationFrame(() => {
+                resize();
+                textareaRef.current?.focus();
+            });
+
+            return;
+        }
+
+        /*
          * A command empties the field and does its thing. Nothing is written,
          * because "/versturen" is not something anybody wants left in the
          * message they are about to send.
@@ -510,7 +575,8 @@ export function Composer({
         if (suggestion.run) {
             write('');
             setActive(null);
-            suggestion.run();
+            // Nothing was typed after it: this is the kind that opens a dialog.
+            suggestion.run('');
 
             return;
         }
@@ -579,6 +645,25 @@ export function Composer({
         const trimmed = body.trim();
 
         if (!canSend || disabled) {
+            return;
+        }
+
+        /*
+         * A line that begins with a command is that command, not a message.
+         * Checked here rather than only in the palette because somebody who
+         * knows the command types the whole line and presses Enter without ever
+         * opening the list — and a "/storing printer stuk" posted as words
+         * would be a receipt nobody gets and a message everybody reads.
+         */
+        const typed = commandIn(trimmed, commands ?? []);
+
+        if (typed !== null) {
+            typed.command.run(typed.args);
+
+            write('');
+            setActive(null);
+            requestAnimationFrame(resize);
+
             return;
         }
 

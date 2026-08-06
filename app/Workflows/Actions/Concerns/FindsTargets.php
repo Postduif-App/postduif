@@ -35,10 +35,7 @@ trait FindsTargets
             throw new RuntimeException(__('workflows.errors.no_channel_chosen'));
         }
 
-        $channel = Channel::query()
-            ->where('workspace_id', $context->workspace()->id)
-            ->whereKey($id)
-            ->first();
+        $channel = $this->findChannel($context, (string) $id);
 
         /*
          * One answer for "no such channel" and "not the owner's to see". They
@@ -51,6 +48,40 @@ trait FindsTargets
         }
 
         return $channel;
+    }
+
+    /**
+     * The channel a setting names: by id, or by the name people call it.
+     *
+     * A name as well as an id because of where these values now come from. A
+     * field may hold a variable, and what a trigger knows is usually
+     * trigger.channel.name — "meld dit in #storingen" is how somebody thinks
+     * about it, and asking them to carry an id through a workflow would be
+     * asking them to write something they cannot read back.
+     *
+     * The hash is stripped because people type it. It is punctuation in the
+     * chat, not part of the name — the same rule the slash command applies to
+     * its own leading slash.
+     *
+     * Scoped to the workflow's workspace in every branch, which is the property
+     * that makes a variable safe here at all: whatever it resolves to, it can
+     * only ever find something this workspace owns.
+     */
+    private function findChannel(WorkflowStepContext $context, string $named): ?Channel
+    {
+        $channels = Channel::query()->where('workspace_id', $context->workspace()->id);
+
+        if (ctype_digit($named)) {
+            return $channels->whereKey($named)->first();
+        }
+
+        $name = ltrim(trim($named), '#');
+
+        /*
+         * Case-insensitively, because a name is typed by a person and "#Storingen"
+         * and "#storingen" are the same channel to everybody except a database.
+         */
+        return $channels->whereRaw('lower(name) = ?', [mb_strtolower($name)])->first();
     }
 
     /**

@@ -28,6 +28,11 @@ return [
         'label' => 'Berichten doorsturen',
         'description' => 'Een bericht uit het ene kanaal in het andere plaatsen, met de herkomst erbij.',
     ],
+    'huddles' => [
+        'label' => 'Huddles',
+        'description' => 'Met een klik even praten in een kanaal, zonder een vergadering te plannen. Vraagt een relayserver om buiten kantoornetwerken te werken.',
+    ],
+
     'polls' => [
         'label' => 'Polls',
         'description' => 'Een vraag met antwoorden in een kanaal zetten, waar iedereen op kan stemmen.',

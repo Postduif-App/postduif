@@ -521,7 +521,13 @@ export default function MarketingHome({
                     lead={t('marketing.home.roles.lead')}
                 />
 
-                <div className="overflow-x-auto">
+                {/*
+                    The table keeps its own scroll: four columns of role names
+                    do not fold into a phone, and a table that wraps mid-word is
+                    less readable than one you push sideways. What matters is
+                    that the box scrolls and the page does not.
+                */}
+                <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
                     <table
                         className="w-full min-w-[34rem] border-collapse"
                         style={{ fontSize: 14 }}

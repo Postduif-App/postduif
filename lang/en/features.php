@@ -21,6 +21,10 @@ return [
         'label' => 'Forwarding messages',
         'description' => 'Putting a message from one channel into another, with a note of where it came from.',
     ],
+    'huddles' => [
+        'label' => 'Huddles',
+        'description' => 'Talking in a channel at the press of a button, without scheduling a meeting. Needs a relay server to work outside office networks.',
+    ],
     'polls' => [
         'label' => 'Polls',
         'description' => 'Putting a question with answers in a channel for everybody to vote on.',

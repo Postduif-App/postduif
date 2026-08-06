@@ -66,6 +66,23 @@ return [
             'description' => 'Appears in the message menu. Whoever picks it there starts the workflow with that message.',
         ],
 
+        'button' => [
+            'label' => 'When somebody presses a button',
+            'description' => 'Appears as a button in the bar above a channel. You put it there in that channel\'s settings.',
+        ],
+
+        'slash-command' => [
+            'label' => 'When somebody types a command',
+            'description' => 'Appears in the list behind "/" in the message field. Whatever follows the command comes along as text.',
+            'command' => [
+                'label' => 'Command',
+                'hint' => 'Without the slash. Lowercase letters, digits and hyphens, for example report-outage.',
+                'malformed' => 'A command is lowercase letters, digits and hyphens, starting with a letter or a digit.',
+                'reserved' => '/:command is already a built-in command in the message field.',
+                'taken' => '/:command already belongs to another workflow.',
+            ],
+        ],
+
         'webhook' => [
             'label' => 'When something arrives at a URL',
             'description' => 'You get a secret URL. Anything sent to it sets the workflow off.',
@@ -250,6 +267,10 @@ return [
         'too_many_steps' => 'More than :count steps in one workflow is more than anybody can follow.',
     ],
 
+    'command' => [
+        'unknown' => 'No workflow answers to /:command.',
+    ],
+
     'link' => [
         'started' => '“:name” has been started.',
         'refused' => 'This workflow could not start just now.',
@@ -335,6 +356,8 @@ return [
             'date' => 'Today\'s date',
             'time' => 'What time it is',
         ],
+        'command' => 'The command that was typed, without the slash',
+        'arguments' => 'Whatever followed the command',
         'emoji' => 'The emoji that was used',
         'keyword' => 'The word that was found',
         'answers' => 'All the answers. Put the key of a question after it for one answer on its own, for instance answers.reden',

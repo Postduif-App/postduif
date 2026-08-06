@@ -35,6 +35,7 @@ import type {
     OpenThread,
     OpenTicket,
     PinnedMessage,
+    EphemeralNotice,
     ScheduledMessage,
     TicketBoard,
     WorkspaceOption,
@@ -76,6 +77,8 @@ interface ChatShowProps {
     bookmarkedIds: string[];
     /** What this member still has waiting in this channel. */
     scheduled: ScheduledMessage[];
+    /** What this member alone was told in this channel. */
+    notices: EphemeralNotice[];
 }
 
 export default function ChatShow({
@@ -100,6 +103,7 @@ export default function ChatShow({
     memberPanelOpen,
     bookmarkedIds,
     scheduled,
+    notices,
 }: ChatShowProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const [searchOpen, setSearchOpen] = useState(false);
@@ -213,7 +217,7 @@ export default function ChatShow({
     const userMenu = <UserMenu />;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
+        <div className="flex h-dvh overflow-hidden bg-background">
             <Head title={channel.label} />
 
             <ChannelSidebar
@@ -275,6 +279,7 @@ export default function ChatShow({
                 }
                 bookmarkedIds={bookmarkedIds}
                 scheduled={scheduled}
+                notices={notices}
                 currentUser={{ id: auth.user.id, name: auth.user.name }}
                 currentUsername={auth.user.username as string | undefined}
                 currentUserAvatarUrl={auth.avatarUrl}

@@ -141,3 +141,22 @@ Schedule::command('workflows:dispatch-scheduled')
 Schedule::command('workflows:prune-runs')
     ->dailyAt('04:45')
     ->withoutOverlapping();
+
+/**
+ * And the receipts people were shown once. Most of them are already past their
+ * moment within ten minutes; this is what clears the ones that waited to be
+ * dismissed and never were. Beside the runs above, at the same quiet hour.
+ */
+/**
+ * Every minute, because a channel holds one live huddle at a time: a huddle
+ * left standing by a browser that crashed blocks that channel until this runs,
+ * and "wacht even een kwartier" is not an answer somebody accepts about a
+ * button that does nothing.
+ */
+Schedule::command('huddles:sweep')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('chat:prune-notices')
+    ->dailyAt('04:50')
+    ->withoutOverlapping();

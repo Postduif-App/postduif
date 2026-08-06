@@ -17,6 +17,7 @@ return [
     ],
 
     'header' => [
+        'huddle' => 'Even praten',
         'search' => 'Zoeken in :channel',
         'members' => 'Leden van dit kanaal',
         'connecting' => 'Realtime verbinding wordt opgezet…',

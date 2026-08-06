@@ -2,11 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Concerns\ValidatesChannelLinkTarget;
+use App\Models\Channel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreChannelLinkRequest extends FormRequest
 {
+    use ValidatesChannelLinkTarget;
+
     public function authorize(): bool
     {
         return $this->user()->can('manageSettings', $this->route('channel'));
@@ -17,15 +21,11 @@ class StoreChannelLinkRequest extends FormRequest
      */
     public function rules(): array
     {
+        $channel = $this->route('channel');
+
         return [
             'label' => ['required', 'string', 'max:40'],
-            /*
-             * http and https only. The bar is drawn for everyone who can see
-             * the channel, guests included, so a "javascript:" or "data:" here
-             * would be an admin handing themselves a way to run something in
-             * every reader's browser.
-             */
-            'url' => ['required', 'string', 'max:2048', 'url:http,https'],
+            ...$this->targetRules($channel instanceof Channel ? $channel : null),
         ];
     }
 
@@ -36,8 +36,9 @@ class StoreChannelLinkRequest extends FormRequest
     {
         return [
             'label.required' => __('requests.channel_link.label_required'),
-            'url.required' => __('requests.channel_link.url_required'),
+            'url.required_without' => __('requests.channel_link.url_required'),
             'url.url' => __('requests.channel_link.url_scheme'),
+            'workflow_id.exists' => __('requests.channel_link.workflow_unknown'),
         ];
     }
 }

@@ -5,15 +5,32 @@ import {
     ExternalLink,
     Plus,
     Trash2,
+    Zap,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useTranslate } from '@/hooks/use-translate';
 import { destroy, reorder, store, update } from '@/routes/chat/channels/links';
 import type { ActiveChannel, ChannelLink, ChatWorkspace } from '@/types/chat';
+
+/**
+ * What the picker calls "a web address".
+ *
+ * A sentinel rather than an empty value, because a Radix SelectItem may not
+ * have one — an empty string is how it says "nothing is chosen", and this is a
+ * choice like any other.
+ */
+const URL_TARGET = 'url';
 
 interface ChannelLinksSectionProps {
     workspace: ChatWorkspace;
@@ -36,25 +53,46 @@ export function ChannelLinksSection({
     const { t } = useTranslate();
     const [label, setLabel] = useState('');
     const [url, setUrl] = useState('');
+    /**
+     * The workflow the new button will start, or '' for one that opens a URL.
+     *
+     * One control deciding between the two rather than two forms side by side:
+     * a button does exactly one of them, and two forms would let somebody fill
+     * in both and then be told off for it.
+     */
+    const [workflowId, setWorkflowId] = useState('');
     const [busy, setBusy] = useState(false);
 
     const target = { workspace: workspace.slug, channel: channel.id };
     const links = channel.links;
+    const workflows = channel.buttonWorkflows;
+    const startsWorkflow = workflowId !== '';
 
     const add = () => {
-        if (label.trim() === '' || url.trim() === '' || busy) {
+        const ready = startsWorkflow ? true : url.trim() !== '';
+
+        if (label.trim() === '' || !ready || busy) {
             return;
         }
 
         setBusy(true);
         router.post(
             store.url(target),
-            { label: label.trim(), url: url.trim() },
+            {
+                label: label.trim(),
+                // Only the one that applies is sent. Sending the other as an
+                // empty string would be a button pointing at two things, which
+                // the request refuses and the database refuses after it.
+                ...(startsWorkflow
+                    ? { workflow_id: Number(workflowId) }
+                    : { url: url.trim() }),
+            },
             {
                 preserveScroll: true,
                 onSuccess: () => {
                     setLabel('');
                     setUrl('');
+                    setWorkflowId('');
                 },
                 onFinish: () => setBusy(false),
             },
@@ -114,7 +152,11 @@ export function ChannelLinksSection({
                             onSave={(label, url) =>
                                 router.patch(
                                     update.url({ ...target, link: link.id }),
-                                    { label, url },
+                                    // No url key at all for a workflow button:
+                                    // sending null would read as "point this
+                                    // nowhere", and the row must keep pointing
+                                    // at what it points at.
+                                    url === null ? { label } : { label, url },
                                     { preserveScroll: true },
                                 )
                             }
@@ -142,18 +184,65 @@ export function ChannelLinksSection({
                         onChange={(event) => setLabel(event.target.value)}
                         className="w-40 shrink-0"
                     />
-                    <Input
-                        value={url}
-                        type="url"
-                        placeholder="https://"
-                        onChange={(event) => setUrl(event.target.value)}
-                        aria-label={t('chat_ui.links.address')}
-                    />
+
+                    {/*
+                        Only offered where there is something to offer. A
+                        workspace with no button workflows would otherwise get a
+                        picker whose only entry is "a web address", which is a
+                        question with one answer.
+                    */}
+                    {workflows.length > 0 && (
+                        <Select
+                            value={workflowId === '' ? URL_TARGET : workflowId}
+                            onValueChange={(value) =>
+                                setWorkflowId(value === URL_TARGET ? '' : value)
+                            }
+                        >
+                            <SelectTrigger
+                                aria-label={t('chat_ui.links.target')}
+                                className="w-44 shrink-0"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={URL_TARGET}>
+                                    {t('chat_ui.links.target_url')}
+                                </SelectItem>
+                                {workflows.map((workflow) => (
+                                    <SelectItem
+                                        key={workflow.id}
+                                        value={String(workflow.id)}
+                                    >
+                                        {workflow.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+
+                    {/*
+                        The address disappears once a workflow is chosen rather
+                        than being greyed out: an empty box that cannot be typed
+                        in reads as something broken, and there is nothing left
+                        to say about where this button goes.
+                    */}
+                    {!startsWorkflow && (
+                        <Input
+                            value={url}
+                            type="url"
+                            placeholder="https://"
+                            onChange={(event) => setUrl(event.target.value)}
+                            aria-label={t('chat_ui.links.address')}
+                        />
+                    )}
+
                     <Button
                         size="icon"
-                        className="shrink-0"
+                        className="ml-auto shrink-0"
                         disabled={
-                            busy || label.trim() === '' || url.trim() === ''
+                            busy ||
+                            label.trim() === '' ||
+                            (!startsWorkflow && url.trim() === '')
                         }
                         onClick={add}
                         aria-label={t('chat_ui.links.add')}
@@ -187,22 +276,42 @@ function LinkRow({
     last: boolean;
     onMoveUp: () => void;
     onMoveDown: () => void;
-    onSave: (label: string, url: string) => void;
+    /** The address, or null for a button that starts a workflow. */
+    onSave: (label: string, url: string | null) => void;
     onDelete: () => void;
 }) {
     const { t } = useTranslate();
     const [label, setLabel] = useState(link.label);
-    const [url, setUrl] = useState(link.url);
+    const [url, setUrl] = useState(link.url ?? '');
 
     const save = () => {
         const trimmedLabel = label.trim();
         const trimmedUrl = url.trim();
 
+        /*
+         * A workflow button has no address to correct — what it starts was
+         * decided when it was made. Renaming it is still an edit, so the label
+         * goes on its own.
+         */
+        if (link.workflowId !== null) {
+            if (trimmedLabel === '') {
+                setLabel(link.label);
+
+                return;
+            }
+
+            if (trimmedLabel !== link.label) {
+                onSave(trimmedLabel, null);
+            }
+
+            return;
+        }
+
         if (trimmedLabel === '' || trimmedUrl === '') {
             // Emptying a field is not an edit, it is a half-finished one. The
             // stored value comes back rather than being wiped.
             setLabel(link.label);
-            setUrl(link.url);
+            setUrl(link.url ?? '');
 
             return;
         }
@@ -248,27 +357,44 @@ function LinkRow({
                 onKeyDown={(event) => event.key === 'Enter' && save()}
                 className="w-40 shrink-0"
             />
-            <Input
-                value={url}
-                type="url"
-                aria-label={t('chat_ui.links.address')}
-                onChange={(event) => setUrl(event.target.value)}
-                onBlur={save}
-                onKeyDown={(event) => event.key === 'Enter' && save()}
-            />
+            {link.workflowId === null ? (
+                <>
+                    <Input
+                        value={url}
+                        type="url"
+                        aria-label={t('chat_ui.links.address')}
+                        onChange={(event) => setUrl(event.target.value)}
+                        onBlur={save}
+                        onKeyDown={(event) => event.key === 'Enter' && save()}
+                    />
 
-            <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={t('chat_ui.links.open')}
-                aria-label={t('chat_ui.links.open_named', {
-                    label: link.label,
-                })}
-                className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
-            >
-                <ExternalLink className="size-3.5" />
-            </a>
+                    <a
+                        href={link.url ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={t('chat_ui.links.open')}
+                        aria-label={t('chat_ui.links.open_named', {
+                            label: link.label,
+                        })}
+                        className="shrink-0 rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                        <ExternalLink className="size-3.5" />
+                    </a>
+                </>
+            ) : (
+                /*
+                    Text rather than a second picker. Pointing a button at
+                    another workflow is rare enough to be worth doing by
+                    removing it and adding the one you meant, and a picker here
+                    would put "which workflow" in two places at once.
+                */
+                <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-muted-foreground">
+                    <Zap className="size-3.5 shrink-0" />
+                    <span className="truncate">
+                        {link.workflowName ?? t('chat_ui.links.workflow_gone')}
+                    </span>
+                </p>
+            )}
             <button
                 type="button"
                 onClick={onDelete}

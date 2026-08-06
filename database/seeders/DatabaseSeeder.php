@@ -87,7 +87,7 @@ class DatabaseSeeder extends Seeder
         $thread = $this->conversation($dev, [
             [$joris, 'De migratie naar Postgres is doorgevoerd op staging.'],
             [$sebastiaan, 'Top. Draaien de tests er ook tegenaan?'],
-            [$joris, 'Ja, tegen pcom_testing. Wel wat trager dan SQLite, maar realistischer.'],
+            [$joris, 'Ja, tegen postduif_testing. Wel wat trager dan SQLite, maar realistischer.'],
         ])->first();
 
         $this->replies($thread, [

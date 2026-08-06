@@ -36,12 +36,22 @@ enum WorkflowFieldType: string
     /**
      * Whether a value of this type can hold {{ ... }}.
      *
-     * Only the free-text ones. A channel picker hands back an id, and letting a
-     * variable through there would mean a run could point a step at a channel
-     * nobody chose — including one in another workspace. The form picker is out
-     * for exactly that reason: a form id is a ULID that arrives from outside as
-     * readily as a channel id does, and "watch whichever form this variable
-     * names" is a way of listening to another workspace's answers.
+     * The free-text ones, and the channel.
+     *
+     * The channel was excluded on the grounds that a variable could point a
+     * step at a channel nobody chose, including one in another workspace. The
+     * first half of that is the whole point — "antwoord in het kanaal waar het
+     * vandaan kwam" cannot be written any other way — and the second half was
+     * never the picker's to prevent: every step resolves its channel through
+     * FindsTargets, which looks only inside the workflow's own workspace and
+     * refuses what it does not find there. A variable naming somebody else's
+     * channel finds nothing, exactly as a typed-in id already did.
+     *
+     * The form picker stays out, and now for a reason of its own rather than by
+     * association: a form id is a ULID with no name to fall back on, so a
+     * variable there can only ever be an opaque string that either matches or
+     * silently does not — and "watch whichever form this names" is a way of
+     * listening to another workspace's answers if the scoping is ever loosened.
      *
      * The number is excluded for the plainer reason that "{{ trigger.x }}
      * minutes" cannot be validated when it is saved, which is the one moment
@@ -49,6 +59,8 @@ enum WorkflowFieldType: string
      */
     public function acceptsVariables(): bool
     {
-        return $this === self::Text || $this === self::LongText;
+        return $this === self::Text
+            || $this === self::LongText
+            || $this === self::Channel;
     }
 }

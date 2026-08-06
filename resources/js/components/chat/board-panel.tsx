@@ -139,7 +139,15 @@ export function BoardPanel({
         <aside
             className={cn(
                 'flex flex-col',
-                fullscreen ? 'min-w-0 flex-1' : 'w-[28rem] shrink-0 border-l',
+                fullscreen
+                    ? 'min-w-0 flex-1'
+                    : /*
+                       * Beside the board on a wide screen; over it on one too
+                       * narrow to hold both — the same move the thread and
+                       * ticket panels make, anchored at the rail so the way
+                       * back to the channel list stays reachable.
+                       */
+                      'fixed inset-y-0 right-0 left-14 z-30 border-l bg-background lg:static lg:left-auto lg:w-[28rem] lg:shrink-0',
             )}
         >
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">

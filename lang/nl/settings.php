@@ -9,6 +9,30 @@
  */
 
 return [
+    'channels' => [
+        'title' => 'Kanalen',
+        'description' => 'Alles wat :workspace aan kanalen heeft, inclusief de gearchiveerde — die zie je nergens anders terug.',
+        'filter' => 'Zoeken op naam, onderwerp of label',
+        'show_archived' => '{1}Toon 1 gearchiveerd kanaal|[2,*]Toon :count gearchiveerde kanalen',
+        'hide_archived' => 'Verberg gearchiveerde',
+        'archived' => 'gearchiveerd',
+        'column_name' => 'Kanaal',
+        'column_members' => 'Leden',
+        'column_messages' => 'Berichten',
+        'column_settings' => 'Instellingen',
+        'column_last' => 'Laatste bericht',
+        'column_created' => 'Aangemaakt',
+        'column_actions' => 'Acties',
+        'tickets' => '{1}1 ticket|[2,*]:count tickets',
+        'links' => '{1}1 knop|[2,*]:count knoppen',
+        'webhooks' => '{1}1 webhook|[2,*]:count webhooks',
+        'never' => 'Nog niets',
+        'archive' => 'Archiveren',
+        'unarchive' => 'Terughalen',
+        'none' => 'Geen kanalen gevonden.',
+        'unknown' => 'Onbekend',
+    ],
+
     'nav' => [
         'label' => 'Instellingen',
         'account' => 'Jouw account',
@@ -26,6 +50,7 @@ return [
         'roles' => 'Rollen',
         'emoji' => 'Emoji',
         'theme' => 'Thema',
+        'channels' => 'Kanalen',
         'members' => 'Leden',
         'invitations' => 'Uitnodigingen',
     ],
@@ -283,6 +308,8 @@ return [
         'off' => 'Uit',
         'choose' => 'Kies…',
         'optional' => '(mag leeg)',
+        'channel_from_variable' => 'Een variabele (kanaal pas bij het uitvoeren bekend)',
+        'channel_variable_hint' => 'Een kanaalnaam of -id, bijvoorbeeld {{ trigger.channel.name }}. Wordt gezocht binnen deze workspace.',
         'insert_variable' => 'Gegeven invoegen…',
         'words_placeholder' => 'storing, defect',
         'webhook_url_pending' => 'Sla de workflow eerst op; daarna staat de URL hier.',

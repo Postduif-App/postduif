@@ -21,4 +21,7 @@ return [
     'workflows_none_due' => 'Geen workflow staat gepland voor nu.',
     'workflows_started' => '{1}1 workflow gestart.|[2,*]:count workflows gestart.',
     'workflow_runs_pruned' => '{1}1 workflowrun opgeruimd.|[2,*]:count workflowruns opgeruimd.',
+    'no_stale_huddles' => 'Geen huddles om op te ruimen.',
+    'huddles_swept' => '{1}1 huddle gesloten.|[2,*]:count huddles gesloten.',
+    'notices_pruned' => '{1}1 melding opgeruimd.|[2,*]:count meldingen opgeruimd.',
 ];

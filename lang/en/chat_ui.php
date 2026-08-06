@@ -80,12 +80,43 @@ return [
         'empty' => 'No buttons yet. Add one below.',
         'new' => 'New button',
         'address' => 'Address',
+        'target' => 'What the button does',
+        'target_url' => 'Open an address',
+        'workflow_gone' => 'This workflow no longer exists',
         'add' => 'Add button',
         'move_up' => 'Move :label forward',
         'move_down' => 'Move :label back',
         'open' => 'Open',
         'open_named' => 'Open :label',
         'remove' => 'Remove :label',
+    ],
+
+    'notice' => [
+        'only_you' => 'Only visible to you',
+        'dismiss' => 'Dismiss',
+    ],
+
+    'huddle' => [
+        'talking' => '{1}is talking|[2,*]are talking',
+        'alone' => 'Waiting for somebody to join.',
+        'starting' => 'Connecting…',
+        'start' => 'Start a huddle',
+        'join' => 'Join',
+        'leave' => 'Leave',
+        'mute' => 'Mute',
+        'unmute' => 'Unmute',
+        'no_microphone' => 'No access to the microphone.',
+        'no_camera' => 'No access to the camera.',
+        'camera_on' => 'Camera on',
+        'camera_off' => 'Camera off',
+        'you' => 'You',
+        'expand' => 'Expand',
+        'pick_microphone' => 'Choose a microphone',
+        'pick_camera' => 'Choose a camera',
+        'unnamed_device' => 'Unnamed device',
+        'shrink' => 'Shrink',
+        'too_many_cameras' => 'Past :count cameras this gets heavy for the browsers.',
+        'full' => 'A huddle holds up to :count people.',
     ],
 
     'payload' => [
@@ -148,5 +179,10 @@ return [
     'tickets' => [
         'none_outstanding' => 'Nothing outstanding any more.',
         'none_with_status' => 'No tickets with this status.',
+    ],
+
+    'connection' => [
+        'offline' => 'No connection to the server — new messages are not coming in.',
+        'reload' => 'Reload',
     ],
 ];

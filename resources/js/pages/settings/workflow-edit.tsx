@@ -11,7 +11,7 @@ import {
 import { useState } from 'react';
 
 import { AvatarField } from '@/components/avatar-field';
-import Heading from '@/components/heading';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -203,6 +203,15 @@ const VALUELESS = ['is-empty', 'is-not-empty'];
 
 /** The server refuses a sixth; saying so here beats a red flash on save. */
 const MAX_RULES = 5;
+
+/**
+ * The last entry in a channel picker: not a channel, but the decision to name
+ * one while the workflow runs.
+ *
+ * A sentinel rather than an empty value, which the picker already spends on
+ * "nog niets gekozen", and deliberately something no id can be.
+ */
+const VARIABLE_CHANNEL = '__variable__';
 
 /**
  * Where a block sits, as the way down to it.
@@ -619,6 +628,16 @@ function FieldInput({
 
     const common = { id: field.key, required: field.required };
 
+    /*
+     * Whether this channel field is being typed rather than picked. Seeded from
+     * what is stored so that reopening a workflow shows the box somebody left
+     * behind rather than an empty picker — a saved value with braces in it can
+     * only have come from here.
+     */
+    const [typedChannel, setTypedChannel] = useState(
+        field.type === 'channel' && String(value ?? '').includes('{{'),
+    );
+
     return (
         <div className="grid gap-1">
             <Label htmlFor={field.key} className="text-xs">
@@ -639,10 +658,31 @@ function FieldInput({
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 />
             ) : field.type === 'channel' ? (
+                /*
+                    A picker, plus the option of not picking.
+                    "Antwoord in het kanaal waar dit vandaan kwam" cannot be
+                    chosen from a list — the channel is only known while the
+                    workflow runs — so the last entry switches the field to a
+                    box you can put a variable in. The step then resolves it by
+                    name or by id, always inside this workspace; see
+                    FindsTargets.
+                */
                 <select
                     {...common}
-                    value={String(value ?? '')}
-                    onChange={(event) => onChange(event.target.value)}
+                    value={
+                        typedChannel ? VARIABLE_CHANNEL : String(value ?? '')
+                    }
+                    onChange={(event) => {
+                        if (event.target.value === VARIABLE_CHANNEL) {
+                            setTypedChannel(true);
+                            onChange('');
+
+                            return;
+                        }
+
+                        setTypedChannel(false);
+                        onChange(event.target.value);
+                    }}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 >
                     <option value="">{t('settings.workflows.choose')}</option>
@@ -651,6 +691,9 @@ function FieldInput({
                             #{channel.name}
                         </option>
                     ))}
+                    <option value={VARIABLE_CHANNEL}>
+                        {t('settings.workflows.channel_from_variable')}
+                    </option>
                 </select>
             ) : field.type === 'member' ? (
                 <select
@@ -719,6 +762,20 @@ function FieldInput({
                     value={String(value ?? '')}
                     onChange={(event) => onChange(event.target.value)}
                 />
+            )}
+
+            {typedChannel && field.type === 'channel' && (
+                <>
+                    <input
+                        value={String(value ?? '')}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder="{{ trigger.channel.name }}"
+                        className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {t('settings.workflows.channel_variable_hint')}
+                    </p>
+                </>
             )}
 
             {field.hint && (
@@ -1358,68 +1415,71 @@ export default function WorkflowEdit({
         <>
             <Head title={workflow.name} />
 
-            <div className="space-y-6">
-                <Link
-                    href={workflowsIndex.url()}
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                    <ArrowLeft className="size-4" />
-                    {t('settings.workflows.back')}
-                </Link>
+            {/*
+                Above the section rather than inside it: the way back belongs to
+                the screen, not to the workflow the section is about.
+            */}
+            <Link
+                href={workflowsIndex.url()}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+                <ArrowLeft className="size-4" />
+                {t('settings.workflows.back')}
+            </Link>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex-1">
-                        <Heading
-                            title={workflow.name}
-                            description={`${trigger?.label ?? workflow.triggerType} · ${tChoice(
-                                'settings.workflows.step_count',
-                                workflow.stepCount,
-                            )}`}
-                        />
-                    </div>
-
-                    {/*
+            <SettingsSection
+                title={workflow.name}
+                description={`${trigger?.label ?? workflow.triggerType} · ${tChoice(
+                    'settings.workflows.step_count',
+                    workflow.stepCount,
+                )}`}
+                actions={
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/*
                         Switching on is its own request rather than part of
                         saving, because it is the one decision that changes
                         whether the thing acts on the workspace at all — see
                         Workflow::enable(), which is a method for the same
                         reason.
                     */}
-                    <label className="flex items-center gap-2 text-xs">
-                        <input
-                            type="checkbox"
-                            checked={workflow.enabled}
-                            onChange={(event) =>
-                                router.patch(
-                                    toggle.url(workflow.id),
-                                    { enabled: event.target.checked },
-                                    { preserveScroll: true },
-                                )
+                        <label className="flex items-center gap-2 text-xs">
+                            <input
+                                type="checkbox"
+                                checked={workflow.enabled}
+                                onChange={(event) =>
+                                    router.patch(
+                                        toggle.url(workflow.id),
+                                        { enabled: event.target.checked },
+                                        { preserveScroll: true },
+                                    )
+                                }
+                            />
+                            {workflow.enabled
+                                ? t('settings.workflows.on')
+                                : t('settings.workflows.off')}
+                        </label>
+
+                        <Link
+                            href={runsRoute.url(workflow.id)}
+                            className="text-muted-foreground transition-colors hover:text-foreground"
+                            aria-label={t('settings.workflows.history')}
+                        >
+                            <History className="size-4" />
+                        </Link>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                router.delete(destroy.url(workflow.id))
                             }
-                        />
-                        {workflow.enabled
-                            ? t('settings.workflows.on')
-                            : t('settings.workflows.off')}
-                    </label>
-
-                    <Link
-                        href={runsRoute.url(workflow.id)}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
-                        aria-label={t('settings.workflows.history')}
-                    >
-                        <History className="size-4" />
-                    </Link>
-
-                    <button
-                        type="button"
-                        onClick={() => router.delete(destroy.url(workflow.id))}
-                        aria-label={t('settings.workflows.delete')}
-                        className="text-muted-foreground transition-colors hover:text-destructive"
-                    >
-                        <Trash2 className="size-4" />
-                    </button>
-                </div>
-
+                            aria-label={t('settings.workflows.delete')}
+                            className="text-muted-foreground transition-colors hover:text-destructive"
+                        >
+                            <Trash2 className="size-4" />
+                        </button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="grid gap-1">
@@ -1724,7 +1784,7 @@ export default function WorkflowEdit({
                         {t('settings.workflows.save')}
                     </Button>
                 </div>
-            </div>
+            </SettingsSection>
         </>
     );
 }

@@ -8,6 +8,7 @@ return [
     ],
 
     'header' => [
+        'huddle' => 'Talk now',
         'search' => 'Search in :channel',
         'members' => 'Members of this channel',
         'connecting' => 'Setting up the live connection…',

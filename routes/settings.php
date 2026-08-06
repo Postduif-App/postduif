@@ -10,6 +10,7 @@ use App\Http\Controllers\Settings\StatusController;
 use App\Http\Controllers\Settings\StatusRuleController;
 use App\Http\Controllers\Settings\WorkflowController;
 use App\Http\Controllers\Settings\WorkflowRunController;
+use App\Http\Controllers\Settings\WorkspaceChannelController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
@@ -171,6 +172,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.members.channels.update');
     Route::delete('app/settings/workspace/members/{user}', [WorkspaceMemberController::class, 'destroy'])
         ->name('workspace.members.destroy');
+
+    /*
+     * Read-only, and on purpose: what a channel is called and who is in it is
+     * changed where the channel is, not from a list. What this screen adds is
+     * the overview — including the archived ones, which are invisible anywhere
+     * else — and the one action that cannot be reached once a channel is
+     * archived, namely bringing it back.
+     */
+    Route::get('app/settings/workspace/channels', [WorkspaceChannelController::class, 'index'])
+        ->name('workspace.channels.index');
 
     Route::get('app/settings/workspace/invitations', [WorkspaceInvitationController::class, 'index'])
         ->name('workspace.invitations.index');

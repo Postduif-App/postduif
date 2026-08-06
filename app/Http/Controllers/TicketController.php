@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Tickets\CreateTicket;
+use App\Actions\Tickets\DeleteTicket;
 use App\Actions\Tickets\UpdateTicket;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -107,6 +108,29 @@ class TicketController extends Controller
                 $request->string('body', $ticket->body)->trim()->value(),
             );
         }
+
+        return back();
+    }
+
+    /**
+     * Take a ticket off the board.
+     *
+     * back() rather than a route of its own, because this is reached from two
+     * places — a channel's board and the workspace-wide list — and each has
+     * filters in its query string that the other knows nothing about. The
+     * ?ticket= that is still in that URL resolves to nothing now, which both
+     * pages already treat as "no ticket open": the panel closes by itself.
+     */
+    public function destroy(
+        Workspace $workspace,
+        Channel $channel,
+        Ticket $ticket,
+        DeleteTicket $deleteTicket,
+    ): RedirectResponse {
+        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->authorize('delete', $ticket);
+
+        $deleteTicket->handle($ticket);
 
         return back();
     }

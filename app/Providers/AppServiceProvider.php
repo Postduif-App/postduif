@@ -22,12 +22,14 @@ use App\Workflows\Actions\SendChannelMessage;
 use App\Workflows\Actions\SendDirectMessage;
 use App\Workflows\Actions\UnarchiveChannel;
 use App\Workflows\Actions\UnpinMessage;
+use App\Workflows\Triggers\ButtonTrigger;
 use App\Workflows\Triggers\ChannelJoinTrigger;
 use App\Workflows\Triggers\FormSubmittedTrigger;
 use App\Workflows\Triggers\LinkTrigger;
 use App\Workflows\Triggers\MessageKeywordTrigger;
 use App\Workflows\Triggers\ReactionTrigger;
 use App\Workflows\Triggers\ScheduleTrigger;
+use App\Workflows\Triggers\SlashCommandTrigger;
 use App\Workflows\Triggers\TimeclockTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
@@ -35,6 +37,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -95,6 +98,16 @@ class AppServiceProvider extends ServiceProvider
                  */
                 TimeclockTrigger::class,
                 LinkTrigger::class,
+                /*
+                 * Beside the link trigger, because the two are the manual pair:
+                 * one starts from a message that exists, the other from an
+                 * empty field. Somebody looking for "ik wil het zelf aanzetten"
+                 * should find both in one place.
+                 */
+                SlashCommandTrigger::class,
+                // The third of the manual three, and the one that waits in the
+                // channel rather than being reached for.
+                ButtonTrigger::class,
                 ScheduleTrigger::class,
                 WebhookTrigger::class,
             ],
@@ -150,7 +163,16 @@ class AppServiceProvider extends ServiceProvider
      */
     private function configureOAuth(): void
     {
-        Passport::authorizationView(fn (array $parameters) => view('mcp.authorize', $parameters));
+        /*
+         * Through response()->view() rather than view(): Passport asks for
+         * something it can send, and a View is a thing that renders rather than
+         * a thing with a status on it.
+         *
+         * @param  array<string, mixed>  $parameters
+         */
+        Passport::authorizationView(
+            fn (array $parameters): Response => response()->view('mcp.authorize', $parameters),
+        );
 
         /*
          * An access token outlives the conversation it was granted in but not

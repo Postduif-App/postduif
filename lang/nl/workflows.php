@@ -78,6 +78,23 @@ return [
             'description' => 'Verschijnt in het berichtmenu. Wie hem daar kiest, start hem met dat bericht erbij.',
         ],
 
+        'button' => [
+            'label' => 'Als iemand op een knop drukt',
+            'description' => 'Verschijnt als knop in de balk boven een kanaal. Je zet hem daar neer bij de instellingen van dat kanaal.',
+        ],
+
+        'slash-command' => [
+            'label' => 'Als iemand een commando typt',
+            'description' => 'Verschijnt in de lijst achter "/" in het berichtveld. Wat er achter het commando staat gaat als tekst mee.',
+            'command' => [
+                'label' => 'Commando',
+                'hint' => 'Zonder schuine streep. Kleine letters, cijfers en streepjes, bijvoorbeeld storing-melden.',
+                'malformed' => 'Een commando bestaat uit kleine letters, cijfers en streepjes, en begint met een letter of cijfer.',
+                'reserved' => '/:command is al een vast commando in het berichtveld.',
+                'taken' => '/:command is al van een andere workflow.',
+            ],
+        ],
+
         'webhook' => [
             'label' => 'Als er iets binnenkomt op een URL',
             'description' => 'Je krijgt een geheime URL. Alles wat daarnaartoe gestuurd wordt, zet de workflow in gang.',
@@ -274,6 +291,11 @@ return [
     ],
 
     /* What somebody sees after starting one from the message menu. */
+    /* Wat je terugkrijgt na een commando in het berichtveld, alleen jij. */
+    'command' => [
+        'unknown' => 'Er is geen workflow die luistert naar /:command.',
+    ],
+
     'link' => [
         'started' => '":name" is gestart.',
         'refused' => 'Deze workflow kon nu niet starten.',
@@ -364,6 +386,8 @@ return [
             'date' => 'De datum van vandaag',
             'time' => 'Hoe laat het is',
         ],
+        'command' => 'Het commando dat getypt werd, zonder de schuine streep',
+        'arguments' => 'Wat er achter het commando stond',
         'emoji' => 'De emoji die gebruikt werd',
         'keyword' => 'Het woord dat gevonden werd',
         'answers' => 'Alle antwoorden. Eén los antwoord haal je op met de sleutel van de vraag erachter, bijvoorbeeld answers.reden',

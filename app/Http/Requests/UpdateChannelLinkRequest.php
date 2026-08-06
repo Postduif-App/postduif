@@ -2,11 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Concerns\ValidatesChannelLinkTarget;
+use App\Models\Channel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateChannelLinkRequest extends FormRequest
 {
+    use ValidatesChannelLinkTarget;
+
     public function authorize(): bool
     {
         return $this->user()->can('manageSettings', $this->route('channel'));
@@ -17,15 +21,20 @@ class UpdateChannelLinkRequest extends FormRequest
      */
     public function rules(): array
     {
+        $channel = $this->route('channel');
+
         return [
             'label' => ['sometimes', 'required', 'string', 'max:40'],
             /*
-             * http and https only. The bar is drawn for everyone who can see
-             * the channel, guests included, so a "javascript:" or "data:" here
-             * would be an admin handing themselves a way to run something in
-             * every reader's browser.
+             * Partial, because the panel saves a button at a time and renaming
+             * one says nothing about where it points.
+             *
+             * Note what these rules cannot see: they read the request, not the
+             * row, so a request carrying only workflow_id looks fine here while
+             * the stored url is still sitting beside it. Clearing the other
+             * column is the controller's job — see ChannelLinkController.
              */
-            'url' => ['sometimes', 'required', 'string', 'max:2048', 'url:http,https'],
+            ...$this->targetRules($channel instanceof Channel ? $channel : null, partial: true),
         ];
     }
 
@@ -36,8 +45,9 @@ class UpdateChannelLinkRequest extends FormRequest
     {
         return [
             'label.required' => __('requests.channel_link.label_required'),
-            'url.required' => __('requests.channel_link.url_required'),
+            'url.required_without' => __('requests.channel_link.url_required'),
             'url.url' => __('requests.channel_link.url_scheme'),
+            'workflow_id.exists' => __('requests.channel_link.workflow_unknown'),
         ];
     }
 }

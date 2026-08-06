@@ -40,3 +40,4 @@ yarn-error.log
 # Local-only tooling state
 /.claude/settings.local.json
 /.claude/ralph-loop.local.md
+/status-cache.json

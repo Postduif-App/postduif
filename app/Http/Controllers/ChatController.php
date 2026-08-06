@@ -6,18 +6,26 @@ use App\Actions\Chat\BuildChatShell;
 use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
+use App\Actions\Huddles\IceServers;
 use App\Actions\Tickets\PresentTicket;
 use App\Actions\Workspace\CreateHomeChannel;
 use App\Enums\WorkspaceAbility;
+use App\Features\Huddles as HuddlesFeature;
 use App\Features\Tickets;
 use App\Models\Bookmark;
 use App\Models\Channel;
 use App\Models\ChannelLink;
+use App\Models\EphemeralNotice;
+use App\Models\Huddle;
+use App\Models\HuddleParticipant;
 use App\Models\Message;
 use App\Models\ScheduledMessage;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Workflow;
 use App\Models\Workspace;
+use App\Workflows\Triggers\ButtonTrigger;
+use App\Workflows\Triggers\SlashCommandTrigger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -32,6 +40,7 @@ class ChatController extends Controller
         private readonly PresentTicket $presentTicket,
         private readonly HideDirectMessage $hideDirectMessage,
         private readonly CreateHomeChannel $createHomeChannel,
+        private readonly IceServers $iceServers,
     ) {}
 
     /**
@@ -230,13 +239,110 @@ class ChatController extends Controller
                 'links' => $channel->links->map(fn (ChannelLink $link): array => [
                     'id' => $link->id,
                     'label' => $link->label,
+                    // One of the two is always null — a button either goes
+                    // somewhere or starts something. Both are sent so the bar
+                    // can tell which kind it is drawing without a third field
+                    // that could disagree with them.
                     'url' => $link->url,
+                    'workflowId' => $link->workflow_id,
+                    // The name rather than a lookup on the other side: the bar
+                    // draws the label, but the settings panel has to say which
+                    // workflow a button starts, and a member who may configure
+                    // the channel is not necessarily allowed near the builder.
+                    'workflowName' => $link->workflow?->name,
                 ])->values()->all(),
+                /*
+                 * The workflows a button may be pointed at, for the panel that
+                 * manages them. Only for whoever configures the channel: it is
+                 * the one place they are drawn, and a list of everything a
+                 * workspace automates is not something to hand to every guest
+                 * reading along.
+                 */
+                /*
+                 * The commands the message field answers to here, beside the
+                 * handful it answers to itself. Everyone who may post gets
+                 * them: a command is only worth offering to somebody who can
+                 * use it, and the endpoint asks the same question again.
+                 */
+                /*
+                 * The conversation going on in this channel right now, or null.
+                 * Sent to everybody who may see the channel rather than only to
+                 * those who may join: knowing that four colleagues are talking
+                 * in here is what makes somebody walk in — see HuddlePolicy.
+                 */
+                'huddle' => $workspace->hasFeature(HuddlesFeature::class)
+                    ? $this->huddle($channel, $user)
+                    : null,
+                'canHuddle' => $workspace->hasFeature(HuddlesFeature::class)
+                    && $this->iceServers->configured()
+                    && $user->can('join', [Huddle::class, $channel]),
+                /*
+                 * Where a browser should look to reach the others, credentials
+                 * and all. Per request rather than in the bundle: half of it
+                 * expires — see IceServers — and the other half is a
+                 * deployment setting that must change without a rebuild.
+                 *
+                 * Only for somebody who may actually join: a signed relay
+                 * credential is worth having, and there is no reason to hand
+                 * one to a reader who cannot use it.
+                 */
+                'iceServers' => $workspace->hasFeature(HuddlesFeature::class)
+                    && $user->can('join', [Huddle::class, $channel])
+                        ? $this->iceServers->handle($user)
+                        : [],
+                'commands' => $user->can('post', $channel)
+                    ? Workflow::query()
+                        ->listeningFor($workspace, SlashCommandTrigger::key())
+                        ->orderBy('name')
+                        ->get()
+                        ->map(fn (Workflow $workflow): array => [
+                            'name' => SlashCommandTrigger::normalise(
+                                (string) $workflow->triggerSetting('command', ''),
+                            ),
+                            'description' => $workflow->description ?? $workflow->name,
+                        ])
+                        // A workflow whose trigger was never filled in has no
+                        // command to offer, and an empty one would draw a bare
+                        // slash in the palette.
+                        ->filter(fn (array $command): bool => $command['name'] !== '')
+                        ->values()
+                        ->all()
+                    : [],
+                'buttonWorkflows' => $user->can('manageSettings', $channel)
+                    ? Workflow::query()
+                        // The scope rather than the two conditions by hand: it
+                        // is what every listener asks, and "off" meaning "still
+                        // offered here" is exactly what it exists to prevent.
+                        ->listeningFor($workspace, ButtonTrigger::key())
+                        ->orderBy('name')
+                        ->get(['id', 'name'])
+                        ->map(fn (Workflow $workflow): array => [
+                            'id' => $workflow->id,
+                            'name' => $workflow->name,
+                        ])->all()
+                    : [],
                 // Feeds the composer's @-autocomplete and lets the renderer
                 // tell a real mention apart from an email address.
                 'members' => $this->channelMembers($workspace, $channel),
             ],
             'messages' => $this->presentMessage->collection($messages),
+            /*
+             * What this member alone was told here: the receipt for a command
+             * they typed or a button they pressed. Fetched apart from the
+             * messages and drawn under them, because they are not part of what
+             * the channel said — see the ephemeral_notices migration.
+             */
+            'notices' => $channel->notices()
+                ->where('user_id', $user->id)
+                ->current()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (EphemeralNotice $notice): array => [
+                    'id' => $notice->id,
+                    'body' => $notice->body,
+                    'authorName' => $notice->author_name,
+                    'createdAt' => $notice->created_at?->toIso8601String(),
+                ])->all(),
             /*
              * Which of these this member set aside — beside the messages rather
              * than inside them, and deliberately so: the message payload is
@@ -359,6 +465,35 @@ class ChatController extends Controller
     }
 
     /**
+     * The huddle going on in this channel, with who is in it, or null.
+     *
+     * The same shape the broadcast carries — see HuddleUpdated — so the browser
+     * has one thing to read whether it arrived with the page or over the
+     * socket, and no code that has to reconcile two spellings of it.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function huddle(Channel $channel, User $user): ?array
+    {
+        if ($user->cannot('see', [Huddle::class, $channel])) {
+            return null;
+        }
+
+        $huddle = $channel->huddles()->live()->with('present.user:id,name')->first();
+
+        return $huddle === null ? null : [
+            'id' => $huddle->id,
+            'channelId' => $huddle->channel_id,
+            'live' => true,
+            'participants' => $huddle->present
+                ->map(fn (HuddleParticipant $participant): array => [
+                    'id' => $participant->user_id,
+                    'name' => $participant->user?->name,
+                ])->values()->all(),
+        ];
+    }
+
+    /**
      * The open ticket, or null when the query string names none.
      *
      * Addressed by its number rather than its id, the same way people talk
@@ -379,6 +514,7 @@ class ChatController extends Controller
             'canManage' => $user->can('manage', $ticket),
             'canConfirm' => $user->can('confirm', $ticket),
             'canEdit' => $user->can('update', $ticket),
+            'canDelete' => $user->can('delete', $ticket),
         ];
     }
 

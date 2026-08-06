@@ -5,6 +5,7 @@ import {
     BellOff,
     ChevronDown,
     Hash,
+    Headphones,
     Lock,
     MessageSquare,
     Pencil,
@@ -16,7 +17,7 @@ import {
     Users,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
@@ -41,6 +42,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { useCollapsedSection } from '@/hooks/use-collapsed-section';
 import { useInboxActivity } from '@/hooks/use-inbox-activity';
 import { useTranslate } from '@/hooks/use-translate';
@@ -214,6 +216,26 @@ function ChannelLink({
                     ticket is not a message waiting to be read, and drawing it in
                     the same red would make every customer channel shout.
                 */}
+                {/*
+                    Somebody is talking in there. In the workspace's own accent
+                    rather than the red of an unread mention: this is not
+                    something waiting for you, it is something you could walk
+                    into — and a channel that shouts about a conversation you
+                    are not part of is a channel people mute.
+                */}
+                {channel.huddleCount > 0 && (
+                    <span
+                        title={tChoice(
+                            'sidebar.channel.huddling',
+                            channel.huddleCount,
+                        )}
+                        className="flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                    >
+                        <Headphones className="size-2.5" />
+                        {channel.huddleCount}
+                    </span>
+                )}
+
                 {channel.openTicketCount > 0 && (
                     <span
                         title={tChoice(
@@ -829,6 +851,235 @@ export function ChannelSidebar({
         (channel) => !channel.isFavorite && !inSection(channel.id),
     );
 
+    /*
+     * Whether the channel list is open over the conversation. Only ever true
+     * below lg, where the rail's button is the only thing that sets it.
+     */
+    const [channelsOpen, setChannelsOpen] = useState(false);
+
+    /*
+     * Opening a channel closes it again. Inertia keeps this component mounted
+     * across a visit, so nothing else would — and a sheet still covering the
+     * conversation you just asked for is the sheet answering the wrong
+     * question. A subscription rather than an effect on the url: the router is
+     * the external thing that changed.
+     */
+    useEffect(() => router.on('navigate', () => setChannelsOpen(false)), []);
+
+    const list = (
+        <>
+            <div className="flex h-14 items-center border-b border-sidebar-border px-2">
+                <WorkspaceMenu
+                    workspaces={workspaces}
+                    workspace={workspace}
+                    onInvite={onInvitePeople}
+                />
+            </div>
+
+            <div className="p-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2 font-normal text-muted-foreground"
+                    onClick={onOpenSearch}
+                >
+                    <Search className="size-4" />
+                    {t('search.palette.title')}
+                    <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                        ⌘K
+                    </kbd>
+                </Button>
+            </div>
+
+            <ScrollArea className="flex-1 px-2 pb-4">
+                {favorites.length > 0 && (
+                    <>
+                        <SectionHeading>
+                            {t('sidebar.headings.favorites')}
+                        </SectionHeading>
+                        <div className="mb-2 space-y-0.5">
+                            {favorites.map((channel) => (
+                                <ChannelRow
+                                    key={channel.id}
+                                    workspaceSlug={workspace.slug}
+                                    channel={channel}
+                                    active={channel.id === activeChannelId}
+                                    threads={
+                                        threadsByChannel.get(channel.id) ?? []
+                                    }
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                {sections.map((section) => {
+                    const rows = channels.filter(
+                        (channel) =>
+                            !channel.isFavorite &&
+                            section.channelIds.includes(channel.id),
+                    );
+
+                    return (
+                        <div key={section.id} className="mb-2">
+                            <SectionHeadingRow
+                                workspaceSlug={workspace.slug}
+                                section={section}
+                            />
+                            <div className="space-y-0.5">
+                                {rows.map((channel) => (
+                                    <ChannelRow
+                                        key={channel.id}
+                                        workspaceSlug={workspace.slug}
+                                        channel={channel}
+                                        active={channel.id === activeChannelId}
+                                        threads={
+                                            threadsByChannel.get(channel.id) ??
+                                            []
+                                        }
+                                    />
+                                ))}
+                                {/*
+                                    A group somebody just made has nothing in it
+                                    yet, and an empty heading with no
+                                    explanation reads as a bug.
+                                */}
+                                {rows.length === 0 && (
+                                    <p className="px-2 py-1 text-xs text-sidebar-foreground/50">
+                                        {t('sidebar.section.empty')}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                <SectionHeading>
+                    {t('sidebar.headings.channels')}
+                </SectionHeading>
+                <div className="space-y-0.5">
+                    {ordinary.map((channel) => (
+                        <ChannelRow
+                            key={channel.id}
+                            workspaceSlug={workspace.slug}
+                            channel={channel}
+                            active={channel.id === activeChannelId}
+                            threads={threadsByChannel.get(channel.id) ?? []}
+                        />
+                    ))}
+                    {channels.length === 0 && !workspace.canCreateChannel && (
+                        <p className="px-2 py-1 text-sm text-muted-foreground">
+                            {t('sidebar.channel.none')}
+                        </p>
+                    )}
+                    {workspace.canCreateChannel && (
+                        <button
+                            type="button"
+                            onClick={onCreateChannel}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        >
+                            <Plus className="size-4" />
+                            {/*
+                                Doubles as the empty state, like "Start een
+                                gesprek" below: "Geen kanalen" only names the
+                                problem, this row is the way out of it.
+                            */}
+                            {channels.length === 0
+                                ? t('sidebar.channel.first_channel')
+                                : t('sidebar.channel.add_channel')}
+                        </button>
+                    )}
+                </div>
+
+                <SectionHeading>{t('sidebar.headings.directs')}</SectionHeading>
+                <div className="space-y-0.5">
+                    {directMessages.map((channel) => (
+                        <ChannelRow
+                            key={channel.id}
+                            workspaceSlug={workspace.slug}
+                            channel={channel}
+                            active={channel.id === activeChannelId}
+                            threads={threadsByChannel.get(channel.id) ?? []}
+                        />
+                    ))}
+                    {directMessages.length === 0 &&
+                        !workspace.canStartDirectMessage && (
+                            <p className="px-2 py-1 text-sm text-muted-foreground">
+                                {t('sidebar.channel.no_directs')}
+                            </p>
+                        )}
+                    {workspace.canStartDirectMessage && (
+                        <button
+                            type="button"
+                            onClick={onStartDirectMessage}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        >
+                            <Plus className="size-4" />
+                            {/*
+                                Doubles as the empty state: with no
+                                conversations yet, "Nog geen gesprekken" only
+                                states the problem, and this row is the way out
+                                of it.
+                            */}
+                            {directMessages.length === 0
+                                ? t('sidebar.channel.start_conversation')
+                                : t('sidebar.channel.new_conversation')}
+                        </button>
+                    )}
+                </div>
+
+                {/*
+                    Last in the list, and only for whoever may take one back
+                    out. An archived channel is meant to be out of the way, so
+                    it sits below everything live rather than among it.
+                */}
+                {archivedChannels.length > 0 && (
+                    <div className="mt-4">
+                        <p className="px-2 pb-1 text-xs font-medium text-sidebar-foreground/50">
+                            {t('sidebar.headings.archived')}
+                        </p>
+                        {archivedChannels.map((channel) => (
+                            <div
+                                key={channel.id}
+                                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/50"
+                            >
+                                <Archive className="size-4 shrink-0 opacity-70" />
+                                <span className="truncate">
+                                    {channel.label}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        router.post(
+                                            archiveChannel.url({
+                                                workspace: workspace.slug,
+                                                channel: channel.id,
+                                            }),
+                                            {},
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                    title={t('sidebar.channel.restore', {
+                                        channel: channel.label,
+                                    })}
+                                    aria-label={t('sidebar.channel.restore', {
+                                        channel: channel.label,
+                                    })}
+                                    className="ml-auto shrink-0 rounded p-1 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                                >
+                                    <ArchiveRestore className="size-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </ScrollArea>
+            <div className="border-t border-sidebar-border p-1.5">
+                {userMenu}
+            </div>
+        </>
+    );
+
     return (
         <div className="flex h-full shrink-0">
             {/*
@@ -837,6 +1088,7 @@ export function ChannelSidebar({
                 that is 16rem wide and does not grow.
             */}
             <WorkspaceRail
+                onOpenChannels={() => setChannelsOpen(true)}
                 workspace={workspace}
                 inboxTotal={inbox}
                 hasTickets={channels.some((row) => row.hasTickets)}
@@ -852,225 +1104,29 @@ export function ChannelSidebar({
                 onBroadcast={onBroadcast}
             />
 
-            <aside className="flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-                <div className="flex h-14 items-center border-b border-sidebar-border px-2">
-                    <WorkspaceMenu
-                        workspaces={workspaces}
-                        workspace={workspace}
-                        onInvite={onInvitePeople}
-                    />
-                </div>
-
-                <div className="p-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start gap-2 font-normal text-muted-foreground"
-                        onClick={onOpenSearch}
-                    >
-                        <Search className="size-4" />
-                        {t('search.palette.title')}
-                        <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                            ⌘K
-                        </kbd>
-                    </Button>
-                </div>
-
-                <ScrollArea className="flex-1 px-2 pb-4">
-                    {favorites.length > 0 && (
-                        <>
-                            <SectionHeading>
-                                {t('sidebar.headings.favorites')}
-                            </SectionHeading>
-                            <div className="mb-2 space-y-0.5">
-                                {favorites.map((channel) => (
-                                    <ChannelRow
-                                        key={channel.id}
-                                        workspaceSlug={workspace.slug}
-                                        channel={channel}
-                                        active={channel.id === activeChannelId}
-                                        threads={
-                                            threadsByChannel.get(channel.id) ??
-                                            []
-                                        }
-                                    />
-                                ))}
-                            </div>
-                        </>
-                    )}
-
-                    {sections.map((section) => {
-                        const rows = channels.filter(
-                            (channel) =>
-                                !channel.isFavorite &&
-                                section.channelIds.includes(channel.id),
-                        );
-
-                        return (
-                            <div key={section.id} className="mb-2">
-                                <SectionHeadingRow
-                                    workspaceSlug={workspace.slug}
-                                    section={section}
-                                />
-                                <div className="space-y-0.5">
-                                    {rows.map((channel) => (
-                                        <ChannelRow
-                                            key={channel.id}
-                                            workspaceSlug={workspace.slug}
-                                            channel={channel}
-                                            active={
-                                                channel.id === activeChannelId
-                                            }
-                                            threads={
-                                                threadsByChannel.get(
-                                                    channel.id,
-                                                ) ?? []
-                                            }
-                                        />
-                                    ))}
-                                    {/*
-                                    A group somebody just made has nothing in it
-                                    yet, and an empty heading with no
-                                    explanation reads as a bug.
-                                */}
-                                    {rows.length === 0 && (
-                                        <p className="px-2 py-1 text-xs text-sidebar-foreground/50">
-                                            {t('sidebar.section.empty')}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    <SectionHeading>
-                        {t('sidebar.headings.channels')}
-                    </SectionHeading>
-                    <div className="space-y-0.5">
-                        {ordinary.map((channel) => (
-                            <ChannelRow
-                                key={channel.id}
-                                workspaceSlug={workspace.slug}
-                                channel={channel}
-                                active={channel.id === activeChannelId}
-                                threads={threadsByChannel.get(channel.id) ?? []}
-                            />
-                        ))}
-                        {channels.length === 0 &&
-                            !workspace.canCreateChannel && (
-                                <p className="px-2 py-1 text-sm text-muted-foreground">
-                                    {t('sidebar.channel.none')}
-                                </p>
-                            )}
-                        {workspace.canCreateChannel && (
-                            <button
-                                type="button"
-                                onClick={onCreateChannel}
-                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                            >
-                                <Plus className="size-4" />
-                                {/*
-                                Doubles as the empty state, like "Start een
-                                gesprek" below: "Geen kanalen" only names the
-                                problem, this row is the way out of it.
-                            */}
-                                {channels.length === 0
-                                    ? t('sidebar.channel.first_channel')
-                                    : t('sidebar.channel.add_channel')}
-                            </button>
-                        )}
-                    </div>
-
-                    <SectionHeading>
-                        {t('sidebar.headings.directs')}
-                    </SectionHeading>
-                    <div className="space-y-0.5">
-                        {directMessages.map((channel) => (
-                            <ChannelRow
-                                key={channel.id}
-                                workspaceSlug={workspace.slug}
-                                channel={channel}
-                                active={channel.id === activeChannelId}
-                                threads={threadsByChannel.get(channel.id) ?? []}
-                            />
-                        ))}
-                        {directMessages.length === 0 &&
-                            !workspace.canStartDirectMessage && (
-                                <p className="px-2 py-1 text-sm text-muted-foreground">
-                                    {t('sidebar.channel.no_directs')}
-                                </p>
-                            )}
-                        {workspace.canStartDirectMessage && (
-                            <button
-                                type="button"
-                                onClick={onStartDirectMessage}
-                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                            >
-                                <Plus className="size-4" />
-                                {/*
-                                Doubles as the empty state: with no
-                                conversations yet, "Nog geen gesprekken" only
-                                states the problem, and this row is the way out
-                                of it.
-                            */}
-                                {directMessages.length === 0
-                                    ? t('sidebar.channel.start_conversation')
-                                    : t('sidebar.channel.new_conversation')}
-                            </button>
-                        )}
-                    </div>
-
-                    {/*
-                    Last in the list, and only for whoever may take one back
-                    out. An archived channel is meant to be out of the way, so
-                    it sits below everything live rather than among it.
-                */}
-                    {archivedChannels.length > 0 && (
-                        <div className="mt-4">
-                            <p className="px-2 pb-1 text-xs font-medium text-sidebar-foreground/50">
-                                {t('sidebar.headings.archived')}
-                            </p>
-                            {archivedChannels.map((channel) => (
-                                <div
-                                    key={channel.id}
-                                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground/50"
-                                >
-                                    <Archive className="size-4 shrink-0 opacity-70" />
-                                    <span className="truncate">
-                                        {channel.label}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            router.post(
-                                                archiveChannel.url({
-                                                    workspace: workspace.slug,
-                                                    channel: channel.id,
-                                                }),
-                                                {},
-                                                { preserveScroll: true },
-                                            )
-                                        }
-                                        title={t('sidebar.channel.restore', {
-                                            channel: channel.label,
-                                        })}
-                                        aria-label={t(
-                                            'sidebar.channel.restore',
-                                            { channel: channel.label },
-                                        )}
-                                        className="ml-auto shrink-0 rounded p-1 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                                    >
-                                        <ArchiveRestore className="size-3.5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </ScrollArea>
-                <div className="border-t border-sidebar-border p-1.5">
-                    {userMenu}
-                </div>
+            <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+                {list}
             </aside>
+
+            {/*
+                The same list on a screen with no room for it standing.
+                Below lg only: above it the column is already there, and a
+                sheet that could be opened over it would be the same thing
+                twice.
+            */}
+            <Sheet open={channelsOpen} onOpenChange={setChannelsOpen}>
+                <SheetContent
+                    side="left"
+                    className="flex w-72 flex-col gap-0 border-sidebar-border bg-sidebar p-0 lg:hidden"
+                >
+                    {/* Named for a screen reader; the workspace menu at the
+                        top of the list is what a sighted reader sees. */}
+                    <SheetTitle className="sr-only">
+                        {t('sidebar.rail.channels')}
+                    </SheetTitle>
+                    {list}
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

@@ -123,7 +123,12 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                     background: 'var(--pd-papier)',
                 }}
             >
-                <nav className="mx-auto flex max-w-[1120px] items-center justify-between gap-6 px-6 py-5 sm:px-12">
+                {/*
+                    Wrapping rather than squeezing below ~380px: the wordmark
+                    and up to three controls in one non-breaking row is what
+                    pushes the narrowest phones into a horizontal scroll.
+                */}
+                <nav className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-5 sm:px-12">
                     <Link href="/" className="pd-plain">
                         <Wordmark />
                     </Link>

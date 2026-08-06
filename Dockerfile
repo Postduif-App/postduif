@@ -75,18 +75,17 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # --- build -------------------------------------------------------------------
 FROM toolchain AS build
 
+# Built as production, which is also how it is deployed. Wayfinder generates
+# resources/js/routes from the routes that are actually registered, so anything
+# the bundle imports has to be a route that exists in every environment — see
+# the note on devAccounts in FortifyServiceProvider for the one place that was
+# not, and how it is kept that way.
+ENV APP_ENV=production
+
 # The bundle carries these: Echo is configured from import.meta.env, so the key
 # and the host the browser must connect to are decided when the assets are
 # built, not when the container starts. Pass them with --build-arg, or let the
 # production compose file read them from your .env.
-# The frontend is built with the local environment, deliberately. Wayfinder
-# generates resources/js/routes from the routes that are actually registered,
-# and routes/dev.php is skipped in production — while login.tsx imports the
-# helper it generates. Building as production therefore fails to resolve an
-# import that is dead code at runtime anyway: the server sends an empty account
-# list outside development, so DevQuickLogin renders nothing.
-ENV APP_ENV=local
-
 ARG VITE_APP_NAME=Postduif
 ARG VITE_REVERB_APP_KEY=
 ARG VITE_REVERB_HOST=localhost

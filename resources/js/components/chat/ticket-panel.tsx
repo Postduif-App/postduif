@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { CornerUpLeft, Pencil, X } from 'lucide-react';
+import { CornerUpLeft, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Composer } from '@/components/chat/composer';
@@ -10,7 +10,17 @@ import {
     TICKET_PRIORITY,
     TicketStatusBadge,
 } from '@/components/chat/ticket-status';
-import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -22,7 +32,7 @@ import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
-import { update } from '@/routes/chat/tickets';
+import { destroy, update } from '@/routes/chat/tickets';
 import { store as storeComment } from '@/routes/chat/tickets/comments';
 import type {
     ChannelMember,
@@ -339,6 +349,13 @@ export function TicketPanel({
     const [sending, setSending] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
+    /*
+     * Whether the "are you sure" is on screen. Its own dialog rather than
+     * window.confirm: the native one is drawn by the browser rather than by
+     * this application, cannot be styled, and reads as a warning from the
+     * machine instead of a question from the app.
+     */
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
 
     const target = {
         workspace: workspace.slug,
@@ -375,8 +392,13 @@ export function TicketPanel({
         );
     };
 
+    /*
+     * Beside the conversation on a wide screen; over it on one too narrow to
+     * hold both. Anchored at the rail rather than at the edge, so the way back
+     * to the channel list stays reachable while a panel is open.
+     */
     return (
-        <aside className="flex w-[26rem] shrink-0 flex-col border-l">
+        <aside className="fixed inset-y-0 right-0 left-14 z-30 flex flex-col border-l bg-background lg:static lg:left-auto lg:w-[26rem] lg:shrink-0">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0 flex-1">
                     {editingTitle ? (
@@ -422,10 +444,28 @@ export function TicketPanel({
                             ` · ${formats.shortDateTime.format(new Date(ticket.createdAt))}`}
                     </p>
                 </div>
+                {/*
+                    Beside the close button rather than among the properties:
+                    this is the one thing here that cannot be undone from the
+                    panel, and a destructive action hiding between two dropdowns
+                    is one that gets clicked by accident.
+                */}
+                {ticket.canDelete && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="ml-auto text-muted-foreground hover:text-destructive"
+                        onClick={() => setConfirmingDelete(true)}
+                        aria-label={t('panelen.ticket.delete')}
+                        title={t('panelen.ticket.delete')}
+                    >
+                        <Trash2 className="size-4" />
+                    </Button>
+                )}
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="ml-auto"
+                    className={cn(!ticket.canDelete && 'ml-auto')}
                     onClick={onClose}
                     aria-label={t('panelen.ticket.close')}
                 >
@@ -791,6 +831,37 @@ export function TicketPanel({
                     onSend={send}
                 />
             </div>
+
+            <AlertDialog
+                open={confirmingDelete}
+                onOpenChange={setConfirmingDelete}
+            >
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t('panelen.ticket.delete_title', {
+                                number: ticket.number,
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t('panelen.ticket.delete_confirm')}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t('panelen.cancel')}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className={buttonVariants({
+                                variant: 'destructive',
+                            })}
+                            onClick={() => router.delete(destroy.url(target))}
+                        >
+                            {t('panelen.ticket.delete')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </aside>
     );
 }

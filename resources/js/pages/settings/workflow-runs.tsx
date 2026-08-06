@@ -2,7 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
+import { SettingsSection } from '@/components/settings-section';
 import {
     ACTION_GLYPHS,
     FALLBACK_GLYPH,
@@ -214,20 +214,22 @@ export default function WorkflowRuns({ workflow, runs }: WorkflowRunsProps) {
         <>
             <Head title={workflow.name} />
 
-            <div className="space-y-6">
-                <Link
-                    href={workflowsIndex.url()}
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                    <ArrowLeft className="size-4" />
-                    {t('settings.workflow_runs.back')}
-                </Link>
+            {/*
+                Above the section rather than inside it: the way back belongs to
+                the screen, not to the thing the section is about.
+            */}
+            <Link
+                href={workflowsIndex.url()}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+                <ArrowLeft className="size-4" />
+                {t('settings.workflow_runs.back')}
+            </Link>
 
-                <Heading
-                    title={workflow.name}
-                    description={t('settings.workflow_runs.description')}
-                />
-
+            <SettingsSection
+                title={workflow.name}
+                description={t('settings.workflow_runs.description')}
+            >
                 <div className="space-y-2">
                     {runs.data.map((run) => (
                         <RunRow key={run.id} run={run} />
@@ -247,7 +249,7 @@ export default function WorkflowRuns({ workflow, runs }: WorkflowRunsProps) {
                 <p className="text-xs text-muted-foreground">
                     {t('settings.workflow_runs.kept_for')}
                 </p>
-            </div>
+            </SettingsSection>
         </>
     );
 }

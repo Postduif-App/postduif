@@ -13,4 +13,7 @@ return [
     'workflows_none_due' => 'No workflow is due right now.',
     'workflows_started' => '{1}1 workflow started.|[2,*]:count workflows started.',
     'workflow_runs_pruned' => '{1}1 workflow run pruned.|[2,*]:count workflow runs pruned.',
+    'no_stale_huddles' => 'No huddles to clear up.',
+    'huddles_swept' => '{1}1 huddle closed.|[2,*]:count huddles closed.',
+    'notices_pruned' => '{1}1 notice pruned.|[2,*]:count notices pruned.',
 ];

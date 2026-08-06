@@ -101,7 +101,15 @@ class FortifyServiceProvider extends ServiceProvider
      * buttons: the frontend renders nothing for an empty list, so there is no
      * separate flag for the UI to get wrong.
      *
-     * @return array<int, array{id: int, name: string, email: string, role: string|null}>
+     * The URL to sign in with is sent along rather than built in the browser
+     * from Wayfinder's `dev.login`. routes/dev.php is not loaded in production,
+     * so that helper is not generated there — and an import of a file that does
+     * not exist fails the frontend build on precisely the installations that
+     * are deployed. The same trap the registration route above stays registered
+     * to avoid, answered the other way round: the route may genuinely disappear
+     * here, so nothing in the bundle may name it.
+     *
+     * @return array<int, array{id: int, name: string, email: string, role: string|null, url: string}>
      */
     private function devAccounts(): array
     {
@@ -118,6 +126,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'url' => route('dev.login', $user),
                 /*
                  * The role row rather than the old string on the pivot: a
                  * workspace writes its own roles, so the name is the only

@@ -3,9 +3,11 @@
 use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAccountIsNotSuspended;
 use App\Http\Middleware\EnsureFeatureIsActive;
+use App\Http\Middleware\EnsureInstallationIsPending;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleLocale;
+use App\Http\Middleware\RedirectToInstallation;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'feature' => EnsureFeatureIsActive::class,
+            // The onboarding screen, which is only a screen until the platform
+            // has been set up. On the routes rather than in the controller: the
+            // POST needs the same door as the GET.
+            'install.pending' => EnsureInstallationIsPending::class,
             /*
              * The same middleware the MCP server uses. Reused rather than
              * copied: it resolves a personal token to its member and stamps
@@ -51,6 +57,14 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleLocale::class,
             HandleInertiaRequests::class,
+            /*
+             * A platform nobody has set up yet has one screen, and this puts
+             * everybody on it. After HandleInertiaRequests for the same reason
+             * the suspension check is: this answers with a redirect, and an
+             * Inertia visit needs that turned into something its client
+             * understands.
+             */
+            RedirectToInstallation::class,
             EnsureAccountIsNotSuspended::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

@@ -1,8 +1,16 @@
-import { Link, usePage } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Menu } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
+import { useEffect, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+    Sheet,
+    SheetContent,
+    SheetTitle,
+    SheetTrigger,
+} from '@/components/ui/sheet';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn, toUrl } from '@/lib/utils';
@@ -15,6 +23,7 @@ import { edit as editSecurity } from '@/routes/security';
 import { index as statusRules } from '@/routes/status-rules';
 import { index as workflowsIndex } from '@/routes/workflows';
 import { edit as editWorkspace } from '@/routes/workspace';
+import { index as workspaceChannels } from '@/routes/workspace/channels';
 import { index as workspaceEmoji } from '@/routes/workspace/emoji';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { index as workspaceMembers } from '@/routes/workspace/members';
@@ -99,6 +108,10 @@ export default function SettingsLayout({
                       title: t('settings.nav.members'),
                       href: workspaceMembers(),
                   },
+                  {
+                      title: t('settings.nav.channels'),
+                      href: workspaceChannels(),
+                  },
                   /*
                    * Only where the workspace has workflows switched on. Listed
                    * by that rather than by role alone, unlike its neighbours:
@@ -132,56 +145,99 @@ export default function SettingsLayout({
         });
     }
 
-    return (
-        <div className="flex h-screen overflow-hidden bg-background">
-            <aside className="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-                <div className="flex h-14 items-center border-b border-sidebar-border px-2">
-                    {auth.workspace && (
-                        <Link
-                            href={openWorkspace(auth.workspace.slug)}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-sidebar-accent/50"
-                        >
-                            <ArrowLeft className="size-4 shrink-0 opacity-70" />
-                            <span className="truncate">
-                                {auth.workspace.name}
-                            </span>
-                        </Link>
-                    )}
-                </div>
+    /*
+     * The navigation, drawn once and placed twice: as the column it is on a
+     * wide screen, and inside a sheet on one with no room for a standing 15rem
+     * of it. The same reasoning — and the same shape — as the chat's channel
+     * list.
+     */
+    const [navOpen, setNavOpen] = useState(false);
 
-                <ScrollArea className="flex-1 px-2 py-4">
-                    <nav
-                        aria-label={t('settings.nav.label')}
-                        className="space-y-6"
+    // Choosing a page closes the sheet: Inertia keeps this layout mounted
+    // across a visit, so nothing else would.
+    useEffect(() => router.on('navigate', () => setNavOpen(false)), []);
+
+    const nav = (
+        <>
+            <div className="flex h-14 items-center border-b border-sidebar-border px-2">
+                {auth.workspace && (
+                    <Link
+                        href={openWorkspace(auth.workspace.slug)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-sidebar-accent/50"
                     >
-                        {groups.map((group) => (
-                            <div key={group.title}>
-                                <h2 className="truncate px-2 pb-1 text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
-                                    {group.title}
-                                </h2>
-                                <div className="space-y-0.5">
-                                    {group.items.map((item) => (
-                                        <Link
-                                            key={toUrl(item.href)}
-                                            href={item.href}
-                                            className={cn(
-                                                'block rounded-md px-2 py-1.5 text-sm transition-colors',
-                                                isCurrentUrl(item.href)
-                                                    ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                                                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
-                                            )}
-                                        >
-                                            {item.title}
-                                        </Link>
-                                    ))}
-                                </div>
+                        <ArrowLeft className="size-4 shrink-0 opacity-70" />
+                        <span className="truncate">{auth.workspace.name}</span>
+                    </Link>
+                )}
+            </div>
+
+            <ScrollArea className="flex-1 px-2 py-4">
+                <nav aria-label={t('settings.nav.label')} className="space-y-6">
+                    {groups.map((group) => (
+                        <div key={group.title}>
+                            <h2 className="truncate px-2 pb-1 text-xs font-semibold tracking-wide text-sidebar-foreground/50 uppercase">
+                                {group.title}
+                            </h2>
+                            <div className="space-y-0.5">
+                                {group.items.map((item) => (
+                                    <Link
+                                        key={toUrl(item.href)}
+                                        href={item.href}
+                                        className={cn(
+                                            'block rounded-md px-2 py-1.5 text-sm transition-colors',
+                                            isCurrentUrl(item.href)
+                                                ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                                                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
+                                        )}
+                                    >
+                                        {item.title}
+                                    </Link>
+                                ))}
                             </div>
-                        ))}
-                    </nav>
-                </ScrollArea>
+                        </div>
+                    ))}
+                </nav>
+            </ScrollArea>
+        </>
+    );
+
+    return (
+        <div className="flex h-dvh overflow-hidden bg-background">
+            <aside className="hidden h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+                {nav}
             </aside>
 
             <ScrollArea className="flex-1">
+                {/*
+                    The way into that navigation on a narrow screen. In the flow
+                    at the top rather than floating over the page: settings are
+                    read top to bottom and there is nothing here to keep in view
+                    while scrolling.
+                */}
+                <div className="flex items-center gap-2 border-b px-4 py-2 lg:hidden">
+                    <Sheet open={navOpen} onOpenChange={setNavOpen}>
+                        <SheetTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 text-muted-foreground"
+                            >
+                                <Menu className="size-4" />
+                                {t('settings.nav.label')}
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent
+                            side="left"
+                            className="flex w-72 flex-col gap-0 border-sidebar-border bg-sidebar p-0"
+                        >
+                            <SheetTitle className="sr-only">
+                                {t('settings.nav.label')}
+                            </SheetTitle>
+                            {nav}
+                        </SheetContent>
+                    </Sheet>
+                </div>
+
                 {/*
                     The rhythm between whatever a page puts on screen lives
                     here, not on the page. A page that renders three blocks —
@@ -199,7 +255,7 @@ export default function SettingsLayout({
                         // its margin on the block after it and push the whole
                         // page down; a flex gap skips it, as it skips anything
                         // absolutely positioned.
-                        'mx-auto flex flex-col gap-10 px-8 py-10 pb-20',
+                        'mx-auto flex flex-col gap-10 px-4 py-10 pb-20 sm:px-8',
                         wide ? 'max-w-6xl' : 'max-w-2xl',
                     )}
                 >

@@ -1,6 +1,30 @@
 <?php
 
 return [
+    'channels' => [
+        'title' => 'Channels',
+        'description' => 'Every channel :workspace has, including the archived ones — which you cannot see anywhere else.',
+        'filter' => 'Search by name, topic or tag',
+        'show_archived' => '{1}Show 1 archived channel|[2,*]Show :count archived channels',
+        'hide_archived' => 'Hide archived',
+        'archived' => 'archived',
+        'column_name' => 'Channel',
+        'column_members' => 'Members',
+        'column_messages' => 'Messages',
+        'column_settings' => 'Settings',
+        'column_last' => 'Last message',
+        'column_created' => 'Created',
+        'column_actions' => 'Actions',
+        'tickets' => '{1}1 ticket|[2,*]:count tickets',
+        'links' => '{1}1 button|[2,*]:count buttons',
+        'webhooks' => '{1}1 webhook|[2,*]:count webhooks',
+        'never' => 'Nothing yet',
+        'archive' => 'Archive',
+        'unarchive' => 'Bring back',
+        'none' => 'No channels found.',
+        'unknown' => 'Unknown',
+    ],
+
     'nav' => [
         'label' => 'Settings',
         'account' => 'Your account',
@@ -17,6 +41,7 @@ return [
         'roles' => 'Roles',
         'emoji' => 'Emoji',
         'theme' => 'Theme',
+        'channels' => 'Channels',
         'members' => 'Members',
         'invitations' => 'Invitations',
     ],
@@ -265,6 +290,8 @@ return [
         'off' => 'Off',
         'choose' => 'Choose…',
         'optional' => '(may be empty)',
+        'channel_from_variable' => 'A variable (channel known only when it runs)',
+        'channel_variable_hint' => 'A channel name or id, for example {{ trigger.channel.name }}. Looked up inside this workspace.',
         'insert_variable' => 'Insert data…',
         'words_placeholder' => 'outage, broken',
         'webhook_url_pending' => 'Save the workflow first and the URL appears here.',

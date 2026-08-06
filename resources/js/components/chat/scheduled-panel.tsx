@@ -49,8 +49,13 @@ export function ScheduledPanel({
 }: ScheduledPanelProps) {
     const { t, tChoice } = useTranslate();
 
+    /*
+     * Beside the conversation on a wide screen; over it on one too narrow to
+     * hold both. Anchored at the rail rather than at the edge, so the way back
+     * to the channel list stays reachable while a panel is open.
+     */
     return (
-        <aside className="flex w-[26rem] shrink-0 flex-col border-l">
+        <aside className="fixed inset-y-0 right-0 left-14 z-30 flex flex-col border-l bg-background lg:static lg:left-auto lg:w-[26rem] lg:shrink-0">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold">

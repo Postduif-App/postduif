@@ -157,6 +157,12 @@ export interface ChannelSummary {
      */
     openTicketCount: number;
     /**
+     * How many people are talking in this channel right now, zero for the rest.
+     * A count rather than names: a sidebar row has a row's width, and what it
+     * has to say is that something is happening.
+     */
+    huddleCount: number;
+    /**
      * Whether this channel keeps tickets at all. Not the same question as
      * openTicketCount above, which can be zero in a channel that does.
      */
@@ -311,6 +317,23 @@ export interface ActiveChannel extends ChannelSummary {
     createdBy: number | null;
     /** Buttons in the bar above the conversation, in the order they are drawn. */
     links: ChannelLink[];
+    /** The huddle going on here, or null. Null too where the feature is off. */
+    huddle: Huddle | null;
+    /**
+     * Whether this member may start one or walk into the one that is going.
+     * False as well where no STUN server is configured — a button that only
+     * connects for two people on the same wifi is worse than no button.
+     */
+    canHuddle: boolean;
+    /**
+     * What to hand RTCPeerConnection. Empty for anybody who may not join; the
+     * relay credential in it is signed and expires, so it is not shared out.
+     */
+    iceServers: RTCIceServer[];
+    /** Empty for anybody who may not post here. */
+    commands: WorkflowCommand[];
+    /** Empty for anybody who does not configure this channel. */
+    buttonWorkflows: ButtonWorkflow[];
     /** The labels on this channel. Tags belong to the workspace, not here. */
     tags: string[];
 }
@@ -328,10 +351,62 @@ export interface ScheduledMessage {
 }
 
 /** One button in the bar above a channel, pointing outside the app. */
+/**
+ * A button in the bar above the conversation.
+ *
+ * Exactly one of the two is filled: `url` for a button that goes somewhere
+ * outside the app, `workflowId` for one that starts a workflow inside it. The
+ * pair is what the bar reads to decide which of the two it is drawing.
+ */
 export interface ChannelLink {
     id: number;
     label: string;
-    url: string;
+    url: string | null;
+    workflowId: number | null;
+    /** What that workflow is called, so the panel can say so without asking. */
+    workflowName: string | null;
+}
+
+/**
+ * Something this member alone was told in a channel.
+ *
+ * Not a message and never becomes one: it cannot be replied to, reacted to,
+ * saved or pinned, and nobody else is sent it. See the ephemeral_notices
+ * migration for why the two are kept apart.
+ */
+export interface EphemeralNotice {
+    id: number;
+    body: string;
+    /** What said it — a workflow's name — or null when nothing signed it. */
+    authorName: string | null;
+    createdAt: string | null;
+}
+
+/**
+ * The conversation going on in a channel right now.
+ *
+ * The same shape whether it arrived with the page or over the socket — see
+ * HuddleUpdated::broadcastWith — so nothing here has to reconcile two
+ * spellings of it.
+ */
+export interface Huddle {
+    id: number;
+    channelId: number;
+    live: boolean;
+    participants: { id: number; name: string | null }[];
+}
+
+/** A workflow the message field answers to, as the palette lists it. */
+export interface WorkflowCommand {
+    /** Without the slash: the palette and the endpoint both add their own. */
+    name: string;
+    description: string;
+}
+
+/** A workflow a button may be pointed at: on the button trigger, and switched on. */
+export interface ButtonWorkflow {
+    id: number;
+    name: string;
 }
 
 /**
@@ -705,6 +780,8 @@ export interface OpenTicket extends TicketSummary {
     /** Confirming a resolved ticket, or saying it is not fixed after all. */
     canConfirm: boolean;
     canEdit: boolean;
+    /** Narrower than canEdit: the opener may reword a ticket, not remove it. */
+    canDelete: boolean;
 }
 
 export interface SearchHit {

@@ -127,6 +127,7 @@ class WorkspaceTicketController extends Controller
             'canManage' => $user->can('manage', $ticket),
             'canConfirm' => $user->can('confirm', $ticket),
             'canEdit' => $user->can('update', $ticket),
+            'canDelete' => $user->can('delete', $ticket),
         ];
     }
 

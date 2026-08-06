@@ -4,11 +4,13 @@ import {
     CalendarClock,
     ExternalLink,
     Hash,
+    Headphones,
     Lock,
     MessageSquare,
     Settings,
     Star,
     Users,
+    Zap,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
@@ -18,9 +20,12 @@ import { Composer } from '@/components/chat/composer';
 import { CreateTicketDialog } from '@/components/chat/create-ticket-dialog';
 import { FeedList } from '@/components/chat/feed-list';
 import { ForwardDialog } from '@/components/chat/forward-dialog';
+import { HuddleBar } from '@/components/chat/huddle-bar';
+import { HuddleStage } from '@/components/chat/huddle-stage';
 import { JoinChannelNotice } from '@/components/chat/join-channel-notice';
 import { MessageList } from '@/components/chat/message-list';
 import { MuteMenu } from '@/components/chat/mute-menu';
+import { NoticeList } from '@/components/chat/notice-list';
 import { PinnedBar, PinnedPanel } from '@/components/chat/pinned-messages';
 import { ScheduledPanel } from '@/components/chat/scheduled-panel';
 import { SectionMenu } from '@/components/chat/section-menu';
@@ -29,12 +34,14 @@ import { TicketBoard } from '@/components/chat/ticket-board';
 import { TicketPanel } from '@/components/chat/ticket-panel';
 import { OPEN_STATUSES } from '@/components/chat/ticket-status';
 import { TypingIndicator } from '@/components/chat/typing-indicator';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useChannelRealtime } from '@/hooks/use-channel-realtime';
+import { useHuddle } from '@/hooks/use-huddle';
 import { useTicketActivity } from '@/hooks/use-ticket-activity';
 import { useTranslate } from '@/hooks/use-translate';
 import { fromLocalInput } from '@/lib/local-datetime';
@@ -42,7 +49,9 @@ import { ulid } from '@/lib/ulid';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
 import { favorite, unfavorite } from '@/routes/chat/channels';
+import { run as runLink } from '@/routes/chat/channels/links';
 import { store as storeScheduled } from '@/routes/chat/channels/scheduled';
+import { store as runCommand } from '@/routes/chat/commands';
 import { store } from '@/routes/chat/messages';
 import {
     bookmark,
@@ -67,6 +76,7 @@ import type {
     OpenThread,
     OpenTicket,
     PinnedMessage,
+    EphemeralNotice,
     ScheduledMessage,
     TicketBoard as Board,
 } from '@/types/chat';
@@ -91,6 +101,8 @@ interface ConversationProps {
     ticket: OpenTicket | null;
     /** What this member still has waiting in this channel, soonest first. */
     scheduled: ScheduledMessage[];
+    /** What this member alone was told here, oldest first. */
+    notices: EphemeralNotice[];
     /** Channels this reader may open, for rendering and completing #links. */
     channels: ChannelSummary[];
     /** Every tag in use in the workspace, for the settings dialog to suggest. */
@@ -129,6 +141,16 @@ interface ConversationProps {
     /** Absent when this workspace does not offer the panel at all. */
     onToggleWorkspacePanel?: () => void;
 }
+
+/**
+ * The look of a button in the bar above the conversation.
+ *
+ * A constant because two elements wear it — an anchor for a link and a button
+ * for a workflow — and the whole point of the bar is that the two read as one
+ * row rather than as a row plus something else.
+ */
+const LINK_BUTTON =
+    'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none';
 
 function ChannelIcon({ type }: { type: ActiveChannel['type'] }) {
     const className = 'size-4 text-muted-foreground';
@@ -236,6 +258,7 @@ export function Conversation({
     tickets,
     ticket,
     scheduled,
+    notices,
     channels,
     workspaceTags,
     onSendFiles,
@@ -287,6 +310,15 @@ export function Conversation({
     const [membersOpen, setMembersOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [createTicketOpen, setCreateTicketOpen] = useState(false);
+    /**
+     * The workflow button being pressed, if one is.
+     *
+     * One at a time rather than a set: a workflow starts in a single request
+     * and the answer comes back as a toast, so the only thing this covers is
+     * the moment between the two — long enough to be pressed twice, short
+     * enough that nobody presses a second button in it.
+     */
+    const [pressing, setPressing] = useState<number | null>(null);
     /**
      * The message a ticket is being made out of, if the dialog was opened from
      * one. Component state rather than the URL: a half-filled form is not
@@ -788,6 +820,27 @@ export function Conversation({
           )
         : 0;
 
+    /*
+     * The huddle, owned here rather than in the bar that draws it: the button
+     * that starts one sits in the header above, and both have to drive the same
+     * microphone and the same connections.
+     */
+    /*
+     * Whether the huddle has taken the room the message list usually has.
+     * Component state rather than the URL: it is about how you are looking at
+     * this channel right now, not about which channel you are in, and there is
+     * nothing here to link somebody to.
+     */
+    const [huddleExpanded, setHuddleExpanded] = useState(false);
+
+    const huddle = useHuddle(
+        workspace,
+        channel.id,
+        currentUser.id,
+        channel.huddle,
+        channel.iceServers,
+    );
+
     const go = useCallback(
         (query: Record<string, string | number>) =>
             router.visit(
@@ -803,7 +856,15 @@ export function Conversation({
     return (
         <>
             <main className="flex min-w-0 flex-1 flex-col">
-                <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+                {/*
+                    Tighter and horizontally scrollable on a narrow screen. The
+                    name keeps its place and truncates; everything to the right
+                    of it — the view tabs, the search, the badges, the settings
+                    — slides rather than wrapping into a second row, because a
+                    header that changes height moves the whole conversation
+                    under it.
+                */}
+                <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b px-3 sm:gap-3 sm:px-4 lg:overflow-x-visible">
                     <ChannelIcon type={channel.type} />
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-semibold">
@@ -907,9 +968,47 @@ export function Conversation({
                             title={t('conversation.header.search', {
                                 channel: channel.label,
                             })}
-                            className="ml-auto rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+                            className={cn(
+                                'rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none',
+                                // The first of the right-hand group, so this is
+                                // what pushes it over. The huddle button below
+                                // must not do it again, or the two would split
+                                // the free space between them.
+                                'ml-auto',
+                            )}
                         >
                             <Search className="size-3.5" />
+                        </button>
+                    )}
+
+                    {/*
+                        Starting a huddle, or walking into the one going on.
+                        Here rather than in a bar under the header: a channel
+                        where nobody is talking should say nothing at all, and a
+                        strip of chrome asking every conversation whether it
+                        would like to talk is the sort of thing people learn to
+                        look past.
+                    */}
+                    {channel.canHuddle && (
+                        <button
+                            type="button"
+                            onClick={huddle.join}
+                            disabled={
+                                huddle.state === 'joining' ||
+                                huddle.state === 'in'
+                            }
+                            aria-label={t('conversation.header.huddle')}
+                            title={t('conversation.header.huddle')}
+                            className={cn(
+                                'rounded-md border p-1.5 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50',
+                                // Lit while somebody is in there, which is the
+                                // whole reason to notice this button at all.
+                                (channel.huddle?.participants.length ?? 0) > 0
+                                    ? 'border-primary/40 text-primary'
+                                    : 'text-muted-foreground',
+                            )}
+                        >
+                            <Headphones className="size-3.5" />
                         </button>
                     )}
 
@@ -1112,33 +1211,107 @@ export function Conversation({
                     entirely when there are none, so an ordinary channel does
                     not lose a strip of height to an empty bar.
                 */}
+                {/*
+                    Above the shortcut bar and below the header: a huddle is
+                    something happening now, and the row that says so belongs
+                    nearer the conversation than the links that are always
+                    there.
+                */}
+                <HuddleBar
+                    channel={channel}
+                    currentUserId={currentUser.id}
+                    controls={huddle}
+                    expanded={huddleExpanded}
+                    onToggleExpanded={() =>
+                        setHuddleExpanded((current) => !current)
+                    }
+                />
+
                 {channel.links.length > 0 && (
                     <nav
                         aria-label={t('conversation.header.shortcuts')}
                         className="flex shrink-0 flex-wrap items-center gap-1.5 border-b px-4 py-2"
                     >
-                        {channel.links.map((link) => (
-                            <a
-                                key={link.id}
-                                href={link.url}
-                                target="_blank"
-                                // noreferrer alongside noopener: the target gets
-                                // no handle on this window, and no hint of which
-                                // workspace sent the visitor.
-                                rel="noopener noreferrer"
-                                title={link.url}
-                                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
-                            >
-                                <ExternalLink className="size-3 shrink-0" />
-                                <span className="max-w-40 truncate">
-                                    {link.label}
-                                </span>
-                            </a>
-                        ))}
+                        {channel.links.map((link) =>
+                            /*
+                                Two kinds of button in one bar, told apart by
+                                which column is filled. An anchor for the one
+                                that leaves and a button for the one that does
+                                something here — not one element with a handler
+                                that branches, because "opens in a new tab" is
+                                something the browser has to know before it is
+                                clicked, and middle-clicking a <button> gets
+                                nobody anywhere.
+                            */
+                            link.url !== null ? (
+                                <a
+                                    key={link.id}
+                                    href={link.url}
+                                    target="_blank"
+                                    // noreferrer alongside noopener: the target
+                                    // gets no handle on this window, and no hint
+                                    // of which workspace sent the visitor.
+                                    rel="noopener noreferrer"
+                                    title={link.url}
+                                    className={LINK_BUTTON}
+                                >
+                                    <ExternalLink className="size-3 shrink-0" />
+                                    <span className="max-w-40 truncate">
+                                        {link.label}
+                                    </span>
+                                </a>
+                            ) : (
+                                <button
+                                    key={link.id}
+                                    type="button"
+                                    disabled={pressing === link.id}
+                                    onClick={() => {
+                                        setPressing(link.id);
+                                        router.post(
+                                            runLink.url({
+                                                workspace: workspace.slug,
+                                                channel: channel.id,
+                                                link: link.id,
+                                            }),
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                                preserveState: true,
+                                                onFinish: () =>
+                                                    setPressing(null),
+                                            },
+                                        );
+                                    }}
+                                    className={cn(
+                                        LINK_BUTTON,
+                                        'disabled:opacity-60',
+                                    )}
+                                >
+                                    {pressing === link.id ? (
+                                        <Spinner className="size-3 shrink-0" />
+                                    ) : (
+                                        <Zap className="size-3 shrink-0" />
+                                    )}
+                                    <span className="max-w-40 truncate">
+                                        {link.label}
+                                    </span>
+                                </button>
+                            ),
+                        )}
                     </nav>
                 )}
 
-                {view === 'tickets' && tickets ? (
+                {/*
+                    The huddle takes the message list's room rather than the
+                    whole window: the sidebar stays, so you can see which
+                    channels are asking for you and step out with one click.
+                */}
+                {huddleExpanded && huddle.state === 'in' ? (
+                    <HuddleStage
+                        currentUserId={currentUser.id}
+                        controls={huddle}
+                    />
+                ) : view === 'tickets' && tickets ? (
                     <TicketBoard
                         board={tickets}
                         activeNumber={ticket?.number ?? null}
@@ -1234,11 +1407,24 @@ export function Conversation({
                                 }
                             />
                         )}
+                        <NoticeList
+                            workspace={workspace}
+                            channelId={channel.id}
+                            notices={notices}
+                        />
                         <TypingIndicator typing={typing} />
                     </>
                 )}
 
-                {view === 'tickets' ? null : !channel.isMember ? (
+                {/*
+                    Nothing to write with while the huddle has the room. You are
+                    looking at somebody, not typing at them — and the composer
+                    would be taking a fifth of the screen to offer something
+                    nobody reaches for mid-conversation. It comes back the
+                    moment the huddle is made small again.
+                */}
+                {huddleExpanded && huddle.state === 'in' ? null : view ===
+                  'tickets' ? null : !channel.isMember ? (
                     <JoinChannelNotice
                         workspace={workspace}
                         channel={channel}
@@ -1312,6 +1498,35 @@ export function Conversation({
                                       },
                                   ]
                                 : []),
+
+                            /*
+                                And the workspace's own, which are the same
+                                thing seen from the other side: these do not
+                                open a dialog, they set a workflow going and
+                                leave a line only the person who typed them can
+                                read. They take an argument, so choosing one
+                                writes it into the field rather than firing it.
+                            */
+                            ...channel.commands.map((command) => ({
+                                name: command.name,
+                                description: command.description,
+                                takesArguments: true,
+                                run: (args: string) =>
+                                    router.post(
+                                        runCommand.url({
+                                            workspace: workspace.slug,
+                                            channel: channel.id,
+                                        }),
+                                        {
+                                            command: command.name,
+                                            arguments: args,
+                                        },
+                                        {
+                                            preserveScroll: true,
+                                            preserveState: true,
+                                        },
+                                    ),
+                            })),
                         ]}
                         draftKey={`${workspace.slug}:${channel.id}`}
                         onSend={(body, files) => {

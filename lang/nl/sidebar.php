@@ -12,6 +12,8 @@ return [
     'toolbar' => 'Werkbalk',
 
     'rail' => [
+        // De knop die op een smal scherm de kanalenlijst opent.
+        'channels' => 'Kanalen',
         'inbox' => 'Inbox',
         'board' => 'Prikbord',
         'secrets' => 'Geheimen',
@@ -32,6 +34,7 @@ return [
 
     'channel' => [
         'muted' => 'Meldingen staan uit',
+        'huddling' => '{1}1 iemand is hier aan het praten|[2,*]:count mensen zijn hier aan het praten',
         'open_tickets' => '{1}1 openstaand ticket|[2,*]:count openstaande tickets',
         'threads_show' => 'Threads in :channel tonen',
         'threads_hide' => 'Threads in :channel verbergen',

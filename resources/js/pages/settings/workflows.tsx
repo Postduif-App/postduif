@@ -2,7 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ChevronRight, History, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import Heading from '@/components/heading';
+import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -146,12 +146,10 @@ export default function Workflows({ workflows, triggers }: WorkflowsProps) {
         <>
             <Head title={t('settings.workflows.title')} />
 
-            <div className="space-y-6">
-                <Heading
-                    title={t('settings.workflows.title')}
-                    description={t('settings.workflows.description')}
-                />
-
+            <SettingsSection
+                title={t('settings.workflows.title')}
+                description={t('settings.workflows.description')}
+            >
                 <div className="space-y-2">
                     {workflows.map((workflow) => (
                         <WorkflowRow
@@ -220,7 +218,7 @@ export default function Workflows({ workflows, triggers }: WorkflowsProps) {
                         {t('settings.workflows.created_off')}
                     </p>
                 </div>
-            </div>
+            </SettingsSection>
         </>
     );
 }
