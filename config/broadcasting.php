@@ -40,6 +40,19 @@ return [
                 'port' => env('REVERB_PORT', 443),
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
+                /*
+                 * Reverb's own routes are `/app/{key}` and `/apps/{id}/events`,
+                 * and this application already owns `/app/*` — settings, chat,
+                 * everything behind the login. So the server runs under a
+                 * prefix (REVERB_SERVER_PATH, see config/reverb.php) and both
+                 * clients have to be told about it: the browser through Echo's
+                 * `wsPath`, and this one — the HTTP API we publish through —
+                 * with the `path` the Pusher SDK prepends to its base URL.
+                 * Leave it empty and events go to a route that answers 404.
+                 */
+                'path' => filled(env('REVERB_SERVER_PATH'))
+                    ? '/'.trim((string) env('REVERB_SERVER_PATH'), '/')
+                    : '',
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html

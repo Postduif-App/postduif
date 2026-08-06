@@ -11,8 +11,18 @@ import MarketingLayout from '@/layouts/marketing/layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { initializeWorkspaceTheme } from '@/lib/workspace-theme';
 
+/**
+ * `wsPath` because Reverb serves the socket on `/app/{key}`, and this
+ * application already owns `/app/*`. On a deployment where the proxy puts both
+ * on one domain, Reverb runs under a prefix instead — and this is compiled in,
+ * so changing it means a rebuild rather than a restart. Empty in development,
+ * where Reverb has a port to itself and needs no prefix at all.
+ */
+const reverbPath = (import.meta.env.VITE_REVERB_PATH ?? '').replace(/^\/+|\/+$/g, '');
+
 configureEcho({
     broadcaster: 'reverb',
+    wsPath: reverbPath ? `/${reverbPath}` : '',
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';

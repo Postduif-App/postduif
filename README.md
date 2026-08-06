@@ -200,7 +200,10 @@ file in a way that is easy to miss: `BROADCAST_CONNECTION` must be `reverb`
 rather than `log`, and the `REVERB_*` values split into two pairs — the daemon
 listens on `REVERB_SERVER_HOST=0.0.0.0` and `REVERB_SERVER_PORT=8080`, while the
 browser is told `REVERB_HOST=chat.example.com`, `REVERB_PORT=443` and
-`REVERB_SCHEME=https`. nginx sits between the two.
+`REVERB_SCHEME=https`. nginx sits between the two. Add `REVERB_SERVER_PATH=reverb`
+and `VITE_REVERB_PATH="${REVERB_SERVER_PATH}"` as well — see [Letting the
+websocket through](#letting-the-websocket-through) for why Reverb cannot have its
+own paths here.
 
 #### The deploy script
 
@@ -264,7 +267,7 @@ Ten things stand still without it — see [Scheduled work](#scheduled-work).
 In the site's nginx configuration, above the existing `location /`:
 
 ```nginx
-location ~ ^/(app|apps) {
+location ^~ /reverb/ {
     proxy_pass          http://127.0.0.1:8080;
     proxy_http_version  1.1;
     proxy_set_header    Host $host;
@@ -273,13 +276,39 @@ location ~ ^/(app|apps) {
     proxy_set_header    X-Forwarded-Proto $scheme;
     proxy_set_header    Upgrade $http_upgrade;
     proxy_set_header    Connection "Upgrade";
-    proxy_read_timeout  60s;
+    proxy_read_timeout  300s;
 }
 ```
 
-Both paths, not just the first: Reverb serves the client on `/app/{key}` and its
-HTTP API on `/apps/{id}/events`, and that second one is what the application
-itself calls to publish an event.
+A prefix, and not Reverb's own paths. Reverb serves the client on `/app/{key}`
+and its HTTP API on `/apps/{id}/events` — but this application already owns
+`/app/*`, so proxying that away takes every page behind the login with it. Hence
+`REVERB_SERVER_PATH=reverb` in the environment, which moves both of Reverb's
+routes under `/reverb`, and the two clients that have to agree with it:
+`VITE_REVERB_PATH` for the browser (compiled in, so it needs a build) and the
+`path` option in `config/broadcasting.php` for the application itself.
+
+`^~` rather than a plain prefix, because without it nginx goes on to test the
+regex locations and `~ \.php$` takes the request back. And `proxy_read_timeout`
+above Reverb's 60s ping interval, so an idle socket is not cut a moment before
+the ping that would have kept it alive.
+
+#### The buffer that answers 502
+
+In the same file, in `location ~ \.php$`:
+
+```nginx
+fastcgi_buffer_size       32k;
+fastcgi_busy_buffers_size 64k;
+```
+
+Ploi ships `fastcgi_buffers 32 32k`, which is the response *body*; the header has
+to fit in a single `fastcgi_buffer_size` and that one defaults to 4k. A full page
+load carries a `Link:` header with every preloaded Vite asset in it, and a page
+with enough imports goes over — nginx then answers 502 and writes *upstream sent
+too big header* to its error log, while the application never hears about it.
+The tell is that the same page loads fine when Inertia fetches it over XHR:
+those responses carry no preload header.
 
 ### On Ploi Cloud
 
