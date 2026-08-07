@@ -26,10 +26,22 @@ function ScrollArea({
         nothing is left wrong on screen — what the warning costs is a console
         full of noise that hides the mismatches worth reading.
       */}
+      {/*
+        `[&>div]:block!` overrules Radix. It wraps whatever you pass in a div of
+        its own carrying `display: table`, so that a viewport can be scrolled
+        sideways past content wider than itself. Nothing here offers a
+        horizontal scrollbar, and that shape costs us on a tablet: a table's
+        width is max(min-content, ...), never less than its own content, and
+        WebKit does not discount an `overflow-x-auto` descendant from that
+        minimum the way the spec asks. So a table set to `min-w-3xl` inside its
+        own scroll box widened that wrapper instead of scrolling in place, and
+        the settings page ran off the right of an iPad. A plain block cannot
+        outgrow the viewport, which leaves the inner box to scroll.
+      */}
       <ScrollAreaPrimitive.Viewport
         suppressHydrationWarning
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:block!"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
