@@ -251,9 +251,16 @@ export default function WorkspaceChannels({
                     page sideways — the same choice the member list makes, and
                     for the same reason: a row of counts and a topic somebody
                     typed are both as wide as they are.
+
+                    Below `lg` it is a narrower table rather than the same one
+                    behind a scrollbar. Seven columns do not fit an iPad held
+                    upright at any width worth reading, and dragging a table
+                    sideways to learn when a channel was made is worse than
+                    reading it under the name — which is where the two columns
+                    that step aside reappear.
                 */}
                 <div className="overflow-x-auto rounded-lg border">
-                    <table className="w-full min-w-3xl border-collapse">
+                    <table className="w-full min-w-xl border-collapse lg:min-w-3xl">
                         <thead>
                             <tr className="bg-muted/40">
                                 <SortableHeader
@@ -280,7 +287,7 @@ export default function WorkspaceChannels({
                                 />
                                 <th
                                     scope="col"
-                                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                                    className="hidden px-3 py-2 text-left text-xs font-medium text-muted-foreground lg:table-cell"
                                 >
                                     {t('settings.channels.column_settings')}
                                 </th>
@@ -297,6 +304,7 @@ export default function WorkspaceChannels({
                                     column="createdAt"
                                     sort={sort}
                                     onSort={toggleSort}
+                                    className="hidden lg:table-cell"
                                 />
                                 <th scope="col" className="px-3 py-2">
                                     <span className="sr-only">
@@ -307,169 +315,203 @@ export default function WorkspaceChannels({
                         </thead>
 
                         <tbody>
-                            {rows.map((channel) => (
-                                <tr
-                                    key={channel.id}
-                                    className={cn(
-                                        'border-t',
-                                        // Dimmed rather than hidden: it is
-                                        // still a channel, and everything the
-                                        // row says about it is still true.
-                                        channel.archivedAt !== null &&
-                                            'text-muted-foreground',
-                                    )}
-                                >
-                                    <td className="px-3 py-2">
-                                        <div className="flex items-center gap-1.5">
-                                            {channel.type === 'private' ? (
-                                                <Lock className="size-3.5 shrink-0 opacity-60" />
-                                            ) : (
-                                                <Hash className="size-3.5 shrink-0 opacity-60" />
+                            {rows.map((channel) => {
+                                /*
+                                 * Drawn once and placed twice: as its own
+                                 * column where there is room for one, and under
+                                 * the channel name where there is not.
+                                 */
+                                const settings = (
+                                    <>
+                                        <span className="rounded border px-1.5 py-0.5">
+                                            {t(
+                                                POSTING_POLICY_KEY[
+                                                    channel.postingPolicy
+                                                ] ??
+                                                    'settings.channels.unknown',
                                             )}
-                                            {channel.canOpen ? (
-                                                <Link
-                                                    href={showChannel.url({
-                                                        workspace:
-                                                            workspaceSlug,
-                                                        channel: channel.id,
-                                                    })}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {channel.name}
-                                                </Link>
-                                            ) : (
-                                                <span className="font-medium">
-                                                    {channel.name}
-                                                </span>
-                                            )}
-                                            {channel.archivedAt !== null && (
-                                                <span className="rounded-full border px-1.5 text-[10px]">
-                                                    {t(
-                                                        'settings.channels.archived',
-                                                    )}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {channel.topic && (
-                                            <p className="truncate text-xs text-muted-foreground">
-                                                {channel.topic}
-                                            </p>
+                                        </span>
+                                        {channel.ticketCount > 0 && (
+                                            <span className="rounded border px-1.5 py-0.5">
+                                                {tChoice(
+                                                    'settings.channels.tickets',
+                                                    channel.ticketCount,
+                                                )}
+                                            </span>
                                         )}
-                                    </td>
+                                        {channel.linkCount > 0 && (
+                                            <span className="rounded border px-1.5 py-0.5">
+                                                {tChoice(
+                                                    'settings.channels.links',
+                                                    channel.linkCount,
+                                                )}
+                                            </span>
+                                        )}
+                                        {channel.webhookCount > 0 && (
+                                            <span className="rounded border px-1.5 py-0.5">
+                                                {tChoice(
+                                                    'settings.channels.webhooks',
+                                                    channel.webhookCount,
+                                                )}
+                                            </span>
+                                        )}
+                                    </>
+                                );
 
-                                    <td className="px-3 py-2 text-sm tabular-nums">
-                                        {channel.memberCount}
-                                    </td>
-                                    <td className="px-3 py-2 text-sm tabular-nums">
-                                        {channel.messageCount}
-                                    </td>
+                                const created = channel.createdAt
+                                    ? formats.shortDate.format(
+                                          new Date(channel.createdAt),
+                                      )
+                                    : null;
 
-                                    {/*
+                                return (
+                                    <tr
+                                        key={channel.id}
+                                        className={cn(
+                                            'border-t',
+                                            // Dimmed rather than hidden: it is
+                                            // still a channel, and everything the
+                                            // row says about it is still true.
+                                            channel.archivedAt !== null &&
+                                                'text-muted-foreground',
+                                        )}
+                                    >
+                                        <td className="px-3 py-2">
+                                            <div className="flex items-center gap-1.5">
+                                                {channel.type === 'private' ? (
+                                                    <Lock className="size-3.5 shrink-0 opacity-60" />
+                                                ) : (
+                                                    <Hash className="size-3.5 shrink-0 opacity-60" />
+                                                )}
+                                                {channel.canOpen ? (
+                                                    <Link
+                                                        href={showChannel.url({
+                                                            workspace:
+                                                                workspaceSlug,
+                                                            channel: channel.id,
+                                                        })}
+                                                        className="font-medium hover:underline"
+                                                    >
+                                                        {channel.name}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="font-medium">
+                                                        {channel.name}
+                                                    </span>
+                                                )}
+                                                {channel.archivedAt !==
+                                                    null && (
+                                                    <span className="rounded-full border px-1.5 text-[10px]">
+                                                        {t(
+                                                            'settings.channels.archived',
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {channel.topic && (
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {channel.topic}
+                                                </p>
+                                            )}
+
+                                            {/* What the two columns that stepped
+                                            aside were carrying. */}
+                                            <div className="mt-1 flex flex-wrap gap-1 text-xs text-muted-foreground lg:hidden">
+                                                {settings}
+                                            </div>
+                                            {created && (
+                                                <p className="mt-1 text-xs text-muted-foreground lg:hidden">
+                                                    {t(
+                                                        'settings.channels.column_created',
+                                                    )}{' '}
+                                                    {created}
+                                                    {channel.createdBy &&
+                                                        ` · ${channel.createdBy}`}
+                                                </p>
+                                            )}
+                                        </td>
+
+                                        <td className="px-3 py-2 text-sm tabular-nums">
+                                            {channel.memberCount}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm tabular-nums">
+                                            {channel.messageCount}
+                                        </td>
+
+                                        {/*
                                         The things that are true about a channel
                                         but not worth a column each: who may
                                         post, whether it keeps tickets, what
                                         hangs off it.
                                     */}
-                                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                                        <div className="flex flex-wrap gap-1">
-                                            <span className="rounded border px-1.5 py-0.5">
-                                                {t(
-                                                    POSTING_POLICY_KEY[
-                                                        channel.postingPolicy
-                                                    ] ??
-                                                        'settings.channels.unknown',
-                                                )}
-                                            </span>
-                                            {channel.ticketCount > 0 && (
-                                                <span className="rounded border px-1.5 py-0.5">
-                                                    {tChoice(
-                                                        'settings.channels.tickets',
-                                                        channel.ticketCount,
-                                                    )}
-                                                </span>
-                                            )}
-                                            {channel.linkCount > 0 && (
-                                                <span className="rounded border px-1.5 py-0.5">
-                                                    {tChoice(
-                                                        'settings.channels.links',
-                                                        channel.linkCount,
-                                                    )}
-                                                </span>
-                                            )}
-                                            {channel.webhookCount > 0 && (
-                                                <span className="rounded border px-1.5 py-0.5">
-                                                    {tChoice(
-                                                        'settings.channels.webhooks',
-                                                        channel.webhookCount,
-                                                    )}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
+                                        <td className="hidden px-3 py-2 text-xs text-muted-foreground lg:table-cell">
+                                            <div className="flex flex-wrap gap-1">
+                                                {settings}
+                                            </div>
+                                        </td>
 
-                                    <td className="px-3 py-2 text-sm whitespace-nowrap">
-                                        {channel.lastMessageAt
-                                            ? formats.shortDateTime.format(
-                                                  new Date(
-                                                      channel.lastMessageAt,
-                                                  ),
-                                              )
-                                            : t('settings.channels.never')}
-                                    </td>
+                                        <td className="px-3 py-2 text-sm whitespace-nowrap">
+                                            {channel.lastMessageAt
+                                                ? formats.shortDateTime.format(
+                                                      new Date(
+                                                          channel.lastMessageAt,
+                                                      ),
+                                                  )
+                                                : t('settings.channels.never')}
+                                        </td>
 
-                                    <td className="px-3 py-2 text-sm whitespace-nowrap">
-                                        {channel.createdAt
-                                            ? formats.shortDate.format(
-                                                  new Date(channel.createdAt),
-                                              )
-                                            : '—'}
-                                        {channel.createdBy && (
-                                            <p className="text-xs text-muted-foreground">
-                                                {channel.createdBy}
-                                            </p>
-                                        )}
-                                    </td>
+                                        <td className="hidden px-3 py-2 text-sm whitespace-nowrap lg:table-cell">
+                                            {created ?? '—'}
+                                            {channel.createdBy && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {channel.createdBy}
+                                                </p>
+                                            )}
+                                        </td>
 
-                                    <td className="px-3 py-2 text-right">
-                                        {channel.canArchive && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="gap-1.5"
-                                                onClick={() =>
-                                                    router.post(
-                                                        archive.url({
-                                                            workspace:
-                                                                workspaceSlug,
-                                                            channel: channel.id,
-                                                        }),
-                                                        {},
-                                                        {
-                                                            preserveScroll: true,
-                                                        },
-                                                    )
-                                                }
-                                            >
-                                                {channel.archivedAt !== null ? (
-                                                    <>
-                                                        <ArchiveRestore className="size-3.5" />
-                                                        {t(
-                                                            'settings.channels.unarchive',
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Archive className="size-3.5" />
-                                                        {t(
-                                                            'settings.channels.archive',
-                                                        )}
-                                                    </>
-                                                )}
-                                            </Button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        <td className="px-3 py-2 text-right">
+                                            {channel.canArchive && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="gap-1.5"
+                                                    onClick={() =>
+                                                        router.post(
+                                                            archive.url({
+                                                                workspace:
+                                                                    workspaceSlug,
+                                                                channel:
+                                                                    channel.id,
+                                                            }),
+                                                            {},
+                                                            {
+                                                                preserveScroll: true,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    {channel.archivedAt !==
+                                                    null ? (
+                                                        <>
+                                                            <ArchiveRestore className="size-3.5" />
+                                                            {t(
+                                                                'settings.channels.unarchive',
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Archive className="size-3.5" />
+                                                            {t(
+                                                                'settings.channels.archive',
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
 
                             {rows.length === 0 && (
                                 <tr className="border-t">
