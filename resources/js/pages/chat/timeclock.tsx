@@ -5,6 +5,7 @@ import {
     Clock,
     Pencil,
     Play,
+    Plus,
     Square,
     Trash2,
 } from 'lucide-react';
@@ -54,7 +55,7 @@ import {
     index as timeclockIndex,
     preference,
 } from '@/routes/chat/timeclock';
-import { destroy, update } from '@/routes/chat/timeclock/entries';
+import { destroy, store, update } from '@/routes/chat/timeclock/entries';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -167,6 +168,7 @@ export default function TimeclockPage({
     const [broadcastOpen, setBroadcastOpen] = useState(false);
 
     const [clockingOut, setClockingOut] = useState(false);
+    const [adding, setAdding] = useState(false);
     const [editing, setEditing] = useState<Entry | null>(null);
     const [removing, setRemoving] = useState<Entry | null>(null);
 
@@ -180,6 +182,16 @@ export default function TimeclockPage({
     // week's own maximum rather than a fixed eight hours: a week of four-hour
     // days should still look like a week, not like a row of stubs.
     const busiest = Math.max(...week.days.map((day) => day.seconds), 1);
+
+    /*
+     * The day a hand-written stretch starts out on: today while today is in
+     * view, and otherwise the Monday of the week being read. Somebody who
+     * walked back to March to fill in a missing afternoon is filling in one in
+     * March, and offering them today would be offering the one week they can
+     * already see is complete.
+     */
+    const defaultDate =
+        today >= week.from && today <= week.until ? today : week.from;
 
     const goToWeek = (weeks: number) =>
         router.get(
@@ -377,6 +389,23 @@ export default function TimeclockPage({
                         </section>
 
                         <section className="space-y-2">
+                            {/*
+                                Adding sits above the stretches rather than
+                                beside the clock: it is a thing you do *to* this
+                                list, and next to the button that starts a shift
+                                it would read as a second way to clock in.
+                            */}
+                            <div className="flex justify-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setAdding(true)}
+                                >
+                                    <Plus className="size-4" />
+                                    {t('timeclock.add')}
+                                </Button>
+                            </div>
+
                             {week.entries.length === 0 && (
                                 <p className="text-sm text-muted-foreground">
                                     {t('timeclock.empty')}
@@ -535,12 +564,22 @@ export default function TimeclockPage({
                 fresh form rather than handing the previous one a new subject.
             */}
             {editing !== null && (
-                <EditDialog
+                <EntryDialog
                     key={editing.id}
                     entry={editing}
                     workspaceSlug={workspace.slug}
                     errors={errors}
                     onClose={() => setEditing(null)}
+                />
+            )}
+
+            {adding && (
+                <EntryDialog
+                    entry={null}
+                    date={defaultDate}
+                    workspaceSlug={workspace.slug}
+                    errors={errors}
+                    onClose={() => setAdding(false)}
                 />
             )}
 
@@ -641,7 +680,12 @@ export default function TimeclockPage({
 }
 
 /**
- * Correcting one stretch: a date and two times.
+ * One stretch: a date and two times.
+ *
+ * The same form whether it is being corrected or written down for the first
+ * time, because it asks the same three questions — a separate "add" form would
+ * be the same three fields and a second place for the midnight rule to be got
+ * wrong. What differs is where it posts and what it starts out holding.
  *
  * One date rather than two, even though a night shift ends on the next day. The
  * date is the day the shift *belongs* to — which is the same rule the totals
@@ -649,13 +693,17 @@ export default function TimeclockPage({
  * went past midnight" is said. Asking for a second date would be asking people
  * to state a thing the form can work out.
  */
-function EditDialog({
+function EntryDialog({
     entry,
+    date: initialDate,
     workspaceSlug,
     errors,
     onClose,
 }: {
-    entry: Entry;
+    /** Null while a stretch is being added: there is nothing to correct yet. */
+    entry: Entry | null;
+    /** The day a new stretch starts out on; ignored when correcting one. */
+    date?: string;
     workspaceSlug: string;
     errors: Record<string, string>;
     onClose: () => void;
@@ -669,17 +717,55 @@ function EditDialog({
      * both a render too late and a form that would remember the last
      * correction when the next row is opened.
      */
-    const [date, setDate] = useState(entry.date);
-    const [startedAt, setStartedAt] = useState(entry.startedTime);
-    const [endedAt, setEndedAt] = useState(entry.endedTime ?? '');
+    const [date, setDate] = useState(entry?.date ?? initialDate ?? '');
+    const [startedAt, setStartedAt] = useState(entry?.startedTime ?? '');
+    /*
+     * Empty for a new stretch, and it stays required: the server refuses one
+     * without an end, because a shift that is still running is the clock's to
+     * say and not this form's.
+     */
+    const [endedAt, setEndedAt] = useState(entry?.endedTime ?? '');
+
+    const save = () => {
+        const times = {
+            date,
+            startedAt,
+            endedAt: endedAt === '' ? null : endedAt,
+        };
+
+        if (entry === null) {
+            router.post(store.url(workspaceSlug), times, {
+                preserveScroll: true,
+                onSuccess: onClose,
+            });
+
+            return;
+        }
+
+        router.patch(
+            update.url({ workspace: workspaceSlug, timeEntry: entry.id }),
+            times,
+            { preserveScroll: true, onSuccess: onClose },
+        );
+    };
 
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{t('timeclock.edit_title')}</DialogTitle>
+                    <DialogTitle>
+                        {t(
+                            entry === null
+                                ? 'timeclock.add_title'
+                                : 'timeclock.edit_title',
+                        )}
+                    </DialogTitle>
                     <DialogDescription>
-                        {t('timeclock.edit_explanation')}
+                        {t(
+                            entry === null
+                                ? 'timeclock.add_explanation'
+                                : 'timeclock.edit_explanation',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -724,36 +810,20 @@ function EditDialog({
                     </div>
                 </div>
 
-                <InputError message={errors.startedAt ?? errors.endedAt} />
+                <InputError
+                    message={errors.startedAt ?? errors.endedAt ?? errors.date}
+                />
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>
                         {t('timeclock.cancel')}
                     </Button>
-                    <Button
-                        onClick={() => {
-                            if (entry === null) {
-                                return;
-                            }
-
-                            router.patch(
-                                update.url({
-                                    workspace: workspaceSlug,
-                                    timeEntry: entry.id,
-                                }),
-                                {
-                                    date,
-                                    startedAt,
-                                    endedAt: endedAt === '' ? null : endedAt,
-                                },
-                                {
-                                    preserveScroll: true,
-                                    onSuccess: onClose,
-                                },
-                            );
-                        }}
-                    >
-                        {t('timeclock.save')}
+                    <Button onClick={save}>
+                        {t(
+                            entry === null
+                                ? 'timeclock.add_save'
+                                : 'timeclock.save',
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>
