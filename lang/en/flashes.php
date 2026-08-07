@@ -119,6 +119,7 @@ return [
         'clocked_in' => 'You are clocked in.',
         'clocked_out' => 'Clocked out after :duration.',
         'not_clocked_in' => 'You were not clocked in.',
+        'added' => 'The stretch has been added.',
         'adjusted' => 'The stretch has been adjusted.',
         'removed' => 'The stretch has been removed.',
     ],

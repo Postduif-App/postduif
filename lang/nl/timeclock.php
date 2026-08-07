@@ -45,8 +45,13 @@ return [
     'corrected' => 'bijgesteld',
     'over_limit' => 'Langer dan :hours uur — er telt :hours uur mee. Klopt dat niet, pas de tijden aan.',
 
-    'empty' => 'Deze week staat er nog niets. Klokken doe je vanuit het menu onder je naam.',
+    'empty' => 'Deze week staat er nog niets. Klokken doe je vanuit het menu onder je naam, en een vergeten dag vul je hierboven zelf in.',
     'no_hours_yet' => '—',
+
+    'add' => 'Periode toevoegen',
+    'add_title' => 'Periode toevoegen',
+    'add_explanation' => 'Voor een dag die je niet geklokt hebt. De tijden zoals ze op jouw klok stonden; werkte je door na middernacht, vul dan de begindatum in en een eindtijd die eerder ligt.',
+    'add_save' => 'Toevoegen',
 
     'edit' => 'Aanpassen',
     'edit_title' => 'Periode aanpassen',

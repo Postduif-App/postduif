@@ -122,6 +122,7 @@ return [
         'clocked_in' => 'Je staat ingeklokt.',
         'clocked_out' => 'Uitgeklokt na :duration.',
         'not_clocked_in' => 'Je stond niet ingeklokt.',
+        'added' => 'De periode is toegevoegd.',
         'adjusted' => 'De periode is bijgesteld.',
         'removed' => 'De periode is verwijderd.',
     ],

@@ -45,8 +45,13 @@ return [
     'corrected' => 'adjusted',
     'over_limit' => 'Longer than :hours hours — :hours hours are counted. If that is wrong, adjust the times.',
 
-    'empty' => 'Nothing here this week yet. You clock in from the menu under your name.',
+    'empty' => 'Nothing here this week yet. You clock in from the menu under your name, and a forgotten day you type in above yourself.',
     'no_hours_yet' => '—',
+
+    'add' => 'Add a stretch',
+    'add_title' => 'Add a stretch',
+    'add_explanation' => 'For a day you did not clock. The times as they read on your own clock; if you worked past midnight, use the day it began and an end time that is earlier than the start.',
+    'add_save' => 'Add',
 
     'edit' => 'Adjust',
     'edit_title' => 'Adjust this stretch',
