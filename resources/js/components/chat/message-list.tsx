@@ -49,6 +49,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 import { useConfettiOnView } from '@/hooks/use-confetti-on-view';
 import { useFormats } from '@/hooks/use-formats';
 import { useHoverShortcuts } from '@/hooks/use-hover-shortcuts';
@@ -427,9 +428,16 @@ function MessageRow({
     bookmarked = false,
     onToggleBookmark,
     onForward,
+    active,
+    onActivate,
 }: {
     message: ChatMessage;
     grouped: boolean;
+    /** Whether this is the message a touch reader tapped, and so the one
+     *  showing its actions. Always false where a pointer can hover. */
+    active: boolean;
+    /** Picks a message, or clears the choice when handed null. */
+    onActivate: (id: string | null) => void;
     /** Which conversation this row is in, so a link to it can be built. */
     channelId: number;
     workspace: ChatWorkspace;
@@ -475,6 +483,12 @@ function MessageRow({
     const [confirming, setConfirming] = useState(false);
     const [editing, setEditing] = useState(false);
     const [hovered, setHovered] = useState(false);
+
+    /*
+     * Whether the actions have to be asked for rather than hovered into view.
+     * See use-coarse-pointer: the question is about the input, not the width.
+     */
+    const coarse = useCoarsePointer();
 
     /**
      * The author's status as it is right now, looked up in the channel's member
@@ -561,10 +575,45 @@ function MessageRow({
             id={`message-${message.id}`}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            /*
+                Tapping a message is what asks for its actions, and tapping it
+                again puts them away. Only where there is no pointer to hover
+                with — with a mouse this would fight the hover it duplicates,
+                and a click that leaves a bar standing behind the cursor is not
+                what anybody meant by clicking on a sentence.
+            */
+            onClick={
+                coarse
+                    ? (event) => {
+                          /*
+                           * A tap on something that already does something —
+                           * a link, a button, the field being edited — is that
+                           * thing being used, not a request for the toolbar.
+                           */
+                          if (
+                              (event.target as HTMLElement).closest(
+                                  'a,button,input,textarea,[role="button"]',
+                              )
+                          ) {
+                              return;
+                          }
+
+                          onActivate(active ? null : message.id);
+                      }
+                    : undefined
+            }
             className={cn(
                 'group relative flex gap-3 rounded-md px-3 transition-colors hover:bg-muted/40',
                 grouped ? 'py-0.5' : 'mt-3 py-1',
                 message.pending && 'opacity-60',
+                /*
+                    The picked message stays lit while its bar is up — the same
+                    tint hovering gives it with a mouse, so it is clear which
+                    message the buttons belong to. Nothing about the row's size
+                    changes: a message that grew when you touched it would push
+                    the whole conversation below it down.
+                */
+                active && 'bg-muted/40',
             )}
         >
             {grouped ? (
@@ -826,7 +875,7 @@ function MessageRow({
                 on every message, so the toolbar always has something in it.
             */}
             {!message.pending && !deleted && (
-                <MessageToolbar>
+                <MessageToolbar open={active}>
                     {onReact && (
                         <ReactionPicker
                             onSelect={(emoji) => {
@@ -1119,6 +1168,66 @@ export function MessageList({
     const wasAtBottom = useRef(true);
     const { t } = useTranslate();
 
+    /**
+     * The message a touch reader tapped, and so the only one showing its
+     * actions.
+     *
+     * Held by the list rather than by each row, so picking a second message
+     * puts the first one's bar away — two bars open at once on a screen this
+     * narrow is most of the conversation covered.
+     */
+    const [active, setActive] = useState<string | null>(null);
+
+    /**
+     * Touching anything outside the picked message puts its bar away.
+     *
+     * Tapping the same message again would be the obvious way out, and it is
+     * not enough on its own: the bar is drawn over the message's own top edge,
+     * so on a short message the second tap lands on the bar rather than on the
+     * words. Scrolling on, or reaching for the message field, has to be able to
+     * dismiss it too — otherwise the bar follows you down the conversation.
+     *
+     * pointerdown rather than click, so it settles before the row's own handler
+     * runs: tapping a second message clears the first and then picks that one,
+     * in that order.
+     */
+    useEffect(() => {
+        if (active === null) {
+            return;
+        }
+
+        const dismiss = (event: PointerEvent) => {
+            const target = event.target as HTMLElement | null;
+
+            if (target === null) {
+                return;
+            }
+
+            /*
+             * What a button in the bar opened does not count as "outside" it.
+             * The emoji list and the delete question are drawn in a portal at
+             * the end of the body rather than inside the row, so going by the
+             * DOM alone would have the first tap on an emoji put the bar away
+             * — taking the list with it.
+             */
+            if (
+                target.closest(
+                    '[data-radix-popper-content-wrapper],[role="dialog"],[role="menu"]',
+                )
+            ) {
+                return;
+            }
+
+            if (!target.closest(`#message-${CSS.escape(active)}`)) {
+                setActive(null);
+            }
+        };
+
+        document.addEventListener('pointerdown', dismiss);
+
+        return () => document.removeEventListener('pointerdown', dismiss);
+    }, [active]);
+
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ block: 'end' });
     }, [messages.length]);
@@ -1229,6 +1338,8 @@ export function MessageList({
                                 onQuote={onQuote}
                                 onPromote={onPromote}
                                 onPin={onPin}
+                                active={active === message.id}
+                                onActivate={setActive}
                             />
                         </div>
                     );

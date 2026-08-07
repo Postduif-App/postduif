@@ -19,18 +19,43 @@ import { cn } from '@/lib/utils';
  * client: the bar then overlaps the whitespace above rather than covering the
  * first line of what you are reading.
  */
-export function MessageToolbar({ children }: PropsWithChildren) {
+export function MessageToolbar({
+    open = false,
+    children,
+}: PropsWithChildren<{
+    /**
+     * Shown regardless of the pointer, because the message was picked.
+     *
+     * This is what a device that cannot hover uses instead: tapping a message
+     * asks for its actions. It used to stand open permanently there — reacting
+     * and replying have to exist on a phone — but a bar that is always up
+     * covers the line above it on every message on the screen at once.
+     */
+    open?: boolean;
+}>) {
     return (
         /*
-         * Always there on a device that cannot hover.
+         * pointer-events follow the opacity rather than staying on.
          *
-         * Hiding it until the pointer arrives is right with a mouse and quietly
-         * disastrous on a phone: there is no hover, so reacting, replying,
-         * saving and deleting a message simply do not exist. The media query
-         * asks about the input rather than the width, which is the actual
-         * question — a touchscreen laptop is narrow about neither.
+         * An invisible bar that still takes clicks is worse on a touchscreen
+         * than a visible one: the top right corner of every message would
+         * quietly swallow the tap meant for the words underneath it.
          */
-        <div className="absolute -top-2.5 right-2 flex items-center divide-x overflow-hidden rounded-md border bg-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100">
+        <div
+            className={cn(
+                'absolute -top-2.5 right-2 flex items-center divide-x overflow-hidden rounded-md border bg-background opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100 has-[[data-state=open]]:pointer-events-auto has-[[data-state=open]]:opacity-100',
+                /*
+                 * Picked or hovered, the bar is in exactly the same place and
+                 * takes no room of its own: it fades in over the whitespace
+                 * above the message, and the conversation underneath does not
+                 * move a pixel. Anything that opened a gap for it would shift
+                 * every message below the one you touched.
+                 */
+                open
+                    ? 'pointer-events-auto opacity-100'
+                    : 'pointer-events-none',
+            )}
+        >
             {children}
         </div>
     );

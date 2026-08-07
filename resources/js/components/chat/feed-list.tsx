@@ -23,6 +23,7 @@ import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { SecretCard } from '@/components/chat/secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
 import { useTranslate } from '@/hooks/use-translate';
@@ -179,6 +180,15 @@ function FeedItem({
     const formats = useFormats();
     const { t, tChoice } = useTranslate();
     const [editing, setEditing] = useState(false);
+
+    /*
+     * Whether this card was tapped, and so is showing its actions. Only ever
+     * true where there is no pointer to hover with — see use-coarse-pointer,
+     * and the same rule in the message list.
+     */
+    const coarse = useCoarsePointer();
+    const [active, setActive] = useState(false);
+
     const deleted = message.deletedAt !== null;
     const canEdit =
         !deleted &&
@@ -200,6 +210,23 @@ function FeedItem({
     return (
         <article
             id={`message-${message.id}`}
+            // Tapping the card asks for its actions, tapping it again puts them
+            // away — the message list does the same, for the same reason.
+            onClick={
+                coarse
+                    ? (event) => {
+                          if (
+                              (event.target as HTMLElement).closest(
+                                  'a,button,input,textarea,[role="button"]',
+                              )
+                          ) {
+                              return;
+                          }
+
+                          setActive((current) => !current);
+                      }
+                    : undefined
+            }
             className={cn(
                 'group relative rounded-xl border bg-card p-5 transition-shadow',
                 message.pinnedAt && 'border-primary/40',
@@ -346,7 +373,7 @@ function FeedItem({
             )}
 
             {!message.pending && !deleted && (onReact || onPin || canEdit) && (
-                <MessageToolbar>
+                <MessageToolbar open={active}>
                     {onReact && (
                         <ReactionPicker
                             onSelect={(emoji) => {
