@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Timeclock\AdjustShift;
+use App\Actions\Timeclock\RecordShift;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Workspace;
@@ -11,15 +12,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * Putting a recorded stretch right, or taking one away.
+ * Writing a stretch down by hand, putting one right, or taking one away.
  *
  * Only ever your own — TimeEntryPolicy says so, and it makes no exception for
  * whoever manages the workspace. A colleague with the right to read your hours
  * still cannot write them.
  *
  * The workspace is in the path because the whole group is — it guards the
- * feature — but nothing here reads it: a stretch is judged by whose it is, not
- * by where it was requested from.
+ * feature — and an existing stretch is judged by whose it is rather than by
+ * where it was requested from. Only store() reads the workspace, because a
+ * stretch that does not exist yet has nobody to be asked about.
  *
  * The times arrive as wall clock readings in the member's own zone, because
  * that is what they typed: somebody correcting Tuesday means "half nine" on the
@@ -28,6 +30,44 @@ use Illuminate\Support\Carbon;
  */
 class TimeEntryController extends Controller
 {
+    /**
+     * Writing down a stretch by hand.
+     *
+     * Judged against the workspace rather than against a stretch, because there
+     * is no stretch yet to ask about — WorkspacePolicy::clock, the same right
+     * that lets somebody press the button, since typing in a day you worked is
+     * not a bigger claim than clocking one.
+     *
+     * Both ends required, unlike a correction: see RecordShift for why an open
+     * shift is the clock's to say and not the form's.
+     */
+    public function store(Request $request, Workspace $workspace, RecordShift $recordShift): RedirectResponse
+    {
+        $this->authorize('clock', $workspace);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'startedAt' => ['required', 'date_format:H:i'],
+            'endedAt' => ['required', 'date_format:H:i'],
+        ]);
+
+        /** @var User $member */
+        $member = $request->user();
+
+        $startedAt = $this->moment($member, $validated['date'], $validated['startedAt']);
+        $endedAt = $this->moment($member, $validated['date'], $validated['endedAt']);
+
+        // Past midnight, exactly as a correction reads it — one date and two
+        // times is the whole vocabulary the form has for a night shift.
+        if ($endedAt->lessThanOrEqualTo($startedAt)) {
+            $endedAt->addDay();
+        }
+
+        $recordShift->handle($member, $workspace, $startedAt, $endedAt);
+
+        return back()->with('status', __('flashes.timeclock.added'));
+    }
+
     public function update(Request $request, Workspace $workspace, TimeEntry $timeEntry, AdjustShift $adjustShift): RedirectResponse
     {
         $this->authorize('update', $timeEntry);

@@ -254,6 +254,15 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('timeclock.preference');
 
                 /*
+                 * A stretch the clock never saw, typed in afterwards. Its own
+                 * literal segment rather than the collection address, because
+                 * the two above already spend POST on the buttons — and
+                 * "periode" is what the screen calls the thing being added.
+                 */
+                Route::post('tijdregistratie/periode', [TimeEntryController::class, 'store'])
+                    ->name('timeclock.entries.store');
+
+                /*
                  * Correcting what was recorded. Judged by TimeEntryPolicy,
                  * which only ever says yes to the person the stretch is about —
                  * so an id from a colleague's week is refused however senior
