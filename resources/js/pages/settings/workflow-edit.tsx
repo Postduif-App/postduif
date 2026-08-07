@@ -1481,8 +1481,17 @@ export default function WorkflowEdit({
                 }
             >
                 <div className="space-y-4">
+                    {/*
+                        `content-start` on both columns. Side by side they are
+                        made the same height, and a grid whose rows are auto
+                        stretches them to fill whatever height it is given — so
+                        the shorter column drifted its label, its box and its
+                        hint apart to match the taller one, leaving a hole under
+                        "Naam" where the avatar sits on the other side. The rows
+                        stay packed at the top instead.
+                    */}
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`name-${workflow.id}`}>
                                 {t('settings.workflows.name')}
                             </Label>
@@ -1498,7 +1507,7 @@ export default function WorkflowEdit({
                             </p>
                         </div>
 
-                        <div className="grid gap-1">
+                        <div className="grid content-start gap-1">
                             <Label htmlFor={`bot-name-${workflow.id}`}>
                                 {t('settings.workflows.bot_name')}
                             </Label>
