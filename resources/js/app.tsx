@@ -18,7 +18,10 @@ import { initializeWorkspaceTheme } from '@/lib/workspace-theme';
  * so changing it means a rebuild rather than a restart. Empty in development,
  * where Reverb has a port to itself and needs no prefix at all.
  */
-const reverbPath = (import.meta.env.VITE_REVERB_PATH ?? '').replace(/^\/+|\/+$/g, '');
+const reverbPath = (import.meta.env.VITE_REVERB_PATH ?? '').replace(
+    /^\/+|\/+$/g,
+    '',
+);
 
 configureEcho({
     broadcaster: 'reverb',
@@ -46,113 +49,135 @@ function WideAuthLayout({ children }: PropsWithChildren) {
     return <AuthLayout wide>{children}</AuthLayout>;
 }
 
-createInertiaApp({
-    title: (title) => (title ? `${title} - ${appName}` : appName),
-    layout: (name) => {
-        switch (true) {
-            case name === 'welcome':
-                return null;
-            /*
-             * Setting up a platform that has nothing in it yet. No shell at
-             * all: the auth card is built for somebody arriving at an
-             * application that exists, and this screen has to explain what is
-             * about to exist beside the form that makes it. It brings its own
-             * two halves — see pages/install/welcome.
-             */
-            case name === 'install/welcome':
-                return null;
-            // The public site brings its own shell. Its own rather than a
-            // variation on the app's: the two have different jobs, and sharing
-            // one would make every change to the app's chrome a change to the
-            // marketing site.
-            case name.startsWith('marketing/'):
-                return MarketingLayout;
-            /*
-             * The chat page owns the full viewport and brings its own chrome,
-             * so its shell adds no frame at all — only the banner that warns
-             * every chat screen at once when the socket they all live on is
-             * gone.
-             */
-            case name.startsWith('chat/'):
-                return ChatLayout;
-            case name.startsWith('auth/'):
-                return AuthLayout;
-            // Making your first workspace. The auth shell rather than the chat
-            // one: there is no sidebar to draw, because there is nothing yet to
-            // put in it.
-            case name.startsWith('workspaces/'):
-                return AuthLayout;
-            // A download link is followed by somebody who may have no account
-            // here at all, which is exactly who the auth shell is built for:
-            // one card, no navigation, nothing to sign in to.
-            case name.startsWith('transfers/'):
-                return AuthLayout;
-            /*
-             * The requester reading what came in. Wider than the rest of this
-             * shell, because a decrypted key wrapped over four lines in a
-             * 384px card is unusable — the same exception the member list gets
-             * in settings.
-             */
-            case name === 'secrets/answers':
-                return WideAuthLayout;
-            // Answering a request for secrets is a single form for one person,
-            // often a guest who never opens the chat. The same one-card shell
-            // the download page uses, for the same reason.
-            case name.startsWith('secrets/'):
-                return AuthLayout;
-            /*
-             * Filling in a form, through either door. The public one is
-             * followed by somebody with no account at all — the same case the
-             * download page is built for — and the member's page is the same
-             * screen with a name attached, so it gets the same shell rather
-             * than a second one that would have to be kept in step.
-             */
-            case name.startsWith('forms/'):
-                return AuthLayout;
-            /*
-             * The two settings pages that manage a table rather than a form, so
-             * they get the room a table needs: the member list, and the channel
-             * table whose counts and typed-in topics do not fit a reading
-             * column either. Every other settings page stays at reading width.
-             */
-            case name === 'settings/members':
-            case name === 'settings/workspace-channels':
-                return WideSettingsLayout;
-            /*
-             * The workflow builder and its run history, for the same reason as
-             * the member list: a canvas with a panel beside it is not a thing
-             * that fits a reading column, and a run's context is JSON that has
-             * to be readable rather than pretty.
-             *
-             * The builder is the one that needs it most — it draws lanes inside
-             * forks, and every level of nesting eats into the width the blocks
-             * have left.
-             */
-            case name === 'settings/workflows':
-            case name === 'settings/workflow-edit':
-            case name === 'settings/workflow-runs':
-                return WideSettingsLayout;
-            // Settings bring their own full-height shell, in the same idiom as
-            // the chat: no second application frame around it.
-            case name.startsWith('settings/'):
-                return SettingsLayout;
-            default:
-                return AppLayout;
-        }
-    },
-    strictMode: true,
-    withApp(app) {
-        return (
-            <TooltipProvider delayDuration={0}>
-                {app}
-                <Toaster />
-            </TooltipProvider>
-        );
-    },
-    progress: {
-        color: '#4B5563',
-    },
-});
+/*
+ * Mounted once per document, even when this module runs twice.
+ *
+ * See the note at the foot of this file: a hot update to anything this module
+ * imports directly re-executes the whole of it, and the createInertiaApp()
+ * below would then mount a second React root on the same #app — which React
+ * reports as "you are calling createRoot() on a container that has already been
+ * passed to createRoot()", and which later surfaces as a removeChild failure
+ * nowhere near its cause. The reload underneath cleans that up a moment later,
+ * but a moment is long enough to break the page you are looking at.
+ *
+ * import.meta.hot.data is the bag Vite keeps across re-executions of one
+ * module, which is exactly the lifetime this question has. It does not exist in
+ * a built bundle, so there the condition is simply true and this reads as an
+ * ordinary call.
+ */
+if (import.meta.hot?.data.mounted !== true) {
+    if (import.meta.hot) {
+        import.meta.hot.data.mounted = true;
+    }
+
+    createInertiaApp({
+        title: (title) => (title ? `${title} - ${appName}` : appName),
+        layout: (name) => {
+            switch (true) {
+                case name === 'welcome':
+                    return null;
+                /*
+                 * Setting up a platform that has nothing in it yet. No shell at
+                 * all: the auth card is built for somebody arriving at an
+                 * application that exists, and this screen has to explain what is
+                 * about to exist beside the form that makes it. It brings its own
+                 * two halves — see pages/install/welcome.
+                 */
+                case name === 'install/welcome':
+                    return null;
+                // The public site brings its own shell. Its own rather than a
+                // variation on the app's: the two have different jobs, and sharing
+                // one would make every change to the app's chrome a change to the
+                // marketing site.
+                case name.startsWith('marketing/'):
+                    return MarketingLayout;
+                /*
+                 * The chat page owns the full viewport and brings its own chrome,
+                 * so its shell adds no frame at all — only the banner that warns
+                 * every chat screen at once when the socket they all live on is
+                 * gone.
+                 */
+                case name.startsWith('chat/'):
+                    return ChatLayout;
+                case name.startsWith('auth/'):
+                    return AuthLayout;
+                // Making your first workspace. The auth shell rather than the chat
+                // one: there is no sidebar to draw, because there is nothing yet to
+                // put in it.
+                case name.startsWith('workspaces/'):
+                    return AuthLayout;
+                // A download link is followed by somebody who may have no account
+                // here at all, which is exactly who the auth shell is built for:
+                // one card, no navigation, nothing to sign in to.
+                case name.startsWith('transfers/'):
+                    return AuthLayout;
+                /*
+                 * The requester reading what came in. Wider than the rest of this
+                 * shell, because a decrypted key wrapped over four lines in a
+                 * 384px card is unusable — the same exception the member list gets
+                 * in settings.
+                 */
+                case name === 'secrets/answers':
+                    return WideAuthLayout;
+                // Answering a request for secrets is a single form for one person,
+                // often a guest who never opens the chat. The same one-card shell
+                // the download page uses, for the same reason.
+                case name.startsWith('secrets/'):
+                    return AuthLayout;
+                /*
+                 * Filling in a form, through either door. The public one is
+                 * followed by somebody with no account at all — the same case the
+                 * download page is built for — and the member's page is the same
+                 * screen with a name attached, so it gets the same shell rather
+                 * than a second one that would have to be kept in step.
+                 */
+                case name.startsWith('forms/'):
+                    return AuthLayout;
+                /*
+                 * The two settings pages that manage a table rather than a form, so
+                 * they get the room a table needs: the member list, and the channel
+                 * table whose counts and typed-in topics do not fit a reading
+                 * column either. Every other settings page stays at reading width.
+                 */
+                case name === 'settings/members':
+                case name === 'settings/workspace-channels':
+                    return WideSettingsLayout;
+                /*
+                 * The workflow builder and its run history, for the same reason as
+                 * the member list: a canvas with a panel beside it is not a thing
+                 * that fits a reading column, and a run's context is JSON that has
+                 * to be readable rather than pretty.
+                 *
+                 * The builder is the one that needs it most — it draws lanes inside
+                 * forks, and every level of nesting eats into the width the blocks
+                 * have left.
+                 */
+                case name === 'settings/workflows':
+                case name === 'settings/workflow-edit':
+                case name === 'settings/workflow-runs':
+                    return WideSettingsLayout;
+                // Settings bring their own full-height shell, in the same idiom as
+                // the chat: no second application frame around it.
+                case name.startsWith('settings/'):
+                    return SettingsLayout;
+                default:
+                    return AppLayout;
+            }
+        },
+        strictMode: true,
+        withApp(app) {
+            return (
+                <TooltipProvider delayDuration={0}>
+                    {app}
+                    <Toaster />
+                </TooltipProvider>
+            );
+        },
+        progress: {
+            color: '#4B5563',
+        },
+    });
+}
 
 /**
  * A change to this file means a full page load, not a hot swap.
