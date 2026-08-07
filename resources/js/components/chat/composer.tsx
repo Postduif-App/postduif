@@ -901,7 +901,16 @@ export function Composer({
                         : undefined
                 }
                 className={cn(
-                    'flex items-end gap-2 border bg-background p-2 transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30',
+                    /*
+                        The buttons drop below the field on a phone.
+
+                        Side by side they are five boxes of 2.25rem that take
+                        their width before the field gets any, which on a 390px
+                        screen left a textarea about ten characters wide — the
+                        placeholder alone wrapped over five lines. Above sm
+                        there is room for one row and it stays one row.
+                    */
+                    'flex flex-col items-stretch gap-1 border bg-background p-2 transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 sm:flex-row sm:items-end sm:gap-2',
                     // The bar above and the field below read as one control.
                     quoting ||
                         sendAt !== null ||
@@ -1015,130 +1024,147 @@ export function Composer({
                             submit();
                         }
                     }}
-                    className="max-h-[200px] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed focus:outline-none disabled:opacity-60"
+                    className="max-h-[200px] min-w-0 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm leading-relaxed focus:outline-none disabled:opacity-60"
                 />
+
                 {/*
+                    A row of its own below sm, and nothing at all above it:
+                    `contents` dissolves this wrapper into the flex row, so the
+                    buttons keep the exact spacing they had beside the field.
+                */}
+                <div className="flex items-center justify-end gap-1 sm:contents">
+                    {/*
                     The same picker the message rows use, so what you last
                     reacted with is also what it offers here — one list of
                     recents rather than two that disagree.
                 */}
-                <ReactionPicker
-                    label="Emoji invoegen"
-                    triggerClassName="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
-                    onSelect={insertEmoji}
-                />
+                    <ReactionPicker
+                        label="Emoji invoegen"
+                        triggerClassName="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none"
+                        onSelect={insertEmoji}
+                    />
 
-                {canRecord && (
-                    <Button
-                        size="icon"
-                        variant={
-                            recorder.state === 'recording' ? 'default' : 'ghost'
-                        }
-                        disabled={disabled}
-                        onClick={async () => {
-                            if (recorder.state === 'recording') {
-                                const note = await recorder.stop();
-
-                                if (note) {
-                                    addFiles([note]);
-                                }
-
-                                return;
-                            }
-
-                            await recorder.start();
-                        }}
-                        title={
-                            recorder.state === 'recording'
-                                ? t('composer.recording.stop')
-                                : t('composer.recording.start')
-                        }
-                        aria-label={
-                            recorder.state === 'recording'
-                                ? t('composer.recording.stop')
-                                : t('composer.recording.start')
-                        }
-                    >
-                        {recorder.state === 'recording' ? (
-                            <Square className="size-4" />
-                        ) : (
-                            <Mic className="size-4" />
-                        )}
-                    </Button>
-                )}
-
-                {attachments && (
-                    <>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            multiple
-                            accept={attachments.accept}
-                            className="hidden"
-                            onChange={(event) => {
-                                addFiles(Array.from(event.target.files ?? []));
-
-                                // Cleared, or picking the same file twice in a
-                                // row fires no change event the second time.
-                                event.target.value = '';
-                            }}
-                        />
+                    {canRecord && (
                         <Button
                             size="icon"
-                            variant="ghost"
-                            disabled={disabled || sendAt !== null}
-                            onClick={() => fileInputRef.current?.click()}
-                            title={
-                                sendAt === null
-                                    ? t('composer.attachment.add')
-                                    : t(
-                                          'composer.attachment.not_when_scheduled',
-                                      )
+                            variant={
+                                recorder.state === 'recording'
+                                    ? 'default'
+                                    : 'ghost'
                             }
-                            aria-label={t('composer.attachment.add')}
+                            disabled={disabled}
+                            onClick={async () => {
+                                if (recorder.state === 'recording') {
+                                    const note = await recorder.stop();
+
+                                    if (note) {
+                                        addFiles([note]);
+                                    }
+
+                                    return;
+                                }
+
+                                await recorder.start();
+                            }}
+                            title={
+                                recorder.state === 'recording'
+                                    ? t('composer.recording.stop')
+                                    : t('composer.recording.start')
+                            }
+                            aria-label={
+                                recorder.state === 'recording'
+                                    ? t('composer.recording.stop')
+                                    : t('composer.recording.start')
+                            }
                         >
-                            <Paperclip className="size-4" />
+                            {recorder.state === 'recording' ? (
+                                <Square className="size-4" />
+                            ) : (
+                                <Mic className="size-4" />
+                            )}
                         </Button>
-                    </>
-                )}
-                {/*
+                    )}
+
+                    {attachments && (
+                        <>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                multiple
+                                accept={attachments.accept}
+                                className="hidden"
+                                onChange={(event) => {
+                                    addFiles(
+                                        Array.from(event.target.files ?? []),
+                                    );
+
+                                    // Cleared, or picking the same file twice in a
+                                    // row fires no change event the second time.
+                                    event.target.value = '';
+                                }}
+                            />
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                disabled={disabled || sendAt !== null}
+                                onClick={() => fileInputRef.current?.click()}
+                                title={
+                                    sendAt === null
+                                        ? t('composer.attachment.add')
+                                        : t(
+                                              'composer.attachment.not_when_scheduled',
+                                          )
+                                }
+                                aria-label={t('composer.attachment.add')}
+                            >
+                                <Paperclip className="size-4" />
+                            </Button>
+                        </>
+                    )}
+                    {/*
                     Not offered while files are waiting: only the words would go
                     out later, and a paperclip that quietly drops its file is
                     worse than no paperclip.
                 */}
-                {onSchedule && sendAt === null && files.length === 0 && (
+                    {onSchedule && sendAt === null && files.length === 0 && (
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={disabled}
+                            // Ten minutes out rather than now: the field opens on a
+                            // moment that is already valid, so picking a time is a
+                            // correction instead of a requirement.
+                            onClick={() => setSendAt(defaultSendAt())}
+                            title={t('composer.schedule.later')}
+                            aria-label={t('composer.schedule.later')}
+                        >
+                            <CalendarClock className="size-4" />
+                        </Button>
+                    )}
                     <Button
                         size="icon"
-                        variant="ghost"
-                        disabled={disabled}
-                        // Ten minutes out rather than now: the field opens on a
-                        // moment that is already valid, so picking a time is a
-                        // correction instead of a requirement.
-                        onClick={() => setSendAt(defaultSendAt())}
-                        title={t('composer.schedule.later')}
-                        aria-label={t('composer.schedule.later')}
+                        onClick={submit}
+                        disabled={disabled || !canSend}
+                        aria-label={
+                            sendAt === null
+                                ? t('composer.schedule.send')
+                                : t('composer.schedule.plan')
+                        }
                     >
-                        <CalendarClock className="size-4" />
+                        {sendAt === null ? (
+                            <SendHorizonal className="size-4" />
+                        ) : (
+                            <CalendarClock className="size-4" />
+                        )}
                     </Button>
-                )}
-                <Button
-                    size="icon"
-                    onClick={submit}
-                    disabled={disabled || !canSend}
-                    aria-label={
-                        sendAt === null
-                            ? t('composer.schedule.send')
-                            : t('composer.schedule.plan')
-                    }
-                >
-                    {sendAt === null ? (
-                        <SendHorizonal className="size-4" />
-                    ) : (
-                        <CalendarClock className="size-4" />
-                    )}
-                </Button>
+                </div>
             </div>
-            <p className="mt-1.5 px-1 text-xs text-muted-foreground">
+            {/*
+                Keyboard hints, so only where there is a keyboard. On a phone
+                these are four lines of things you cannot press, taking the room
+                the conversation above them wants.
+            */}
+            <p className="mt-1.5 hidden px-1 text-xs text-muted-foreground sm:block">
                 <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd>{' '}
                 {t('composer.hints.send')} ·{' '}
                 <kbd className="rounded bg-muted px-1 font-mono">
