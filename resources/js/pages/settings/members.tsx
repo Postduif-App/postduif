@@ -149,18 +149,20 @@ function SortableHeader({
     column,
     sort,
     onSort,
+    className,
 }: {
     label: string;
     column: SortKey;
     sort: Sort;
     onSort: (key: SortKey) => void;
+    className?: string;
 }) {
     const active = sort.key === column;
 
     return (
         <th
             scope="col"
-            className="px-3 py-2 text-left"
+            className={cn('px-3 py-2 text-left', className)}
             aria-sort={
                 active ? (sort.ascending ? 'ascending' : 'descending') : 'none'
             }
@@ -202,6 +204,25 @@ function MemberRow({
     const { t } = useTranslate();
     const formats = useFormats();
 
+    const joined = member.joinedAt
+        ? formats.mediumDate.format(new Date(member.joinedAt))
+        : null;
+
+    /*
+     * Drawn once and placed twice: as its own column where there is room for
+     * one, and under the name where there is not.
+     */
+    const channels = member.channelIds ? (
+        <span className="inline-flex items-center gap-1">
+            <Hash className="size-3" />
+            {member.channelIds.length}
+        </span>
+    ) : (
+        // For everyone else it is the whole workspace, and a number here would
+        // suggest a boundary that is not there.
+        <span className="opacity-60">{t('settings.members.all_channels')}</span>
+    );
+
     return (
         <tr className="border-t">
             <td className="px-3 py-2">
@@ -221,13 +242,24 @@ function MemberRow({
                             </span>
                         )}
                     </span>
-                    <span className="min-w-0 truncate text-sm font-medium">
-                        {member.name}
-                    </span>
+                    <div className="min-w-0">
+                        <span className="block truncate text-sm font-medium">
+                            {member.name}
+                        </span>
+
+                        {/* What the three columns that stepped aside were
+                            carrying. */}
+                        <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground lg:hidden">
+                            <span className="truncate">@{member.username}</span>
+                            {joined && <span>· {joined}</span>}
+                            <span aria-hidden="true">·</span>
+                            {channels}
+                        </span>
+                    </div>
                 </div>
             </td>
 
-            <td className="px-3 py-2 text-sm text-muted-foreground">
+            <td className="hidden px-3 py-2 text-sm text-muted-foreground lg:table-cell">
                 @{member.username}
             </td>
 
@@ -294,31 +326,19 @@ function MemberRow({
                 )}
             </td>
 
-            <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
-                {member.joinedAt
-                    ? formats.mediumDate.format(new Date(member.joinedAt))
-                    : '—'}
+            <td className="hidden px-3 py-2 text-xs whitespace-nowrap text-muted-foreground lg:table-cell">
+                {joined ?? '—'}
             </td>
 
             {/*
-                The guest's channel count stays a column rather than moving into
-                the menu: it is a fact about them, readable at a glance down the
-                whole table, and burying it behind a click would make you open
-                every row to find the guest who is in too many channels.
+                The guest's channel count never moves into the menu: it is a
+                fact about them, readable at a glance down the whole table, and
+                burying it behind a click would make you open every row to find
+                the guest who is in too many channels. Narrow, it gives up its
+                column but stays on the row.
             */}
-            <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
-                {member.channelIds ? (
-                    <span className="inline-flex items-center gap-1">
-                        <Hash className="size-3" />
-                        {member.channelIds.length}
-                    </span>
-                ) : (
-                    // For everyone else it is the whole workspace, and a number
-                    // here would suggest a boundary that is not there.
-                    <span className="opacity-60">
-                        {t('settings.members.all_channels')}
-                    </span>
-                )}
+            <td className="hidden px-3 py-2 text-xs whitespace-nowrap text-muted-foreground lg:table-cell">
+                {channels}
             </td>
 
             <td className="px-3 py-2">
@@ -442,9 +462,17 @@ export default function WorkspaceMembers({
                     The table scrolls inside its own box rather than pushing the
                     page sideways: a role select and a status somebody typed are
                     both as wide as they are.
+
+                    Below `lg` it is a narrower table rather than the same one
+                    behind a scrollbar, as on the channel list. Seven columns do
+                    not fit an iPad held upright, and of the seven the role
+                    select and the status have to stay: one is the only control
+                    on the row, the other is why you came. So the three that
+                    read as facts about somebody — their handle, when they
+                    joined, how many channels they are in — move under the name.
                 */}
                 <div className="overflow-x-auto rounded-lg border">
-                    <table className="w-full min-w-3xl border-collapse">
+                    <table className="w-full min-w-xl border-collapse lg:min-w-3xl">
                         <thead>
                             <tr className="bg-muted/40">
                                 <SortableHeader
@@ -460,6 +488,7 @@ export default function WorkspaceMembers({
                                     column="username"
                                     sort={sort}
                                     onSort={toggleSort}
+                                    className="hidden lg:table-cell"
                                 />
                                 <SortableHeader
                                     label={t('settings.members.column_role')}
@@ -483,10 +512,11 @@ export default function WorkspaceMembers({
                                     column="joinedAt"
                                     sort={sort}
                                     onSort={toggleSort}
+                                    className="hidden lg:table-cell"
                                 />
                                 <th
                                     scope="col"
-                                    className="px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                                    className="hidden px-3 py-2 text-left text-xs font-medium text-muted-foreground lg:table-cell"
                                 >
                                     {t('settings.members.column_channels')}
                                 </th>
