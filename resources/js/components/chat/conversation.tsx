@@ -15,6 +15,7 @@ import {
 import { useCallback, useRef, useState } from 'react';
 
 import { ChannelMembersDialog } from '@/components/chat/channel-members-dialog';
+import { ChannelMenuButton } from '@/components/chat/channel-menu';
 import { ChannelSettingsDialog } from '@/components/chat/channel-settings-dialog';
 import { Composer } from '@/components/chat/composer';
 import { CreateTicketDialog } from '@/components/chat/create-ticket-dialog';
@@ -865,8 +866,23 @@ export function Conversation({
                     under it.
                 */}
                 <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b px-3 sm:gap-3 sm:px-4 lg:overflow-x-visible">
+                    {/*
+                        The way to the channel list, first in the row and gone
+                        above lg. It is the same button in the header of every
+                        chat screen, which is what makes it findable — see
+                        ChannelMenuButton.
+                    */}
+                    <ChannelMenuButton />
                     <ChannelIcon type={channel.type} />
-                    <div className="min-w-0">
+                    {/*
+                        Below lg the header scrolls sideways rather than
+                        shrinking its parts, so the name keeps a readable width
+                        instead of being squeezed to "alge…" by however many
+                        buttons this channel happens to offer. Half the viewport
+                        is the ceiling: a channel with a long name should not
+                        push the search button off the screen entirely.
+                    */}
+                    <div className="max-w-[50vw] min-w-0 shrink-0 lg:max-w-none lg:shrink">
                         <h1 className="truncate text-sm font-semibold">
                             {channel.label}
                         </h1>

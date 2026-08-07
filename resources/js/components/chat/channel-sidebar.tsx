@@ -21,7 +21,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
-import { WorkspaceRail } from '@/components/chat/workspace-rail';
+import {
+    WorkspaceRail,
+    WorkspaceToolLinks,
+} from '@/components/chat/workspace-rail';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -43,6 +46,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import {
+    setChannelMenuOpen,
+    useChannelMenuOpen,
+} from '@/hooks/use-channel-menu';
 import { useCollapsedSection } from '@/hooks/use-collapsed-section';
 import { useInboxActivity } from '@/hooks/use-inbox-activity';
 import { useTranslate } from '@/hooks/use-translate';
@@ -853,9 +860,10 @@ export function ChannelSidebar({
 
     /*
      * Whether the channel list is open over the conversation. Only ever true
-     * below lg, where the rail's button is the only thing that sets it.
+     * below lg, where the menu button in the screen's own header is the one
+     * thing that sets it — hence a context above both rather than state here.
      */
-    const [channelsOpen, setChannelsOpen] = useState(false);
+    const channelsOpen = useChannelMenuOpen();
 
     /*
      * Opening a channel closes it again. Inertia keeps this component mounted
@@ -864,11 +872,52 @@ export function ChannelSidebar({
      * question. A subscription rather than an effect on the url: the router is
      * the external thing that changed.
      */
-    useEffect(() => router.on('navigate', () => setChannelsOpen(false)), []);
+    useEffect(() => router.on('navigate', () => setChannelMenuOpen(false)), []);
 
-    const list = (
+    /**
+     * What the rail and the menu both need to know. Built once and spread into
+     * both, so the two can never disagree about what this workspace offers.
+     */
+    const tools = {
+        workspace,
+        inboxTotal: inbox,
+        hasTickets: channels.some((row) => row.hasTickets),
+        hasTransfers: workspace.transfers !== null,
+        mentionsActive,
+        savedActive,
+        transfersActive,
+        timeclockActive,
+        ticketsActive,
+        boardActive,
+        secretsActive,
+        formsActive,
+        onBroadcast,
+    };
+
+    /**
+     * The sidebar's contents, drawn twice: standing on the left above lg, and
+     * inside the sheet below it.
+     *
+     * A function rather than a value because the two differ in two places, both
+     * following from the same fact. The rail's entries belong in the sheet and
+     * nowhere else — above lg they are already on screen in the rail beside
+     * this column — and only the sheet has a close button in its top right
+     * corner, which the row up there has to leave room for.
+     */
+    const list = (inSheet = false) => (
         <>
-            <div className="flex h-14 items-center border-b border-sidebar-border px-2">
+            <div
+                className={cn(
+                    'flex h-14 items-center border-b border-sidebar-border px-2',
+                    /*
+                        Room for the sheet's own close button, which is drawn
+                        over this row rather than in it. Without it the cross
+                        landed on the workspace switcher's chevron — two glyphs
+                        on the same eight pixels, which reads as one broken one.
+                    */
+                    inSheet && 'pr-12',
+                )}
+            >
                 <WorkspaceMenu
                     workspaces={workspaces}
                     workspace={workspace}
@@ -890,6 +939,8 @@ export function ChannelSidebar({
                     </kbd>
                 </Button>
             </div>
+
+            {inSheet && <WorkspaceToolLinks {...tools} />}
 
             <ScrollArea className="flex-1 px-2 pb-4">
                 {favorites.length > 0 && (
@@ -1087,25 +1138,15 @@ export function ChannelSidebar({
                 to sit at the top of this list and cost four rows of a column
                 that is 16rem wide and does not grow.
             */}
-            <WorkspaceRail
-                onOpenChannels={() => setChannelsOpen(true)}
-                workspace={workspace}
-                inboxTotal={inbox}
-                hasTickets={channels.some((row) => row.hasTickets)}
-                hasTransfers={workspace.transfers !== null}
-                mentionsActive={mentionsActive}
-                savedActive={savedActive}
-                transfersActive={transfersActive}
-                timeclockActive={timeclockActive}
-                ticketsActive={ticketsActive}
-                boardActive={boardActive}
-                secretsActive={secretsActive}
-                formsActive={formsActive}
-                onBroadcast={onBroadcast}
-            />
+            {/*
+                Above lg only. Below it a phone would be giving up 3.5rem of
+                its width to a column of icons, and the menu already carries
+                every one of them by name.
+            */}
+            <WorkspaceRail {...tools} />
 
             <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-                {list}
+                {list()}
             </aside>
 
             {/*
@@ -1114,7 +1155,7 @@ export function ChannelSidebar({
                 sheet that could be opened over it would be the same thing
                 twice.
             */}
-            <Sheet open={channelsOpen} onOpenChange={setChannelsOpen}>
+            <Sheet open={channelsOpen} onOpenChange={setChannelMenuOpen}>
                 <SheetContent
                     side="left"
                     className="flex w-72 flex-col gap-0 border-sidebar-border bg-sidebar p-0 lg:hidden"
@@ -1124,7 +1165,7 @@ export function ChannelSidebar({
                     <SheetTitle className="sr-only">
                         {t('sidebar.rail.channels')}
                     </SheetTitle>
-                    {list}
+                    {list(true)}
                 </SheetContent>
             </Sheet>
         </div>

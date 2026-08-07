@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { BoardPanel } from '@/components/chat/board-panel';
 import { BroadcastDialog } from '@/components/chat/broadcast-dialog';
+import { ChannelMenuButton } from '@/components/chat/channel-menu';
 import { ChannelSidebar } from '@/components/chat/channel-sidebar';
 import { CreateBoardPostDialog } from '@/components/chat/create-board-post-dialog';
 import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
@@ -173,6 +174,7 @@ export default function Board({
                 )}
             >
                 <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+                    <ChannelMenuButton />
                     <Pin className="size-4 text-muted-foreground" />
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-semibold">

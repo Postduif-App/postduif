@@ -147,7 +147,7 @@ export function BoardPanel({
                        * ticket panels make, anchored at the rail so the way
                        * back to the channel list stays reachable.
                        */
-                      'fixed inset-y-0 right-0 left-14 z-30 border-l bg-background lg:static lg:left-auto lg:w-[28rem] lg:shrink-0',
+                      'fixed inset-y-0 right-0 left-0 z-30 border-l bg-background lg:static lg:left-auto lg:w-[28rem] lg:shrink-0',
             )}
         >
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">

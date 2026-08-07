@@ -3,6 +3,7 @@ import { Hash, Inbox, Lock, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
 import { BroadcastDialog } from '@/components/chat/broadcast-dialog';
+import { ChannelMenuButton } from '@/components/chat/channel-menu';
 import { ChannelSidebar } from '@/components/chat/channel-sidebar';
 import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
@@ -264,6 +265,7 @@ export default function WorkspaceInbox({
             <main className="flex min-w-0 flex-1 flex-col">
                 <header className="flex shrink-0 flex-col gap-2 border-b px-4 py-3">
                     <div className="flex items-center gap-3">
+                        <ChannelMenuButton />
                         <Inbox className="size-4 text-muted-foreground" />
                         <div className="min-w-0">
                             <h1 className="truncate text-sm font-semibold">

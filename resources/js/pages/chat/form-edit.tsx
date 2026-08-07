@@ -12,6 +12,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import { BroadcastDialog } from '@/components/chat/broadcast-dialog';
+import { ChannelMenuButton } from '@/components/chat/channel-menu';
 import { ChannelSidebar } from '@/components/chat/channel-sidebar';
 import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
@@ -474,6 +475,7 @@ export default function FormEdit({
 
             <main className="flex min-w-0 flex-1 flex-col">
                 <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+                    <ChannelMenuButton />
                     <Link
                         href={formsIndex.url(workspaceSlug)}
                         aria-label={t('forms.answers_screen.back')}

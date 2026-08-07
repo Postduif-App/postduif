@@ -112,7 +112,7 @@ export function PinnedPanel({
      * to the channel list stays reachable while a panel is open.
      */
     return (
-        <aside className="fixed inset-y-0 right-0 left-14 z-30 flex flex-col border-l bg-background lg:static lg:left-auto lg:w-[26rem] lg:shrink-0">
+        <aside className="fixed inset-y-0 right-0 left-0 z-30 flex flex-col border-l bg-background lg:static lg:left-auto lg:w-[26rem] lg:shrink-0">
             <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold">
