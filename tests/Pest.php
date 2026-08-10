@@ -27,8 +27,12 @@ use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
 use Tests\TestCase;
 
@@ -658,4 +662,79 @@ function huddleFixture(): array
 function present(Message $message): array
 {
     return app(PresentMessage::class)->handle($message);
+}
+
+/**
+ * Throw away the faked HTTP client and everything stubbed on it.
+ *
+ * Http::fake() appends to the stubs already registered and the first match
+ * wins, so a test that wants a busier Reverb than the one its beforeEach set up
+ * would silently get the quiet one. Clearing the facade's cache is not enough
+ * on its own — the factory is a container singleton, so the same instance comes
+ * straight back — which is why the binding goes too.
+ */
+function freshHttpClient(): void
+{
+    app()->forgetInstance(HttpFactory::class);
+
+    Http::clearResolvedInstances();
+}
+
+/**
+ * Stand in for a running Reverb.
+ *
+ * Keyed by workspace slug rather than by full channel name, because that is
+ * what a reader of the test cares about; the prefix is the thing under test and
+ * is written out once, here.
+ *
+ * @param  array<string, list<int>>  $rosters  Slug to the account ids on it.
+ */
+function reverbIsUp(int $connections, array $rosters = []): void
+{
+    freshHttpClient();
+    Http::preventStrayRequests();
+
+    $channels = [];
+
+    foreach ($rosters as $slug => $ids) {
+        $channels['presence-chat.workspace.'.$slug] = $ids;
+    }
+
+    Http::fake(function (ClientRequest $request) use ($connections, $channels) {
+        $path = (string) parse_url($request->url(), PHP_URL_PATH);
+
+        if (str_ends_with($path, '/connections')) {
+            return Http::response(['connections' => $connections]);
+        }
+
+        if (str_ends_with($path, '/users')) {
+            $channel = Str::between($path, '/channels/', '/users');
+
+            return Http::response([
+                'users' => array_map(fn (int $id): array => ['id' => $id], $channels[$channel] ?? []),
+            ]);
+        }
+
+        /*
+         * Reverb keys the listing by channel name and only lists channels with
+         * somebody on them, which is why an empty roster never appears here.
+         */
+        return Http::response([
+            'channels' => array_map(fn (): array => [], array_filter($channels)),
+        ]);
+    });
+}
+
+/**
+ * Stand in for a Reverb that is not answering.
+ *
+ * Takes a status rather than assuming one, because the two ways this goes wrong
+ * read differently to whoever is debugging: nothing listening on the port, and
+ * a server that will not accept the app's credentials.
+ */
+function reverbIsDown(int $status = 500): void
+{
+    freshHttpClient();
+    Http::preventStrayRequests();
+    Http::fake(fn () => Http::response(status: $status));
 }
