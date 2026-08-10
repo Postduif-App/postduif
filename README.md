@@ -310,6 +310,165 @@ too big header* to its error log, while the application never hears about it.
 The tell is that the same page loads fine when Inertia fetches it over XHR:
 those responses carry no preload header.
 
+#### The relay huddles fall back on
+
+Ploi has no button for this one: STUN and TURN are a service you install beside
+the site. [Why they are needed at all](#huddles-need-somewhere-to-look) is
+further down; what follows is where the pieces go on a Ploi server. You can skip
+it and point `HUDDLE_STUN_URLS` at `stun:stun.l.google.com:19302`, which is
+enough for most home connections — but that leaves everybody behind a company
+firewall or a mobile carrier with a button that never connects, and it hands a
+third party a log of who is calling whom.
+
+Install coturn, let it start, and think of the secret the two halves will share:
+
+```bash
+sudo apt install coturn
+sudo sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
+
+openssl rand -hex 32
+```
+
+The package installs itself disabled, which is what that second line undoes —
+without it systemd will not start the daemon however often you ask. Keep the
+random string somewhere for a minute: it goes into two files, and they have to
+agree exactly.
+
+`/etc/turnserver.conf` already exists — the package ships it as several hundred
+commented lines, the documentation rather than a configuration. Keep a copy and
+replace it wholesale, because editing around those lines is how you end up with
+a setting that appears twice and reading the wrong one:
+
+```bash
+sudo cp /etc/turnserver.conf /etc/turnserver.conf.orig
+```
+
+```conf
+listening-port=3478
+tls-listening-port=5349
+
+# The name in the credential's realm. It has to match nothing in particular,
+# but long-term credentials do not work without one.
+realm=chat.example.com
+server-name=chat.example.com
+
+# The scheme the application signs its usernames with. Same string as
+# HUDDLE_TURN_SECRET in the site's environment — that is the only thing
+# connecting the two, and there is no user list on this side.
+use-auth-secret
+static-auth-secret=een-lange-willekeurige-string
+
+# Ploi already has a certificate for the site. `sudo ls /etc/nginx/ssl/` shows
+# one directory per site; point these at the certificate and key inside it.
+cert=/etc/nginx/ssl/chat.example.com/<id>/server.crt
+pkey=/etc/nginx/ssl/chat.example.com/<id>/server.key
+
+# The ports the audio itself goes over, one pair per connection.
+min-port=49152
+max-port=65535
+
+fingerprint
+no-tcp-relay
+no-multicast-peers
+
+# coturn's own telnet console, on 2345, with a weak default password.
+no-cli
+
+# A relay is a machine that connects to an address somebody else names, so
+# without this yours will happily reach into your own network on request.
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+```
+
+`use-auth-secret` is the line that switches the whole scheme on; without it
+coturn ignores the secret below it and turns every login away. It reads the file
+once at startup, so:
+
+```bash
+sudo systemctl restart coturn
+sudo ss -lnup | grep -E '3478|5349'
+sudo ss -lntp | grep -E '3478|5349'
+```
+
+Both ports in both lists. Only 3478 answering means TLS did not come up — the
+certificate, below. Nothing at all means the daemon is not running, and
+`sudo journalctl -u coturn -n 50` will say why. If `ip addr` does not list the
+server's public address — some providers put the machine behind a NAT of their
+own — add `external-ip=<public>/<private>` as well, otherwise coturn advertises
+an address nobody outside can reach.
+
+Two things about that certificate. coturn runs as user `turnserver` and Ploi's
+key is readable by root only, so it either needs group read or a copy of its
+own; if it cannot open the key the daemon starts anyway and only `turns:` is
+dead, which looks like a firewall problem. And Let's Encrypt replaces the file
+every couple of months while coturn keeps the old one in memory — a weekly cron
+running `systemctl restart coturn` costs nothing and saves a puzzling
+afternoon.
+
+Then the firewall, in Ploi's panel under the server's **Firewall** tab:
+
+| Port | Protocol | What it carries |
+| --- | --- | --- |
+| 3478 | TCP + UDP | STUN, and TURN without TLS |
+| 5349 | TCP + UDP | The same over TLS (`turns:`) |
+| 49152:65535 | UDP | The relayed audio |
+
+If the panel refuses the range, `sudo ufw allow 49152:65535/udp` does it — with
+the caveat that Ploi's firewall list then no longer describes the server, and a
+later sync from the panel can undo it.
+
+The site's environment, last:
+
+```dotenv
+HUDDLE_STUN_URLS=stun:chat.example.com:3478
+HUDDLE_TURN_URLS=turn:chat.example.com:3478,turns:chat.example.com:5349
+HUDDLE_TURN_SECRET=een-lange-willekeurige-string
+HUDDLE_TURN_TTL_MINUTES=120
+```
+
+The scheme in front is not decoration — a bare hostname is rejected by the
+browser — and the host has to be the domain rather than the server's IP address,
+because `turns:` checks it against the certificate. Commas separate several, no
+spaces.
+
+Both entries in `HUDDLE_TURN_URLS` on purpose: `turns:` on 5349 is TLS over TCP
+and gets through the sort of network that drops everything but web traffic,
+while plain UDP on 3478 is the one you want when it is available, because audio
+inside a TCP stream stutters the moment a packet is late. The browser tries both
+and keeps whichever answers. Port 443 would get through more of those networks
+still, but nginx already has it.
+
+`HUDDLE_STUN_URLS` points at your own coturn too. The same process answers both
+questions, so pointing it at Google's would add an outside dependency to the
+opening moment of every huddle for nothing.
+
+No rebuild — these are read per request, not compiled into the bundle. Config is
+cached, though, so run `php artisan optimize` after saving the environment.
+
+Finally, huddles are off until somebody switches them on: **Workspaces → the
+workspace → Features** in the admin panel. `canHuddle` wants both that flag and a
+non-empty `HUDDLE_STUN_URLS`, so a workspace with the feature on and no relay
+configured still shows no button rather than a broken one.
+
+To check it actually works, open the site, join a huddle, and read the
+browser's `chrome://webrtc-internals` — a candidate of type `relay` means the
+audio went over coturn. Or take the ICE servers the application would hand out
+and paste them into the [Trickle ICE
+tester](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/):
+
+```bash
+php artisan tinker --execute 'dd(app(App\Actions\Huddles\IceServers::class)->handle(App\Models\User::first()));'
+```
+
+Two entries come back when it is right: one with only `urls`, and one carrying a
+`username` and `credential` beside them. If the second is missing,
+`HUDDLE_TURN_SECRET` is empty or the old config is still cached. A relay
+candidate in the tester and none in the browser means the browser's network is
+the problem, not the server's.
+
 ### On Ploi Cloud
 
 [Ploi Cloud](https://ploi.cloud) is the other product — a managed platform where
@@ -502,6 +661,10 @@ Both lists are read per request in `App\Actions\Huddles\IceServers` rather than
 compiled into the frontend, so moving to another relay is an env change and a
 restart, not a rebuild. Only somebody who may actually join gets them — a TURN
 credential is a working relay for as long as it lasts.
+
+Running your own is a coturn install beside the site: see [The relay huddles
+fall back on](#the-relay-huddles-fall-back-on) for how that goes together on a
+Ploi server, firewall and certificate included.
 
 ## Architecture
 
