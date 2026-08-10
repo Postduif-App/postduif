@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
@@ -95,6 +96,8 @@ class UpdateChannelRequest extends FormRequest
             // about tickets should leave them exactly as they were rather than
             // silently switching them off.
             'ticket_policy' => ['sometimes', new Enum(ChannelTicketPolicy::class)],
+            'document_policy' => ['sometimes', new Enum(ChannelDocumentPolicy::class)],
+            'document_announcements' => ['sometimes', 'boolean'],
             'ticket_announcements' => ['sometimes', 'boolean'],
             'ticket_status_announcements' => ['sometimes', 'boolean'],
         ];
@@ -115,6 +118,7 @@ class UpdateChannelRequest extends FormRequest
             'type.not_in' => __('requests.channel.not_made_from_channel'),
             'posting_policy.enum' => __('requests.channel.invalid_setting'),
             'ticket_policy.enum' => __('requests.channel.invalid_setting'),
+            'document_policy.enum' => __('requests.channel.invalid_setting'),
         ];
     }
 }

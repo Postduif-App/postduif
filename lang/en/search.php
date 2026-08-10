@@ -9,6 +9,7 @@ return [
         'remove_filter' => 'Drop the :label filter',
         'bot' => 'Bot',
         'direct_message' => 'Direct message',
+        'documents' => '{1}1 document|[2,*]:count documents',
         'results' => '{1}1 message|[2,*]:count messages',
     ],
 

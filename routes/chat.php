@@ -16,6 +16,7 @@ use App\Http\Controllers\ChannelTagController;
 use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DirectMessageController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EphemeralNoticeController;
 use App\Http\Controllers\FormFillController;
 use App\Http\Controllers\HuddleController;
@@ -653,6 +654,27 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::delete('c/{channel}/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])
                     ->scopeBindings()
                     ->name('tickets.comments.destroy');
+            });
+
+            /**
+             * Documents are read through chat.show with ?view=document, the same
+             * arrangement the ticket board has. Only the writes live here.
+             */
+            Route::middleware('feature:documents')->group(function () {
+                Route::post('c/{channel}/documents', [DocumentController::class, 'store'])
+                    ->name('documents.store');
+
+                /*
+                 * Scoped, so a document number from another channel is a 404
+                 * rather than somebody else's document opened by guessing.
+                 */
+                Route::patch('c/{channel}/documents/{document}', [DocumentController::class, 'update'])
+                    ->scopeBindings()
+                    ->name('documents.update');
+
+                Route::delete('c/{channel}/documents/{document}', [DocumentController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('documents.destroy');
             });
 
             /**

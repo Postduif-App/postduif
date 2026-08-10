@@ -126,6 +126,14 @@ return [
         'taken' => 'Er is hier al een emoji met die naam.',
     ],
 
+    'documents' => [
+        'title_required' => 'Geef het document een korte titel.',
+        'text_with_body' => 'Er kwam wel een document binnen maar geen platte tekst; die twee horen bij elkaar.',
+        'body_shape' => 'Dit is geen document dat de editor kan lezen.',
+        'body_too_large' => 'Dit document is te groot om op te slaan. Knip het op in meerdere documenten.',
+        'body_too_deep' => 'Dit document zit te diep genest om op te slaan.',
+    ],
+
     'ticket' => [
         'title_required' => 'Geef het ticket een korte titel.',
         'source_not_here' => 'Je kunt alleen een bericht uit dit kanaal promoveren.',

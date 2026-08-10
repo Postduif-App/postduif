@@ -11,6 +11,7 @@
 
 return [
     'view' => [
+        'documents' => 'Documenten',
         'label' => 'Weergave',
         'messages' => 'Berichten',
         'tickets' => 'Tickets',

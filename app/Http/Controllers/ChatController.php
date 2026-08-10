@@ -6,15 +6,18 @@ use App\Actions\Chat\BuildChatShell;
 use App\Actions\Chat\HideDirectMessage;
 use App\Actions\Chat\MarkChannelRead;
 use App\Actions\Chat\PresentMessage;
+use App\Actions\Documents\PresentDocument;
 use App\Actions\Huddles\IceServers;
 use App\Actions\Tickets\PresentTicket;
 use App\Actions\Workspace\CreateHomeChannel;
 use App\Enums\WorkspaceAbility;
+use App\Features\Documents as DocumentsFeature;
 use App\Features\Huddles as HuddlesFeature;
 use App\Features\Tickets;
 use App\Models\Bookmark;
 use App\Models\Channel;
 use App\Models\ChannelLink;
+use App\Models\Document;
 use App\Models\EphemeralNotice;
 use App\Models\Huddle;
 use App\Models\HuddleParticipant;
@@ -38,6 +41,7 @@ class ChatController extends Controller
         private readonly BuildChatShell $buildChatShell,
         private readonly MarkChannelRead $markChannelRead,
         private readonly PresentTicket $presentTicket,
+        private readonly PresentDocument $presentDocument,
         private readonly HideDirectMessage $hideDirectMessage,
         private readonly CreateHomeChannel $createHomeChannel,
         private readonly IceServers $iceServers,
@@ -155,6 +159,10 @@ class ChatController extends Controller
          */
         $keepsTickets = $workspace->hasFeature(Tickets::class) && $channel->hasTickets();
 
+        // Same two halves, same reason: the workspace has to offer documents and
+        // this channel has to keep them.
+        $keepsDocuments = $workspace->hasFeature(DocumentsFeature::class) && $channel->hasDocuments();
+
         return Inertia::render('chat/show', [
             ...$this->buildChatShell->handle($workspace, $user),
             'channel' => [
@@ -187,6 +195,12 @@ class ChatController extends Controller
                 // tickets, whatever the column happens to say.
                 'hasTickets' => $channel->hasTickets(),
                 'canCreateTicket' => $user->can('create', [Ticket::class, $channel]),
+                'documentPolicy' => $channel->document_policy->value,
+                'documentAnnouncements' => $channel->document_announcements,
+                // Not the same question as the policy above: a DM never keeps
+                // documents, whatever the column happens to say.
+                'hasDocuments' => $channel->hasDocuments(),
+                'canCreateDocument' => $user->can('create', [Document::class, $channel]),
                 // Whether the composer opens at all. Reacting and answering in
                 // a thread stay open even when this is false, so those are not
                 // the same question.
@@ -374,9 +388,21 @@ class ChatController extends Controller
             // than read off the URL in the browser, so a channel that stopped
             // keeping tickets — or a workspace that switched them off
             // altogether — cannot be left showing a board through a stale link.
-            'view' => $request->query('view') === 'tickets' && $keepsTickets
-                ? 'tickets'
-                : 'messages',
+            // The channel's documents, and the one that is open. Second view of
+            // the same page for the same reason the board is.
+            'documentList' => $keepsDocuments ? $this->documentList($channel, $user) : null,
+            'openDocument' => $keepsDocuments
+                ? $this->document($channel, $user, $request->query('document'))
+                : null,
+            // Which of the three views the channel opens in. Decided here rather
+            // than read off the URL in the browser, so a channel that stopped
+            // keeping tickets or documents — or a workspace that switched them
+            // off altogether — cannot be left showing one through a stale link.
+            'view' => match ($request->query('view')) {
+                'tickets' => $keepsTickets ? 'tickets' : 'messages',
+                'documents' => $keepsDocuments ? 'documents' : 'messages',
+                default => 'messages',
+            },
         ]);
     }
 
@@ -462,6 +488,49 @@ class ChatController extends Controller
                 ->pluck('total', 'status')
                 ->all(),
         ];
+    }
+
+    /**
+     * The channel's documents, most recently worked on first.
+     *
+     * Without their documents — see PresentDocument::summary(). A channel with a
+     * dozen documents would otherwise ship a dozen JSON trees to draw a list of
+     * titles, and the one that is open is fetched separately anyway.
+     *
+     * No limit, unlike the ticket board's hundred. Documents are made
+     * deliberately and a channel has a handful, not a backlog; a cut-off here
+     * would hide a document rather than trim a queue.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function documentList(Channel $channel, User $user): ?array
+    {
+        if (! $user->can('viewList', [Document::class, $channel])) {
+            return null;
+        }
+
+        $documents = $channel->documents()->with(['creator', 'editor'])->get();
+
+        return $this->presentDocument->list($documents);
+    }
+
+    /**
+     * The document that is open, or null when the query string names none.
+     *
+     * Addressed by its number rather than its id, the same way tickets are and
+     * the same way people write it down — see Document::getRouteKeyName().
+     *
+     * @return array<string, mixed>|null
+     */
+    private function document(Channel $channel, User $user, ?string $number): ?array
+    {
+        if ($number === null || ! $user->can('viewList', [Document::class, $channel])) {
+            return null;
+        }
+
+        $document = $channel->documents()->where('number', $number)->first();
+
+        return $document === null ? null : $this->presentDocument->handle($document, $user);
     }
 
     /**

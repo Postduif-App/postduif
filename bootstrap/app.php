@@ -25,6 +25,29 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'member_panel_state', 'locale']);
 
+        /*
+         * Leave a document document exactly as the editor sent it.
+         *
+         * Both of these walk the request recursively, and a document body is a
+         * deep tree of Slate nodes rather than a flat form. An empty paragraph
+         * is a text node whose text is "", and ConvertEmptyStringsToNull turns
+         * that into null — which Slate will not read back, so one blank line
+         * was enough to leave the document unopenable. TrimStrings is the same
+         * hazard one step quieter: it would silently eat the indentation and
+         * the trailing spaces somebody typed on purpose.
+         *
+         * Matched on the path rather than the route name, because these run in
+         * the global stack before the router has resolved anything.
+         *
+         * Only the save. Creating a document posts a title and nothing else, and
+         * a title that arrives as whitespace should very much still be trimmed.
+         */
+        $keepsDocumentContentIntact = fn (Request $request): bool => $request->isMethod('PATCH')
+            && $request->is('app/*/c/*/documents/*');
+
+        $middleware->convertEmptyStringsToNull(except: [$keepsDocumentContentIntact]);
+        $middleware->trimStrings(except: [$keepsDocumentContentIntact]);
+
         $middleware->alias([
             'feature' => EnsureFeatureIsActive::class,
             // The onboarding screen, which is only a screen until the platform

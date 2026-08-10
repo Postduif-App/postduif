@@ -12,6 +12,10 @@ return [
         'label' => 'AI-toegang',
         'description' => 'AI-clients mogen met een token meelezen en meepraten in deze workspace.',
     ],
+    'documents' => [
+        'label' => 'Documenten',
+        'description' => 'Kanalen kunnen documenten bijhouden naast het gesprek, met een editor die als Notion werkt.',
+    ],
     'forms' => [
         'label' => 'Formulieren',
         'description' => 'Vragenlijsten die in een kanaal geplaatst of als link gedeeld kunnen worden. De antwoorden gaan per DM naar wie het formulier maakte.',

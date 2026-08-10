@@ -35,6 +35,7 @@ abstract class WorkspaceFeature
         MessageForwarding::class,
         MessageBoard::class,
         Tickets::class,
+        Documents::class,
         Timeclock::class,
         Polls::class,
         Forms::class,

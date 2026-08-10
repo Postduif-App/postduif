@@ -3,9 +3,11 @@
 use App\Actions\Chat\PresentMessage;
 use App\Actions\Chat\SendMessage;
 use App\Actions\Workflows\RunWorkflow;
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
+use App\Features\Documents as DocumentsFeature;
 use App\Features\Forms;
 use App\Features\Huddles as HuddlesFeature;
 use App\Features\SecretRequests;
@@ -304,6 +306,41 @@ function ticketFixture(ChannelTicketPolicy $policy = ChannelTicketPolicy::Everyo
         'workspace_id' => $workspace->id,
         'created_by' => $member->id,
         'ticket_policy' => $policy,
+    ]);
+    $channel->members()->attach($member->id, ['joined_at' => now()]);
+
+    $guest = User::factory()->create();
+    joinWorkspace($workspace, $guest, SystemRole::Guest);
+    $channel->members()->attach($guest->id, ['joined_at' => now()]);
+
+    return [$member, $guest, $workspace, $channel];
+}
+
+/**
+ * A channel that keeps documents, with a member and a guest in it.
+ *
+ * The guest is part of the fixture rather than an extra step, for the same
+ * reason the ticket one has one: what these tests are really about is the line
+ * between somebody from the house and somebody from outside, and a fixture
+ * without the second half cannot show where it runs.
+ *
+ * The workspace feature is switched on here as well. It is off for a fresh
+ * workspace in these tests, and a fixture that produced a channel whose document
+ * routes all 404 would be a fixture every test had to remember to finish.
+ *
+ * @return array{0: User, 1: User, 2: Workspace, 3: Channel}
+ */
+function documentFixture(ChannelDocumentPolicy $policy = ChannelDocumentPolicy::Everyone): array
+{
+    $member = User::factory()->create();
+    $workspace = workspaceWithMember($member);
+
+    Feature::for($workspace)->activate(DocumentsFeature::class);
+
+    $channel = Channel::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $member->id,
+        'document_policy' => $policy,
     ]);
     $channel->members()->attach($member->id, ['joined_at' => now()]);
 

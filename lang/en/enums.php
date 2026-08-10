@@ -29,6 +29,18 @@ return [
             'DoNotDisturb' => 'Do not disturb',
         ],
     ],
+    'channel-document-policy' => [
+        'description' => [
+            'Disabled' => 'This channel keeps no documents.',
+            'Everyone' => 'Everyone in this channel writes along, guests included.',
+            'Members' => 'Guests do read the documents, but do not write in them.',
+        ],
+        'label' => [
+            'Disabled' => 'No documents',
+            'Everyone' => 'Everyone in this channel',
+            'Members' => 'Members only, no guests',
+        ],
+    ],
     'channel-layout' => [
         'description' => [
             'Chat' => 'Messages one under the other, like an ordinary conversation.',

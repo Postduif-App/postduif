@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
@@ -25,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property bool $replies_open
  * @property ChannelTicketPolicy $ticket_policy
  * @property bool $ticket_announcements
+ * @property ChannelDocumentPolicy $document_policy
+ * @property bool $document_announcements
  * @property bool $ticket_status_announcements
  * @property string|null $name
  * @property string|null $slug
@@ -33,7 +36,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_message_at
  * @property Carbon|null $archived_at
  */
-#[Fillable(['workspace_id', 'type', 'layout', 'posting_policy', 'replies_open', 'ticket_policy', 'ticket_announcements', 'ticket_status_announcements', 'name', 'slug', 'topic', 'created_by'])]
+#[Fillable(['workspace_id', 'type', 'layout', 'posting_policy', 'replies_open', 'ticket_policy', 'ticket_announcements', 'ticket_status_announcements', 'document_policy', 'document_announcements', 'name', 'slug', 'topic', 'created_by'])]
 class Channel extends Model
 {
     /** @use HasFactory<ChannelFactory> */
@@ -50,6 +53,8 @@ class Channel extends Model
             'ticket_policy' => ChannelTicketPolicy::class,
             'ticket_announcements' => 'boolean',
             'ticket_status_announcements' => 'boolean',
+            'document_policy' => ChannelDocumentPolicy::class,
+            'document_announcements' => 'boolean',
             'last_message_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
@@ -169,6 +174,16 @@ class Channel extends Model
     }
 
     /**
+     * The channel's documents, most recently worked on first.
+     *
+     * @return HasMany<Document, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class)->inListOrder();
+    }
+
+    /**
      * Root messages only; thread replies hang off their parent.
      *
      * @return HasMany<Message, $this>
@@ -281,6 +296,18 @@ class Channel extends Model
     public function hasTickets(): bool
     {
         return ! $this->isDirect() && $this->ticket_policy->isEnabled();
+    }
+
+    /**
+     * Whether this channel keeps documents at all.
+     *
+     * A DM never does, whatever the column says. A document is a channel's shared
+     * memory, and what two people agree between themselves does not need one —
+     * nor should it quietly outlive the conversation it was said in.
+     */
+    public function hasDocuments(): bool
+    {
+        return ! $this->isDirect() && $this->document_policy->isEnabled();
     }
 
     /**

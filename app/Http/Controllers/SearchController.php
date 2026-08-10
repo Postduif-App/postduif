@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Chat\SearchDocuments;
 use App\Actions\Chat\SearchMessages;
 use App\Models\Workspace;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,7 @@ class SearchController extends Controller
 {
     public function __construct(
         private readonly SearchMessages $searchMessages,
+        private readonly SearchDocuments $searchDocuments,
     ) {}
 
     /**
@@ -58,7 +60,7 @@ class SearchController extends Controller
             : null;
 
         if ($request->filled('from') && $from === null) {
-            return response()->json(['results' => []]);
+            return response()->json(['results' => [], 'documents' => []]);
         }
 
         return response()->json([
@@ -69,6 +71,24 @@ class SearchController extends Controller
                 $channel,
                 $from,
             ),
+            /*
+             * A list of its own rather than mixed into the results above. A
+             * message hit is a moment in a conversation and a document hit is a
+             * document somebody still maintains; ranking those against each
+             * other would need a scale neither of them is on.
+             *
+             * Skipped entirely when the search is narrowed to one author:
+             * "from:fenna" asks who said something, and a document is written by
+             * the channel rather than by a person.
+             */
+            'documents' => $from === null
+                ? $this->searchDocuments->handle(
+                    $workspace,
+                    $user,
+                    $request->string('q')->value(),
+                    $channel,
+                )
+                : [],
         ]);
     }
 }

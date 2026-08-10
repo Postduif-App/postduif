@@ -5,6 +5,10 @@ return [
         'label' => 'AI access',
         'description' => 'AI clients may read along and join in with a token in this workspace.',
     ],
+    'documents' => [
+        'label' => 'Documents',
+        'description' => 'Channels can keep documents alongside the conversation, in an editor that works like Notion.',
+    ],
     'forms' => [
         'label' => 'Forms',
         'description' => 'Questionnaires you can put in a channel or share as a link. The answers go by DM to whoever made the form.',

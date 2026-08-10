@@ -74,6 +74,8 @@ return [
             'messages_description' => 'Bepaal wie er berichten mag plaatsen in dit kanaal.',
             'tickets' => 'Tickets',
             'tickets_description' => 'Of dit kanaal tickets bijhoudt, wie ze mag aanmaken, en wat daarvan in het gesprek terechtkomt.',
+            'document' => 'Documenten',
+            'document_description' => 'Of dit kanaal documenten bijhoudt, wie erin mag schrijven, en wat daarvan in het gesprek terechtkomt.',
             'links' => 'Knoppen',
             'links_description' => 'Snelkoppelingen naar plekken buiten de app, in een balk boven het gesprek.',
             'webhooks' => 'Webhooks',
@@ -100,6 +102,18 @@ return [
         'admins_hint' => 'Een zendkanaal. Anderen kunnen nog wel reageren met een emoji en in threads antwoorden.',
         'replies_open' => 'Reageren in een thread toestaan',
         'replies_open_hint' => 'Uitzetten maakt dit een kanaal dat aankondigt en niet bespreekt. Bestaande threads blijven leesbaar.',
+    ],
+
+    'documents' => [
+        'heading' => 'Wie mag in documenten schrijven',
+        'disabled' => 'Geen documenten',
+        'disabled_hint' => 'Dit kanaal is alleen een gesprek.',
+        'everyone' => 'Iedereen in dit kanaal',
+        'everyone_hint' => 'Ook gasten. De plek voor afspraken die beide kanten bijhouden.',
+        'members' => 'Alleen leden, geen gasten',
+        'members_hint' => 'Gasten lezen de documenten wel, maar schrijven er niet in.',
+        'announce' => 'Zeg het in het gesprek',
+        'announce_hint' => 'Een bericht in het kanaal als er een document begint of een andere naam krijgt. Niet bij elke wijziging: er wordt vanzelf opgeslagen terwijl iemand typt.',
     ],
 
     'tickets' => [

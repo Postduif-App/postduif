@@ -18,6 +18,7 @@ return [
         'remove_filter' => 'Filter :label weghalen',
         'bot' => 'Bot',
         'direct_message' => 'Direct bericht',
+        'documents' => '{1}1 document|[2,*]:count documenten',
         'results' => '{1}1 bericht|[2,*]:count berichten',
     ],
 

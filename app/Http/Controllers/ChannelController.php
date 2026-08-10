@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\CreateChannel;
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
@@ -102,6 +103,14 @@ class ChannelController extends Controller
             ] : [],
             ...$request->has('ticket_status_announcements') ? [
                 'ticket_status_announcements' => $request->boolean('ticket_status_announcements'),
+            ] : [],
+            ...$request->has('document_policy') ? [
+                'document_policy' => ChannelDocumentPolicy::from(
+                    $request->string('document_policy')->value()
+                ),
+            ] : [],
+            ...$request->has('document_announcements') ? [
+                'document_announcements' => $request->boolean('document_announcements'),
             ] : [],
         ]);
 

@@ -126,6 +126,14 @@ return [
         'taken' => 'There is already an emoji here by that name.',
     ],
 
+    'documents' => [
+        'title_required' => 'Give the document a short title.',
+        'text_with_body' => 'A document arrived without its plain text; the two belong together.',
+        'body_shape' => 'This is not a document the editor can read.',
+        'body_too_large' => 'This document is too large to save. Split it into several documents.',
+        'body_too_deep' => 'This document is nested too deeply to save.',
+    ],
+
     'ticket' => [
         'title_required' => 'Give the ticket a short title.',
         'source_not_here' => 'You can only promote a message from this channel.',

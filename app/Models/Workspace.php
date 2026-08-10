@@ -37,6 +37,7 @@ use Laravel\Pennant\Feature;
  * @property WorkspaceAccent $accent
  * @property WorkspaceFont $font
  * @property int $next_ticket_number
+ * @property int $next_document_number
  * @property int $owner_id
  * @property-read WorkspaceMembership $membership The membership this workspace
  *     was loaded through, on User::workspaces(). Absent otherwise.
@@ -328,6 +329,12 @@ class Workspace extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    /** @return HasMany<Document, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
+
     /**
      * Hand out the next ticket number and move the counter along.
      *
@@ -350,6 +357,28 @@ class Workspace extends Model
 
             $locked->forceFill(['next_ticket_number' => $number + 1])->save();
             $this->next_ticket_number = $number + 1;
+
+            return $number;
+        });
+    }
+
+    /**
+     * Hand out the next document number and move the counter along.
+     *
+     * Everything the ticket counter above says applies here word for word: the
+     * lock is what keeps two simultaneous creates from reading the same number,
+     * and this belongs inside the transaction that writes the document so an
+     * abandoned insert does not take a number with it.
+     */
+    public function claimDocumentNumber(): int
+    {
+        return DB::transaction(function (): int {
+            $locked = static::query()->whereKey($this->id)->lockForUpdate()->firstOrFail();
+
+            $number = $locked->next_document_number;
+
+            $locked->forceFill(['next_document_number' => $number + 1])->save();
+            $this->next_document_number = $number + 1;
 
             return $number;
         });

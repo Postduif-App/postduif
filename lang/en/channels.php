@@ -63,6 +63,8 @@ return [
             'messages_description' => 'Decide who may post messages in this channel.',
             'tickets' => 'Tickets',
             'tickets_description' => 'Whether this channel keeps tickets, who may open them, and what of that shows up in the conversation.',
+            'document' => 'Documents',
+            'document_description' => 'Whether this channel keeps documents, who may write in them, and what of that ends up in the conversation.',
             'links' => 'Buttons',
             'links_description' => 'Shortcuts to places outside the app, in a bar above the conversation.',
             'webhooks' => 'Webhooks',
@@ -84,6 +86,18 @@ return [
         'admins_hint' => 'A broadcast channel. Others can still react with an emoji and reply in threads.',
         'replies_open' => 'Allow replies in a thread',
         'replies_open_hint' => 'Switching this off makes it a channel that announces rather than discusses. Existing threads stay readable.',
+    ],
+
+    'documents' => [
+        'heading' => 'Who may write in documents',
+        'disabled' => 'No documents',
+        'disabled_hint' => 'This channel is only a conversation.',
+        'everyone' => 'Everyone in this channel',
+        'everyone_hint' => 'Guests included. The place for agreements both sides keep.',
+        'members' => 'Members only, no guests',
+        'members_hint' => 'Guests do read the documents, but do not write in them.',
+        'announce' => 'Say so in the conversation',
+        'announce_hint' => 'A message in the channel when a document starts or is renamed. Not on every change: it saves by itself while somebody types.',
     ],
 
     'tickets' => [

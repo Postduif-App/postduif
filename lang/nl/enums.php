@@ -37,6 +37,18 @@ return [
             'DoNotDisturb' => 'Niet storen',
         ],
     ],
+    'channel-document-policy' => [
+        'description' => [
+            'Disabled' => 'Dit kanaal houdt geen documenten bij.',
+            'Everyone' => 'Iedereen in dit kanaal schrijft mee, gasten inbegrepen.',
+            'Members' => 'Gasten lezen de documenten wel, maar schrijven er niet in.',
+        ],
+        'label' => [
+            'Disabled' => 'Geen documenten',
+            'Everyone' => 'Iedereen in dit kanaal',
+            'Members' => 'Alleen leden, geen gasten',
+        ],
+    ],
     'channel-layout' => [
         'description' => [
             'Chat' => 'Berichten onder elkaar, zoals een gewoon gesprek.',

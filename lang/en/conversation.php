@@ -2,6 +2,7 @@
 
 return [
     'view' => [
+        'documents' => 'Documents',
         'label' => 'View',
         'messages' => 'Messages',
         'tickets' => 'Tickets',
