@@ -7,6 +7,8 @@ return [
         'name_placeholder' => 'First and last name',
         'password' => 'Password',
         'password_confirm' => 'Confirm password',
+        'password_show' => 'Show password',
+        'password_hide' => 'Hide password',
     ],
 
     'login' => [

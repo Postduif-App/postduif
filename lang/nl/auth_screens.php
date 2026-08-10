@@ -22,6 +22,14 @@ return [
         'name_placeholder' => 'Voor- en achternaam',
         'password' => 'Wachtwoord',
         'password_confirm' => 'Wachtwoord bevestigen',
+        /*
+         * Het oogje naast een wachtwoordveld. Alleen voor wie het scherm niet
+         * ziet — er staat geen tekst naast, dus zonder deze regel is de knop
+         * naamloos. Ze staan bij 'fields' omdat elk formulier met een
+         * wachtwoord dezelfde knop tekent.
+         */
+        'password_show' => 'Wachtwoord tonen',
+        'password_hide' => 'Wachtwoord verbergen',
     ],
 
     'login' => [

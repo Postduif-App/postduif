@@ -152,6 +152,8 @@ export type TranslationKey =
     | 'auth_screens.fields.name_placeholder'
     | 'auth_screens.fields.password'
     | 'auth_screens.fields.password_confirm'
+    | 'auth_screens.fields.password_hide'
+    | 'auth_screens.fields.password_show'
     | 'auth_screens.forgot_password.back_to'
     | 'auth_screens.forgot_password.description'
     | 'auth_screens.forgot_password.head'
