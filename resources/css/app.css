@@ -428,3 +428,175 @@
 .dark .pd-code span {
     color: var(--shiki-dark);
 }
+
+/*
+ * The document editor.
+ *
+ * Yoopta ships no stylesheet of its own — the .d.ts still mentions one, but no
+ * CSS file is published and the built code never imports it — so a heading in a
+ * document arrives as an unstyled <h1> and it is on us to say what one looks like.
+ *
+ * That turns out to be the better arrangement. A vendor stylesheet would have
+ * had to be talked out of its own colours and spacing to sit inside a panel
+ * that already has both; this way the document reads in the workspace's own
+ * font and accent, in either mode, without anything being overridden.
+ *
+ * Written as descendant rules rather than Tailwind classes because the elements
+ * are Yoopta's: it renders them, and there is no place to hang a className on
+ * the inside of a plugin.
+ */
+.document-prose {
+    color: var(--foreground);
+    font-size: 0.9375rem;
+
+    /*
+     * Named because the to-do checkbox is sized against it: it is centred
+     * inside a box exactly one line tall, so it lines up with the first line of
+     * its task whatever the font does. Two copies of 1.7 would eventually
+     * disagree; see document-todo.tsx for the other end.
+     */
+    --document-line-height: 1.7;
+    line-height: var(--document-line-height);
+}
+
+.document-prose :is(h1, h2, h3) {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    /*
+     * More air above than below. A heading belongs to what follows it, and
+     * even spacing makes it float between two paragraphs instead.
+     */
+    margin-block: 1.5em 0.4em;
+}
+
+.document-prose h1 {
+    font-size: 1.6rem;
+}
+
+.document-prose h2 {
+    font-size: 1.3rem;
+}
+
+.document-prose h3 {
+    font-size: 1.1rem;
+}
+
+/* The first block never pushes the document away from the top of the panel. */
+.document-prose > *:first-child :is(h1, h2, h3) {
+    margin-block-start: 0;
+}
+
+/*
+ * No native markers on any list, and no indent from the browser either.
+ *
+ * All three list types draw their own marker in a column of their own — see
+ * document-list-row.tsx. The native marker box is sized by the browser from the
+ * padding, and with a monospace face it was clipping the digits of a numbered
+ * list; drawing them puts the width under our control and lines the three
+ * types up with each other.
+ */
+.document-prose
+    :is(
+        [data-element-type='bulleted-list'],
+        [data-element-type='numbered-list'],
+        [data-element-type='todo-list']
+    ) {
+    list-style: none;
+    padding-inline-start: 0;
+}
+
+/*
+ * A callout: something set apart from the prose around it.
+ *
+ * Yoopta renders it as a bare <div> with no styling whatsoever, so without
+ * this a callout is a paragraph that merely believes it is special.
+ */
+.document-prose [data-element-type='callout'] {
+    background: var(--muted);
+    border-inline-start: 3px solid var(--primary);
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+    margin-block: 0.75em;
+}
+
+/*
+ * Air between blocks. Yoopta wraps each one in its own div and adds none, so
+ * without this every paragraph sits directly against the next.
+ */
+.document-prose .yoopta-block + .yoopta-block {
+    margin-block-start: 0.35em;
+}
+
+.document-prose blockquote {
+    border-inline-start: 3px solid var(--border);
+    padding-inline-start: 1em;
+    color: var(--muted-foreground);
+}
+
+.document-prose hr {
+    border-color: var(--border);
+    margin-block: 1.5em;
+}
+
+.document-prose code {
+    background: var(--muted);
+    border-radius: 0.25rem;
+    padding: 0.1em 0.35em;
+    font-size: 0.875em;
+}
+
+.document-prose pre {
+    background: var(--muted);
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+}
+
+/* Inside a block that is already monospaced, a second background is noise. */
+.document-prose pre code {
+    background: none;
+    padding: 0;
+}
+
+.document-prose a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/*
+ * No focus ring on the text itself.
+ *
+ * Each block is its own contenteditable region, and a browser draws a focus
+ * indicator around whichever one has the caret — in Firefox a thin blue line,
+ * which on an empty heading collapses to exactly that: a blue line under the
+ * block, following you down the document as you type.
+ *
+ * Suppressing a focus indicator is normally the wrong instinct, so the reason
+ * it is right here is worth stating: in a text editor the caret *is* the focus
+ * indicator, and it is a better one — it says not only which block has focus
+ * but where in it. Nothing is lost for anyone navigating by keyboard.
+ *
+ * Only inside the prose. The title field above the document keeps its own
+ * focus styling, because that one is a form control and has no caret of its
+ * own to speak for it.
+ */
+.document-prose [contenteditable]:focus,
+.document-prose [contenteditable]:focus-visible,
+.document-prose:focus,
+.document-prose:focus-visible {
+    outline: none;
+}
+
+/*
+ * Yoopta draws the placeholder as a data attribute on the empty block rather
+ * than as a real <input placeholder>, so it needs saying out loud. Unselectable
+ * because a caret that can land on the hint is a caret that can delete it.
+ */
+.document-prose [data-placeholder]::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    pointer-events: none;
+    position: absolute;
+    user-select: none;
+}

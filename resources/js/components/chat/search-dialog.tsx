@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import {
     AtSign,
     BarChart3,
+    FileText,
     Hash,
     KeyRound,
     Lock,
@@ -34,6 +35,7 @@ import type {
     ChannelMember,
     ChannelSummary,
     ChatWorkspace,
+    DocumentHit,
     SearchHit,
 } from '@/types/chat';
 
@@ -209,6 +211,7 @@ export function SearchDialog({
     }, [open]);
 
     const [hits, setHits] = useState<SearchHit[]>([]);
+    const [documentHits, setDocumentHits] = useState<DocumentHit[]>([]);
     const [loading, setLoading] = useState(false);
 
     const trimmed = query.trim();
@@ -360,6 +363,7 @@ export function SearchDialog({
     // Derived rather than stored: an empty query has no results by definition,
     // so there is nothing to synchronise back into state.
     const results = trimmed === '' ? [] : hits;
+    const documentResults = trimmed === '' ? [] : documentHits;
 
     useEffect(() => {
         // Nothing typed, nothing asked: the empty palette is built entirely
@@ -393,11 +397,13 @@ export function SearchDialog({
                 );
                 const payload = await response.json();
                 setHits(payload.results ?? []);
+                setDocumentHits(payload.documents ?? []);
             } catch (error) {
                 if (!(
                     error instanceof DOMException && error.name === 'AbortError'
                 )) {
                     setHits([]);
+                    setDocumentHits([]);
                 }
             } finally {
                 setLoading(false);
@@ -579,6 +585,54 @@ export function SearchDialog({
                             >
                                 <command.icon className="size-3.5 text-muted-foreground" />
                                 {command.label}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
+
+                {documentResults.length > 0 && (
+                    /*
+                        Above the messages rather than below them. A document
+                        that matches is nearly always a better answer than a
+                        remark about the same subject — the remark is one
+                        moment, the document is what the channel settled on.
+                    */
+                    <CommandGroup
+                        heading={tChoice(
+                            'search.palette.documents',
+                            documentResults.length,
+                        )}
+                    >
+                        {documentResults.map((hit) => (
+                            <CommandItem
+                                key={`document-${hit.id}`}
+                                value={`document-${hit.id}`}
+                                onSelect={() => {
+                                    onOpenChange(false);
+                                    router.visit(
+                                        show(
+                                            {
+                                                workspace: workspace.slug,
+                                                channel: hit.channel.id,
+                                            },
+                                            {
+                                                query: {
+                                                    view: 'documents',
+                                                    document: hit.number,
+                                                },
+                                            },
+                                        ),
+                                    );
+                                }}
+                                className="flex flex-col items-start gap-0.5"
+                            >
+                                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <FileText className="size-3" />
+                                    {hit.channel.name} · {hit.title}
+                                </span>
+                                <span className="line-clamp-2 text-sm">
+                                    {hit.snippet}
+                                </span>
                             </CommandItem>
                         ))}
                     </CommandGroup>

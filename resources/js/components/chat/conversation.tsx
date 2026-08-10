@@ -18,7 +18,10 @@ import { ChannelMembersDialog } from '@/components/chat/channel-members-dialog';
 import { ChannelMenuButton } from '@/components/chat/channel-menu';
 import { ChannelSettingsDialog } from '@/components/chat/channel-settings-dialog';
 import { Composer } from '@/components/chat/composer';
+import { CreateDocumentDialog } from '@/components/chat/create-document-dialog';
 import { CreateTicketDialog } from '@/components/chat/create-ticket-dialog';
+import { DocumentList } from '@/components/chat/document-list';
+import { DocumentView } from '@/components/chat/document-view';
 import { FeedList } from '@/components/chat/feed-list';
 import { ForwardDialog } from '@/components/chat/forward-dialog';
 import { HuddleBar } from '@/components/chat/huddle-bar';
@@ -42,6 +45,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useChannelRealtime } from '@/hooks/use-channel-realtime';
+import { useDocumentActivity } from '@/hooks/use-document-activity';
 import { useHuddle } from '@/hooks/use-huddle';
 import { useTicketActivity } from '@/hooks/use-ticket-activity';
 import { useTranslate } from '@/hooks/use-translate';
@@ -75,10 +79,12 @@ import type {
     MessageAuthor,
     MessageReaction,
     OpenThread,
+    OpenDocument,
     OpenTicket,
     PinnedMessage,
     EphemeralNotice,
     ScheduledMessage,
+    DocumentSummary,
     TicketBoard as Board,
 } from '@/types/chat';
 
@@ -94,12 +100,16 @@ interface ConversationProps {
      * `messages`: a pin may be far older than the fifty messages above.
      */
     pins: PinnedMessage[];
-    /** Whether the channel is showing its messages or its board. */
+    /** Which of the three views the channel is showing. */
     view: ChannelView;
     /** The channel's tickets, or null when it keeps none at all. */
     tickets: Board | null;
     /** The ticket named by ?ticket= in the URL, or null. */
     ticket: OpenTicket | null;
+    /** The channel's documents, or null when it keeps none at all. */
+    documentList: DocumentSummary[] | null;
+    /** The document named by ?document= in the URL, or null. */
+    openDocument: OpenDocument | null;
     /** What this member still has waiting in this channel, soonest first. */
     scheduled: ScheduledMessage[];
     /** What this member alone was told here, oldest first. */
@@ -258,6 +268,8 @@ export function Conversation({
     view,
     tickets,
     ticket,
+    documentList,
+    openDocument,
     scheduled,
     notices,
     channels,
@@ -311,6 +323,7 @@ export function Conversation({
     const [membersOpen, setMembersOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [createTicketOpen, setCreateTicketOpen] = useState(false);
+    const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
     /**
      * The workflow button being pressed, if one is.
      *
@@ -365,6 +378,17 @@ export function Conversation({
     // Only where there is a board to keep current. A channel without tickets
     // would otherwise reload its props for an event it can never receive.
     useTicketActivity(channel.id, channel.hasTickets);
+
+    /*
+     * The list keeps itself current; the open document only reports that it has
+     * moved. See use-document-activity for why those are not the same thing.
+     */
+    const { openDocumentStale, dismiss: dismissDocumentNotice } =
+        useDocumentActivity(
+            channel.id,
+            channel.hasDocuments,
+            openDocument?.number ?? null,
+        );
 
     const isReply = (message: ChatMessage) =>
         thread !== null && message.parentId === thread.parent.id;
@@ -822,6 +846,51 @@ export function Conversation({
         : 0;
 
     /*
+     * The tabs this channel actually has.
+     *
+     * Built rather than written out, because "messages and tickets" was a pair
+     * and this is now a list that grows: each entry says what it needs from the
+     * channel, and a channel that has neither extra never draws the bar at all.
+     *
+     * The badge is only on tickets. A document has no count worth showing —
+     * documents are not a queue — and a number beside it would invite reading
+     * it as unread work.
+     */
+    const views: {
+        value: ChannelView;
+        label: string;
+        badge: number | null;
+        query: Record<string, string>;
+    }[] = [
+        {
+            value: 'messages',
+            label: t('conversation.view.messages'),
+            badge: null,
+            query: {},
+        },
+        ...(channel.hasTickets && tickets
+            ? [
+                  {
+                      value: 'tickets' as const,
+                      label: t('conversation.view.tickets'),
+                      badge: openTickets,
+                      query: { view: 'tickets' },
+                  },
+              ]
+            : []),
+        ...(channel.hasDocuments && documentList
+            ? [
+                  {
+                      value: 'documents' as const,
+                      label: t('conversation.view.documents'),
+                      badge: null,
+                      query: { view: 'documents' },
+                  },
+              ]
+            : []),
+    ];
+
+    /*
      * The huddle, owned here rather than in the bar that draws it: the button
      * that starts one sits in the header above, and both have to drive the same
      * microphone and the same connections.
@@ -918,36 +987,17 @@ export function Conversation({
                         and the same live connection. Tabs rather than a fourth
                         panel, which would make the screen unusable below 1400px.
                     */}
-                    {channel.hasTickets && tickets && (
+                    {views.length > 1 && (
                         <nav
                             aria-label={t('conversation.view.label')}
                             className="ml-4 flex items-center gap-1 rounded-md bg-muted/60 p-0.5"
                         >
-                            {(
-                                [
-                                    [
-                                        'messages',
-                                        t('conversation.view.messages'),
-                                        null,
-                                    ],
-                                    [
-                                        'tickets',
-                                        t('conversation.view.tickets'),
-                                        openTickets,
-                                    ],
-                                ] as const
-                            ).map(([value, label, badge]) => (
+                            {views.map(({ value, label, badge, query }) => (
                                 <button
                                     key={value}
                                     type="button"
                                     aria-current={view === value}
-                                    onClick={() =>
-                                        go(
-                                            value === 'tickets'
-                                                ? { view: 'tickets' }
-                                                : {},
-                                        )
-                                    }
+                                    onClick={() => go(query)}
                                     className={cn(
                                         'rounded px-2.5 py-1 text-xs font-medium transition-colors',
                                         view === value
@@ -1341,6 +1391,34 @@ export function Conversation({
                             setCreateTicketOpen(true);
                         }}
                     />
+                ) : view === 'documents' && documentList ? (
+                    /*
+                        The open document replaces the list rather than sitting
+                        beside it. A document is read at reading width and the
+                        conversation is already using half the screen; a third
+                        column would leave the document about as wide as this
+                        comment.
+                    */
+                    openDocument ? (
+                        <DocumentView
+                            workspace={workspace}
+                            channel={channel}
+                            openDocument={openDocument}
+                            movedElsewhere={openDocumentStale}
+                            onDismissMoved={dismissDocumentNotice}
+                            onClose={() => go({ view: 'documents' })}
+                        />
+                    ) : (
+                        <DocumentList
+                            documents={documentList}
+                            activeNumber={null}
+                            canCreate={channel.canCreateDocument}
+                            onOpen={(number) =>
+                                go({ view: 'documents', document: number })
+                            }
+                            onCreate={() => setCreateDocumentOpen(true)}
+                        />
+                    )
                 ) : (
                     <>
                         <PinnedBar
@@ -1438,9 +1516,17 @@ export function Conversation({
                     would be taking a fifth of the screen to offer something
                     nobody reaches for mid-conversation. It comes back the
                     moment the huddle is made small again.
+
+                    Nor on the board or in a document. Both are a different view
+                    of the channel rather than a place in the conversation, and
+                    a message field under a document is worse than merely unused:
+                    it invites somebody to answer the document in a channel that
+                    will not show their answer anywhere near it. In a document it
+                    is also a second thing that takes what you type, one Escape
+                    away from where the caret already was.
                 */}
-                {huddleExpanded && huddle.state === 'in' ? null : view ===
-                  'tickets' ? null : !channel.isMember ? (
+                {huddleExpanded && huddle.state === 'in' ? null : view !==
+                  'messages' ? null : !channel.isMember ? (
                     <JoinChannelNotice
                         workspace={workspace}
                         channel={channel}
@@ -1629,6 +1715,15 @@ export function Conversation({
                     canPrioritise={!currentUserIsGuest}
                     open={createTicketOpen}
                     onOpenChange={setCreateTicketOpen}
+                />
+            )}
+
+            {channel.canCreateDocument && (
+                <CreateDocumentDialog
+                    workspace={workspace}
+                    channelId={channel.id}
+                    open={createDocumentOpen}
+                    onOpenChange={setCreateDocumentOpen}
                 />
             )}
 

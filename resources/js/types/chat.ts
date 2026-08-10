@@ -118,6 +118,11 @@ export interface ChatWorkspace {
  * The switches a workspace can throw, under the same names the routes use — so
  * a hidden button and the endpoint that would have refused it are visibly the
  * same feature.
+ *
+ * In the order of WorkspaceFeature::ALL, which is what BuildChatShell sends.
+ * Keeping the two lists in the same order is the only way anyone notices that
+ * one of them is missing an entry — which is how five of these came to be
+ * absent here while the server had been sending them all along.
  */
 export interface WorkspaceFeatures {
     'scheduled-messages': boolean;
@@ -125,11 +130,17 @@ export interface WorkspaceFeatures {
     'message-forwarding': boolean;
     'message-board': boolean;
     tickets: boolean;
-    webhooks: boolean;
-    'invite-links': boolean;
-    'ai-access': boolean;
-    forms: boolean;
+    documents: boolean;
     timeclock: boolean;
+    polls: boolean;
+    forms: boolean;
+    huddles: boolean;
+    webhooks: boolean;
+    workflows: boolean;
+    'invite-links': boolean;
+    transfers: boolean;
+    'secret-requests': boolean;
+    'ai-access': boolean;
 }
 
 /** Handles that address a group rather than a person. */
@@ -225,6 +236,12 @@ export type ChannelPostingPolicy = 'everyone' | 'admins';
 export type ChannelTicketPolicy = 'disabled' | 'everyone' | 'members';
 
 /**
+ * Who may write in a channel's documents. Note that this never narrows reading:
+ * whoever can see the channel can read its documents.
+ */
+export type ChannelDocumentPolicy = 'disabled' | 'everyone' | 'members';
+
+/**
  * An incoming webhook, as the channel settings see it.
  *
  * The URL carries the token, so it is only ever sent to somebody who may manage
@@ -281,6 +298,16 @@ export interface ActiveChannel extends ChannelSummary {
     hasTickets: boolean;
     /** False for a guest in a members-only channel, and wherever tickets are off. */
     canCreateTicket: boolean;
+    documentPolicy: ChannelDocumentPolicy;
+    /** Whether a new or renamed document also says so in the conversation. */
+    documentAnnouncements: boolean;
+    /**
+     * Whether this channel keeps documents at all. Not the same question as
+     * documentPolicy !== 'disabled': a DM never does, whatever is stored.
+     */
+    hasDocuments: boolean;
+    /** False for a guest in a members-only channel, and wherever documents are off. */
+    canCreateDocument: boolean;
     /**
      * Whether this member may start a message here. Reacting and answering in a
      * thread stay open even when this is false.
@@ -689,8 +716,8 @@ export type TicketStatus =
 
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 
-/** Which of the two views a channel is showing. */
-export type ChannelView = 'messages' | 'tickets';
+/** Which of the three views a channel is showing. */
+export type ChannelView = 'messages' | 'tickets' | 'documents';
 
 /**
  * Somebody on a ticket. Null where nothing with a face acted: a webhook, or the
@@ -891,4 +918,72 @@ export interface MessageSentSecretCard {
     revealedAt: string | null;
     state: 'pending' | 'revealed' | 'expired';
     url: string;
+}
+
+/**
+ * A document document, exactly as the editor hands it over and takes it back.
+ *
+ * Deliberately opaque. This is Yoopta's own value — a map of block id to block,
+ * each block holding Slate nodes — and its shape moves whenever a plugin is
+ * added. Nothing outside the editor should be reading into it, so nothing
+ * outside the editor is given a type that would let it. Whatever the rest of
+ * the application needs to know about a document's contents comes from the
+ * flattened text instead.
+ */
+export type DocumentContent = Record<string, unknown>;
+
+/**
+ * A document as the list shows it: everything except the document.
+ *
+ * The body is deliberately absent. A channel with a dozen documents would ship a
+ * dozen JSON trees to draw a list of titles, and the one that is open arrives
+ * separately as an OpenDocument.
+ */
+export interface DocumentSummary {
+    id: number;
+    /** What people write down, and what the URL carries. */
+    number: number;
+    title: string;
+    /** The first line or so of the document, flattened to plain text. */
+    excerpt: string;
+    createdBy: string | null;
+    /** Who touched it last, falling back to who started it. */
+    updatedBy: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+}
+
+/** The document named by ?document= in the URL, with its document. */
+export interface OpenDocument extends DocumentSummary {
+    body: DocumentContent;
+    /**
+     * What must be sent back when saving. The whole conflict mechanism as far
+     * as the browser is concerned: hold on to it, return it, and be told when
+     * somebody else got there first.
+     */
+    version: number;
+    canEdit: boolean;
+    canDelete: boolean;
+}
+
+/**
+ * A document as the search palette lists it.
+ *
+ * Its own shape rather than a SearchHit, and its own section in the palette: a
+ * message hit is a moment in a conversation and this is a document somebody
+ * still maintains. Folding them into one list would mean ranking those against
+ * each other on a scale neither of them is on.
+ */
+export interface DocumentHit {
+    id: number;
+    /** What the URL carries, so a hit opens the document rather than the list. */
+    number: number;
+    title: string;
+    /** A window around the match, not the opening line. */
+    snippet: string;
+    updatedAt: string | null;
+    channel: {
+        id: number;
+        name: string | null;
+    };
 }

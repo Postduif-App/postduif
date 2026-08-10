@@ -22,7 +22,7 @@ import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { SecretCard } from '@/components/chat/secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 import { useFormats } from '@/hooks/use-formats';
 import { useInitials } from '@/hooks/use-initials';
@@ -235,7 +235,23 @@ function FeedItem({
         >
             <header className="mb-3 flex items-center gap-3">
                 <Avatar className="size-9 shrink-0">
-                    <AvatarFallback className="text-xs font-semibold">
+                    {/*
+                        The image sits above the fallback rather than instead
+                        of it: Radix draws the initials until the picture has
+                        loaded, and keeps them if it never does.
+                    */}
+                    {message.author.avatarUrl && (
+                        <AvatarImage src={message.author.avatarUrl} alt="" />
+                    )}
+                    <AvatarFallback
+                        className={cn(
+                            'text-xs font-semibold',
+                            // A bot should not be mistaken for a colleague at a
+                            // glance, so it does not get the member avatar.
+                            message.author.isBot &&
+                                'bg-muted text-muted-foreground',
+                        )}
+                    >
                         {message.author.isBot ? (
                             <Bot className="size-4" />
                         ) : (

@@ -28,10 +28,12 @@ import type {
     ChannelMember,
     ChannelSection as ChannelSectionRow,
     ChannelSummary,
+    DocumentSummary,
     ChannelView,
     ChatMessage,
     ChatWorkspace,
     ScheduledBroadcast,
+    OpenDocument,
     OpenThread,
     OpenTicket,
     PinnedMessage,
@@ -57,6 +59,10 @@ interface ChatShowProps {
     tickets: TicketBoard | null;
     /** The ticket named by ?ticket= in the URL, or null. */
     ticket: OpenTicket | null;
+    /** The channel's documents, or null when it keeps none at all. */
+    documentList: DocumentSummary[] | null;
+    /** The document named by ?document= in the URL, or null. */
+    openDocument: OpenDocument | null;
     /** Every tag in use in the workspace, for the channel settings dialog. */
     workspaceTags: string[];
     /** Channels that were put away, for whoever may take them back out. */
@@ -93,6 +99,8 @@ export default function ChatShow({
     view,
     tickets,
     ticket,
+    documentList,
+    openDocument,
     workspaceTags,
     archivedChannels,
     sections,
@@ -260,6 +268,8 @@ export default function ChatShow({
                 view={view}
                 tickets={tickets}
                 ticket={ticket}
+                documentList={documentList}
+                openDocument={openDocument}
                 channels={withActivity(channels)}
                 sections={sections}
                 workspaceTags={workspaceTags}

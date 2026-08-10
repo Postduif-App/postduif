@@ -1,5 +1,5 @@
-import { createInertiaApp } from '@inertiajs/react';
-import { configureEcho } from '@laravel/echo-react';
+import { createInertiaApp, router } from '@inertiajs/react';
+import { configureEcho, echo, echoIsConfigured } from '@laravel/echo-react';
 import type { PropsWithChildren } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -26,6 +26,29 @@ const reverbPath = (import.meta.env.VITE_REVERB_PATH ?? '').replace(
 configureEcho({
     broadcaster: 'reverb',
     wsPath: reverbPath ? `/${reverbPath}` : '',
+});
+
+/**
+ * Tell the server which socket a request came from, so a broadcast can leave
+ * its own author out.
+ *
+ * This is the whole of what `broadcast(...)->toOthers()` needs. Laravel reads
+ * it from the X-Socket-ID header and nothing else — no header, and toOthers()
+ * quietly becomes a plain broadcast that also reaches whoever caused it.
+ *
+ * Quietly is the problem. The document editor autosaves every few seconds while
+ * somebody types, and without this each of those saves came straight back to
+ * the person typing as "somebody else has updated this document".
+ *
+ * Read per request rather than once here: the socket id does not exist until
+ * the connection is up, and it changes on every reconnect.
+ */
+router.on('before', (event) => {
+    const id = echoIsConfigured() ? echo().socketId() : null;
+
+    if (id) {
+        event.detail.visit.headers['X-Socket-ID'] = id;
+    }
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';

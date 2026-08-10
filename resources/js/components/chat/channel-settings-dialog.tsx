@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import {
     Archive,
     Check,
+    FileText,
     Info,
     Link2,
     MessageSquare,
@@ -33,6 +34,7 @@ import { archive, destroy, update } from '@/routes/chat/channels';
 import { update as updateTags } from '@/routes/chat/channels/tags';
 import type {
     ActiveChannel,
+    ChannelDocumentPolicy,
     ChannelPostingPolicy,
     ChannelTicketPolicy,
     ChatWorkspace,
@@ -70,6 +72,7 @@ const TABS = [
     { id: 'general', icon: Info },
     { id: 'messages', icon: MessageSquare },
     { id: 'tickets', icon: TicketIcon },
+    { id: 'document', icon: FileText },
     { id: 'links', icon: Link2 },
     { id: 'webhooks', icon: Webhook },
 ] as const;
@@ -151,6 +154,26 @@ function ticketOptions(t: Translate): Option<ChannelTicketPolicy>[] {
             value: 'members',
             label: t('channels.tickets.members'),
             description: t('channels.tickets.members_hint'),
+        },
+    ];
+}
+
+function documentOptions(t: Translate): Option<ChannelDocumentPolicy>[] {
+    return [
+        {
+            value: 'disabled',
+            label: t('channels.documents.disabled'),
+            description: t('channels.documents.disabled_hint'),
+        },
+        {
+            value: 'everyone',
+            label: t('channels.documents.everyone'),
+            description: t('channels.documents.everyone_hint'),
+        },
+        {
+            value: 'members',
+            label: t('channels.documents.members'),
+            description: t('channels.documents.members_hint'),
         },
     ];
 }
@@ -393,6 +416,12 @@ export function ChannelSettingsDialog({
     const [statusAnnouncements, setStatusAnnouncements] = useState(
         channel.ticketStatusAnnouncements,
     );
+    const [documentPolicy, setDocumentPolicy] = useState<ChannelDocumentPolicy>(
+        channel.documentPolicy,
+    );
+    const [documentAnnouncements, setDocumentAnnouncements] = useState(
+        channel.documentAnnouncements,
+    );
     const [visibility, setVisibility] = useState(
         channel.type === 'private' ? 'private' : 'public',
     );
@@ -414,7 +443,9 @@ export function ChannelSettingsDialog({
             ? workspace.features.webhooks
             : tab.id === 'tickets'
               ? workspace.features.tickets
-              : true,
+              : tab.id === 'document'
+                ? workspace.features.documents
+                : true,
     );
 
     const reset = () => {
@@ -428,6 +459,8 @@ export function ChannelSettingsDialog({
         setTickets(channel.ticketPolicy);
         setAnnouncements(channel.ticketAnnouncements);
         setStatusAnnouncements(channel.ticketStatusAnnouncements);
+        setDocumentPolicy(channel.documentPolicy);
+        setDocumentAnnouncements(channel.documentAnnouncements);
 
         // The tab is part of what "closed" means: reopening lands on the panel
         // this dialog is usually opened for, not on wherever somebody left off
@@ -453,7 +486,9 @@ export function ChannelSettingsDialog({
         posting !== channel.postingPolicy ||
         tickets !== channel.ticketPolicy ||
         announcements !== channel.ticketAnnouncements ||
-        statusAnnouncements !== channel.ticketStatusAnnouncements;
+        statusAnnouncements !== channel.ticketStatusAnnouncements ||
+        documentPolicy !== channel.documentPolicy ||
+        documentAnnouncements !== channel.documentAnnouncements;
 
     return (
         <Dialog
@@ -788,6 +823,56 @@ export function ChannelSettingsDialog({
                             </section>
                         )}
 
+                        {active === 'document' && (
+                            <section className="flex flex-col gap-2">
+                                <h3 className="text-sm font-medium">
+                                    {t('channels.documents.heading')}
+                                </h3>
+                                <ChoiceGroup
+                                    label={t('channels.documents.heading')}
+                                    options={documentOptions(t)}
+                                    value={documentPolicy}
+                                    onChange={setDocumentPolicy}
+                                />
+
+                                {/*
+                                    Only worth asking once the channel keeps
+                                    documents at all. The value stays as it was
+                                    while hidden, so switching documents off and
+                                    on again does not silently flip it.
+                                */}
+                                {documentPolicy !== 'disabled' && (
+                                    <div className="mt-1 flex items-start gap-3 rounded-lg border p-3">
+                                        <Checkbox
+                                            id="document-announcements"
+                                            className="mt-0.5"
+                                            checked={documentAnnouncements}
+                                            onCheckedChange={(checked) =>
+                                                setDocumentAnnouncements(
+                                                    checked === true,
+                                                )
+                                            }
+                                        />
+                                        <div className="min-w-0">
+                                            <Label
+                                                htmlFor="document-announcements"
+                                                className="text-sm font-medium"
+                                            >
+                                                {t(
+                                                    'channels.documents.announce',
+                                                )}
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                {t(
+                                                    'channels.documents.announce_hint',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
                         {active === 'links' && (
                             <ChannelLinksSection
                                 workspace={workspace}
@@ -833,6 +918,9 @@ export function ChannelSettingsDialog({
                                         ticket_announcements: announcements,
                                         ticket_status_announcements:
                                             statusAnnouncements,
+                                        document_policy: documentPolicy,
+                                        document_announcements:
+                                            documentAnnouncements,
                                     },
                                     {
                                         preserveScroll: true,
