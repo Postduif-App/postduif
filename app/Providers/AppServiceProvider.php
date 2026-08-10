@@ -7,6 +7,7 @@ use App\Models\Webhook;
 use App\Models\Workflow;
 use App\Support\Dns\DnsHostResolver;
 use App\Support\Dns\HostResolver;
+use App\Support\PlatformStatistics;
 use App\Workflows\Actions\AddChannelMembers;
 use App\Workflows\Actions\AddReaction;
 use App\Workflows\Actions\ArchiveChannel;
@@ -35,6 +36,7 @@ use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -145,6 +147,14 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureRateLimiting();
         $this->configureOAuth();
+
+        /*
+         * By class name rather than a closure: the about command resolves it
+         * from the container and calls it only while rendering, so the counts
+         * stay out of every web request that boots this provider. See
+         * PlatformStatistics for what is counted and why it lives here.
+         */
+        AboutCommand::add('Postduif', PlatformStatistics::class);
 
         // Chat is unusable without a websocket server, so "php artisan dev"
         // starts Reverb alongside the HTTP server, queue worker and Vite.
