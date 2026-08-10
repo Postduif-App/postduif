@@ -135,7 +135,15 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                     </Link>
 
                     <div className="flex items-center gap-3">
-                        <LanguageChoice current={locale} />
+                        {/*
+                            Only for visitors without an account. A member has
+                            been asked this question outright on their profile
+                            screen, and that answer outranks the cookie this
+                            switcher writes — see HandleLocale. Leaving it here
+                            would be offering a control that quietly does
+                            nothing, which is worse than not offering one.
+                        */}
+                        {!auth.user && <LanguageChoice current={locale} />}
 
                         {/*
                             A plain link rather than a button: the two buttons

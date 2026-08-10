@@ -92,3 +92,19 @@ it('offers the other language on the public site', function () {
         // And it says which one you are on, for somebody who cannot read it.
         ->and($html)->toContain('aria-current="true"');
 });
+
+it('does not offer it to a member who has a profile screen', function () {
+    skipWithoutSsr();
+
+    /*
+     * The cookie this switcher writes sits below a member's own setting, so
+     * for somebody signed in the link is a control that does nothing. Their
+     * language lives on the profile screen, which asks the question outright.
+     */
+    $html = actingAs(User::factory()->create(['locale' => null]))
+        ->get(route('home'))
+        ->getContent();
+
+    expect($html)->not->toContain(route('locale.switch', 'en', absolute: false))
+        ->and($html)->not->toContain(route('locale.switch', 'nl', absolute: false));
+});
