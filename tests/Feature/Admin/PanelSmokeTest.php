@@ -32,6 +32,8 @@ test('it renders every list page', function (string $path) {
     '/admin/users',
     '/admin/channels',
     '/admin/messages',
+    '/admin/tickets',
+    '/admin/documents',
 ]);
 
 test('it renders the workspace pages', function () {
@@ -66,4 +68,6 @@ test('it refuses every page to someone who is not a moderator', function (string
     '/admin/users',
     '/admin/channels',
     '/admin/messages',
+    '/admin/tickets',
+    '/admin/documents',
 ]);
