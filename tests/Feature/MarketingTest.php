@@ -4,6 +4,7 @@ use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Features\Forms;
 use App\Features\Transfers;
 use App\Features\WorkspaceFeature;
@@ -83,16 +84,40 @@ it('says which features only exist once somebody switches them on', function () 
         ->toHaveCount(7);
 });
 
-it('describes the roles as the code defines them', function () {
+it('describes the roles as the code seeds them', function () {
     get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('roles', count(SystemRole::cases()))
             ->where('roles.3.value', SystemRole::Guest->value)
-            // The guest row is the one that matters: it is the only role the
-            // application actively keeps out of things.
+            // The guest column is the one that matters: it is the only role the
+            // application actively keeps out of things, and browsing is the
+            // answer that is a column on the role rather than a right in its
+            // bag — which is why the page gives it its own row.
             ->where('roles.3.canBrowseWorkspace', false)
-            ->where('roles.3.canCreateChannels', false)
+            ->where('roles.3.abilities', [])
+            /*
+             * The owner holds the whole catalogue, and this is the assertion
+             * that keeps the page honest about custom roles: nobody may write
+             * into a role a right they do not hold themselves, so a right no
+             * seeded role holds is one no workspace could ever switch on.
+             */
+            ->where('roles.0.abilities', array_column(WorkspaceAbility::cases(), 'value'))
+        );
+});
+
+it('offers the whole catalogue of rights a custom role can be built from', function () {
+    get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            /*
+             * Every case, not a chosen few. The table used to name five rights
+             * by hand and went on naming five once the catalogue grew past
+             * them; reading the enum is what stops that happening twice.
+             */
+            ->has('abilities', count(WorkspaceAbility::cases()))
+            ->where('abilities.0.value', WorkspaceAbility::ManageWorkspace->value)
+            ->where('abilities.0.label', WorkspaceAbility::ManageWorkspace->label())
         );
 });
 

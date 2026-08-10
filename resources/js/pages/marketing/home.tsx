@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import type { CSSProperties } from 'react';
 
 import { DoveMark } from '@/components/marketing/logo';
 import {
@@ -11,7 +12,6 @@ import type { Described } from '@/components/marketing/prose';
 import { useTranslate } from '@/hooks/use-translate';
 import { SOURCE_URL } from '@/lib/postduif';
 import { login, register } from '@/routes';
-import type { TranslationKey } from '@/types/translations';
 
 interface Feature {
     key: string;
@@ -24,16 +24,24 @@ interface Feature {
 interface Role {
     value: string;
     label: string;
-    canManageWorkspace: boolean;
-    canInviteMembers: boolean;
+    /**
+     * A column on the role rather than one of the abilities below, which is why
+     * it is the one answer that gets its own row and its own footnote.
+     */
     canBrowseWorkspace: boolean;
-    canCreateChannels: boolean;
-    canSendTransfers: boolean;
+    /** The rights this role is seeded with, as WorkspaceAbility spells them. */
+    abilities: string[];
+}
+
+interface Ability {
+    value: string;
+    label: string;
 }
 
 interface HomeProps {
     features: Feature[];
     roles: Role[];
+    abilities: Ability[];
     channelSettings: {
         layout: Described[];
         posting: Described[];
@@ -45,6 +53,34 @@ interface HomeProps {
         tools: { name: string; description: string }[];
     };
 }
+
+/**
+ * The three shapes the permission table is drawn with.
+ *
+ * Pulled out of the JSX because the table now builds its rows and its columns
+ * from two arrays rather than writing them out, and a style object repeated
+ * inside two nested maps is the kind of thing that drifts apart one cell at a
+ * time.
+ */
+const headCell: CSSProperties = {
+    fontFamily: 'var(--pd-mono)',
+    fontSize: 11,
+    letterSpacing: '0.08em',
+    color: '#8b8a7b',
+    fontWeight: 400,
+    textTransform: 'uppercase',
+};
+
+const bodyRow: CSSProperties = {
+    borderBottom: '1px solid var(--pd-zand)',
+};
+
+/** The row's own heading — a right, in the words the settings screen uses. */
+const rowHead: CSSProperties = {
+    fontFamily: 'var(--pd-mono)',
+    fontSize: 13,
+    fontWeight: 600,
+};
 
 function Mark({ on }: { on: boolean }) {
     const { t } = useTranslate();
@@ -85,6 +121,7 @@ function Mark({ on }: { on: boolean }) {
 export default function MarketingHome({
     features,
     roles,
+    abilities,
     channelSettings,
     workflow,
     token,
@@ -546,10 +583,17 @@ export default function MarketingHome({
                 />
 
                 {/*
-                    The table keeps its own scroll: four columns of role names
-                    do not fold into a phone, and a table that wraps mid-word is
-                    less readable than one you push sideways. What matters is
-                    that the box scrolls and the page does not.
+                    Rights are the rows and roles are the columns, which is the
+                    way round the application grew into. There are eleven rights
+                    and four roles, so the other orientation would be a table
+                    twelve columns wide — and the list of rights is the more
+                    useful half anyway: it is what somebody composes a role of
+                    their own out of.
+
+                    The table keeps its own scroll all the same. Four columns of
+                    role names do not fold into a phone, and a table that wraps
+                    mid-word is less readable than one you push sideways. What
+                    matters is that the box scrolls and the page does not.
                 */}
                 <div className="-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0">
                     <table
@@ -557,79 +601,92 @@ export default function MarketingHome({
                         style={{ fontSize: 14 }}
                     >
                         <thead>
-                            <tr
-                                style={{
-                                    borderBottom: '1px solid var(--pd-zand)',
-                                }}
-                            >
-                                {(
-                                    [
-                                        'marketing.home.roles.role',
-                                        'marketing.home.roles.manage',
-                                        'marketing.home.roles.invite',
-                                        'marketing.home.roles.browse',
-                                        'marketing.home.roles.create_channels',
-                                        'marketing.home.roles.send_files',
-                                    ] as TranslationKey[]
-                                ).map((head) => (
+                            <tr style={bodyRow}>
+                                <th
+                                    className="py-3 text-left"
+                                    style={headCell}
+                                    scope="col"
+                                >
+                                    {t('marketing.home.roles.ability')}
+                                </th>
+                                {roles.map((role) => (
                                     <th
-                                        key={head}
+                                        key={role.value}
                                         className="py-3 text-left"
-                                        style={{
-                                            fontFamily: 'var(--pd-mono)',
-                                            fontSize: 11,
-                                            letterSpacing: '0.08em',
-                                            color: '#8b8a7b',
-                                            fontWeight: 400,
-                                            textTransform: 'uppercase',
-                                        }}
+                                        style={headCell}
+                                        scope="col"
                                     >
-                                        {t(head)}
+                                        {role.label}
                                     </th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {roles.map((role) => (
-                                <tr
-                                    key={role.value}
-                                    style={{
-                                        borderBottom:
-                                            '1px solid var(--pd-zand)',
-                                    }}
+                            {/*
+                                Browsing first, and on its own. It is not one of
+                                the abilities — it is a column on the role,
+                                because it decides what exists for somebody
+                                rather than what they may do with it — so it
+                                cannot come out of the loop below, and putting
+                                it at the top is what makes the guest column
+                                read the way it actually works.
+                            */}
+                            <tr style={bodyRow}>
+                                <th
+                                    className="py-3 text-left"
+                                    style={rowHead}
+                                    scope="row"
                                 >
-                                    <td
-                                        className="py-3"
-                                        style={{
-                                            fontFamily: 'var(--pd-mono)',
-                                            fontSize: 13,
-                                            fontWeight: 600,
-                                        }}
-                                    >
-                                        {role.label}
-                                    </td>
-                                    <td className="py-3">
-                                        <Mark on={role.canManageWorkspace} />
-                                    </td>
-                                    <td className="py-3">
-                                        <Mark on={role.canInviteMembers} />
-                                    </td>
-                                    <td className="py-3">
+                                    {t('marketing.home.roles.browse')}
+                                </th>
+                                {roles.map((role) => (
+                                    <td className="py-3" key={role.value}>
                                         <Mark on={role.canBrowseWorkspace} />
                                     </td>
-                                    <td className="py-3">
-                                        <Mark on={role.canCreateChannels} />
-                                    </td>
-                                    <td className="py-3">
-                                        <Mark on={role.canSendTransfers} />
-                                    </td>
+                                ))}
+                            </tr>
+
+                            {abilities.map((ability) => (
+                                <tr key={ability.value} style={bodyRow}>
+                                    <th
+                                        className="py-3 text-left"
+                                        style={rowHead}
+                                        scope="row"
+                                    >
+                                        {ability.label}
+                                    </th>
+                                    {roles.map((role) => (
+                                        <td className="py-3" key={role.value}>
+                                            <Mark
+                                                on={role.abilities.includes(
+                                                    ability.value,
+                                                )}
+                                            />
+                                        </td>
+                                    ))}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                <Note>{t('marketing.home.roles.note')}</Note>
+                <p
+                    className="mt-4 max-w-[68ch]"
+                    style={{
+                        fontSize: 13,
+                        lineHeight: 1.6,
+                        color: '#8b8a7b',
+                    }}
+                >
+                    {t('marketing.home.roles.browse_note')}
+                </p>
+
+                <Note>
+                    {t('marketing.home.roles.note')}
+                    <span className="mt-3 block">
+                        {t('marketing.home.roles.ceiling')}
+                    </span>
+                </Note>
             </div>
         </>
     );

@@ -27,6 +27,15 @@ class MarketingController extends Controller
             'roles' => $inventory->roles(),
 
             /*
+             * The rights themselves, beside the roles that start with them. Two
+             * props rather than one table built here, because the page is what
+             * decides which of the two becomes a row — and because the
+             * catalogue is the more important half: it is what a workspace
+             * composes a role of its own out of.
+             */
+            'abilities' => $inventory->abilities(),
+
+            /*
              * The three that have no feature switch of their own: how a channel
              * is set up, what a workflow can be built from, and what a personal
              * token opens. Together they are most of what somebody is buying,

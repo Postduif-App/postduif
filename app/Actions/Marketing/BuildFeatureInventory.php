@@ -6,6 +6,7 @@ use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Features\WorkspaceFeature;
 use App\Mcp\Servers\ChatServer;
 use App\Workflows\WorkflowRegistry;
@@ -166,11 +167,19 @@ class BuildFeatureInventory
     }
 
     /**
-     * The roles somebody can hold, with what the code says each may do.
+     * The roles a workspace is given when it is made, and what each starts with.
      *
-     * Read off the enum for the same reason as above. The guest row is the
-     * interesting one — it is the only role the application actively keeps out
-     * of things, and every one of those answers lives in SystemRole.
+     * Deliberately not "what a role may do". A workspace's roles live in its own
+     * table and a beheerder edits them, so this enum stopped being the answer to
+     * "may they?" the day that screen shipped — see Workspace::seedSystemRoles,
+     * which is the only caller of defaultAbilities() besides this page. Read off
+     * that same method rather than off the predicates beside it, so the table
+     * shows the row a workspace actually gets rather than a second opinion about
+     * it.
+     *
+     * The guest row is still the interesting one, and browsing is still its own
+     * answer: it is a column on the role and not an entry in the bag, because it
+     * decides what exists for somebody rather than what they may do with it.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -179,11 +188,30 @@ class BuildFeatureInventory
         return array_map(fn (SystemRole $role): array => [
             'value' => $role->value,
             'label' => $role->getLabel(),
-            'canManageWorkspace' => $role->canManageWorkspace(),
-            'canInviteMembers' => $role->canInviteMembers(),
             'canBrowseWorkspace' => $role->canBrowseWorkspace(),
-            'canCreateChannels' => $role->canCreateChannels(),
-            'canSendTransfers' => $role->canSendTransfers(),
+            'abilities' => array_map(
+                fn (WorkspaceAbility $ability): string => $ability->value,
+                $role->defaultAbilities(),
+            ),
         ], SystemRole::cases());
+    }
+
+    /**
+     * Every right a workspace can hand out, in the order the catalogue lists it.
+     *
+     * The rows of the table on the public page, and the same closed list the
+     * settings screen draws its tickboxes from. Worth showing in full rather
+     * than summarising: a workspace composes its own roles out of exactly these
+     * and nothing else, so the list *is* the answer to what a custom role can be
+     * made to mean.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public function abilities(): array
+    {
+        return array_map(fn (WorkspaceAbility $ability): array => [
+            'value' => $ability->value,
+            'label' => $ability->label(),
+        ], WorkspaceAbility::cases());
     }
 }
