@@ -48,10 +48,35 @@ export default function Login({
         <>
             <Head title={t('auth_screens.login.head')} />
 
+            {/*
+                Above the form rather than under it, where it used to sit with a
+                bottom margin that had nothing left to push away. This is what
+                answers "did my herstellink go out?", so it belongs where the
+                question was asked — and the wrapper stays mounted whether or
+                not there is a status, because a live region has to be in the
+                document before its contents change to be read aloud.
+            */}
+            <div aria-live="polite" className="empty:hidden">
+                {status && (
+                    <p className="mb-4 text-center text-sm font-medium text-green-600 dark:text-green-400">
+                        {status}
+                    </p>
+                )}
+            </div>
+
             <PasskeyVerify />
 
             <DevQuickLogin accounts={devAccounts} />
 
+            {/*
+                No tabIndex anywhere in here, where the fields used to be
+                numbered 1 through 5. Any number above zero moves an element
+                into a tab order of its own that the browser walks *before*
+                everything else on the page — so the numbered form came first
+                and the passkey button above it came last, which is the reverse
+                of what somebody looking at the screen sees. Document order was
+                already right; the numbers were the only thing breaking it.
+            */}
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
@@ -70,11 +95,17 @@ export default function Login({
                                     name="email"
                                     required
                                     autoFocus
-                                    tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
+                                    aria-invalid={Boolean(errors.email)}
+                                    aria-describedby={
+                                        errors.email ? 'email-error' : undefined
+                                    }
                                 />
-                                <InputError message={errors.email} />
+                                <InputError
+                                    id="email-error"
+                                    message={errors.email}
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -86,7 +117,6 @@ export default function Login({
                                         <TextLink
                                             href={request()}
                                             className="ml-auto text-sm"
-                                            tabIndex={5}
                                         >
                                             {t(
                                                 'auth_screens.login.forgot_password',
@@ -98,21 +128,25 @@ export default function Login({
                                     id="password"
                                     name="password"
                                     required
-                                    tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder={t(
                                         'auth_screens.fields.password',
                                     )}
+                                    aria-invalid={Boolean(errors.password)}
+                                    aria-describedby={
+                                        errors.password
+                                            ? 'password-error'
+                                            : undefined
+                                    }
                                 />
-                                <InputError message={errors.password} />
+                                <InputError
+                                    id="password-error"
+                                    message={errors.password}
+                                />
                             </div>
 
                             <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
+                                <Checkbox id="remember" name="remember" />
                                 <Label htmlFor="remember">
                                     {t('auth_screens.login.remember')}
                                 </Label>
@@ -121,8 +155,8 @@ export default function Login({
                             <Button
                                 type="submit"
                                 className="mt-4 w-full"
-                                tabIndex={4}
                                 disabled={processing}
+                                aria-busy={processing}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
@@ -139,7 +173,7 @@ export default function Login({
                         {registrationOpen && (
                             <div className="text-center text-sm text-muted-foreground">
                                 {t('auth_screens.login.no_account')}{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink href={register()}>
                                     {t('auth_screens.login.sign_up')}
                                 </TextLink>
                             </div>
@@ -147,12 +181,6 @@ export default function Login({
                     </>
                 )}
             </Form>
-
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
         </>
     );
 }
