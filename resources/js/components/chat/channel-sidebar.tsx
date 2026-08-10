@@ -964,47 +964,6 @@ export function ChannelSidebar({
                     </>
                 )}
 
-                {sections.map((section) => {
-                    const rows = channels.filter(
-                        (channel) =>
-                            !channel.isFavorite &&
-                            section.channelIds.includes(channel.id),
-                    );
-
-                    return (
-                        <div key={section.id} className="mb-2">
-                            <SectionHeadingRow
-                                workspaceSlug={workspace.slug}
-                                section={section}
-                            />
-                            <div className="space-y-0.5">
-                                {rows.map((channel) => (
-                                    <ChannelRow
-                                        key={channel.id}
-                                        workspaceSlug={workspace.slug}
-                                        channel={channel}
-                                        active={channel.id === activeChannelId}
-                                        threads={
-                                            threadsByChannel.get(channel.id) ??
-                                            []
-                                        }
-                                    />
-                                ))}
-                                {/*
-                                    A group somebody just made has nothing in it
-                                    yet, and an empty heading with no
-                                    explanation reads as a bug.
-                                */}
-                                {rows.length === 0 && (
-                                    <p className="px-2 py-1 text-xs text-sidebar-foreground/50">
-                                        {t('sidebar.section.empty')}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-
                 <SectionHeading>
                     {t('sidebar.headings.channels')}
                 </SectionHeading>
@@ -1041,6 +1000,54 @@ export function ChannelSidebar({
                         </button>
                     )}
                 </div>
+
+                {/*
+                    Groups sit under the ordinary list rather than over it. A
+                    heading somebody wrote themselves is the exception, and the
+                    plain "Kanalen" list is what they came for — pushing that
+                    down the column by however many groups they happen to keep
+                    buries the common case behind the rare one.
+                */}
+                {sections.map((section) => {
+                    const rows = channels.filter(
+                        (channel) =>
+                            !channel.isFavorite &&
+                            section.channelIds.includes(channel.id),
+                    );
+
+                    return (
+                        <div key={section.id}>
+                            <SectionHeadingRow
+                                workspaceSlug={workspace.slug}
+                                section={section}
+                            />
+                            <div className="space-y-0.5">
+                                {rows.map((channel) => (
+                                    <ChannelRow
+                                        key={channel.id}
+                                        workspaceSlug={workspace.slug}
+                                        channel={channel}
+                                        active={channel.id === activeChannelId}
+                                        threads={
+                                            threadsByChannel.get(channel.id) ??
+                                            []
+                                        }
+                                    />
+                                ))}
+                                {/*
+                                    A group somebody just made has nothing in it
+                                    yet, and an empty heading with no
+                                    explanation reads as a bug.
+                                */}
+                                {rows.length === 0 && (
+                                    <p className="px-2 py-1 text-xs text-sidebar-foreground/50">
+                                        {t('sidebar.section.empty')}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
 
                 <SectionHeading>{t('sidebar.headings.directs')}</SectionHeading>
                 <div className="space-y-0.5">
