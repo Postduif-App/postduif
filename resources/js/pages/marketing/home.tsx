@@ -9,6 +9,7 @@ import {
 } from '@/components/marketing/prose';
 import type { Described } from '@/components/marketing/prose';
 import { useTranslate } from '@/hooks/use-translate';
+import { SOURCE_URL } from '@/lib/postduif';
 import { login, register } from '@/routes';
 import type { TranslationKey } from '@/types/translations';
 
@@ -229,6 +230,29 @@ export default function MarketingHome({
                                 optIn.length,
                             )}
                         </span>
+
+                        {/*
+                            Een gewone <a> en geen Inertia-Link: dit gaat de
+                            site uit, en Link zou GitHub als Inertia-antwoord
+                            proberen op te halen. In geel, want dat is de enige
+                            kleur op de inkt die naast de knop nog leesbaar is
+                            zonder een tweede knop te lijken.
+                        */}
+                        <a
+                            href={SOURCE_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="pd-plain"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 13,
+                                color: 'var(--pd-geel)',
+                                textDecoration: 'underline',
+                                textUnderlineOffset: 3,
+                            }}
+                        >
+                            {t('marketing.home.source')}
+                        </a>
                     </div>
 
                     <div className="h-24" />

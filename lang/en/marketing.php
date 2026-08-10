@@ -23,6 +23,8 @@ return [
 
     'footer' => [
         'tagline' => 'A workplace for conversations, the work that follows from them and the files that go with it.',
+        // The arrow says you are leaving the site; the link opens in a tab.
+        'source' => 'Source on GitHub ↗',
         // Which edition this site belongs to. A month name, so it is translated.
         'edition' => 'August 2026',
     ],
@@ -35,6 +37,12 @@ return [
         'intro' => 'Channels and threads, tickets for what would otherwise be forgotten, and files too big to email. Customers join as guests and see only their own channels.',
         'cta_start' => 'Get started →',
         'cta_login' => 'Log in →',
+        /*
+         * Beside the button rather than in the intro: for most visitors, that
+         * it costs nothing is the answer to the question they are asking at
+         * the button, and the source is where that can be checked.
+         */
+        'source' => 'Free and open source — source on GitHub ↗',
         /*
          * Two counts in one sentence, so two keys: the number of features
          * decides one plural, and "off by default" hangs off a different

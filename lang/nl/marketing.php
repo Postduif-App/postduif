@@ -23,6 +23,8 @@ return [
 
     'footer' => [
         'tagline' => 'Een werkplek voor gesprekken, het werk dat eruit volgt en de bestanden die erbij horen.',
+        // De pijl zegt dat je de site verlaat; de link zelf opent in een tabblad.
+        'source' => 'Broncode op GitHub ↗',
         // De uitgave waar deze site bij hoort. Een maandnaam, dus vertaald.
         'edition' => 'augustus 2026',
     ],
@@ -35,6 +37,12 @@ return [
         'intro' => 'Kanalen en threads, tickets voor wat er blijft liggen, en bestanden die te groot zijn om mee te sturen. Klanten doen mee als gast en zien alleen hun eigen kanalen.',
         'cta_start' => 'Beginnen →',
         'cta_login' => 'Inloggen →',
+        /*
+         * Naast de knop in plaats van in de intro: dat het niets kost is voor
+         * de meeste bezoekers het antwoord op de vraag die ze bij de knop
+         * stellen, en de broncode is waar dat te controleren valt.
+         */
+        'source' => 'Gratis en open source — broncode op GitHub ↗',
         /*
          * Twee tellingen in één zin, dus twee sleutels: het aantal onderdelen
          * telt mee voor het meervoud, "standaard uit" hangt aan een ander

@@ -3,6 +3,7 @@ import type { ComponentProps, PropsWithChildren } from 'react';
 
 import { Wordmark } from '@/components/marketing/logo';
 import { useTranslate } from '@/hooks/use-translate';
+import { SOURCE_URL } from '@/lib/postduif';
 import { docs, login, register } from '@/routes';
 // Wayfinder cannot export a function called `switch`, so it names it
 // switchMethod; aliased here so the call site reads like the route does.
@@ -239,6 +240,21 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                         >
                             {t('marketing.nav.api')}
                         </Link>
+                        {/*
+                            Hier en niet alleen in de hero: de docs-pagina heeft
+                            geen hero, en juist de lezer die daar zit is degene
+                            die de broncode wil zien. Een gewone <a>, want dit
+                            verlaat de site.
+                        */}
+                        <a
+                            href={SOURCE_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="pd-plain"
+                            style={{ color: 'var(--pd-steen)' }}
+                        >
+                            {t('marketing.footer.source')}
+                        </a>
                         <span>{t('marketing.footer.edition')}</span>
                     </div>
                 </div>
