@@ -85,9 +85,9 @@ class PlatformStatistics
         $media = $this->media();
 
         return [
-            'Workspaces' => Number::format(Workspace::query()->count()),
+            'Workspaces' => $this->number(Workspace::query()->count()),
             'Users' => $this->usersLine($users),
-            'Channels' => Number::format(array_sum($channels)),
+            'Channels' => $this->number(array_sum($channels)),
             ...$this->channelsPerType($channels),
             'Messages' => $this->messagesLine($messages),
             'Attachments' => $this->mediaLine($media[Message::ATTACHMENTS] ?? null),
@@ -183,9 +183,9 @@ class PlatformStatistics
      */
     private function usersLine(array $users): string
     {
-        return Number::format($users['totaal'])
+        return $this->number($users['totaal'])
             .$this->parenthetical($users['geschorst'] > 0
-                ? Number::format($users['geschorst']).' suspended'
+                ? $this->number($users['geschorst']).' suspended'
                 : null);
     }
 
@@ -217,7 +217,7 @@ class PlatformStatistics
         foreach (ChannelType::cases() as $type) {
             $label = 'Channels '.Str::lower($type->name);
 
-            $lines[$label] = Number::format($channels[$type->value] ?? 0);
+            $lines[$label] = $this->number($channels[$type->value] ?? 0);
         }
 
         return $lines;
@@ -228,9 +228,9 @@ class PlatformStatistics
      */
     private function messagesLine(array $messages): string
     {
-        return Number::format($messages['totaal'])
+        return $this->number($messages['totaal'])
             .$this->parenthetical($messages['antwoorden'] > 0
-                ? Number::format($messages['antwoorden']).' in threads'
+                ? $this->number($messages['antwoorden']).' in threads'
                 : null);
     }
 
@@ -248,7 +248,7 @@ class PlatformStatistics
          * it carries something: "1,4 GB" is the number somebody came for and
          * "64,0 B" is a rounding artefact wearing its clothes.
          */
-        return Number::format($collection['aantal'])
+        return $this->number($collection['aantal'])
             .$this->parenthetical(Number::fileSize($collection['bytes'], maxPrecision: 1));
     }
 
@@ -277,8 +277,8 @@ class PlatformStatistics
         }
 
         return [
-            'Online' => Number::format($snapshot['people']),
-            'Socket connections' => Number::format($snapshot['connections']),
+            'Online' => $this->number($snapshot['people']),
+            'Socket connections' => $this->number($snapshot['connections']),
         ];
     }
 
@@ -289,5 +289,17 @@ class PlatformStatistics
     private function parenthetical(?string $detail): string
     {
         return $detail === null || $detail === '' ? '' : ' ('.$detail.')';
+    }
+
+    /**
+     * `Number::format` hands back `string|false`, because the intl formatter
+     * underneath it is allowed to fail. It will not here — these are integers
+     * counted a line ago — but the type is honest and every line in this
+     * section is a string, so the widening is settled once here rather than
+     * cast at each of the ten call sites.
+     */
+    private function number(int|float $value): string
+    {
+        return (string) Number::format($value);
     }
 }
