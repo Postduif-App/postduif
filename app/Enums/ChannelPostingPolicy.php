@@ -31,7 +31,12 @@ enum ChannelPostingPolicy: string implements HasLabel
         return match ($this) {
             self::Everyone => true,
             self::Admins => $channel->created_by === $user->id
-                || $channel->workspace->allows($user, WorkspaceAbility::ManageWorkspace),
+                // loadMissing rather than the plain relation: a policy is asked
+                // from anywhere, including places holding a channel they only
+                // just looked up, and it cannot ask its callers to eager load
+                // for it. A no-op when the workspace is already there.
+                || $channel->loadMissing('workspace')->workspace
+                    ->allows($user, WorkspaceAbility::ManageWorkspace),
         };
     }
 

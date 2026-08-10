@@ -268,13 +268,20 @@ class Workflow extends Model
      * that "off" cannot come to mean "still runs, just hidden" in some corner
      * that forgot to ask.
      *
+     * The owner and the workspace come along for the same reason. Every caller
+     * hands what it finds to StartWorkflow, which wants both before it does
+     * anything else — so one event arriving in a workspace with a dozen rules
+     * would otherwise be two dozen queries. The same pair
+     * DispatchScheduledWorkflows asks for, for the same run.
+     *
      * @param  Builder<$this>  $query
      */
     public function scopeListeningFor(Builder $query, Workspace $workspace, string $triggerType): void
     {
         $query->where('workspace_id', $workspace->id)
             ->where('trigger_type', $triggerType)
-            ->whereNotNull('enabled_at');
+            ->whereNotNull('enabled_at')
+            ->with(['owner', 'workspace']);
     }
 
     /**

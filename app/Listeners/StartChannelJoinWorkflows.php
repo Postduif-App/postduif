@@ -22,8 +22,10 @@ class StartChannelJoinWorkflows
     {
         $channel = $event->channel;
 
+        // loadMissing: the event carries whatever channel the joining code had
+        // in its hands, which is rarely one with its workspace loaded.
         $workflows = Workflow::query()
-            ->listeningFor($channel->workspace, ChannelJoinTrigger::key())
+            ->listeningFor($channel->loadMissing('workspace')->workspace, ChannelJoinTrigger::key())
             ->get();
 
         foreach ($workflows as $workflow) {

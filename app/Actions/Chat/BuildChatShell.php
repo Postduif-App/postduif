@@ -55,7 +55,7 @@ class BuildChatShell
 
         return [
             'workspace' => $this->workspace($workspace, $user),
-            ...$this->channels($channels, $user, $seesTags),
+            ...$this->channels($workspace, $channels, $user, $seesTags),
             /*
              * What is waiting in the inbox, of every kind — not just mentions.
              * The badges beside the channel names are narrower on purpose: a
@@ -399,7 +399,7 @@ class BuildChatShell
      * @param  Collection<int, Channel>  $channels
      * @return array{channels: array<int, array<string, mixed>>, directMessages: array<int, array<string, mixed>>}
      */
-    private function channels($channels, User $user, bool $seesTags): array
+    private function channels(Workspace $workspace, $channels, User $user, bool $seesTags): array
     {
         ['unread' => $unread, 'mentions' => $mentions] = $this->countUnread
             ->handle($user, $channels->pluck('id'));
@@ -421,11 +421,9 @@ class BuildChatShell
          * ticket counts above are taken — a badge is not worth a query each.
          *
          * Only where the workspace has huddles at all; elsewhere this is an
-         * empty list and every row reads zero. The workspace is read off the
-         * rows themselves — they are all of one, and this method is handed
-         * channels rather than the workspace they belong to.
+         * empty list and every row reads zero.
          */
-        $huddling = $channels->first()?->workspace?->hasFeature(HuddlesFeature::class)
+        $huddling = $workspace->hasFeature(HuddlesFeature::class)
             ? HuddleParticipant::query()
                 ->join('huddles', 'huddles.id', '=', 'huddle_participants.huddle_id')
                 ->whereIn('huddles.channel_id', $channels->pluck('id'))
@@ -495,13 +493,24 @@ class BuildChatShell
      */
     public function visibleChannels(Workspace $workspace, User $user)
     {
-        return $workspace->channels()
+        $channels = $workspace->channels()
             ->visibleTo($user)
             ->notHiddenBy($user)
             ->whereNull('archived_at')
             ->with(['members', 'tags'])
             ->orderBy('name')
             ->get();
+
+        /*
+         * Handed the workspace they came out of rather than eager loading it.
+         * These rows are its own channels, so the answer is already here and
+         * fetching it again would be a query for something in hand — and the
+         * policies asked about these channels one by one, which is what the
+         * ticket list does for every row, all reach for it.
+         */
+        $channels->each->setRelation('workspace', $workspace);
+
+        return $channels;
     }
 
     /**

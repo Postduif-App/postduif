@@ -83,7 +83,10 @@ class WorkspaceInvitationController extends Controller
     private function linksFor(Workspace $workspace): array
     {
         return $workspace->inviteLinks()
-            ->with(['channels', 'creator'])
+            // workspaceRole among them: the row below reads it twice, and a
+            // page listing twenty links would otherwise ask for the role of
+            // each of them one at a time.
+            ->with(['channels', 'creator', 'workspaceRole'])
             ->orderByDesc('id')
             ->get()
             ->map(fn (InviteLink $link): array => [

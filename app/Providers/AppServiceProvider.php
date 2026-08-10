@@ -36,6 +36,7 @@ use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
@@ -242,6 +243,17 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
         );
+
+        /*
+         * A relation read off a model nobody loaded it on is a query, and one
+         * inside a loop drawing a sidebar is a query per row. Everywhere but
+         * production that is now an exception with a stack trace pointing at
+         * the line, so the suite is what finds it rather than a slow page.
+         *
+         * Off in production for the obvious reason: a page that would have been
+         * a little slow must not become a page that is a 500.
+         */
+        Model::preventLazyLoading(! app()->isProduction());
 
         Password::defaults(fn (): ?Password => app()->isProduction()
             ? Password::min(12)
