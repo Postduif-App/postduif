@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# One run per branch. Pushing twice in a minute used to leave the first run
+# grinding through a full suite for a commit nobody is waiting on any more —
+# except on main, where every commit's result is the record of that commit.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -59,6 +66,19 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
+          # The action's own cache of ~/.npm, keyed on package-lock.json. The
+          # npm install inside "composer setup" below is what draws on it.
+          cache: npm
+
+      # The same for Composer's download cache. Not vendor/ itself: a cached
+      # vendor directory is a half-installed one the moment a dependency
+      # changes, while the download cache only ever saves a fetch.
+      - name: Cache Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
 
       - name: Setup Application
         run: composer setup
