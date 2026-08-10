@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\SystemRole;
+use App\Enums\WorkspaceAbility;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
@@ -358,4 +359,50 @@ it('offers a row its actions only to somebody who may take them', function () {
             ->where('members.0.canRemove', false)
             ->where('members.2.canRemove', true)
         );
+});
+
+/**
+ * Inviting somebody used to live only in the chat sidebar, which meant leaving
+ * the page that lists everybody to add to it. The member list carries the same
+ * dialog now, so it needs the three things that dialog reads: which workspace
+ * to post to, whether to offer the button at all, and the roles on offer.
+ */
+it('gives the member list what it needs to invite somebody', function () {
+    [, $admin, , $workspace] = workspaceWithThreeRoles();
+
+    actingAs($admin)
+        ->get(route('workspace.members.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('workspaceSlug', $workspace->slug)
+            ->where('canInvite', true)
+            /*
+             * The same three the role dropdown offers: owner is missing because
+             * it stands above an administrator, not because of its name.
+             */
+            ->has('invitableRoles', 3)
+            ->where('invitableRoles.0.id', roleId($workspace, SystemRole::Admin))
+            ->where('invitableRoles.2.id', roleId($workspace, SystemRole::Guest))
+            ->where('invitableRoles.2.isExternal', true)
+        );
+});
+
+/**
+ * Managing the workspace and bringing people into it are separate rights. A
+ * role that lost the second keeps this page — and loses the button, rather than
+ * getting one that answers 403.
+ */
+it('offers no invite button to somebody who may not invite', function () {
+    [, $admin, , $workspace] = workspaceWithThreeRoles();
+
+    $role = $workspace->roles()->whereKey(roleId($workspace, SystemRole::Admin))->first();
+    $role->forceFill([
+        'abilities' => array_values(array_diff(
+            $role->abilities,
+            [WorkspaceAbility::InviteMembers->value],
+        )),
+    ])->save();
+
+    actingAs($admin)
+        ->get(route('workspace.members.index'))
+        ->assertInertia(fn ($page) => $page->where('canInvite', false));
 });

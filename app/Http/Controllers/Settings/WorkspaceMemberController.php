@@ -39,8 +39,44 @@ class WorkspaceMemberController extends Controller
         // be sorted by standing without asking the database once per member.
         $rolePositions = $workspace->roles()->pluck('position', 'id')->all();
 
+        /*
+         * Only the roles this member could actually hand out. The policy
+         * refuses the rest anyway; leaving them in the dropdown, or in the
+         * invite dialog, would be offering a choice that answers 403.
+         *
+         * Asked once for both: the role column and the invite dialog want the
+         * same list under different names, and a second pass would be a second
+         * query that could quietly drift from this one.
+         */
+        $grantableRoles = $workspace->roles()
+            ->get()
+            ->filter(fn (Role $role): bool => $viewer->can('grantRole', [$workspace, $role]))
+            ->values();
+
         return Inertia::render('settings/members', [
             'workspaceName' => $workspace->name,
+            // The invite endpoint names its workspace in the URL, so the page
+            // needs the slug even though the list itself is resolved from the
+            // signed-in member.
+            'workspaceSlug' => $workspace->slug,
+            /*
+             * Whether the page offers to bring somebody in at all. Its own
+             * question rather than a consequence of opening this screen:
+             * managing the workspace and inviting people are separate rights,
+             * and a role may be given one without the other.
+             */
+            'canInvite' => $viewer->can('invite', $workspace),
+            /*
+             * The roles this member may hand out, for the invite dialog — the
+             * same shape the chat shell sends it, so the dialog reads the same
+             * thing whichever screen opened it.
+             */
+            'invitableRoles' => $grantableRoles
+                ->map(fn (Role $role): array => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'isExternal' => $role->is_external,
+                ])->all(),
             'channelOptions' => $workspace->channels()
                 ->where('type', '!=', ChannelType::Direct)
                 ->whereNull('archived_at')
@@ -102,18 +138,12 @@ class WorkspaceMemberController extends Controller
                 ])
                 ->values()
                 ->all(),
-            /*
-             * Only the roles this member could actually hand out. The policy
-             * refuses the rest anyway; leaving them in the dropdown would be
-             * offering a choice that answers 403.
-             */
-            'roleOptions' => $workspace->roles()
-                ->get()
-                ->filter(fn (Role $role): bool => $viewer->can('grantRole', [$workspace, $role]))
+            // The same roles again, as the role column's dropdown reads them.
+            'roleOptions' => $grantableRoles
                 ->map(fn (Role $role): array => [
                     'value' => $role->id,
                     'label' => $role->name,
-                ])->values()->all(),
+                ])->all(),
         ]);
     }
 

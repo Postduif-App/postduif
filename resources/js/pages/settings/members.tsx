@@ -6,9 +6,12 @@ import {
     MoreHorizontal,
     Search,
     UserMinus,
+    UserPlus,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import type { InvitingWorkspace } from '@/components/chat/invite-people-dialog';
+import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import { GuestChannelsDialog } from '@/components/guest-channels-dialog';
 import type { ChannelOption } from '@/components/guest-channels-dialog';
@@ -23,7 +26,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -79,6 +82,12 @@ interface WorkspaceMember {
 
 interface MembersProps {
     workspaceName: string;
+    /** The invite endpoint names its workspace in the URL. */
+    workspaceSlug: string;
+    /** False for a role that manages the workspace but may not bring people in. */
+    canInvite: boolean;
+    /** The roles this member may hand out, for the invite dialog. */
+    invitableRoles: InvitingWorkspace['invitableRoles'];
     members: WorkspaceMember[];
     roleOptions: Option[];
     channelOptions: ChannelOption[];
@@ -395,6 +404,9 @@ function MemberRow({
 
 export default function WorkspaceMembers({
     workspaceName,
+    workspaceSlug,
+    canInvite,
+    invitableRoles,
     members,
     roleOptions,
     channelOptions,
@@ -406,6 +418,21 @@ export default function WorkspaceMembers({
     const { t } = useTranslate();
     const [editingChannelsOf, setEditingChannelsOf] =
         useState<WorkspaceMember | null>(null);
+    const [inviting, setInviting] = useState(false);
+
+    /*
+     * The same channels the guest dialog ticks, under the names the invite
+     * dialog reads them by. Non-DM only, so a channel's name is its label.
+     */
+    const invitableChannels = useMemo(
+        () =>
+            channelOptions.map((channel) => ({
+                id: channel.id,
+                type: channel.type,
+                label: channel.name,
+            })),
+        [channelOptions],
+    );
 
     // The order the server sent, so the role column can restore it.
     const serverOrder = useMemo(
@@ -442,6 +469,21 @@ export default function WorkspaceMembers({
                 description={t('settings.members.description', {
                     workspace: workspaceName,
                 })}
+                /*
+                    Beside the heading of the list itself. Who is here and who
+                    is on their way in is one question, and answering the second
+                    half of it meant leaving this page for the chat sidebar —
+                    which is where you look at the list, not where you manage
+                    it.
+                */
+                actions={
+                    canInvite && (
+                        <Button type="button" onClick={() => setInviting(true)}>
+                            <UserPlus className="size-4" />
+                            {t('settings.members.invite')}
+                        </Button>
+                    )
+                }
             >
                 {members.length >= FILTER_FROM && (
                     <div className="relative max-w-sm">
@@ -551,6 +593,25 @@ export default function WorkspaceMembers({
                     </table>
                 </div>
             </SettingsSection>
+
+            {/*
+                The same dialog the chat sidebar opens, so an invitation sent
+                from here asks the same questions and lands in the same place.
+                Only rendered where it may be used: it posts to an endpoint that
+                would refuse anybody else.
+            */}
+            {canInvite && (
+                <InvitePeopleDialog
+                    workspace={{
+                        name: workspaceName,
+                        slug: workspaceSlug,
+                        invitableRoles,
+                    }}
+                    channels={invitableChannels}
+                    open={inviting}
+                    onOpenChange={setInviting}
+                />
+            )}
 
             <GuestChannelsDialog
                 guest={

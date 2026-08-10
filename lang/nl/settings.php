@@ -257,6 +257,9 @@ return [
         'column_actions' => 'Acties',
         // What stands in the channel column for everybody who is not a guest.
         'all_channels' => 'alle',
+        // Naast de kop van de ledenlijst: wie er is en wie eraan komt is één
+        // vraag.
+        'invite' => 'Uitnodigen',
         'role_of' => 'Rol van :name',
         'actions_for' => 'Acties voor :name',
         'manage_channels' => 'Kanalen beheren',
@@ -272,7 +275,7 @@ return [
         'title' => 'Uitnodigingen',
         'description' => 'Verstuurd voor :workspace en nog niet gebruikt',
         'empty' => 'Er staan geen uitnodigingen open',
-        'empty_hint' => 'Iemand uitnodigen doe je in de chat: klik op de naam van de workspace, links bovenin.',
+        'empty_hint' => 'Iemand uitnodigen doe je bij Leden, of in de chat: klik op de naam van de workspace, links bovenin.',
         'invited_by' => ':role · uitgenodigd door :name',
         'expired' => 'verlopen',
         'valid_until' => 'geldig tot :date',

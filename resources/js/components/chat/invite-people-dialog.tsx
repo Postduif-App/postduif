@@ -19,12 +19,33 @@ import { Spinner } from '@/components/ui/spinner';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { store } from '@/routes/chat/invitations';
-import type { ChannelSummary, ChatWorkspace } from '@/types/chat';
+import type { ChatWorkspace } from '@/types/chat';
+
+/**
+ * Only the three things the dialog reads off a workspace.
+ *
+ * Narrower than ChatWorkspace on purpose: the chat pages hand over the whole
+ * shell object and still fit, while the member list in settings — which never
+ * builds one — can name these three itself. The roles keep pointing at the
+ * shell's own type, so there is one description of a role rather than two.
+ */
+export interface InvitingWorkspace {
+    name: string;
+    slug: string;
+    invitableRoles: ChatWorkspace['invitableRoles'];
+}
+
+/** A channel as this dialog draws it: a lock or a hash, and a line of text. */
+export interface InvitableChannel {
+    id: number;
+    type: string;
+    label: string;
+}
 
 interface InvitePeopleDialogProps {
-    workspace: ChatWorkspace;
+    workspace: InvitingWorkspace;
     /** Non-DM channels this member can see, and so can hand out. */
-    channels: ChannelSummary[];
+    channels: InvitableChannel[];
     /** Ticked from the start — usually the channel you were just looking at. */
     initialChannelId?: number;
     open: boolean;
