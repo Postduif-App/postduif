@@ -88,6 +88,12 @@ export interface ChatWorkspace {
      */
     forms: boolean;
     /**
+     * Whether the rail offers the contracts screen. False when the workspace
+     * has contracts switched off, or this role may not send one — worked out on
+     * the server, so the rail cannot lead to a 404 or a 403.
+     */
+    contracts: boolean;
+    /**
      * Whether the rail offers the clock. False for a workspace with
      * tijdregistratie switched off and for a guest, who is here from another
      * company and whose hours are not this workspace's business.
@@ -134,6 +140,12 @@ export interface WorkspaceFeatures {
     timeclock: boolean;
     polls: boolean;
     forms: boolean;
+    /**
+     * Whether the rail offers the contracts screen. False when the workspace
+     * has contracts switched off, or this role may not send one — worked out on
+     * the server, so the rail cannot lead to a 404 or a 403.
+     */
+    contracts: boolean;
     huddles: boolean;
     webhooks: boolean;
     workflows: boolean;

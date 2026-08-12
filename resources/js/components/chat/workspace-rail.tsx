@@ -4,6 +4,7 @@ import {
     Bookmark,
     ClipboardList,
     Clock,
+    FileSignature,
     Inbox,
     KeyRound,
     Megaphone,
@@ -23,6 +24,7 @@ import {
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { index as boardIndex } from '@/routes/chat/board';
+import { index as contractsIndex } from '@/routes/chat/contracts';
 import { index as formsIndex } from '@/routes/chat/forms';
 import { index as inboxIndex } from '@/routes/chat/inbox';
 import { index as savedIndex } from '@/routes/chat/saved';
@@ -61,6 +63,7 @@ interface WorkspaceToolsProps {
     transfersActive?: boolean;
     ticketsActive?: boolean;
     formsActive?: boolean;
+    contractsActive?: boolean;
     timeclockActive?: boolean;
     onBroadcast?: () => void;
 }
@@ -95,6 +98,7 @@ function toolEntries(
         transfersActive = false,
         ticketsActive = false,
         formsActive = false,
+        contractsActive = false,
         timeclockActive = false,
         onBroadcast,
     }: WorkspaceToolsProps,
@@ -213,6 +217,28 @@ function toolEntries(
             icon: ClipboardList,
             href: formsIndex(workspace.slug),
             active: formsActive,
+            badge: 0,
+        });
+    }
+
+    /*
+        The contracts this workspace has out.
+
+        Beside the forms rather than under settings, and for a sharper version
+        of the same reason: a contract is not a thing you configure once, it is
+        a thing you send on a Tuesday and then go back to twice a day to see who
+        has signed.
+
+        One condition, as with forms: workspace.contracts already carries both
+        halves — the feature is on and this role may send one.
+    */
+    if (workspace.contracts) {
+        entries.push({
+            key: 'contracts',
+            label: t('sidebar.rail.contracts'),
+            icon: FileSignature,
+            href: contractsIndex(workspace.slug),
+            active: contractsActive,
             badge: 0,
         });
     }

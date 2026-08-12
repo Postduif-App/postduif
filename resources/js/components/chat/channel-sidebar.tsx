@@ -97,6 +97,7 @@ interface ChannelSidebarProps {
     secretsActive?: boolean;
     /** True on any of the three form screens, for the same reason. */
     formsActive?: boolean;
+    contractsActive?: boolean;
     /** True on the workspace-wide ticket page, so its row reads as current. */
     ticketsActive?: boolean;
     /** Marks the mentions row, the same way ticketsActive marks its own. */
@@ -810,6 +811,7 @@ export function ChannelSidebar({
     boardActive = false,
     secretsActive = false,
     formsActive = false,
+    contractsActive = false,
     ticketsActive = false,
     mentionsActive = false,
     savedActive = false,
@@ -891,6 +893,7 @@ export function ChannelSidebar({
         boardActive,
         secretsActive,
         formsActive,
+        contractsActive,
         onBroadcast,
     };
 

@@ -119,7 +119,12 @@ class ContractController extends Controller
     {
         $user = $request->user();
 
-        $this->authorize('create', [Contract::class, $workspace]);
+        /*
+         * The same question the rail asked before it drew the entry — see
+         * WorkspacePolicy::createContract. Asking a different one here is how a
+         * button ends up leading to a 403.
+         */
+        $this->authorize('createContract', $workspace);
 
         $manages = $workspace->allows($user, WorkspaceAbility::ManageWorkspace);
 

@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\WorkspaceAbility;
+use App\Features\Contracts;
 use App\Features\Forms;
 use App\Features\Polls;
 use App\Features\SecretRequests;
@@ -162,6 +163,24 @@ class WorkspacePolicy
         }
 
         return $workspace->allows($user, WorkspaceAbility::CreateForms);
+    }
+
+    /**
+     * Whether this member may send a contract out from here.
+     *
+     * The feature first, as everywhere: a workspace that has not switched
+     * contracts on has none, and the routes say the same in 404 form. Then the
+     * right, which is deliberately not the one that makes forms — see
+     * WorkspaceAbility::SendContracts for why asking somebody to put their name
+     * under something is kept apart from asking them a question.
+     */
+    public function createContract(User $user, Workspace $workspace): bool
+    {
+        if (! $workspace->hasFeature(Contracts::class)) {
+            return false;
+        }
+
+        return $workspace->allows($user, WorkspaceAbility::SendContracts);
     }
 
     /**

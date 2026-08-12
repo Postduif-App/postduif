@@ -15,6 +15,7 @@ return [
         'empty' => 'This file is empty or has no pages.',
         'not-a-pdf' => 'Only PDF files can be signed. Save the document as a PDF first.',
         'unreadable' => 'This PDF could not be processed. Protected or damaged files will not go through; save the document again without a password and try once more.',
+        'no_processor' => 'This server cannot process PDFs for signing yet. A piece of software it needs is missing — pass this on to whoever runs the application; there is nothing wrong with your file.',
         'executable' => 'This PDF contains script or an embedded file. That cannot be signed — save the document again as a plain PDF, without form logic or attachments.',
         'too-large' => 'This file is larger than :max MB. Save the PDF smaller — choosing "reduced" or "standard" instead of "press quality" is usually enough.',
         'too-many-pages' => 'This document has more than :max pages. Split it up, or send only the part that needs signing.',

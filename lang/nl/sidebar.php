@@ -21,6 +21,7 @@ return [
         'tickets' => 'Tickets',
         'transfers' => 'Versturen',
         'forms' => 'Formulieren',
+        'contracts' => 'Contracten',
         'timeclock' => 'Tijdregistratie',
         'broadcast' => 'Rondsturen',
     ],

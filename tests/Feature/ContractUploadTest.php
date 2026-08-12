@@ -291,3 +291,30 @@ it('keeps the document away from colleagues it was not shown to', function () {
         ->get(route('chat.contracts.source', [$workspace, Contract::sole()]))
         ->assertForbidden();
 });
+
+it('says the server is missing something, not that the file is broken', function () {
+    [$user, $workspace] = contractSenderInWorkspace();
+
+    // The exact failure a fresh install hits: the binary is not on the web
+    // user's PATH, which is not the same PATH the shell has.
+    config()->set('contracts.ghostscript', 'gs-dat-niet-bestaat');
+
+    $errors = actingAs($user)
+        ->post(route('chat.contracts.store', $workspace), [
+            'title' => 'Huurovereenkomst',
+            'file' => uploadedPdf(),
+        ])
+        ->assertSessionHasErrors('file')
+        ->getSession()
+        ->get('errors');
+
+    /*
+     * The distinction that cost an afternoon. "Deze PDF is beschadigd" is
+     * something a person can act on; this is not — they can try every file they
+     * own and every one will be refused, with a message telling them to look at
+     * their document.
+     */
+    expect($errors->first('file'))
+        ->toBe(__('contracts.upload.no_processor'))
+        ->not->toBe(__('contracts.upload.unreadable'));
+});

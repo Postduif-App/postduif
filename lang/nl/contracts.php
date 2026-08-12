@@ -15,6 +15,7 @@ return [
         'empty' => 'Dit bestand is leeg of bevat geen pagina\'s.',
         'not-a-pdf' => 'Alleen PDF-bestanden kunnen ondertekend worden. Sla het document eerst op als PDF.',
         'unreadable' => 'Deze PDF kon niet verwerkt worden. Beveiligde of beschadigde bestanden komen er niet doorheen; sla het document opnieuw op zonder wachtwoord en probeer het dan nog eens.',
+        'no_processor' => 'Deze server kan nog geen PDF\'s voor ondertekening verwerken. Er ontbreekt software die daarvoor nodig is — geef dit door aan wie de applicatie beheert; aan jouw bestand ligt het niet.',
         'executable' => 'In deze PDF zit script of een ingesloten bestand. Dat kan niet ondertekend worden — sla het document opnieuw op als een gewone PDF, zonder formulierlogica of bijlagen.',
         'too-large' => 'Dit bestand is groter dan :max MB. Sla de PDF kleiner op — meestal scheelt "verkleind" of "standaard" in plaats van "drukwerk" al genoeg.',
         'too-many-pages' => 'Dit document heeft meer dan :max pagina\'s. Splits het op of stuur alleen het deel dat getekend moet worden.',

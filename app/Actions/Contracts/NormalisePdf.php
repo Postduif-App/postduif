@@ -2,6 +2,7 @@
 
 namespace App\Actions\Contracts;
 
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Facades\Process;
 use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 use setasign\Fpdi\PdfParser\PdfParserException;
@@ -194,22 +195,50 @@ class NormalisePdf
             @unlink($target);
 
             /*
-             * One message for two rather different failures — Ghostscript is
-             * missing, or Ghostscript could not make sense of the file — and
-             * that is on purpose at this level. The author can do nothing about
-             * either except try another file, and telling a customer's employee
-             * which binary is not installed on our server is not information
-             * they should be handed.
-             *
-             * The real reason goes to the log through the process output, which
-             * is where somebody who can fix it will be looking.
+             * The real reason goes to the log either way, because that is where
+             * somebody who can fix it will be looking.
              */
             report(new PdfRefused('Ghostscript refused the upload: '.$result->errorOutput()));
 
-            throw new PdfRefused(__('contracts.upload.unreadable'));
+            /*
+             * Two rather different failures, and they get different sentences —
+             * which they did not at first, and that cost an afternoon.
+             *
+             * "Deze PDF is beschadigd" is something the person can act on: pick
+             * another file. "Ghostscript staat niet op deze server" is not —
+             * they can try every file they own and every one will be refused,
+             * with a message telling them to look at their document. The one
+             * thing they can usefully do is tell somebody who runs the place.
+             *
+             * What is still withheld is which binary and where. A customer's
+             * employee has no business learning the shape of our server, and
+             * "de beheerder" is the whole of what they need.
+             */
+            throw new PdfRefused($this->binaryIsMissing($result)
+                ? __('contracts.upload.no_processor')
+                : __('contracts.upload.unreadable'));
         }
 
         return $target;
+    }
+
+    /**
+     * Whether that failure was the binary not being there at all.
+     *
+     * 127 is the shell's own answer for "command not found", and the message is
+     * checked beside it because a process that could not be started at all may
+     * never reach a shell to produce one.
+     */
+    private function binaryIsMissing(ProcessResult $result): bool
+    {
+        if ($result->exitCode() === 127) {
+            return true;
+        }
+
+        $output = mb_strtolower($result->errorOutput());
+
+        return str_contains($output, 'not found')
+            || str_contains($output, 'no such file');
     }
 
     /**

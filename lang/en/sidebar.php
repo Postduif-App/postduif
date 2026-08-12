@@ -12,6 +12,7 @@ return [
         'tickets' => 'Tickets',
         'transfers' => 'Sending',
         'forms' => 'Forms',
+        'contracts' => 'Contracts',
         'timeclock' => 'Time tracking',
         'broadcast' => 'Broadcast',
     ],

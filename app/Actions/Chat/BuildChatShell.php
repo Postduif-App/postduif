@@ -331,6 +331,16 @@ class BuildChatShell
             'forms' => $user->can('createForm', $workspace),
 
             /*
+             * Whether the rail offers the contracts screen.
+             *
+             * The same one-value shape as forms above, and it has to be: the
+             * screens behind it are guarded by the feature middleware and by
+             * SendContracts, so a rail that offered them on the strength of one
+             * of the two would lead somebody to a 404 or a 403.
+             */
+            'contracts' => $user->can('createContract', $workspace),
+
+            /*
              * Whether the rail offers the clock.
              *
              * The same one-value shape as forms above, and it carries the guest

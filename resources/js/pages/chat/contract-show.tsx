@@ -191,6 +191,7 @@ export default function ContractShow({
                 directMessages={directMessages}
                 activeThreads={activeThreads}
                 activeChannelId={null}
+                contractsActive
                 archivedChannels={archivedChannels}
                 sections={sections}
                 onOpenSearch={() => setSearchOpen(true)}
