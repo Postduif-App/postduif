@@ -55,6 +55,7 @@ return [
 
     'contract' => [
         'created' => 'Document ready. Now put the fields on the pages.',
+        'fields_saved' => 'Fields saved.',
     ],
 
     'transfer' => [

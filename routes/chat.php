@@ -292,6 +292,18 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('contracts.store');
 
                 /*
+                 * Where the boxes are drawn. A screen of its own rather than a
+                 * panel, for the reason the form builder has one: laying out a
+                 * contract is done with the document in front of you at a
+                 * readable size, and it deserves an address somebody can come
+                 * back to.
+                 */
+                Route::get('contracten/{contract}/bewerken', [ContractController::class, 'edit'])
+                    ->name('contracts.edit');
+                Route::put('contracten/{contract}/velden', [ContractController::class, 'updateFields'])
+                    ->name('contracts.fields');
+
+                /*
                  * The document itself, for the editor and the signing page to
                  * render. Behind the policy, because there is no other way to
                  * the private disk and there should not be — see the controller.

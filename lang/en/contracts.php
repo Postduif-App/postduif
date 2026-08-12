@@ -20,6 +20,25 @@ return [
         'too-many-pages' => 'This document has more than :max pages. Split it up, or send only the part that needs signing.',
     ],
 
+    'editor' => [
+        'back' => 'Back',
+        'save' => 'Save',
+        'zoom_in' => 'Zoom in',
+        'zoom_out' => 'Zoom out',
+        'tool' => 'What you are placing',
+        'tool_hint' => 'Pick a kind of field and click the page where it should go. Dragging moves it, the corners resize it.',
+        'selected' => 'Selected field',
+        'field_label' => 'Label',
+        'required' => 'Must be filled in',
+        'for_signer' => 'To be filled in by',
+        'remove_field' => 'Remove field',
+        'page_count' => '{1}1 page|[2,*]:count pages',
+        'field_count' => '{0}no fields yet|{1}1 field|[2,*]:count fields',
+        'frozen' => 'This contract can no longer be changed. Somebody has signed it, or it was withdrawn — moving a field would change what they agreed to.',
+        'failed' => 'The document could not be loaded.',
+        'reload' => 'Reload the page',
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

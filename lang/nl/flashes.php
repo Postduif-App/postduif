@@ -53,6 +53,11 @@ return [
         'reopened' => 'Poll heropend.',
     ],
 
+    'contract' => [
+        'created' => 'Document klaargezet. Zet nu de invulvakken op de pagina\'s.',
+        'fields_saved' => 'Vakken opgeslagen.',
+    ],
+
     'transfer' => [
         'created' => 'Bestanden klaargezet. De link staat in de lijst.',
         'withdrawn' => 'Verzending ingetrokken.',

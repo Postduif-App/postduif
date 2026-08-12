@@ -20,6 +20,25 @@ return [
         'too-many-pages' => 'Dit document heeft meer dan :max pagina\'s. Splits het op of stuur alleen het deel dat getekend moet worden.',
     ],
 
+    'editor' => [
+        'back' => 'Terug',
+        'save' => 'Opslaan',
+        'zoom_in' => 'Inzoomen',
+        'zoom_out' => 'Uitzoomen',
+        'tool' => 'Wat zet je neer',
+        'tool_hint' => 'Kies een soort vak en klik op de pagina waar het moet komen. Slepen verplaatst, de hoekpunten maken groter of kleiner.',
+        'selected' => 'Geselecteerd vak',
+        'field_label' => 'Label',
+        'required' => 'Verplicht in te vullen',
+        'for_signer' => 'In te vullen door',
+        'remove_field' => 'Vak verwijderen',
+        'page_count' => '{1}1 pagina|[2,*]:count pagina\'s',
+        'field_count' => '{0}nog geen vakken|{1}1 vak|[2,*]:count vakken',
+        'frozen' => 'Dit contract is niet meer aan te passen. Er is al getekend, of het is ingetrokken — een vak verplaatsen zou veranderen waar iemand mee akkoord ging.',
+        'failed' => 'Het document kon niet geladen worden.',
+        'reload' => 'Pagina opnieuw laden',
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',
