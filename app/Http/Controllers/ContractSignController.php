@@ -108,6 +108,40 @@ class ContractSignController extends Controller
     }
 
     /**
+     * The signed copy, for somebody who signed it.
+     *
+     * Behind the token rather than the policy, because this person has no
+     * account for a policy to judge — and they have every claim to the document
+     * they put their name under. Withholding it would be the one thing this
+     * feature must not do: a signature nobody can produce the document for is
+     * not evidence of anything.
+     *
+     * Reachable once the contract is finished and not before, including to
+     * somebody who has already signed while others have not. Handing out a
+     * half-finished record would mean handing out a document that says less
+     * than the final one does.
+     */
+    public function signedCopy(string $token): BinaryFileResponse
+    {
+        $signer = $this->signer($token);
+
+        abort_unless($signer->contract->status->isEvidence(), 404);
+
+        $media = $signer->contract->signedCopy();
+
+        abort_if($media === null || ! is_file($media->getPath()), 404);
+
+        $response = response()->file($media->getPath(), [
+            'Content-Disposition' => 'attachment; filename="'.addslashes($media->file_name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+
+        $response->headers->set('Content-Type', 'application/pdf');
+
+        return $response;
+    }
+
+    /**
      * Keep what has been typed so far.
      *
      * Called as somebody works rather than when they finish, so it has to be

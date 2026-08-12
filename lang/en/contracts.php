@@ -100,6 +100,28 @@ return [
         'legal' => 'Both ways count as a simple electronic signature. Which of the two you chose is recorded with the contract.',
     ],
 
+    'audit' => [
+        'heading' => 'Audit trail',
+        'intro' => 'This page belongs to the contract ":title" and was added automatically by :workspace. It records who was asked to sign, when they did so, and under which document.',
+        'document' => 'Document',
+        'sent_by' => 'Sent by',
+        'completed_at' => 'Completed on',
+        'hash' => 'SHA-256 of the document as it was sent:',
+        'opened_at' => 'Opened on',
+        'signed_at' => 'Signed on',
+        'declined_at' => 'Turned down on',
+        'ip' => 'IP address',
+        'method' => 'Signature',
+        'typed_as' => 'Typed as',
+        'signed_hash' => 'Signed under',
+        'hash_matches' => 'the same document as above',
+        'reason' => 'Reason',
+        'outcome' => 'Outcome',
+        'no_answer' => 'No response',
+        'never' => 'Never',
+        'filename_suffix' => '(signed)',
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

@@ -328,6 +328,14 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                  */
                 Route::get('contracts/{contract}/source', [ContractController::class, 'source'])
                     ->name('contracts.source');
+
+                /*
+                 * The finished article. Apart from the source above because
+                 * the two are different documents: one is what was sent, the
+                 * other is the record of what happened to it.
+                 */
+                Route::get('contracten/{contract}/ondertekend', [ContractController::class, 'download'])
+                    ->name('contracts.download');
             });
 
             /*

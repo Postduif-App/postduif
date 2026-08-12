@@ -47,48 +47,6 @@ function contractSenderInWorkspace(SystemRole $role = SystemRole::Admin): array
 }
 
 /**
- * A real PDF on disk, because a fake one proves nothing here.
- *
- * UploadedFile::fake()->create('x.pdf') writes zeroes with a .pdf on the end,
- * and every check in this feature is about the bytes rather than the name — it
- * would be refused at the first gate for the wrong reason, and a test built on
- * it would pass while the real thing was broken.
- *
- * @param  string|null  $javascript  Something to embed, for the tests about
- *                                   what does not survive the trip.
- */
-function realPdf(int $pages = 3, ?string $javascript = null): string
-{
-    $pdf = new TCPDF;
-
-    for ($page = 1; $page <= $pages; $page++) {
-        $pdf->AddPage();
-        $pdf->SetFont('helvetica', '', 14);
-        $pdf->Cell(0, 10, 'Testcontract pagina '.$page);
-    }
-
-    if ($javascript !== null) {
-        $pdf->IncludeJS($javascript);
-    }
-
-    $path = tempnam(sys_get_temp_dir(), 'pest-contract-').'.pdf';
-
-    $pdf->Output($path, 'F');
-
-    return $path;
-}
-
-function uploadedPdf(int $pages = 3, ?string $javascript = null): UploadedFile
-{
-    return new UploadedFile(
-        realPdf($pages, $javascript),
-        'huurovereenkomst.pdf',
-        'application/pdf',
-        test: true,
-    );
-}
-
-/**
  * Nothing in this suite means anything without the rewriter.
  *
  * Skipped rather than failed when it is missing, because "Ghostscript staat

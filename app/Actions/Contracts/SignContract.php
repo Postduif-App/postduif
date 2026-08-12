@@ -2,6 +2,7 @@
 
 namespace App\Actions\Contracts;
 
+use App\Jobs\RenderSignedContractJob;
 use App\Models\ContractField;
 use App\Models\ContractFieldValue;
 use App\Models\ContractSigner;
@@ -93,7 +94,16 @@ class SignContract
              * contract can never be observed with everybody signed and a status
              * that still says otherwise.
              */
-            $signer->contract->settleIfEverybodyHasAnswered();
+            if ($signer->contract->settleIfEverybodyHasAnswered()) {
+                /*
+                 * afterCommit, and it is not optional. A job dispatched inside
+                 * a transaction can be picked up by a worker before the
+                 * transaction commits — the queue is a different connection —
+                 * and it would then look for a contract that, as far as it can
+                 * see, has not been completed yet.
+                 */
+                RenderSignedContractJob::dispatch($signer->contract->id)->afterCommit();
+            }
 
             return $signer;
         });

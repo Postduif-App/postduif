@@ -13,6 +13,7 @@ use App\Models\ContractSigner;
 use App\Models\Workspace;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -26,6 +27,17 @@ use function Pest\Laravel\post;
  * feature makes has to actually hold: that the document is the one that was
  * sent, that nothing required was skipped, and that nobody signs twice.
  */
+
+/*
+ * The queue is held rather than run.
+ *
+ * Signing a contract now dispatches the job that composes the signed copy, and
+ * on the sync connection this suite runs on that job would execute inside the
+ * request — turning every test here into a test of the PDF renderer as well.
+ * What these tests are about is the signing, and RenderSignedContractTest
+ * covers both the dispatch and what the job does with it.
+ */
+beforeEach(fn () => Queue::fake());
 
 /**
  * A contract with a real file behind it, so its hash means something.

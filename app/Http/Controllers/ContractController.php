@@ -357,6 +357,45 @@ class ContractController extends Controller
     }
 
     /**
+     * The finished article, for whoever asked for the signatures.
+     *
+     * A route apart from source(), although both hand over a PDF from the same
+     * private disk. What they are is different: the source is the document as
+     * it was sent, which the editor and the signing page both need to render,
+     * and this is the record of what happened to it. Somebody comparing the two
+     * is doing exactly the thing the audit trail is for.
+     *
+     * Offered as a download rather than inline, because this one is not there
+     * to be looked at in a tab — it is the copy that goes into a folder.
+     */
+    public function download(Workspace $workspace, Contract $contract): BinaryFileResponse
+    {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('download', $contract);
+
+        $media = $contract->signedCopy();
+
+        /*
+         * A 404 while it is still being composed, and that is the honest
+         * answer: there is nothing here yet. The overview knows the difference
+         * between "nog bezig" and "het is misgegaan" — see
+         * Contract::signedCopyState — and this route is not where somebody
+         * should be learning which it is.
+         */
+        abort_if($media === null || ! is_file($media->getPath()), 404);
+
+        $response = response()->file($media->getPath(), [
+            'Content-Disposition' => 'attachment; filename="'.addslashes($media->file_name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+
+        $response->headers->set('Content-Type', 'application/pdf');
+
+        return $response;
+    }
+
+    /**
      * The PDF itself, for the editor and for the signing page to render.
      *
      * Inline rather than as a download, because both of those load it into

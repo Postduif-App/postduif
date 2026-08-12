@@ -100,6 +100,28 @@ return [
         'legal' => 'Allebei de manieren tellen als een eenvoudige elektronische handtekening. Welke van de twee je koos wordt vastgelegd bij het contract.',
     ],
 
+    'audit' => [
+        'heading' => 'Audittrail',
+        'intro' => 'Deze pagina hoort bij het contract ":title" en is automatisch toegevoegd door :workspace. Ze legt vast wie er gevraagd is te tekenen, wanneer zij dat deden en onder welk document.',
+        'document' => 'Document',
+        'sent_by' => 'Verstuurd door',
+        'completed_at' => 'Afgerond op',
+        'hash' => 'SHA-256 van het document zoals het verstuurd is:',
+        'opened_at' => 'Geopend op',
+        'signed_at' => 'Getekend op',
+        'declined_at' => 'Afgewezen op',
+        'ip' => 'IP-adres',
+        'method' => 'Handtekening',
+        'typed_as' => 'Ingetypt als',
+        'signed_hash' => 'Getekend onder',
+        'hash_matches' => 'hetzelfde document als hierboven',
+        'reason' => 'Reden',
+        'outcome' => 'Uitkomst',
+        'no_answer' => 'Niet gereageerd',
+        'never' => 'Nooit',
+        'filename_suffix' => '(ondertekend)',
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',

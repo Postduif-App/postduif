@@ -203,6 +203,15 @@ Route::prefix('ondertekenen/{token}')
         Route::post('afwijzen', [ContractSignController::class, 'decline'])
             ->middleware('throttle:6,1')
             ->name('contracts.sign.decline');
+
+        /*
+         * The signer's own copy of what they signed. Bound to their token, the
+         * way everything else on this page is — see the controller for why
+         * withholding it would be the one thing this feature must not do.
+         */
+        Route::get('ondertekend', [ContractSignController::class, 'signedCopy'])
+            ->middleware('throttle:20,1')
+            ->name('contracts.sign.copy');
     });
 
 /**

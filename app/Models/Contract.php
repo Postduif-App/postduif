@@ -43,6 +43,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property string|null $source_hash
  * @property Carbon|null $expires_at
  * @property Carbon|null $completed_at
+ * @property Carbon|null $render_failed_at
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -57,7 +58,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 #[Fillable([
     'workspace_id', 'created_by', 'title', 'message', 'status', 'page_count',
-    'source_hash', 'expires_at', 'completed_at', 'cancelled_at',
+    'source_hash', 'expires_at', 'completed_at', 'cancelled_at', 'render_failed_at',
 ])]
 class Contract extends Model implements HasMedia
 {
@@ -115,6 +116,7 @@ class Contract extends Model implements HasMedia
             'page_count' => 'integer',
             'expires_at' => 'datetime',
             'completed_at' => 'datetime',
+            'render_failed_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -189,6 +191,30 @@ class Contract extends Model implements HasMedia
     public function signedCopy(): ?Media
     {
         return $this->getFirstMedia(self::SIGNED);
+    }
+
+    /**
+     * Whether the signed copy is still being made, went wrong, or is ready.
+     *
+     * Three answers rather than a boolean, because the overview has to say
+     * three different things — and the middle one is the reason this exists:
+     * a contract whose PDF could not be composed is still signed, and telling
+     * somebody "nog even geduld" about a job that gave up two days ago is worse
+     * than telling them nothing.
+     *
+     * @return 'ready'|'failed'|'pending'|'none'
+     */
+    public function signedCopyState(): string
+    {
+        if (! $this->status->isEvidence()) {
+            return 'none';
+        }
+
+        if ($this->signedCopy() !== null) {
+            return 'ready';
+        }
+
+        return $this->render_failed_at === null ? 'pending' : 'failed';
     }
 
     /**
