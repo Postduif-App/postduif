@@ -178,10 +178,16 @@ it('carries a member status into the channel payload', function () {
 
     actingAs($user)
         ->get(route('chat.show', [$workspace, $channel]))
+        // Op de collega zoeken, niet op positie: members() heeft geen vaste
+        // sortering, dus de volgorde is die van Postgres.
         ->assertInertia(fn ($page) => $page
-            ->where('channel.members.1.statusText', 'Aan het focussen')
-            ->where('channel.members.1.statusEmoji', '🎧')
-            ->where('channel.members.1.availability', Availability::DoNotDisturb->value)
+            ->where('channel.members', function ($members) use ($colleague) {
+                $member = collect($members)->firstWhere('id', $colleague->id);
+
+                return $member['statusText'] === 'Aan het focussen'
+                    && $member['statusEmoji'] === '🎧'
+                    && $member['availability'] === Availability::DoNotDisturb->value;
+            })
         );
 });
 
