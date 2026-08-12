@@ -38,6 +38,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int|null $created_by
  * @property string $title
  * @property string|null $message
+ * @property int|null $notify_channel_id
  * @property ContractStatus $status
  * @property int $page_count
  * @property string|null $source_hash
@@ -57,7 +58,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * when.
  */
 #[Fillable([
-    'workspace_id', 'created_by', 'title', 'message', 'status', 'page_count',
+    'workspace_id', 'created_by', 'title', 'message', 'notify_channel_id', 'status', 'page_count',
     'source_hash', 'expires_at', 'completed_at', 'cancelled_at', 'render_failed_at',
 ])]
 class Contract extends Model implements HasMedia
@@ -149,6 +150,16 @@ class Contract extends Model implements HasMedia
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Where news about this contract is posted when there is nobody to DM.
+     *
+     * @return BelongsTo<Channel, $this>
+     */
+    public function notifyChannel(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'notify_channel_id');
     }
 
     /**

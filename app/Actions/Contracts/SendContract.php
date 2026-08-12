@@ -33,9 +33,17 @@ class SendContract
      *                                                                                 which the fields already point at through signer_index.
      * @param  int|null  $validForDays  Counted from now. Null leaves whatever
      *                                  deadline the contract already had, including none.
+     * @param  int|null  $notifyChannelId  Where news about this contract is
+     *                                     posted when there is nobody to DM — which is most contracts,
+     *                                     because the signers are usually not members. Null leaves
+     *                                     whatever was already chosen, including nothing.
      */
-    public function handle(Contract $contract, array $signers, ?int $validForDays = null): Contract
-    {
+    public function handle(
+        Contract $contract,
+        array $signers,
+        ?int $validForDays = null,
+        ?int $notifyChannelId = null,
+    ): Contract {
         if ($signers === []) {
             throw new RuntimeException('A contract cannot be sent to nobody.');
         }
@@ -44,7 +52,7 @@ class SendContract
             throw new RuntimeException('A contract cannot be sent without a document.');
         }
 
-        DB::transaction(function () use ($contract, $signers, $validForDays): void {
+        DB::transaction(function () use ($contract, $signers, $validForDays, $notifyChannelId): void {
             /*
              * The signers are replaced rather than added to.
              *
@@ -75,6 +83,9 @@ class SendContract
                 ...$validForDays === null
                     ? []
                     : ['expires_at' => now()->addDays($validForDays)],
+                ...$notifyChannelId === null
+                    ? []
+                    : ['notify_channel_id' => $notifyChannelId],
             ]);
         });
 

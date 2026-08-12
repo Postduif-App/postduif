@@ -2,6 +2,7 @@
 
 namespace App\Actions\Contracts;
 
+use App\Enums\ContractProgressKind;
 use App\Jobs\RenderSignedContractJob;
 use App\Models\ContractField;
 use App\Models\ContractFieldValue;
@@ -24,6 +25,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SignContract
 {
+    public function __construct(private readonly NotifyContractAuthor $notify) {}
+
     /**
      * @param  string  $ip  Recorded as part of the audit trail and nowhere else.
      *
@@ -101,8 +104,20 @@ class SignContract
                  * transaction commits — the queue is a different connection —
                  * and it would then look for a contract that, as far as it can
                  * see, has not been completed yet.
+                 *
+                 * The author is told by that job rather than from here: the
+                 * message they want carries a link to the finished document,
+                 * and the finished document does not exist until it has run.
                  */
                 RenderSignedContractJob::dispatch($signer->contract->id)->afterCommit();
+            } else {
+                /*
+                 * One of several, with others still to come. Told now, because
+                 * this is news in its own right — and told with the number
+                 * still outstanding in it, so it cannot be mistaken for "het is
+                 * rond".
+                 */
+                $this->notify->handle($signer->contract, ContractProgressKind::Signed, $signer);
             }
 
             return $signer;

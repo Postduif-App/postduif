@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Contracts\NotifyContractAuthor;
 use App\Actions\Contracts\RenderSignedContract;
 use App\Actions\Contracts\SigningRefused;
 use App\Enums\ContractStatus;
@@ -216,7 +217,10 @@ it('clears the failure once a later attempt works', function () {
 
     $contract->forceFill(['render_failed_at' => now()->subHour()])->save();
 
-    (new RenderSignedContractJob($contract->id))->handle(app(RenderSignedContract::class));
+    (new RenderSignedContractJob($contract->id))->handle(
+        app(RenderSignedContract::class),
+        app(NotifyContractAuthor::class),
+    );
 
     // An overview that keeps flagging a contract whose PDF is sitting right
     // there is an overview people stop reading.

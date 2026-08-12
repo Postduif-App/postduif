@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Actions\Contracts\NotifyContractAuthor;
 use App\Actions\Contracts\RenderSignedContract;
+use App\Enums\ContractProgressKind;
 use App\Models\Contract;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -44,7 +46,7 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(public readonly string $contractId) {}
 
-    public function handle(RenderSignedContract $render): void
+    public function handle(RenderSignedContract $render, NotifyContractAuthor $notify): void
     {
         $contract = Contract::query()->with(['fields', 'signers', 'workspace', 'author'])->find($this->contractId);
 
@@ -65,6 +67,22 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
         if ($contract->render_failed_at !== null) {
             $contract->forceFill(['render_failed_at' => null])->save();
         }
+
+        /*
+         * Told from here rather than from the signing, and this is the reason
+         * the job exists in the shape it does: the message the author wants
+         * carries a link to the finished document, and until this ran there was
+         * no finished document to link to. A notification sent a second earlier
+         * would have pointed at a 404.
+         *
+         * Sent on the last attempt as well as the first — but only once,
+         * because a successful run is the only path through here.
+         */
+        $notify->handle(
+            contract: $contract->fresh(['author', 'signers', 'workspace', 'notifyChannel']) ?? $contract,
+            kind: ContractProgressKind::Completed,
+            downloadUrl: route('chat.contracts.download', [$contract->workspace, $contract]),
+        );
     }
 
     /**
@@ -80,6 +98,23 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
         Contract::query()
             ->whereKey($this->contractId)
             ->update(['render_failed_at' => now()]);
+
+        /*
+         * And tell the author anyway, without a link.
+         *
+         * The contract is signed. Staying silent because a rendering step gave
+         * up would leave somebody waiting for news that had already happened —
+         * which is a worse failure than the one that actually occurred. The
+         * notification simply says the copy is not ready; see
+         * ContractProgress::toMail.
+         */
+        $contract = Contract::query()
+            ->with(['author', 'signers', 'workspace', 'notifyChannel'])
+            ->find($this->contractId);
+
+        if ($contract !== null) {
+            app(NotifyContractAuthor::class)->handle($contract, ContractProgressKind::Completed);
+        }
     }
 
     /**

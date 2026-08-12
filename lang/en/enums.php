@@ -102,6 +102,7 @@ return [
             'Reply' => 'Reply',
             'ThreadReply' => 'Thread',
             'PollVote' => 'Poll',
+            'ContractProgress' => 'Contract',
         ],
     ],
     'member-panel-visibility' => [

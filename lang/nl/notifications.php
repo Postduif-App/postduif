@@ -43,6 +43,15 @@ return [
 
     'contract' => [
         'subject' => ':sender vraagt je om :what te tekenen',
+        'subject_signed' => ':name heeft :title getekend',
+        'subject_declined' => ':name tekent :title niet',
+        'subject_completed' => ':title is rond',
+        'body_signed' => '{0}:name heeft ":title" getekend.|{1}:name heeft ":title" getekend. Er is nog één iemand die moet tekenen.|[2,*]:name heeft ":title" getekend. Er zijn nog :count mensen die moeten tekenen.',
+        'body_declined' => ':name heeft laten weten ":title" niet te tekenen.',
+        'body_completed' => 'Iedereen die gevraagd was heeft gereageerd op ":title".',
+        'tally' => ':signed van de :total gevraagde mensen hebben getekend.',
+        'download' => 'Ondertekende versie downloaden',
+        'no_copy_yet' => 'De ondertekende versie kon nog niet samengesteld worden. De handtekeningen staan vast; je kunt het downloaden later opnieuw proberen vanuit het overzicht.',
     ],
 
     'invitation' => [

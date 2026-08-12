@@ -122,6 +122,12 @@ return [
         'filename_suffix' => '(signed)',
     ],
 
+    'chat' => [
+        'signed' => ':name has signed ":title".',
+        'declined' => ':name did not sign ":title".',
+        'completed' => '{1}":title" has been signed.|[2,*]Everybody has signed ":title".',
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

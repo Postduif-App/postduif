@@ -29,6 +29,15 @@ return [
 
     'contract' => [
         'subject' => ':sender is asking you to sign :what',
+        'subject_signed' => ':name has signed :title',
+        'subject_declined' => ':name will not sign :title',
+        'subject_completed' => ':title is complete',
+        'body_signed' => '{0}:name has signed ":title".|{1}:name has signed ":title". One person still has to sign.|[2,*]:name has signed ":title". :count people still have to sign.',
+        'body_declined' => ':name has let you know they will not sign ":title".',
+        'body_completed' => 'Everybody who was asked has responded to ":title".',
+        'tally' => ':signed of the :total people asked have signed.',
+        'download' => 'Download the signed copy',
+        'no_copy_yet' => 'The signed copy could not be composed yet. The signatures are safe; you can try the download again later from the overview.',
     ],
 
     'invitation' => [

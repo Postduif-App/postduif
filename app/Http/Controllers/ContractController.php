@@ -289,6 +289,17 @@ class ContractController extends Controller
             ],
 
             'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+
+            /*
+             * Where the news lands. Scoped to this workspace in the rule
+             * itself, the way a form's notify channel is: an id from somewhere
+             * else must not be storable, and a validator is the only place that
+             * refusal reads as a validation error rather than as a 403.
+             */
+            'notify_channel_id' => [
+                'nullable',
+                Rule::exists('channels', 'id')->where('workspace_id', $workspace->id),
+            ],
         ]);
 
         /*
@@ -312,6 +323,7 @@ class ContractController extends Controller
             contract: $contract,
             signers: $data['signers'],
             validForDays: $data['valid_for_days'] ?? null,
+            notifyChannelId: $data['notify_channel_id'] ?? null,
         );
 
         Inertia::flash('toast', [

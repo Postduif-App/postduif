@@ -122,6 +122,12 @@ return [
         'filename_suffix' => '(ondertekend)',
     ],
 
+    'chat' => [
+        'signed' => ':name heeft ":title" getekend.',
+        'declined' => ':name heeft ":title" niet getekend.',
+        'completed' => '{1}":title" is getekend.|[2,*]Iedereen heeft ":title" getekend.',
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',
