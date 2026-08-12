@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
@@ -290,6 +291,20 @@ class Workspace extends Model
     public function timeEntries(): HasMany
     {
         return $this->hasMany(TimeEntry::class)->latest('started_at');
+    }
+
+    /**
+     * Where this workspace's mail leaves from, if it said.
+     *
+     * Nullable on purpose and nowhere given a default row: no settings and
+     * settings set to Default mean the same thing, and creating a row for every
+     * workspace up front would only add a second way to say it.
+     *
+     * @return HasOne<WorkspaceMailSettings, $this>
+     */
+    public function mailSettings(): HasOne
+    {
+        return $this->hasOne(WorkspaceMailSettings::class);
     }
 
     /** @return HasMany<Invitation, $this> */

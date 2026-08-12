@@ -13,6 +13,7 @@ use App\Http\Controllers\Settings\WorkflowRunController;
 use App\Http\Controllers\Settings\WorkspaceChannelController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
+use App\Http\Controllers\Settings\WorkspaceMailController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
 use App\Http\Controllers\Settings\WorkspacePermissionController;
 use App\Http\Controllers\Settings\WorkspaceRoleController;
@@ -125,6 +126,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.theme.edit');
     Route::patch('app/settings/workspace/theme', [WorkspaceThemeController::class, 'update'])
         ->name('workspace.theme.update');
+
+    /*
+     * Where the workspace's mail leaves from. The test send is throttled and
+     * the other two are not: saving a form is somebody's own business, but a
+     * button that makes a third party send a message is one a script could
+     * lean on — and every press costs the workspace credit at their provider.
+     */
+    Route::get('app/settings/workspace/mail', [WorkspaceMailController::class, 'edit'])
+        ->name('workspace.mail.edit');
+    Route::patch('app/settings/workspace/mail', [WorkspaceMailController::class, 'update'])
+        ->name('workspace.mail.update');
+    Route::post('app/settings/workspace/mail/test', [WorkspaceMailController::class, 'test'])
+        ->middleware('throttle:6,1')
+        ->name('workspace.mail.test');
 
     /*
      * No workspace in the path, like every other settings route — the current

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Workspace;
 
+use App\Actions\Mail\ResolveWorkspaceMailer;
 use App\Mail\WorkspaceInvitationMail;
 use App\Models\Invitation;
 use App\Models\Role;
@@ -13,7 +14,10 @@ use Illuminate\Support\Facades\Mail;
 
 class InviteToWorkspace
 {
-    public function __construct(private ResolveInvitableChannels $resolveChannels) {}
+    public function __construct(
+        private ResolveInvitableChannels $resolveChannels,
+        private ResolveWorkspaceMailer $resolveMailer,
+    ) {}
 
     /**
      * Invite an e-mail address into a workspace, and mail them the link.
@@ -57,7 +61,14 @@ class InviteToWorkspace
             return $invitation;
         });
 
-        Mail::to($email)->send(new WorkspaceInvitationMail($invitation));
+        /*
+         * Through the workspace's own mailer when it has one. Outside the
+         * transaction, where the send already was: a mail server that is slow
+         * to answer must not be holding a row lock while it thinks.
+         */
+        Mail::mailer($this->resolveMailer->handle($workspace))
+            ->to($email)
+            ->send(new WorkspaceInvitationMail($invitation));
 
         return $invitation;
     }

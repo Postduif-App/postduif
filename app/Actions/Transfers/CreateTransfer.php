@@ -2,6 +2,7 @@
 
 namespace App\Actions\Transfers;
 
+use App\Actions\Mail\ResolveWorkspaceMailer;
 use App\Enums\TransferAudience;
 use App\Mail\TransferReadyMail;
 use App\Models\Transfer;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Mail;
 
 class CreateTransfer
 {
+    public function __construct(private ResolveWorkspaceMailer $resolveMailer) {}
+
     /**
      * Put files aside behind a link.
      *
@@ -89,8 +92,14 @@ class CreateTransfer
          * somebody's inbox — and a mail is the one side effect there is no
          * rollback for.
          */
+        // Resolved once for the whole list rather than per recipient: it is the
+        // same workspace for every one of them, and asking again per address
+        // would rebuild the transport for each.
+        $mailer = $this->resolveMailer->handle($workspace);
+
         $transfer->recipients->each(
-            fn (TransferRecipient $recipient) => Mail::to($recipient->email)
+            fn (TransferRecipient $recipient) => Mail::mailer($mailer)
+                ->to($recipient->email)
                 ->send(new TransferReadyMail($recipient)),
         );
 
