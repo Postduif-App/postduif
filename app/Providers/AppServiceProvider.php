@@ -43,10 +43,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Passport\Passport;
+use Lettermint\Laravel\Exceptions\ApiTokenNotFoundException;
+use Lettermint\Laravel\Transport\LettermintTransportFactory;
+use Lettermint\Lettermint;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -148,6 +152,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureRateLimiting();
         $this->configureOAuth();
+        $this->configureLettermintTransport();
 
         /*
          * By class name rather than a closure: the about command resolves it
@@ -160,6 +165,39 @@ class AppServiceProvider extends ServiceProvider
         // Chat is unusable without a websocket server, so "php artisan dev"
         // starts Reverb alongside the HTTP server, queue worker and Vite.
         DevCommands::artisan('reverb:start', 'reverb');
+    }
+
+    /**
+     * Let a Lettermint mailer carry its own key.
+     *
+     * The package registers this driver already, but it builds the API client
+     * from the application's global token and ignores the mailer's own config —
+     * which is fine for an application that sends as itself, and useless for
+     * one where every workspace brings its own account. This replaces the
+     * driver with a version that reads $config['token'] first and falls back to
+     * exactly what the package would have used, so nothing that does not set
+     * mail settings notices the difference.
+     *
+     * Registered in boot rather than register: package providers are booted
+     * before the application's own, so this runs second and wins. Postmark
+     * needs none of this — Laravel's own driver already reads $config['token'].
+     */
+    private function configureLettermintTransport(): void
+    {
+        Mail::extend('lettermint', function (array $config = []): LettermintTransportFactory {
+            $token = $config['token']
+                ?? config('lettermint.token')
+                ?? config('services.lettermint.token');
+
+            if (! is_string($token)) {
+                throw ApiTokenNotFoundException::create();
+            }
+
+            return new LettermintTransportFactory(
+                Lettermint::email($token, timeout: (int) config('lettermint.timeout', 15)),
+                $config,
+            );
+        });
     }
 
     /**

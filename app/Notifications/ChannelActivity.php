@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Actions\Chat\FindMissedActivity;
+use App\Actions\Mail\ResolveWorkspaceMailer;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\Channels\PushoverChannel;
@@ -56,6 +57,15 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         $mail = (new MailMessage)
+            /*
+             * On the workspace's own mailer when it has one. Resolved here
+             * rather than passed in, because this runs on a queue worker: the
+             * config the action writes does not survive the job that wrote it,
+             * so it has to be asked for again where the message is built. Null
+             * lands on the application's own, which is what MailChannel reads
+             * an unset mailer as.
+             */
+            ->mailer(app(ResolveWorkspaceMailer::class)->handle($this->workspace))
             ->subject($this->subject())
             ->greeting(__('notifications.greeting', ['name' => $notifiable->name]))
             ->line(__('notifications.activity.intro', ['workspace' => $this->workspace->name]));

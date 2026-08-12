@@ -6,6 +6,7 @@ use App\Actions\Tickets\FindStaleTickets;
 use App\Enums\Availability;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Notifications\TicketNeedsAttention;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -28,14 +29,17 @@ class NotifyStaleTickets extends Command
 
         $notified = 0;
 
-        foreach ($this->groupByRecipient($stale) as $userId => $tickets) {
-            $user = User::find($userId);
+        foreach ($this->groupByRecipient($stale) as $key => $tickets) {
+            [$userId, $workspaceId] = explode(':', (string) $key);
 
-            if ($user === null || ! $this->reachable($user)) {
+            $user = User::find((int) $userId);
+            $workspace = Workspace::find((int) $workspaceId);
+
+            if ($user === null || $workspace === null || ! $this->reachable($user)) {
                 continue;
             }
 
-            $user->notify(new TicketNeedsAttention($tickets));
+            $user->notify(new TicketNeedsAttention($workspace, $tickets));
             $notified++;
         }
 
@@ -62,8 +66,15 @@ class NotifyStaleTickets extends Command
      * Guests are left out: a customer does not need to be told their own ticket
      * is being ignored.
      *
+     * Keyed by person *and* workspace rather than by person alone. One mail per
+     * person was the rule and stays the rule within a workspace; across two of
+     * them there is no single answer to "which mail settings does this go out
+     * on", and a digest that mixed them would have to pick one workspace's
+     * sender to talk about the other's tickets. Somebody who belongs to one
+     * workspace — which is everybody today — notices no difference.
+     *
      * @param  Collection<int, Ticket>  $tickets
-     * @return Collection<int, Collection<int, Ticket>>
+     * @return Collection<string, Collection<int, Ticket>>
      */
     private function groupByRecipient(Collection $tickets): Collection
     {
@@ -71,7 +82,7 @@ class NotifyStaleTickets extends Command
 
         foreach ($tickets as $ticket) {
             foreach ($this->responsibleFor($ticket) as $userId) {
-                $recipients[$userId][] = $ticket;
+                $recipients[$userId.':'.$ticket->workspace_id][] = $ticket;
             }
         }
 

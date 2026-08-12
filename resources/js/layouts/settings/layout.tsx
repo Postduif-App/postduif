@@ -26,6 +26,7 @@ import { edit as editWorkspace } from '@/routes/workspace';
 import { index as workspaceChannels } from '@/routes/workspace/channels';
 import { index as workspaceEmoji } from '@/routes/workspace/emoji';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
+import { edit as editWorkspaceMail } from '@/routes/workspace/mail';
 import { index as workspaceMembers } from '@/routes/workspace/members';
 import { edit as editWorkspacePermissions } from '@/routes/workspace/permissions';
 import { index as workspaceRoles } from '@/routes/workspace/roles';
@@ -103,6 +104,10 @@ export default function SettingsLayout({
                   {
                       title: t('settings.nav.theme'),
                       href: editWorkspaceTheme(),
+                  },
+                  {
+                      title: t('settings.nav.mail'),
+                      href: editWorkspaceMail(),
                   },
                   {
                       title: t('settings.nav.members'),

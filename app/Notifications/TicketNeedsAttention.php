@@ -2,8 +2,10 @@
 
 namespace App\Notifications;
 
+use App\Actions\Mail\ResolveWorkspaceMailer;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Notifications\Channels\PushoverChannel;
 use App\Notifications\Contracts\SendsPushover;
 use App\Notifications\Messages\PushoverMessage;
@@ -28,9 +30,12 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
     use Queueable;
 
     /**
+     * @param  Workspace  $workspace  Whose tickets these are, and so whose
+     *                                mail settings the reminder goes out on.
      * @param  Collection<int, Ticket>  $tickets  Longest waiting first.
      */
     public function __construct(
+        public readonly Workspace $workspace,
         public readonly Collection $tickets,
     ) {
         // Ahead of the slow work: somebody is waiting for this one.
@@ -51,6 +56,9 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
     public function toMail(User $notifiable): MailMessage
     {
         $mail = (new MailMessage)
+            // On the workspace's own mailer when it has one — see
+            // ChannelActivity for why it is resolved here and not passed in.
+            ->mailer(app(ResolveWorkspaceMailer::class)->handle($this->workspace))
             ->subject($this->subject())
             ->greeting(__('notifications.greeting', ['name' => $notifiable->name]))
             ->line(__('notifications.tickets.intro'));
