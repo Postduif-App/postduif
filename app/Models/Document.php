@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -125,6 +126,36 @@ class Document extends Model
     public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
+    }
+
+    /**
+     * The images and files placed inside this document.
+     *
+     * Uploaded one at a time while somebody is writing, which is what makes
+     * them unlike a message's attachments: a file can exist here for a few
+     * seconds before the body that mentions it is saved, and can stop being
+     * mentioned without anybody deleting it. ReconcileDocumentFiles is what
+     * keeps that from becoming a disk full of pictures nobody can see.
+     *
+     * @return HasMany<DocumentFile, $this>
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(DocumentFile::class);
+    }
+
+    /**
+     * What this document looked like before each of the last edits.
+     *
+     * Newest first, because that is the order anybody reads a history in: the
+     * question is nearly always "what did it say ten minutes ago", not "what
+     * did it say in March".
+     *
+     * @return HasMany<DocumentRevision, $this>
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(DocumentRevision::class)->newestFirst();
     }
 
     /** @return BelongsTo<User, $this> */

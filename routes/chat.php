@@ -17,6 +17,8 @@ use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DirectMessageController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentFileController;
+use App\Http\Controllers\DocumentRevisionController;
 use App\Http\Controllers\EphemeralNoticeController;
 use App\Http\Controllers\FormFillController;
 use App\Http\Controllers\HuddleController;
@@ -675,7 +677,53 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::delete('c/{channel}/documents/{document}', [DocumentController::class, 'destroy'])
                     ->scopeBindings()
                     ->name('documents.destroy');
+
+                /*
+                 * The files inside a document. Scoped the whole way down —
+                 * channel to document to file — so an id from somewhere else is
+                 * a 404 during binding rather than something the controller has
+                 * to notice. Unlike the media a message carries, these hang off
+                 * a relation Laravel can follow.
+                 */
+                Route::post('c/{channel}/documents/{document}/files', [DocumentFileController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('documents.files.store');
+
+                Route::delete('c/{channel}/documents/{document}/files/{file}', [DocumentFileController::class, 'destroy'])
+                    ->scopeBindings()
+                    ->name('documents.files.destroy');
+
+                /*
+                 * What the document said before. Behind the feature gate with
+                 * the writes rather than with the reading of files: a history
+                 * is only reachable from the editor, and the editor is what the
+                 * gate turns off.
+                 */
+                Route::get('c/{channel}/documents/{document}/geschiedenis', [DocumentRevisionController::class, 'index'])
+                    ->scopeBindings()
+                    ->name('documents.revisions.index');
+
+                Route::get('c/{channel}/documents/{document}/geschiedenis/{revision}', [DocumentRevisionController::class, 'show'])
+                    ->scopeBindings()
+                    ->name('documents.revisions.show');
+
+                Route::post('c/{channel}/documents/{document}/geschiedenis/{revision}', [DocumentRevisionController::class, 'restore'])
+                    ->scopeBindings()
+                    ->name('documents.revisions.restore');
             });
+
+            /*
+             * Reading a file out of a document, and the one document route that
+             * sits outside the feature gate.
+             *
+             * Switching the feature off hides the editor and stops the writing;
+             * it should not turn every picture in every document that already
+             * exists into a broken box for as long as somebody has the page
+             * open. The policy still decides who gets in.
+             */
+            Route::get('c/{channel}/documents/{document}/files/{file}', [DocumentFileController::class, 'show'])
+                ->scopeBindings()
+                ->name('documents.files.show');
 
             /**
              * Written now, said later. Scoped, so an id from another channel is

@@ -4,12 +4,15 @@ import {
     Heading1,
     Heading2,
     Heading3,
+    Image as ImageIcon,
     Info,
     List,
     ListChecks,
     ListOrdered,
     Minus,
+    Paperclip,
     Quote,
+    Table as TableIcon,
     Type,
 } from 'lucide-react';
 import {
@@ -61,6 +64,9 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
     Info,
     Code,
     Minus,
+    ImageIcon,
+    Paperclip,
+    TableIcon,
 };
 
 /**

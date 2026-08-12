@@ -10,9 +10,21 @@ import {
 } from 'react';
 
 import { DocumentEditor } from '@/components/chat/document-editor';
-import { Button } from '@/components/ui/button';
+import { DocumentHistory } from '@/components/chat/document-history';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useTranslate } from '@/hooks/use-translate';
 import { destroy, update } from '@/routes/chat/documents';
+import { store as storeFile } from '@/routes/chat/documents/files';
 import type {
     ActiveChannel,
     DocumentContent,
@@ -60,6 +72,7 @@ export function DocumentView({
     const [title, setTitle] = useState(openDocument.title);
     const titleField = useRef<HTMLTextAreaElement>(null);
     const [state, setState] = useState<SaveState>('idle');
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [conflictMessage, setConflictMessage] = useState<string | null>(null);
 
     /*
@@ -400,21 +413,23 @@ export function DocumentView({
 
                         <SaveIndicator state={state} />
 
+                        {/*
+                            Beside the delete button, which is the other place
+                            somebody looks when something has gone wrong — and
+                            the one they reach for when this panel is what they
+                            actually needed.
+                        */}
+                        {openDocument.canEdit && (
+                            <DocumentHistory target={target} />
+                        )}
+
                         {openDocument.canDelete && (
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="size-7"
                                 aria-label={t('documents.view.delete')}
-                                onClick={() => {
-                                    if (
-                                        globalThis.confirm(
-                                            t('documents.view.confirm'),
-                                        )
-                                    ) {
-                                        router.delete(destroy.url(target));
-                                    }
-                                }}
+                                onClick={() => setConfirmingDelete(true)}
                             >
                                 <Trash2 className="size-3.5" />
                             </Button>
@@ -462,10 +477,61 @@ export function DocumentView({
                         key={openDocument.id}
                         value={openDocument.body}
                         readOnly={!openDocument.canEdit || state === 'conflict'}
+                        /*
+                         * Null for a reader, and for a writer whose document has
+                         * been saved out from under them: the conflict banner is
+                         * up, nothing they type is being kept, and a picture
+                         * uploaded into that state would be a file on the disk
+                         * that no saved document ever mentions.
+                         */
+                        uploadEndpoint={
+                            openDocument.canEdit && state !== 'conflict'
+                                ? storeFile.url(target)
+                                : null
+                        }
                         onChange={onChange}
                     />
                 </div>
             </div>
+
+            {/*
+                Asked in the application's own words rather than in the
+                browser's. A native confirm() is the one dialog that looks like
+                it belongs to something else — and this is the most permanent
+                button on the page: a document is months of writing that exists
+                nowhere else, and the notice is worth reading rather than
+                dismissing out of habit.
+            */}
+            <AlertDialog
+                open={confirmingDelete}
+                onOpenChange={setConfirmingDelete}
+            >
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t('documents.view.confirm_title')}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t('documents.view.confirm', {
+                                title: openDocument.title,
+                            })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t('documents.view.cancel')}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className={buttonVariants({
+                                variant: 'destructive',
+                            })}
+                            onClick={() => router.delete(destroy.url(target))}
+                        >
+                            {t('documents.view.delete')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
