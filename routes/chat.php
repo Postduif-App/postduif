@@ -304,6 +304,24 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('contracts.fields');
 
                 /*
+                 * Naming the people and putting it in the post. A POST rather
+                 * than a flag on the save above: laying out the boxes is a
+                 * thing you do half a dozen times, and handing the document to
+                 * the outside world is a thing you do once.
+                 *
+                 * Throttled, unlike the rest of this group, because this one
+                 * sends mail to addresses somebody typed — the only endpoint in
+                 * the feature that can reach a stranger's inbox.
+                 */
+                Route::post('contracten/{contract}/versturen', [ContractController::class, 'send'])
+                    ->middleware('throttle:10,1')
+                    ->name('contracts.send');
+
+                Route::post('contracten/{contract}/herinnering', [ContractController::class, 'remind'])
+                    ->middleware('throttle:10,1')
+                    ->name('contracts.remind');
+
+                /*
                  * The document itself, for the editor and the signing page to
                  * render. Behind the policy, because there is no other way to
                  * the private disk and there should not be — see the controller.

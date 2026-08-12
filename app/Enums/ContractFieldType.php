@@ -98,11 +98,18 @@ enum ContractFieldType: string
      * Drawn fields are absent from the match on purpose: their answer arrives as
      * an uploaded image and is judged as one, not as a string.
      *
+     * @param  bool  $draft  Whether this is the half-filled state the public page
+     *                       saves as somebody works. Nothing is required of a
+     *                       draft — the whole point of it is that a person can
+     *                       close the tab halfway through a long contract and
+     *                       come back — so "verplicht" is asked once, at the end.
+     *                       Every other rule still holds: a date that is not a
+     *                       date is a mistake whenever it is typed.
      * @return array<int, mixed>
      */
-    public function rules(ContractField $field): array
+    public function rules(ContractField $field, bool $draft = false): array
     {
-        $presence = $field->is_required ? 'required' : 'nullable';
+        $presence = $field->is_required && ! $draft ? 'required' : 'nullable';
 
         return match ($this) {
             self::Text => [$presence, 'string', 'max:500'],

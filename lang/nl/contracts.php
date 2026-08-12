@@ -39,6 +39,39 @@ return [
         'reload' => 'Pagina opnieuw laden',
     ],
 
+    'send' => [
+        'duplicate_address' => 'Hetzelfde e-mailadres staat er twee keer bij. Ieder die tekent heeft een eigen link nodig, dus per adres kan er maar één ondertekenaar zijn.',
+    ],
+
+    'sign' => [
+        'addressed_to' => 'Dit verzoek staat op naam van :name.',
+        'autosaves' => 'Wat je invult wordt vanzelf bewaard. Je kunt dit scherm tussendoor sluiten en later verder gaan.',
+        'saved' => 'Opgeslagen.',
+        'signature_pending' => 'Handtekening',
+        'closed' => [
+            'signed' => [
+                'title' => 'Je hebt dit al getekend',
+                'body' => 'Er is verder niets meer voor je te doen. De aanvrager heeft bericht gekregen. Bewaar de bevestigingsmail: daar staat je eigen kopie in.',
+            ],
+            'completed' => [
+                'title' => 'Dit contract is rond',
+                'body' => 'Iedereen die gevraagd was heeft getekend. Er is verder niets meer voor je te doen.',
+            ],
+            'declined' => [
+                'title' => 'Je hebt dit verzoek afgewezen',
+                'body' => 'Je hebt aangegeven niet te willen tekenen. Is dat niet wat je bedoelde, neem dan contact op met degene die het stuurde — die kan een nieuw verzoek sturen.',
+            ],
+            'expired' => [
+                'title' => 'Dit verzoek is verlopen',
+                'body' => 'De einddatum is voorbij en er kan niet meer getekend worden. Vraag degene die het stuurde om een nieuw verzoek; het document zelf is er nog.',
+            ],
+            'cancelled' => [
+                'title' => 'Dit verzoek is ingetrokken',
+                'body' => 'Degene die dit stuurde heeft het stopgezet. Vaak betekent dat er een gewijzigde versie aankomt. Weet je van niets, neem dan even contact op.',
+            ],
+        ],
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\ContractSignController;
 use App\Http\Controllers\CustomEmojiController;
 use App\Http\Controllers\IndexingController;
 use App\Http\Controllers\InstallController;
@@ -142,6 +143,36 @@ Route::get('formulier/{token}', [PublicFormController::class, 'show'])
 Route::post('formulier/{token}', [PublicFormController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('forms.public.submit');
+
+/**
+ * Signing a contract somebody sent you.
+ *
+ * Outside auth, like the three above: the person signing may have no account
+ * and often is a customer who never will. The token in the address is the whole
+ * permission, and it sits in the path rather than in a query string on purpose
+ * — a query parameter travels along in the Referer header the moment the page
+ * loads anything from elsewhere, and this one is a signature.
+ *
+ * Throttled on all three. The GET because a token is a secret and a stream of
+ * guesses must cost something; the document harder, because it hands over a
+ * whole PDF and an unthrottled one is a way to spend somebody else's bandwidth
+ * by refreshing; the draft save loosest of the three, because it is called as
+ * somebody types and must not run out halfway through a long contract.
+ */
+Route::prefix('ondertekenen/{token}')
+    ->group(function () {
+        Route::get('/', [ContractSignController::class, 'show'])
+            ->middleware('throttle:30,1')
+            ->name('contracts.sign.show');
+
+        Route::get('document', [ContractSignController::class, 'document'])
+            ->middleware('throttle:20,1')
+            ->name('contracts.sign.document');
+
+        Route::post('/', [ContractSignController::class, 'store'])
+            ->middleware('throttle:60,1')
+            ->name('contracts.sign.store');
+    });
 
 /**
  * Picking up a secret somebody sent you.

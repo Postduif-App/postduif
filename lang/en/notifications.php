@@ -27,6 +27,10 @@ return [
         'files' => 'files',
     ],
 
+    'contract' => [
+        'subject' => ':sender is asking you to sign :what',
+    ],
+
     'invitation' => [
         'subject' => ':inviter is inviting you to :workspace',
     ],

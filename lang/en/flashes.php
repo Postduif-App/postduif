@@ -56,6 +56,9 @@ return [
     'contract' => [
         'created' => 'Document ready. Now put the fields on the pages.',
         'fields_saved' => 'Fields saved.',
+        'sent' => '{1}Contract sent to 1 person.|[2,*]Contract sent to :count people.',
+        'reminded' => '{1}Reminder sent to 1 person.|[2,*]Reminder sent to :count people.',
+        'nobody_to_remind' => 'Nobody to remind: everybody has signed, or was already nudged today.',
     ],
 
     'transfer' => [

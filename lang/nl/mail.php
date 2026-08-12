@@ -22,10 +22,19 @@ return [
         'expires' => 'Deze link verloopt op :date. Was deze uitnodiging niet voor jou bedoeld? Dan hoef je niets te doen.',
     ],
 
+    'contract' => [
+        'heading' => 'Er ligt een contract voor je klaar om te tekenen',
+        'intro' => ':sender vraagt je om ":title" te ondertekenen.',
+        'button' => 'Contract openen en tekenen',
+        'expires' => 'Deze link verloopt op :date. Daarna kun je niet meer tekenen en moet er een nieuw verzoek gestuurd worden.',
+        'personal' => 'Deze link is persoonlijk en staat op jouw naam. Stuur hem niet door — wie hem opent, tekent namens jou.',
+    ],
+
     'transfer' => [
         'heading' => 'Er staan bestanden voor je klaar',
         'intro' => '{1}:sender heeft een bestand voor je klaargezet.|[2,*]:sender heeft :count bestanden voor je klaargezet.',
         'button' => 'Bestanden downloaden',
         'expires' => 'Deze link is voor jou gemaakt en verloopt op :date. Daarna zijn de bestanden weg. Kreeg je dit onverwacht? Dan hoef je niets te doen.',
     ],
+
 ];

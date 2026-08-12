@@ -39,6 +39,39 @@ return [
         'reload' => 'Reload the page',
     ],
 
+    'send' => [
+        'duplicate_address' => 'The same email address appears twice. Everybody who signs needs a link of their own, so an address can only stand for one signer.',
+    ],
+
+    'sign' => [
+        'addressed_to' => 'This request is in the name of :name.',
+        'autosaves' => 'What you fill in is kept as you go. You can close this screen and carry on later.',
+        'saved' => 'Saved.',
+        'signature_pending' => 'Signature',
+        'closed' => [
+            'signed' => [
+                'title' => 'You have already signed this',
+                'body' => 'There is nothing further for you to do. Whoever asked has been told. Keep the confirmation mail — your own copy is in it.',
+            ],
+            'completed' => [
+                'title' => 'This contract is complete',
+                'body' => 'Everybody who was asked has signed. There is nothing further for you to do.',
+            ],
+            'declined' => [
+                'title' => 'You turned this request down',
+                'body' => 'You indicated that you did not want to sign. If that is not what you meant, contact whoever sent it — they can send a new request.',
+            ],
+            'expired' => [
+                'title' => 'This request has expired',
+                'body' => 'The deadline has passed and it can no longer be signed. Ask whoever sent it for a new request; the document itself still exists.',
+            ],
+            'cancelled' => [
+                'title' => 'This request was withdrawn',
+                'body' => 'Whoever sent this has stopped it. Often that means a changed version is on its way. If you know nothing about it, do get in touch.',
+            ],
+        ],
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

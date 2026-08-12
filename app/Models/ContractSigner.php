@@ -33,6 +33,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property Carbon|null $opened_at
  * @property Carbon|null $signed_at
  * @property Carbon|null $declined_at
+ * @property Carbon|null $reminded_at
  * @property string|null $decline_reason
  * @property string|null $ip_address
  * @property string|null $user_agent
@@ -77,6 +78,7 @@ class ContractSigner extends Model implements HasMedia
             'opened_at' => 'datetime',
             'signed_at' => 'datetime',
             'declined_at' => 'datetime',
+            'reminded_at' => 'datetime',
         ];
     }
 
@@ -101,6 +103,18 @@ class ContractSigner extends Model implements HasMedia
     public static function freshToken(): string
     {
         return Str::random(64);
+    }
+
+    /**
+     * Where this person goes to fill the thing in.
+     *
+     * Built from the token rather than from the row's id, which is the whole
+     * design: the id says nothing to anybody who does not already hold the
+     * link, and the token is what stands in for having been let in.
+     */
+    public function signUrl(): string
+    {
+        return route('contracts.sign.show', $this->token);
     }
 
     /** @return BelongsTo<Contract, $this> */
@@ -170,6 +184,27 @@ class ContractSigner extends Model implements HasMedia
     public function canStillSign(): bool
     {
         return ! $this->hasAnswered() && $this->contract->isSignable();
+    }
+
+    /**
+     * Whether this person may be nudged again yet.
+     *
+     * A day, counted from the last nudge rather than from the invitation, so
+     * pressing the button twice in a morning sends one mail. What this is
+     * guarding against is not accidental double-clicks — those are cheap — but
+     * somebody using the button as a way to sit on a colleague's inbox.
+     *
+     * Somebody who has already answered is never remindable, whatever the
+     * dates say: there is nothing left to ask them.
+     */
+    public function canBeRemindedAt(?Carbon $moment = null): bool
+    {
+        if (! $this->canStillSign()) {
+            return false;
+        }
+
+        return $this->reminded_at === null
+            || $this->reminded_at->addDay()->isBefore($moment ?? now());
     }
 
     /**

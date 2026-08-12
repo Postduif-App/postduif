@@ -41,6 +41,10 @@ return [
         'files' => 'bestanden',
     ],
 
+    'contract' => [
+        'subject' => ':sender vraagt je om :what te tekenen',
+    ],
+
     'invitation' => [
         'subject' => ':inviter nodigt je uit voor :workspace',
     ],

@@ -56,6 +56,9 @@ return [
     'contract' => [
         'created' => 'Document klaargezet. Zet nu de invulvakken op de pagina\'s.',
         'fields_saved' => 'Vakken opgeslagen.',
+        'sent' => '{1}Contract verstuurd naar 1 persoon.|[2,*]Contract verstuurd naar :count mensen.',
+        'reminded' => '{1}Herinnering verstuurd naar 1 persoon.|[2,*]Herinnering verstuurd naar :count mensen.',
+        'nobody_to_remind' => 'Niemand om te herinneren: iedereen heeft getekend, of is vandaag al gemaand.',
     ],
 
     'transfer' => [

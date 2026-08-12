@@ -57,6 +57,19 @@ export interface ContractPdfProps {
     /** Drawn over each page — the boxes, in other words. */
     overlay?: (page: number, size: RenderedPageSize) => React.ReactNode;
     onFailed?: () => void;
+    /**
+     * Whether the fetch carries the session cookie.
+     *
+     * True for the editor, whose source route sits behind the session and a
+     * policy — without it pdf.js arrives without the cookie and is answered
+     * with a redirect to the login page, which it then tries to parse as a PDF.
+     *
+     * False for the public signing page, where a token in the path is the whole
+     * credential and there is no session to send. Left off rather than sent
+     * anyway: a signer who happens to be logged in to some workspace should not
+     * have that ride along with a request that has nothing to do with it.
+     */
+    withCredentials?: boolean;
 }
 
 /**
@@ -73,19 +86,15 @@ export default function ContractPdf({
     onPageRendered,
     overlay,
     onFailed,
+    withCredentials = false,
 }: ContractPdfProps) {
     const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
 
     useEffect(() => {
         let current = true;
 
-        /*
-         * withCredentials, because the source route sits behind the session and
-         * a policy. pdf.js fetches on its own and would otherwise arrive
-         * without the cookie and be answered with a redirect to the login page,
-         * which it would then try to parse as a PDF.
-         */
-        const task = pdfjs.getDocument({ url, withCredentials: true });
+        // See the prop's own note for why this is not simply always on.
+        const task = pdfjs.getDocument({ url, withCredentials });
 
         task.promise
             .then((loaded) => {
@@ -118,7 +127,7 @@ export default function ContractPdf({
         // onFailed is left out deliberately: a caller that passes an inline
         // arrow would otherwise refetch the whole document on every render.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [url]);
+    }, [url, withCredentials]);
 
     if (document === null) {
         return <ContractPdfSkeleton pageCount={pageCount} width={pageWidth} />;

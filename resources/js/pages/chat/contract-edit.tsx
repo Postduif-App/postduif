@@ -379,6 +379,9 @@ export default function ContractEdit({
                             url={contract.sourceUrl}
                             pageCount={contract.pageCount}
                             pageWidth={ZOOM_STEPS[zoom]}
+                            // The editor's source route sits behind the session
+                            // and the policy — see the prop.
+                            withCredentials
                             onPageRendered={rememberPageSize}
                             overlay={(page, size) => (
                                 <div

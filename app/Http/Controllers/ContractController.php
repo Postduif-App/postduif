@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Actions\Chat\BuildChatShell;
 use App\Actions\Contracts\CreateContract;
 use App\Actions\Contracts\PdfRefused;
+use App\Actions\Contracts\RemindContractSigners;
 use App\Actions\Contracts\SaveContractFields;
+use App\Actions\Contracts\SendContract;
 use App\Enums\ContractFieldType;
 use App\Http\Requests\StoreContractRequest;
 use App\Models\Contract;
@@ -37,6 +39,12 @@ class ContractController extends Controller
      * save. Forty fields on fifty pages is already an unusual document.
      */
     private const MAX_FIELDS = 200;
+
+    /**
+     * More people than any one document is signed by, and few enough that the
+     * mail loop stays a loop rather than a job.
+     */
+    private const MAX_SIGNERS = 20;
 
     /**
      * Take the uploaded PDF and open a draft on it.
@@ -89,19 +97,6 @@ class ContractController extends Controller
         return to_route('chat.contracts.edit', [$workspace, $contract]);
     }
 
-    /**
-     * The PDF itself, for the editor and for the signing page to render.
-     *
-     * Inline rather than as a download, because both of those load it into
-     * pdf.js rather than offering it to the reader — ?download=1 is there for
-     * the author who wants the file itself.
-     *
-     * Streamed from the private disk through a policy, and there is no other
-     * way to it. That is the whole reason this method exists: a contract on a
-     * public disk would be one guessed URL away from a stranger, and the URL
-     * would keep working after the contract was withdrawn, which is every limit
-     * the feature has.
-     */
     /**
      * The editor: the document with whatever has been drawn over it so far.
      *
@@ -252,6 +247,128 @@ class ContractController extends Controller
         return back();
     }
 
+    /**
+     * Name the people and put it in the post.
+     *
+     * The step that turns a draft into something the outside world is holding.
+     * Everything about it that can fail — an address that bounces, a transport
+     * that is down — happens after the transaction, because a mail is the one
+     * side effect there is no rollback for. See SendContract.
+     */
+    public function send(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        SendContract $sendContract,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        /*
+         * update rather than a right of its own, and it does two jobs at once:
+         * it asks whether this person may touch this contract, and it refuses
+         * on anything that is not still a draft or already out. Sending a
+         * withdrawn contract again would hand out live links to something the
+         * author stopped.
+         */
+        $this->authorize('update', $contract);
+
+        $data = $request->validate([
+            'signers' => ['required', 'array', 'min:1', 'max:'.self::MAX_SIGNERS],
+            'signers.*.name' => ['required', 'string', 'max:120'],
+            'signers.*.email' => ['required', 'email', 'max:255'],
+
+            /*
+             * A colleague picked from the workspace rather than an address
+             * typed in. Scoped to this workspace in the rule itself: an id from
+             * somewhere else must not be storable, and a validator is the only
+             * place that refusal reads as a validation error rather than a 403.
+             */
+            'signers.*.user_id' => [
+                'nullable',
+                Rule::exists('workspace_user', 'user_id')->where('workspace_id', $workspace->id),
+            ],
+
+            'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        /*
+         * The same address twice is two links to one inbox — and two rows
+         * claiming to be the person who signed. Refused here rather than left
+         * to the unique index, so it reads as a mistake somebody can correct
+         * instead of as a database error.
+         */
+        $addresses = array_map(
+            fn (array $signer): string => mb_strtolower(trim($signer['email'])),
+            $data['signers'],
+        );
+
+        if (count(array_unique($addresses)) !== count($addresses)) {
+            return back()->withErrors(['signers' => __('contracts.send.duplicate_address')]);
+        }
+
+        abort_unless($contract->hasSource(), 404);
+
+        $sendContract->handle(
+            contract: $contract,
+            signers: $data['signers'],
+            validForDays: $data['valid_for_days'] ?? null,
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice('flashes.contract.sent', count($data['signers'])),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Nudge whoever has not answered.
+     *
+     * Its own endpoint rather than a flag on the one above, because the two are
+     * different acts: sending decides who is asked, reminding asks the same
+     * people again. The throttle that keeps this from becoming harassment is in
+     * the action, where it belongs — it is about how often rather than who.
+     */
+    public function remind(
+        Workspace $workspace,
+        Contract $contract,
+        RemindContractSigners $remind,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('remind', $contract);
+
+        $reminded = $remind->handle($contract);
+
+        /*
+         * Zero is an ordinary answer rather than a failure — everybody has
+         * either signed or was nudged this morning — and the page says which,
+         * instead of claiming a mail went out that did not.
+         */
+        Inertia::flash('toast', [
+            'type' => $reminded === 0 ? 'info' : 'success',
+            'message' => $reminded === 0
+                ? __('flashes.contract.nobody_to_remind')
+                : trans_choice('flashes.contract.reminded', $reminded),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * The PDF itself, for the editor and for the signing page to render.
+     *
+     * Inline rather than as a download, because both of those load it into
+     * pdf.js rather than offering it to the reader — ?download=1 is there for
+     * the author who wants the file itself.
+     *
+     * Streamed from the private disk through a policy, and there is no other
+     * way to it. That is the whole reason this method exists: a contract on a
+     * public disk would be one guessed URL away from a stranger, and the URL
+     * would keep working after the contract was withdrawn, which is every limit
+     * the feature has.
+     */
     public function source(
         Request $request,
         Workspace $workspace,
