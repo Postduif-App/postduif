@@ -1,10 +1,11 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Ban, CalendarX, CheckCircle2, FileSignature } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ContractDocument } from '@/components/chat/contract-document';
 import { SignaturePad } from '@/components/chat/signature-pad';
 import type { SignatureMethod } from '@/components/chat/signature-pad';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
@@ -19,6 +20,8 @@ import { toPixels } from '@/lib/contract-fields';
 import type { RenderedPage } from '@/lib/contract-fields';
 import { cn } from '@/lib/utils';
 import {
+    complete as completeSigning,
+    decline as declineSigning,
     store as saveDraft,
     signature as storeSignature,
 } from '@/routes/contracts/sign';
@@ -320,6 +323,8 @@ function SigningSurface({
                 )}
             />
 
+            <SigningFooter token={token} contract={contract} values={values} />
+
             <Dialog
                 open={marking !== null}
                 onOpenChange={(open) => !open && setMarking(null)}
@@ -346,6 +351,173 @@ function SigningSurface({
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+/**
+ * The two endings, and what stands between somebody and them.
+ *
+ * Fixed to the foot of the screen rather than at the bottom of the document,
+ * because a twenty-page contract would otherwise hide the button that finishes
+ * it behind twenty pages of scrolling — and somebody who cannot find it assumes
+ * their work was not saved.
+ *
+ * What is left to do is counted here rather than on the server, so it changes
+ * as somebody types. The server counts again when the button is pressed, and
+ * that count is the one that decides: this is a hint, not a rule.
+ */
+function SigningFooter({
+    token,
+    contract,
+    values,
+}: {
+    token: string;
+    contract: SignableContract;
+    values: Record<number, string>;
+}) {
+    const { t, tChoice } = useTranslate();
+
+    const [declining, setDeclining] = useState(false);
+    const [reason, setReason] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    /*
+     * Errors from the two endings arrive on the page rather than in a toast: a
+     * refusal to sign is something to read and act on, and a message that
+     * disappears after four seconds is the wrong shape for "je hebt nog twee
+     * vakken open".
+     */
+    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+
+    const outstanding = contract.fields.filter((field) => {
+        if (!field.isRequired) {
+            return false;
+        }
+
+        if (field.type === 'signature' || field.type === 'initials') {
+            return contract.marks[field.type] == null;
+        }
+
+        return (values[field.id] ?? '') === '';
+    }).length;
+
+    const sign = () => {
+        setBusy(true);
+
+        router.post(
+            completeSigning.url(token),
+            {},
+            { preserveScroll: true, onFinish: () => setBusy(false) },
+        );
+    };
+
+    const turnDown = () => {
+        setBusy(true);
+
+        router.post(
+            declineSigning.url(token),
+            { reason },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setBusy(false);
+                    setDeclining(false);
+                },
+            },
+        );
+    };
+
+    return (
+        <>
+            {errors.signing !== undefined && (
+                <p
+                    role="alert"
+                    data-testid="contract-sign-error"
+                    className="mt-6 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                >
+                    {errors.signing}
+                </p>
+            )}
+
+            <div className="sticky bottom-0 mt-6 flex flex-wrap items-center gap-3 border-t bg-background/95 px-1 py-3 backdrop-blur">
+                <p className="text-xs text-muted-foreground">
+                    {tChoice('contracts.sign.remaining', outstanding)}
+                </p>
+
+                <div className="ml-auto flex items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setDeclining(true)}
+                        disabled={busy}
+                    >
+                        {t('contracts.sign.decline')}
+                    </Button>
+
+                    {/*
+                        Disabled while something is still open, and the server
+                        checks again regardless — see SignContract. Both, because
+                        the button is what stops somebody wasting a click, and
+                        the server is what stops a contract being signed half
+                        empty.
+                    */}
+                    <Button
+                        type="button"
+                        onClick={sign}
+                        disabled={busy || outstanding > 0}
+                        data-testid="contract-sign-submit"
+                    >
+                        {t('contracts.sign.sign')}
+                    </Button>
+                </div>
+            </div>
+
+            <Dialog open={declining} onOpenChange={setDeclining}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t('contracts.sign.decline_title')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t('contracts.sign.decline_hint')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <label className="space-y-1 text-sm">
+                        <span className="text-muted-foreground">
+                            {t('contracts.sign.decline_reason')}
+                        </span>
+                        <textarea
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            maxLength={1000}
+                            rows={3}
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                        />
+                    </label>
+
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setDeclining(false)}
+                            disabled={busy}
+                        >
+                            {t('contracts.sign.cancel')}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={turnDown}
+                            disabled={busy}
+                            data-testid="contract-decline-submit"
+                        >
+                            {t('contracts.sign.decline_confirm')}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 

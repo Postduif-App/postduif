@@ -47,7 +47,18 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['workspace_id', 'created_by', 'title', 'message', 'status', 'page_count', 'source_hash', 'expires_at'])]
+/*
+ * The three stamps are fillable beside the columns somebody types into, and it
+ * is worth saying why: they are not user input, they are written by the actions
+ * that own the transitions — see SignContract and PruneContracts. Leaving them
+ * out meant update(['completed_at' => now()]) silently doing nothing, which is
+ * the quietest possible way for a contract to end up finished with no record of
+ * when.
+ */
+#[Fillable([
+    'workspace_id', 'created_by', 'title', 'message', 'status', 'page_count',
+    'source_hash', 'expires_at', 'completed_at', 'cancelled_at',
+])]
 class Contract extends Model implements HasMedia
 {
     /** @use HasFactory<ContractFactory> */
@@ -232,6 +243,36 @@ class Contract extends Model implements HasMedia
         return $this->signers->every(
             fn (ContractSigner $signer): bool => $signer->hasAnswered()
         );
+    }
+
+    /**
+     * Close this contract if nobody is left to hear from.
+     *
+     * On the model rather than in the two actions that call it, because it is
+     * one rule about a contract rather than a step in either of them: the last
+     * person answering is what finishes it, and whether they answered by
+     * signing or by refusing makes no difference to that.
+     *
+     * A refusal does count — see isFullyAnswered. A contract one person
+     * declined is finished business, and leaving it open would keep telling its
+     * author that somebody still owes them something.
+     */
+    public function settleIfEverybodyHasAnswered(): bool
+    {
+        $fresh = $this->fresh(['signers']);
+
+        if ($fresh === null || ! $fresh->isFullyAnswered()) {
+            return false;
+        }
+
+        $fresh->update([
+            'status' => ContractStatus::Completed,
+            'completed_at' => now(),
+        ]);
+
+        $this->setRawAttributes($fresh->getAttributes(), sync: true);
+
+        return true;
     }
 
     /**

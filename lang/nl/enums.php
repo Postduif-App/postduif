@@ -92,7 +92,7 @@ return [
         'label' => [
             'Draft' => 'Concept',
             'Sent' => 'Verstuurd',
-            'Completed' => 'Ondertekend',
+            'Completed' => 'Afgerond',
             'Cancelled' => 'Ingetrokken',
             'Expired' => 'Verlopen',
         ],

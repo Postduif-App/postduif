@@ -47,6 +47,21 @@ return [
         'addressed_to' => 'Dit verzoek staat op naam van :name.',
         'autosaves' => 'Wat je invult wordt vanzelf bewaard. Je kunt dit scherm tussendoor sluiten en later verder gaan.',
         'saved' => 'Opgeslagen.',
+        'errors' => [
+            'closed' => 'Dit contract kan niet meer getekend worden. Het is ingetrokken, verlopen, of je hebt er al op gereageerd.',
+            'already' => 'Er is al op dit verzoek gereageerd. Ververs de pagina om te zien wat er staat.',
+            'incomplete' => '{1}Er is nog één vak dat ingevuld moet worden: :fields.|[2,*]Er zijn nog :count vakken die ingevuld moeten worden: :fields.',
+            'no_document' => 'Het document bij dit contract is niet te vinden. Neem contact op met degene die het stuurde — teken niets tot dat is uitgezocht.',
+            'document_changed' => 'Het document is veranderd sinds het naar je verstuurd is. Om die reden kan er nu niet getekend worden. Neem contact op met degene die het stuurde.',
+        ],
+        'sign' => 'Ondertekenen',
+        'decline' => 'Afwijzen',
+        'decline_title' => 'Dit verzoek afwijzen',
+        'decline_hint' => 'Je geeft aan dat je dit contract niet tekent. Dat is definitief: dezelfde link werkt daarna niet meer.',
+        'decline_reason' => 'Waarom niet? (mag je overslaan)',
+        'decline_confirm' => 'Afwijzen',
+        'cancel' => 'Terug',
+        'remaining' => '{0}Alles is ingevuld.|{1}Nog 1 vak te gaan.|[2,*]Nog :count vakken te gaan.',
         'signature_pending' => 'Handtekening',
         'closed' => [
             'signed' => [

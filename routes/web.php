@@ -189,6 +189,20 @@ Route::prefix('ondertekenen/{token}')
         Route::get('handtekening/{kind}', [ContractSignController::class, 'signatureImage'])
             ->middleware('throttle:60,1')
             ->name('contracts.sign.signature.show');
+
+        /*
+         * The two endings. Throttled hardest of everything here, and not
+         * because they are expensive: they are the requests that cannot be
+         * taken back, and a stream of them is either a mistake or somebody
+         * hammering at a token. Nobody signs a contract six times a minute.
+         */
+        Route::post('afronden', [ContractSignController::class, 'complete'])
+            ->middleware('throttle:6,1')
+            ->name('contracts.sign.complete');
+
+        Route::post('afwijzen', [ContractSignController::class, 'decline'])
+            ->middleware('throttle:6,1')
+            ->name('contracts.sign.decline');
     });
 
 /**

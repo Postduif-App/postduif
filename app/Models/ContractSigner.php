@@ -34,6 +34,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int $signing_order
  * @property Carbon|null $opened_at
  * @property Carbon|null $signed_at
+ * @property string|null $signed_document_hash
  * @property Carbon|null $declined_at
  * @property Carbon|null $reminded_at
  * @property string|null $decline_reason

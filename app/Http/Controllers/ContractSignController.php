@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Contracts\DeclineContract;
 use App\Actions\Contracts\PresentContractForSigner;
 use App\Actions\Contracts\SaveSignerDraft;
+use App\Actions\Contracts\SignContract;
+use App\Actions\Contracts\SigningRefused;
 use App\Actions\Contracts\StoreSignature;
 use App\Enums\ContractFieldType;
 use App\Enums\SignatureMethod;
@@ -260,6 +263,75 @@ class ContractSignController extends Controller
         $response->headers->set('Cache-Control', 'no-store, private');
 
         return $response;
+    }
+
+    /**
+     * Put your name to it.
+     *
+     * The one request in this feature that cannot be taken back, which is why
+     * everything it needs to be sure of is checked in the action rather than
+     * here — see SignContract. What this method owns is the two facts that only
+     * a request can supply: where it came from and what it was made with.
+     */
+    public function complete(Request $request, string $token, SignContract $sign): RedirectResponse
+    {
+        $signer = $this->signer($token);
+
+        try {
+            $sign->handle(
+                signer: $signer,
+                /*
+                 * The address as this application sees it. Behind a proxy that
+                 * is the proxy's own unless TrustProxies says otherwise, which
+                 * it does — see the middleware. Recorded as evidence rather
+                 * than used for anything, so it is never a reason to refuse
+                 * somebody: an audit trail with "onbekend" in it is worth more
+                 * than a signature that could not be given.
+                 */
+                ip: (string) $request->ip(),
+                userAgent: $request->userAgent(),
+            );
+        } catch (SigningRefused $refused) {
+            /*
+             * Back to the page with the reason on it. Every message this can
+             * carry is written for somebody standing in front of the screen —
+             * see the contracts.sign.errors keys — because all but one of them
+             * is something they can act on.
+             */
+            return back()->withErrors(['signing' => $refused->getMessage()]);
+        }
+
+        return back();
+    }
+
+    /**
+     * Say no.
+     *
+     * Its own endpoint rather than a flag on the one above, and its own button
+     * on the page. Without it, refusing means closing the tab — which is
+     * indistinguishable from being on holiday, and leaves the author waiting
+     * for somebody who has already decided.
+     */
+    public function decline(Request $request, string $token, DeclineContract $decline): RedirectResponse
+    {
+        $signer = $this->signer($token);
+
+        $data = $request->validate([
+            /*
+             * Optional, and asked for anyway. "Niet akkoord met artikel 4" is
+             * the difference between a contract that gets amended and one that
+             * gets sent again unchanged.
+             */
+            'reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $decline->handle($signer, $data['reason'] ?? null);
+        } catch (SigningRefused $refused) {
+            return back()->withErrors(['signing' => $refused->getMessage()]);
+        }
+
+        return back();
     }
 
     /**

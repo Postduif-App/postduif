@@ -84,7 +84,7 @@ return [
         'label' => [
             'Draft' => 'Draft',
             'Sent' => 'Sent',
-            'Completed' => 'Signed',
+            'Completed' => 'Complete',
             'Cancelled' => 'Withdrawn',
             'Expired' => 'Expired',
         ],

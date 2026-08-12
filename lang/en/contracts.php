@@ -47,6 +47,21 @@ return [
         'addressed_to' => 'This request is in the name of :name.',
         'autosaves' => 'What you fill in is kept as you go. You can close this screen and carry on later.',
         'saved' => 'Saved.',
+        'errors' => [
+            'closed' => 'This contract can no longer be signed. It was withdrawn, it expired, or you have already responded to it.',
+            'already' => 'This request has already been responded to. Refresh the page to see where it stands.',
+            'incomplete' => '{1}There is one field left to fill in: :fields.|[2,*]There are :count fields left to fill in: :fields.',
+            'no_document' => 'The document for this contract cannot be found. Contact whoever sent it — do not sign anything until that has been sorted out.',
+            'document_changed' => 'The document has changed since it was sent to you. For that reason it cannot be signed now. Contact whoever sent it.',
+        ],
+        'sign' => 'Sign',
+        'decline' => 'Turn down',
+        'decline_title' => 'Turn this request down',
+        'decline_hint' => 'You are saying you will not sign this contract. That is final: the same link will not work afterwards.',
+        'decline_reason' => 'Why not? (you may skip this)',
+        'decline_confirm' => 'Turn down',
+        'cancel' => 'Back',
+        'remaining' => '{0}Everything is filled in.|{1}1 field to go.|[2,*]:count fields to go.',
         'signature_pending' => 'Signature',
         'closed' => [
             'signed' => [
