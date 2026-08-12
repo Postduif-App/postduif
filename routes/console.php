@@ -87,6 +87,36 @@ Schedule::command('inbox:prune')
     ->withoutOverlapping();
 
 /**
+ * Daily, half an hour after the secrets and an hour before the transfers.
+ *
+ * Two jobs in one command — see PruneContracts — and the first of them is the
+ * reason it does not go with the rest of the late-night clearing up: marking a
+ * contract expired is what the overview reads to say "verlopen", and a
+ * workspace that starts at nine should not spend the morning being told a
+ * deadline that passed at midnight is still running.
+ *
+ * withoutOverlapping because a run over a long backlog deletes files one row at
+ * a time, and a second one would be working through a list disappearing under
+ * it.
+ */
+Schedule::command('contracts:prune')
+    ->dailyAt('03:00')
+    ->withoutOverlapping();
+
+/**
+ * Daily, and it removes the least in the fewest runs — a document has to have
+ * been in the bin for a month before this touches it.
+ *
+ * Deleting a document is soft on purpose: it is the one thing in a channel that
+ * took months and exists nowhere else. This is what keeps "soft" from meaning
+ * "forever", and it is also the only thing that ever hands back the disk space
+ * of the pictures inside a document nobody kept.
+ */
+Schedule::command('documents:prune')
+    ->dailyAt('04:40')
+    ->withoutOverlapping();
+
+/**
  * Every minute, beside the scheduled messages and for the same reason: a
  * moment somebody picked should not arrive noticeably late.
  *

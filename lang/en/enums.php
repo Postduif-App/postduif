@@ -80,6 +80,22 @@ return [
             'Direct' => 'DM',
         ],
     ],
+    'contract-status' => [
+        'label' => [
+            'Draft' => 'Draft',
+            'Sent' => 'Sent',
+            'Completed' => 'Signed',
+            'Cancelled' => 'Withdrawn',
+            'Expired' => 'Expired',
+        ],
+        'description' => [
+            'Draft' => 'Not sent yet. The document and the fields can still be changed.',
+            'Sent' => 'The links have gone out. Whoever has not signed yet can be reminded.',
+            'Completed' => 'Everybody has been round. The signed copy is ready to download.',
+            'Cancelled' => 'Stopped by whoever asked. The links no longer work.',
+            'Expired' => 'The deadline passed without everybody signing.',
+        ],
+    ],
     'inbox-item-type' => [
         'label' => [
             'Mention' => 'Mentioned',
@@ -194,6 +210,7 @@ return [
             'ShareFormsPublicly' => 'Share forms outside the workspace',
             'SeeHours' => "See colleagues' hours",
             'DeleteBotMessages' => 'Delete messages from bots',
+            'SendContracts' => 'Have contracts signed',
         ],
         'description' => [
             'ManageWorkspace' => 'The name, the roles, the permissions and the look. Whoever holds this can also give themselves and others more — it is the one right that reaches every other.',
@@ -207,6 +224,7 @@ return [
             'ShareFormsPublicly' => 'Put a form behind a link that works without an account. Whoever holds this lets people from outside write into this workspace.',
             'DeleteBotMessages' => 'Remove messages posted by a webhook or a workflow. Not about what people write themselves — those stay their own. Whoever manages a channel could already do this for that channel.',
             'SeeHours' => 'See how many hours colleagues clocked this week and who is clocked in right now. Everybody sees their own hours regardless; this is about somebody else\'s.',
+            'SendContracts' => 'Send a PDF with fields on it to people to be signed, outside the workspace too. The document goes out under this workspace\'s name and comes back as evidence.',
         ],
     ],
     'workspace-accent' => [

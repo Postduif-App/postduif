@@ -12,6 +12,11 @@ return [
         'label' => 'AI-toegang',
         'description' => 'AI-clients mogen met een token meelezen en meepraten in deze workspace.',
     ],
+    'contracts' => [
+        'label' => 'Contracten',
+        'description' => 'Een PDF met invulvakken die je laat ondertekenen. Ontvangers krijgen een eigen link per mail, vullen in en tekenen; de ondertekende versie komt terug bij de aanvrager.',
+    ],
+
     'documents' => [
         'label' => 'Documenten',
         'description' => 'Kanalen kunnen documenten bijhouden naast het gesprek, met een editor die als Notion werkt.',

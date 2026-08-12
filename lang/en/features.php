@@ -5,6 +5,11 @@ return [
         'label' => 'AI access',
         'description' => 'AI clients may read along and join in with a token in this workspace.',
     ],
+    'contracts' => [
+        'label' => 'Contracts',
+        'description' => 'A PDF with fields drawn over it, sent out to be signed. Each recipient gets a link of their own by mail, fills it in and signs; the signed copy comes back to whoever asked.',
+    ],
+
     'documents' => [
         'label' => 'Documents',
         'description' => 'Channels can keep documents alongside the conversation, in an editor that works like Notion.',

@@ -45,6 +45,7 @@ abstract class WorkspaceFeature
         InviteLinks::class,
         Transfers::class,
         SecretRequests::class,
+        Contracts::class,
         AiAccess::class,
     ];
 

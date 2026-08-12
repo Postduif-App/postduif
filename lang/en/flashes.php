@@ -53,6 +53,10 @@ return [
         'reopened' => 'Poll reopened.',
     ],
 
+    'contract' => [
+        'created' => 'Document ready. Now put the fields on the pages.',
+    ],
+
     'transfer' => [
         'created' => 'Files ready. The link is in the list.',
         'withdrawn' => 'Transfer withdrawn.',

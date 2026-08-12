@@ -15,6 +15,7 @@ use App\Http\Controllers\ChannelSectionController;
 use App\Http\Controllers\ChannelTagController;
 use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContractController;
 use App\Http\Controllers\DirectMessageController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentFileController;
@@ -277,6 +278,26 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::delete('tijdregistratie/{timeEntry}', [TimeEntryController::class, 'destroy'])
                     ->whereNumber('timeEntry')
                     ->name('timeclock.entries.destroy');
+            });
+
+            /*
+             * A PDF sent out to be signed. The same split as the transfers
+             * above: uploading it, drawing the boxes and following what came
+             * back are things a member does from inside, while filling the
+             * thing in is for somebody who may have no account at all — that
+             * half lives in web.php.
+             */
+            Route::middleware('feature:contracts')->group(function () {
+                Route::post('contracts', [ContractController::class, 'store'])
+                    ->name('contracts.store');
+
+                /*
+                 * The document itself, for the editor and the signing page to
+                 * render. Behind the policy, because there is no other way to
+                 * the private disk and there should not be — see the controller.
+                 */
+                Route::get('contracts/{contract}/source', [ContractController::class, 'source'])
+                    ->name('contracts.source');
             });
 
             /*

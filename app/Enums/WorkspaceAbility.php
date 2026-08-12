@@ -41,6 +41,18 @@ enum WorkspaceAbility: string
     case ShareFormsPublicly = 'share-forms-publicly';
 
     /**
+     * Asking somebody for their signature.
+     *
+     * Its own right rather than folded into SendTransfers, although both hand
+     * something to the outside world. What separates them is what comes back: a
+     * transfer is finished the moment the recipient has the files, while a
+     * contract asks a person to put their name under something on behalf of
+     * this workspace. Being trusted to send a customer their invoices does not
+     * follow from that, and neither does the reverse.
+     */
+    case SendContracts = 'send-contracts';
+
+    /**
      * Reading what the clock recorded about other people.
      *
      * Its own right, and off for every role until a workspace says otherwise —
@@ -84,6 +96,7 @@ enum WorkspaceAbility: string
             self::SeeHours => __('enums.workspace-ability.label.SeeHours'),
             self::DeleteBotMessages => __('enums.workspace-ability.label.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.label.ShareFormsPublicly'),
+            self::SendContracts => __('enums.workspace-ability.label.SendContracts'),
         };
     }
 
@@ -108,6 +121,7 @@ enum WorkspaceAbility: string
             self::SeeHours => __('enums.workspace-ability.description.SeeHours'),
             self::DeleteBotMessages => __('enums.workspace-ability.description.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.description.ShareFormsPublicly'),
+            self::SendContracts => __('enums.workspace-ability.description.SendContracts'),
         };
     }
 

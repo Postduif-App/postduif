@@ -13,6 +13,8 @@ return [
     'inbox_pruned' => '{1}1 inboxregel opgeruimd.|[2,*]:count inboxregels opgeruimd.',
     'transfers_pruned' => '{1}1 verzending opgeruimd.|[2,*]:count verzendingen opgeruimd.',
     'secrets_pruned' => '{1}1 verzoek opgeruimd.|[2,*]:count verzoeken opgeruimd.',
+    'contracts_expired' => '{0}Geen enkel contract verlopen.|{1}1 contract op verlopen gezet.|[2,*]:count contracten op verlopen gezet.',
+    'contracts_pruned' => '{0}Geen contracten opgeruimd.|{1}1 contract opgeruimd.|[2,*]:count contracten opgeruimd.',
     'broadcasts_none' => 'Niets staat klaar.',
     'broadcasts_sent' => '{1}1 rondzending verstuurd.|[2,*]:count rondzendingen verstuurd.',
     'broadcasts_failed' => '{1}1 rondzending is niet gelukt.|[2,*]:count rondzendingen zijn niet gelukt.',

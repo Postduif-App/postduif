@@ -5,6 +5,8 @@ return [
     'inbox_pruned' => '{1}1 inbox row cleared.|[2,*]:count inbox rows cleared.',
     'transfers_pruned' => '{1}1 transfer cleared.|[2,*]:count transfers cleared.',
     'secrets_pruned' => '{1}1 request cleared.|[2,*]:count requests cleared.',
+    'contracts_expired' => '{0}No contracts expired.|{1}1 contract marked expired.|[2,*]:count contracts marked expired.',
+    'contracts_pruned' => '{0}No contracts cleared.|{1}1 contract cleared.|[2,*]:count contracts cleared.',
     'broadcasts_none' => 'Nothing is waiting.',
     'broadcasts_sent' => '{1}1 broadcast sent.|[2,*]:count broadcasts sent.',
     'broadcasts_failed' => '{1}1 broadcast did not go out.|[2,*]:count broadcasts did not go out.',

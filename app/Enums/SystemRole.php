@@ -165,6 +165,18 @@ enum SystemRole: string implements HasLabel
             WorkspaceAbility::SeeHours => false,
 
             /*
+             * With the people who run the workspace, beside ShareFormsPublicly
+             * and for a heavier version of the same reason.
+             *
+             * Sharing a form invites the outside to write into this workspace;
+             * asking for a signature invites them to put their name under
+             * something on its behalf. The document goes out with the
+             * workspace's name on it and comes back as evidence, which is not a
+             * thing anybody should be able to start on their first day.
+             */
+            WorkspaceAbility::SendContracts => $this->canManageWorkspace(),
+
+            /*
              * Nobody below the owner, and not because it is weighty: everybody
              * who would get it from a seed already has it another way. Whoever
              * manages the workspace can configure any channel, and configuring

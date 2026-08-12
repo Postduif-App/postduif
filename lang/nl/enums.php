@@ -88,6 +88,22 @@ return [
             'Direct' => 'DM',
         ],
     ],
+    'contract-status' => [
+        'label' => [
+            'Draft' => 'Concept',
+            'Sent' => 'Verstuurd',
+            'Completed' => 'Ondertekend',
+            'Cancelled' => 'Ingetrokken',
+            'Expired' => 'Verlopen',
+        ],
+        'description' => [
+            'Draft' => 'Nog niet verstuurd. Je kunt het document en de vakken nog aanpassen.',
+            'Sent' => 'De links zijn de deur uit. Wie nog niet getekend heeft, kun je een herinnering sturen.',
+            'Completed' => 'Iedereen is langs geweest. De ondertekende versie staat klaar om te downloaden.',
+            'Cancelled' => 'Door de aanvrager stopgezet. De links werken niet meer.',
+            'Expired' => 'De einddatum is voorbij zonder dat iedereen tekende.',
+        ],
+    ],
     'inbox-item-type' => [
         'label' => [
             'Mention' => 'Genoemd',
@@ -202,6 +218,7 @@ return [
             'ShareFormsPublicly' => 'Formulieren buiten de workspace delen',
             'SeeHours' => 'Uren van collega\'s inzien',
             'DeleteBotMessages' => 'Berichten van bots verwijderen',
+            'SendContracts' => 'Contracten laten ondertekenen',
         ],
         'description' => [
             'ManageWorkspace' => 'De naam, de rollen, de rechten en het uiterlijk. Wie dit heeft, kan ook zichzelf en anderen meer geven — het is het enige recht dat bij alle andere kan.',
@@ -215,6 +232,7 @@ return [
             'ShareFormsPublicly' => 'Een formulier achter een link zetten die ook zonder account werkt. Wie dit heeft, laat mensen van buiten in deze workspace schrijven.',
             'DeleteBotMessages' => 'Berichten weghalen die door een webhook of een workflow geplaatst zijn. Gaat niet over wat mensen zelf schrijven — dat blijft van henzelf. Wie een kanaal beheert kon dit al voor dat kanaal.',
             'SeeHours' => 'Zien hoeveel uur collega\'s deze week geklokt hebben en wie er nu ingeklokt staat. Iedereen ziet sowieso zijn eigen uren; dit gaat over die van een ander.',
+            'SendContracts' => 'Een PDF met invulvakken naar mensen sturen om te laten tekenen, ook buiten de workspace. Het document gaat met de naam van deze workspace de deur uit en komt terug als bewijsstuk.',
         ],
     ],
     'workspace-accent' => [
