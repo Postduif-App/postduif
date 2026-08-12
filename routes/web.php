@@ -172,6 +172,23 @@ Route::prefix('ondertekenen/{token}')
         Route::post('/', [ContractSignController::class, 'store'])
             ->middleware('throttle:60,1')
             ->name('contracts.sign.store');
+
+        /*
+         * The mark itself. Throttled tighter than the draft: this one writes a
+         * file to disk, and unlike the draft it is pressed once or twice by
+         * anybody doing it honestly.
+         */
+        Route::post('handtekening', [ContractSignController::class, 'signature'])
+            ->middleware('throttle:20,1')
+            ->name('contracts.sign.signature');
+
+        Route::delete('handtekening', [ContractSignController::class, 'clearSignature'])
+            ->middleware('throttle:20,1')
+            ->name('contracts.sign.signature.clear');
+
+        Route::get('handtekening/{kind}', [ContractSignController::class, 'signatureImage'])
+            ->middleware('throttle:60,1')
+            ->name('contracts.sign.signature.show');
     });
 
 /**

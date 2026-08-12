@@ -3,13 +3,25 @@ import { Ban, CalendarX, CheckCircle2, FileSignature } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ContractDocument } from '@/components/chat/contract-document';
+import { SignaturePad } from '@/components/chat/signature-pad';
+import type { SignatureMethod } from '@/components/chat/signature-pad';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useTranslate } from '@/hooks/use-translate';
 import { toPixels } from '@/lib/contract-fields';
 import type { RenderedPage } from '@/lib/contract-fields';
 import { cn } from '@/lib/utils';
-import { store as saveDraft } from '@/routes/contracts/sign';
+import {
+    store as saveDraft,
+    signature as storeSignature,
+} from '@/routes/contracts/sign';
 import type { TranslationKey } from '@/types/translations';
 
 interface SignableField {
@@ -34,6 +46,12 @@ interface SignableContract {
     signerName: string;
     signerCount: number;
     signedCount: number;
+    /*
+     * One mark per kind, shown in every box of that kind. Null where this
+     * person has not made one yet. See StoreSignature for why these are not
+     * per box.
+     */
+    marks: Record<string, string | null>;
     fields: SignableField[];
 }
 
@@ -45,12 +63,7 @@ interface SignableContract {
  * public form does.
  */
 type SignState =
-    | 'signing'
-    | 'signed'
-    | 'declined'
-    | 'completed'
-    | 'expired'
-    | 'cancelled';
+    'signing' | 'signed' | 'declined' | 'completed' | 'expired' | 'cancelled';
 
 interface SignProps {
     token: string;
@@ -179,6 +192,54 @@ function SigningSurface({
     const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [saved, setSaved] = useState(false);
 
+    /*
+     * Which kind of mark is being made, or null when the dialog is shut.
+     *
+     * The kind rather than the box, because there is one mark per kind and it
+     * fills every box of that kind at once — tapping the third initials box on
+     * page seven is asking the same question as tapping the first.
+     */
+    const [marking, setMarking] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    const putDownMark = (
+        image: Blob,
+        method: SignatureMethod,
+        typedName?: string,
+    ) => {
+        if (marking === null) {
+            return;
+        }
+
+        setUploading(true);
+
+        /*
+         * Sent as a file rather than as a data URL in the JSON body. A base64
+         * string would be a third larger and would arrive through a validator
+         * that knows nothing about images; this goes through the same machinery
+         * every other upload in the application does.
+         */
+        router.post(
+            storeSignature.url(token),
+            {
+                kind: marking,
+                method,
+                typed: typedName ?? null,
+                image: new File([image], 'signature.png', {
+                    type: 'image/png',
+                }),
+            } as unknown as Record<string, never>,
+            {
+                preserveScroll: true,
+                forceFormData: true,
+                onFinish: () => {
+                    setUploading(false);
+                    setMarking(null);
+                },
+            },
+        );
+    };
+
     const change = (id: number, value: string) => {
         setValues((current) => {
             const next = { ...current, [id]: value };
@@ -248,14 +309,42 @@ function SigningSurface({
                                     field={field}
                                     page={size}
                                     value={values[field.id] ?? ''}
+                                    mark={contract.marks[field.type] ?? null}
                                     onChange={(value) =>
                                         change(field.id, value)
                                     }
+                                    onMark={() => setMarking(field.type)}
                                 />
                             ))}
                     </div>
                 )}
             />
+
+            <Dialog
+                open={marking !== null}
+                onOpenChange={(open) => !open && setMarking(null)}
+            >
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {marking === 'initials'
+                                ? t('contracts.signature.title_initials')
+                                : t('contracts.signature.title_signature')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {marking === 'initials'
+                                ? t('contracts.signature.hint_initials')
+                                : t('contracts.signature.hint_signature')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <SignaturePad
+                        suggestedName={contract.signerName}
+                        busy={uploading}
+                        onDone={putDownMark}
+                    />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -272,12 +361,17 @@ function SignableBox({
     field,
     page,
     value,
+    mark,
     onChange,
+    onMark,
 }: {
     field: SignableField;
     page: RenderedPage;
     value: string;
+    /** This person's mark of this kind, or null while they have none. */
+    mark: string | null;
     onChange: (value: string) => void;
+    onMark: () => void;
 }) {
     const { t } = useTranslate();
 
@@ -291,21 +385,41 @@ function SignableBox({
     };
 
     /*
-     * Signatures and initials are drawn rather than typed, and drawing them is
-     * a piece of work of its own. Until it lands, the box says what it is
-     * waiting for instead of pretending to be a text field — which would invite
-     * somebody to type their name and believe they had signed.
+     * Signatures and initials are drawn rather than typed, so the box is a
+     * button that opens the pad — never a text field, which would invite
+     * somebody to type their name into the page and believe they had signed.
+     *
+     * Once a mark exists it is shown here and in every other box of the same
+     * kind, and tapping again reopens the pad to replace it. That is the whole
+     * of "hergebruik de laatst gezette handtekening": nine initials boxes are
+     * one decision, not nine.
      */
     if (field.type === 'signature' || field.type === 'initials') {
         return (
-            <div
+            <button
+                type="button"
                 style={style}
+                onClick={onMark}
+                aria-label={field.label}
                 data-testid="contract-sign-field"
                 data-field-type={field.type}
-                className="absolute flex items-center justify-center rounded-sm border-2 border-dashed border-primary/50 bg-primary/5 text-[10px] text-primary"
+                className={cn(
+                    'absolute flex items-center justify-center rounded-sm border-2 text-[10px]',
+                    mark === null
+                        ? 'border-dashed border-primary/50 bg-primary/5 text-primary hover:bg-primary/10'
+                        : 'border-transparent hover:border-primary/40',
+                )}
             >
-                {t('contracts.sign.signature_pending')}
-            </div>
+                {mark === null ? (
+                    t('contracts.sign.signature_pending')
+                ) : (
+                    <img
+                        src={mark}
+                        alt={field.label}
+                        className="max-h-full max-w-full object-contain"
+                    />
+                )}
+            </button>
         );
     }
 

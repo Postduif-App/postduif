@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Actions\Contracts\PresentContractForSigner;
 use App\Actions\Contracts\SaveSignerDraft;
+use App\Actions\Contracts\StoreSignature;
+use App\Enums\ContractFieldType;
+use App\Enums\SignatureMethod;
 use App\Features\Contracts;
 use App\Models\ContractSigner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -129,6 +133,133 @@ class ContractSignController extends Controller
         $draft->handle($signer, $validated['values']);
 
         return back();
+    }
+
+    /**
+     * Put down a signature or a set of initials.
+     *
+     * The image arrives as a file rather than as a data URL in the body, and
+     * that is worth saying out loud: a base64 string would be a third larger,
+     * would have to be decoded and written by hand, and would arrive through a
+     * validator that knows nothing about images. An upload goes through the
+     * same machinery every other file in this application does.
+     *
+     * What is not trusted is the type. The rule below judges the bytes, not the
+     * name — this endpoint is reachable by anybody holding a token, and what it
+     * stores gets painted onto a document other people will open.
+     */
+    public function signature(Request $request, string $token, StoreSignature $store): RedirectResponse
+    {
+        $signer = $this->signer($token);
+
+        abort_unless($signer->canStillSign(), 409);
+
+        $data = $request->validate([
+            /*
+             * Signature or initials, and nothing else. The enum is asked rather
+             * than a list of two strings, so a type added later cannot be
+             * silently unreachable here.
+             */
+            'kind' => ['required', Rule::enum(ContractFieldType::class)],
+            'method' => ['required', Rule::enum(SignatureMethod::class)],
+
+            /*
+             * A small PNG. Small because a signature is a few strokes: anything
+             * approaching a megabyte is a photograph, and a photograph of
+             * somebody's passport is not what this box is for.
+             */
+            'image' => ['required', 'file', 'mimetypes:image/png', 'max:512'],
+
+            // Only meaningful for the typed method; see StoreSignature.
+            'typed' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $kind = ContractFieldType::from($data['kind']);
+
+        abort_unless($kind->isDrawn(), 422);
+
+        $store->handle(
+            signer: $signer,
+            type: $kind,
+            image: $request->file('image'),
+            method: SignatureMethod::from($data['method']),
+            typed: $data['typed'] ?? null,
+        );
+
+        return back();
+    }
+
+    /**
+     * Take it away and start again.
+     *
+     * A DELETE on the same address rather than a flag, because "wissen" is a
+     * thing a mark either is or is not — and because somebody who drew a wobbly
+     * line with a mouse should be one button away from a clean box.
+     */
+    public function clearSignature(Request $request, string $token, StoreSignature $store): RedirectResponse
+    {
+        $signer = $this->signer($token);
+
+        abort_unless($signer->canStillSign(), 409);
+
+        $kind = ContractFieldType::from($request->validate([
+            'kind' => ['required', Rule::enum(ContractFieldType::class)],
+        ])['kind']);
+
+        abort_unless($kind->isDrawn(), 422);
+
+        $store->clear($signer, $kind);
+
+        return back();
+    }
+
+    /**
+     * The mark itself, so the page can show what was just put down.
+     *
+     * Behind the same token as everything else here rather than on the public
+     * disk, and this is the one image in the application where that matters
+     * most: it is a picture of a person's name, and a public path would leave
+     * it one guess away from anybody who wanted to paste it onto something else.
+     */
+    public function signatureImage(string $token, string $kind): BinaryFileResponse
+    {
+        $signer = $this->signer($token);
+
+        $type = ContractFieldType::tryFrom($kind);
+
+        abort_if($type === null || ! $type->isDrawn(), 404);
+
+        $media = $signer->mark($type);
+
+        abort_if($media === null, 404);
+
+        $path = $media->getPath();
+
+        abort_unless(is_file($path), 404);
+
+        $response = response()->file($path, [
+            'Content-Disposition' => 'inline; filename="'.$kind.'.png"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+
+        /*
+         * Both set after the response is built rather than handed in with the
+         * headers above, and for the same reason: a file response computes
+         * these for itself from the bytes on disk and from its own caching
+         * rules, and quietly overrules anything passed in. Content-Type would
+         * become a second opinion nobody asked for, and Cache-Control comes out
+         * as "public" — which is the opposite of what a picture of somebody's
+         * name wants.
+         *
+         * Never cached, because the mark can be cleared and drawn again: a
+         * browser holding the old one would show somebody the signature they
+         * just replaced, on the very page where they are deciding whether to
+         * commit to it.
+         */
+        $response->headers->set('Content-Type', 'image/png');
+        $response->headers->set('Cache-Control', 'no-store, private');
+
+        return $response;
     }
 
     /**

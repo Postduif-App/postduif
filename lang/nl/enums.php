@@ -119,6 +119,16 @@ return [
             'Admins' => 'Alleen beheerders en de eigenaar',
         ],
     ],
+    'signature-method' => [
+        'label' => [
+            'Drawn' => 'Getekend',
+            'Typed' => 'Getypt',
+        ],
+        'statement' => [
+            'Drawn' => 'met de hand getekend',
+            'Typed' => 'als getypte naam gezet',
+        ],
+    ],
     'ticket-priority' => [
         'label' => [
             'Low' => 'Laag',

@@ -111,6 +111,16 @@ return [
             'Admins' => 'Only admins and the owner',
         ],
     ],
+    'signature-method' => [
+        'label' => [
+            'Drawn' => 'Drawn',
+            'Typed' => 'Typed',
+        ],
+        'statement' => [
+            'Drawn' => 'drawn by hand',
+            'Typed' => 'set as a typed name',
+        ],
+    ],
     'ticket-priority' => [
         'label' => [
             'Low' => 'Low',

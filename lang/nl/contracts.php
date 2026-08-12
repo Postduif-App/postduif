@@ -72,6 +72,19 @@ return [
         ],
     ],
 
+    'signature' => [
+        'title_signature' => 'Zet je handtekening',
+        'title_initials' => 'Zet je paraaf',
+        'hint_signature' => 'Teken met je muis of je vinger, of typ je naam. Je hoeft dit maar één keer te doen: hij komt in elk handtekeningvak van dit contract te staan.',
+        'hint_initials' => 'Een paraaf is hetzelfde, maar kleiner. Ook deze zet je één keer, en hij komt op elke pagina te staan waar om een paraaf gevraagd wordt.',
+        'draw' => 'Tekenen',
+        'type' => 'Typen',
+        'clear' => 'Wissen',
+        'use' => 'Deze gebruiken',
+        'your_name' => 'Je naam',
+        'legal' => 'Allebei de manieren tellen als een eenvoudige elektronische handtekening. Welke van de twee je koos wordt vastgelegd bij het contract.',
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',

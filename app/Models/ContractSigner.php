@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ContractFieldType;
+use App\Enums\SignatureMethod;
 use Database\Factories\ContractSignerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -37,6 +39,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property string|null $decline_reason
  * @property string|null $ip_address
  * @property string|null $user_agent
+ * @property SignatureMethod|null $signature_method
+ * @property string|null $signature_text
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -79,6 +83,7 @@ class ContractSigner extends Model implements HasMedia
             'signed_at' => 'datetime',
             'declined_at' => 'datetime',
             'reminded_at' => 'datetime',
+            'signature_method' => SignatureMethod::class,
         ];
     }
 
@@ -151,6 +156,37 @@ class ContractSigner extends Model implements HasMedia
     public function initials(): ?Media
     {
         return $this->getFirstMedia(self::INITIALS);
+    }
+
+    /**
+     * The mark of one kind or the other.
+     *
+     * One method rather than the caller choosing between the two above, because
+     * everything that deals with marks — storing, serving, painting them onto
+     * the finished PDF — has to handle both and would otherwise carry the same
+     * two-armed match in three places.
+     */
+    public function mark(ContractFieldType $type): ?Media
+    {
+        return $this->getFirstMedia($this->collectionFor($type));
+    }
+
+    /**
+     * Which collection a drawn field's image lives in.
+     *
+     * Signature and initials are kept apart because they are not the same
+     * drawing: a full signature scaled down into a corner is a smudge, which is
+     * the reason initials exist as a thing at all.
+     */
+    public function collectionFor(ContractFieldType $type): string
+    {
+        return $type->isSignature() ? self::SIGNATURE : self::INITIALS;
+    }
+
+    /** Whether this person has put down the mark a signature box needs. */
+    public function hasSignature(): bool
+    {
+        return $this->signature() !== null;
     }
 
     public function hasSigned(): bool

@@ -72,6 +72,19 @@ return [
         ],
     ],
 
+    'signature' => [
+        'title_signature' => 'Add your signature',
+        'title_initials' => 'Add your initials',
+        'hint_signature' => 'Draw with your mouse or finger, or type your name. You only have to do this once: it goes into every signature field on this contract.',
+        'hint_initials' => 'Initials are the same, only smaller. You set these once too, and they go on every page that asks for them.',
+        'draw' => 'Draw',
+        'type' => 'Type',
+        'clear' => 'Clear',
+        'use' => 'Use this one',
+        'your_name' => 'Your name',
+        'legal' => 'Both ways count as a simple electronic signature. Which of the two you chose is recorded with the contract.',
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

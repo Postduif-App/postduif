@@ -43,6 +43,19 @@ export default defineConfig({
                 bunny('IBM Plex Sans', {
                     weights: [400, 500, 600],
                 }),
+                /*
+                 * The one script face, and it is here for a single box: the
+                 * typed alternative to drawing a signature. Bundled like the
+                 * rest rather than fetched at render time, and that matters
+                 * more for this one than for the others — the browser draws the
+                 * typed name into a canvas and uploads the result, so a face
+                 * that had not arrived yet would silently store a signature in
+                 * the wrong lettering. See signature-pad.tsx, which waits for
+                 * it before it will draw anything.
+                 */
+                bunny('Caveat', {
+                    weights: [500],
+                }),
             ],
         }),
         inertia(),
