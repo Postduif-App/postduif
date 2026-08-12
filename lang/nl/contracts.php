@@ -40,6 +40,16 @@ return [
     ],
 
     'send' => [
+        'title' => 'Naar wie gaat dit?',
+        'name' => 'Naam',
+        'email' => 'E-mailadres',
+        'add' => 'Nog iemand',
+        'remove' => 'Verwijderen',
+        'pick_member' => 'Een collega kiezen…',
+        'valid_days' => 'Tekenen kan nog (dagen)',
+        'notify_channel' => 'Meldingen in kanaal',
+        'no_channel' => 'Geen kanaal — alleen per mail',
+        'submit' => 'Versturen',
         'duplicate_address' => 'Hetzelfde e-mailadres staat er twee keer bij. Ieder die tekent heeft een eigen link nodig, dus per adres kan er maar één ondertekenaar zijn.',
     ],
 
@@ -48,6 +58,7 @@ return [
         'autosaves' => 'Wat je invult wordt vanzelf bewaard. Je kunt dit scherm tussendoor sluiten en later verder gaan.',
         'saved' => 'Opgeslagen.',
         'errors' => [
+            'not_outstanding' => 'Dit contract loopt niet meer, dus er valt niets in te trekken.',
             'closed' => 'Dit contract kan niet meer getekend worden. Het is ingetrokken, verlopen, of je hebt er al op gereageerd.',
             'already' => 'Er is al op dit verzoek gereageerd. Ververs de pagina om te zien wat er staat.',
             'incomplete' => '{1}Er is nog één vak dat ingevuld moet worden: :fields.|[2,*]Er zijn nog :count vakken die ingevuld moeten worden: :fields.',
@@ -129,6 +140,11 @@ return [
     ],
 
     'detail' => [
+        'cancel' => 'Intrekken',
+        'retry' => 'Opnieuw proberen',
+        'copy_link' => 'Link kopiëren',
+        'post_channel' => 'Kanaal',
+        'post' => 'In kanaal plaatsen',
         'tally' => ':done van de :total getekend',
         'edit' => 'Vakken bewerken',
         'remind' => 'Herinnering sturen',
@@ -148,6 +164,21 @@ return [
         'signed_copy' => 'Ondertekende versie',
         'copy_pending' => 'De ondertekende versie wordt samengesteld.',
         'copy_failed' => 'De ondertekende versie kon niet samengesteld worden. De handtekeningen staan vast.',
+    ],
+
+    'list' => [
+        'title' => 'Contracten',
+        'new' => 'Nieuw contract',
+        'new_hint' => 'Upload de PDF die getekend moet worden. Wie hem tekent en wanneer, bepaal je op het volgende scherm — met het document erbij.',
+        'field_title' => 'Waar gaat het over',
+        'field_file' => 'De PDF',
+        'upload' => 'Uploaden',
+        'empty' => 'Nog geen contracten',
+        'empty_hint' => 'Upload een PDF, zet er invulvakken op en stuur hem naar wie moet tekenen.',
+    ],
+
+    'errors' => [
+        'not_outstanding' => 'Dit contract loopt niet meer, dus er valt niets in te trekken.',
     ],
 
     'field-types' => [

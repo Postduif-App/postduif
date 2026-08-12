@@ -3,13 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\BuildChatShell;
+use App\Actions\Contracts\CancelContract;
 use App\Actions\Contracts\CreateContract;
 use App\Actions\Contracts\PdfRefused;
+use App\Actions\Contracts\PostContractToChannel;
 use App\Actions\Contracts\RemindContractSigners;
 use App\Actions\Contracts\SaveContractFields;
 use App\Actions\Contracts\SendContract;
+use App\Actions\Contracts\SigningRefused;
 use App\Enums\ContractFieldType;
+use App\Enums\ContractStatus;
+use App\Enums\WorkspaceAbility;
 use App\Http\Requests\StoreContractRequest;
+use App\Jobs\RenderSignedContractJob;
+use App\Models\Channel;
 use App\Models\Contract;
 use App\Models\ContractField;
 use App\Models\ContractSigner;
@@ -45,6 +52,9 @@ class ContractController extends Controller
      * mail loop stays a loop rather than a job.
      */
     private const MAX_SIGNERS = 20;
+
+    /** Enough to catch up on; older than this and the search is the place. */
+    private const MAX_LISTED = 100;
 
     /**
      * Take the uploaded PDF and open a draft on it.
@@ -95,6 +105,152 @@ class ContractController extends Controller
          * builder redirects on.
          */
         return to_route('chat.contracts.edit', [$workspace, $contract]);
+    }
+
+    /**
+     * Every contract this person is allowed to see.
+     *
+     * Filtered in SQL rather than fetched and then sieved through the policy,
+     * because "wat mag ik zien" is a fact about a query when it decides what a
+     * page shows: a member who may only see their own would otherwise page
+     * through a list that is mostly gaps.
+     */
+    public function index(Request $request, Workspace $workspace): Response
+    {
+        $user = $request->user();
+
+        $this->authorize('create', [Contract::class, $workspace]);
+
+        $manages = $workspace->allows($user, WorkspaceAbility::ManageWorkspace);
+
+        $contracts = $workspace->contracts()
+            ->withCount([
+                'signers',
+                'signers as signed_count' => fn ($query) => $query->whereNotNull('signed_at'),
+            ])
+            ->with('author:id,name')
+            /*
+             * The same line ContractPolicy::view draws, in SQL. Somebody who
+             * runs the workspace sees everything, because a contract sent to
+             * the wrong address has to be stoppable by somebody who is still
+             * around. Everybody else sees their own.
+             */
+            ->unless($manages, fn ($query) => $query->where('created_by', $user->id))
+            ->latest('created_at')
+            ->limit(self::MAX_LISTED)
+            ->get();
+
+        return Inertia::render('chat/contracts', [
+            ...$this->buildChatShell->handle($workspace, $user),
+
+            'contracts' => $contracts->map(fn (Contract $contract): array => [
+                'id' => $contract->id,
+                'title' => $contract->title,
+                'status' => $contract->status->value,
+                'statusLabel' => $contract->status->label(),
+                'authorName' => $contract->author?->name,
+                'createdAt' => $contract->created_at?->toIso8601String(),
+                'expiresAt' => $contract->expires_at?->toIso8601String(),
+                'signerCount' => $contract->signers_count,
+                'signedCount' => $contract->signed_count,
+
+                /*
+                 * Read here rather than left to the column, for the reason the
+                 * chat card reads it: a deadline that passed an hour ago has
+                 * passed, whether or not the nightly command has been round.
+                 */
+                'hasExpired' => $contract->hasExpired(),
+            ])->all(),
+
+            'workspaceSlug' => $workspace->slug,
+        ]);
+    }
+
+    /**
+     * Stop it.
+     *
+     * What this does not do is rotate the tokens — see CancelContract, where
+     * the reasoning is written down: the links have to keep resolving so that
+     * the person holding one is told it was withdrawn rather than left with a
+     * 404 to interpret.
+     */
+    public function cancel(Workspace $workspace, Contract $contract, CancelContract $cancel): RedirectResponse
+    {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('cancel', $contract);
+
+        try {
+            $cancel->handle($contract);
+        } catch (SigningRefused $refused) {
+            return back()->withErrors(['contract' => $refused->getMessage()]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.contract.cancelled')]);
+
+        return back();
+    }
+
+    /**
+     * Put it in a channel.
+     *
+     * Its own endpoint rather than part of sending, because the two address
+     * different people: sending asks the signers, this tells the colleagues.
+     * The channel's own rule about who may post is asked at the point where the
+     * channel is known — being allowed to see a contract is not being allowed
+     * to write in a room.
+     */
+    public function post(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        PostContractToChannel $post,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('view', $contract);
+
+        $channel = Channel::query()
+            ->where('workspace_id', $workspace->id)
+            ->findOrFail($request->validate([
+                'channel_id' => ['required', 'integer'],
+            ])['channel_id']);
+
+        $this->authorize('post', $channel);
+
+        $post->handle($contract, $channel, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.contract.posted')]);
+
+        return back();
+    }
+
+    /**
+     * Have another go at composing the signed copy.
+     *
+     * Offered because the ways this fails are mostly temporary — a disk that
+     * was full, a worker killed mid-run — and because the alternative is a
+     * contract that is properly signed and permanently without its document.
+     *
+     * The flag is cleared before the job is queued rather than after it
+     * succeeds, so the screen stops saying "misgegaan" the moment somebody has
+     * asked for another attempt. If it fails again, failed() puts it back.
+     */
+    public function retryRender(Workspace $workspace, Contract $contract): RedirectResponse
+    {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('download', $contract);
+
+        abort_unless($contract->signedCopyState() === 'failed', 404);
+
+        $contract->forceFill(['render_failed_at' => null])->save();
+
+        RenderSignedContractJob::dispatch($contract->id);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.contract.retrying')]);
+
+        return back();
     }
 
     /**
@@ -193,7 +349,29 @@ class ContractController extends Controller
                 'remind' => $user->can('remind', $contract),
                 'cancel' => $user->can('cancel', $contract),
                 'update' => $user->can('update', $contract),
+                /*
+                 * Whether there is anything to send. Not a right of its own —
+                 * update() already answered that — but the difference between
+                 * a draft waiting for signers and a contract that is out, which
+                 * decides whether the screen shows a form or a list.
+                 */
+                'send' => $user->can('update', $contract) && $contract->status === ContractStatus::Draft,
             ],
+
+            /*
+             * The colleagues who can be named as signers, so the author does not
+             * have to type an address they already have. Guests are in the list
+             * too: being asked to sign something is not privileged access, and a
+             * guest is often exactly who a contract is for.
+             */
+            'members' => $workspace->members()
+                ->orderBy('name')
+                ->get(['users.id', 'users.name', 'users.email'])
+                ->map(fn ($member): array => [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                ])->all(),
 
             'workspaceSlug' => $workspace->slug,
         ]);

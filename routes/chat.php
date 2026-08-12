@@ -288,6 +288,14 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
              * half lives in web.php.
              */
             Route::middleware('feature:contracts')->group(function () {
+                /*
+                 * The list, beside the transfer and form lists rather than
+                 * under settings: sending a contract belongs to somebody's
+                 * working day, not to the configuration of the workspace.
+                 */
+                Route::get('contracten', [ContractController::class, 'index'])
+                    ->name('contracts.index');
+
                 Route::post('contracts', [ContractController::class, 'store'])
                     ->name('contracts.store');
 
@@ -328,6 +336,23 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::post('contracten/{contract}/herinnering', [ContractController::class, 'remind'])
                     ->middleware('throttle:10,1')
                     ->name('contracts.remind');
+
+                /*
+                 * Stopping it. A DELETE on the contract would read as throwing
+                 * it away, which is a different act with a different policy —
+                 * see ContractPolicy, where cancel outlives delete.
+                 */
+                Route::post('contracten/{contract}/intrekken', [ContractController::class, 'cancel'])
+                    ->name('contracts.cancel');
+
+                // Telling the colleagues, which is not the same as asking the
+                // signers — see PostContractToChannel.
+                Route::post('contracten/{contract}/plaatsen', [ContractController::class, 'post'])
+                    ->name('contracts.post');
+
+                Route::post('contracten/{contract}/opnieuw', [ContractController::class, 'retryRender'])
+                    ->middleware('throttle:6,1')
+                    ->name('contracts.retry');
 
                 /*
                  * The document itself, for the editor and the signing page to

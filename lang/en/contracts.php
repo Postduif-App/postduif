@@ -40,6 +40,16 @@ return [
     ],
 
     'send' => [
+        'title' => 'Who is this going to?',
+        'name' => 'Name',
+        'email' => 'Email address',
+        'add' => 'Add somebody',
+        'remove' => 'Remove',
+        'pick_member' => 'Pick a colleague…',
+        'valid_days' => 'Can be signed for (days)',
+        'notify_channel' => 'Notifications in channel',
+        'no_channel' => 'No channel — mail only',
+        'submit' => 'Send',
         'duplicate_address' => 'The same email address appears twice. Everybody who signs needs a link of their own, so an address can only stand for one signer.',
     ],
 
@@ -48,6 +58,7 @@ return [
         'autosaves' => 'What you fill in is kept as you go. You can close this screen and carry on later.',
         'saved' => 'Saved.',
         'errors' => [
+            'not_outstanding' => 'This contract is no longer running, so there is nothing to withdraw.',
             'closed' => 'This contract can no longer be signed. It was withdrawn, it expired, or you have already responded to it.',
             'already' => 'This request has already been responded to. Refresh the page to see where it stands.',
             'incomplete' => '{1}There is one field left to fill in: :fields.|[2,*]There are :count fields left to fill in: :fields.',
@@ -129,6 +140,11 @@ return [
     ],
 
     'detail' => [
+        'cancel' => 'Withdraw',
+        'retry' => 'Try again',
+        'copy_link' => 'Copy link',
+        'post_channel' => 'Channel',
+        'post' => 'Post in a channel',
         'tally' => ':done of :total signed',
         'edit' => 'Edit fields',
         'remind' => 'Send a reminder',
@@ -148,6 +164,21 @@ return [
         'signed_copy' => 'Signed copy',
         'copy_pending' => 'The signed copy is being composed.',
         'copy_failed' => 'The signed copy could not be composed. The signatures are safe.',
+    ],
+
+    'list' => [
+        'title' => 'Contracts',
+        'new' => 'New contract',
+        'new_hint' => 'Upload the PDF that needs signing. Who signs it and by when are decided on the next screen, with the document in front of you.',
+        'field_title' => 'What it is about',
+        'field_file' => 'The PDF',
+        'upload' => 'Upload',
+        'empty' => 'No contracts yet',
+        'empty_hint' => 'Upload a PDF, put fields on it and send it to whoever has to sign.',
+    ],
+
+    'errors' => [
+        'not_outstanding' => 'This contract is no longer running, so there is nothing to withdraw.',
     ],
 
     'field-types' => [

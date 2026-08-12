@@ -264,6 +264,16 @@ class Workspace extends Model
     }
 
     /**
+     * The contracts sent out from here.
+     *
+     * @return HasMany<Contract, $this>
+     */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    /**
      * The pictures this workspace made up for itself, by name.
      *
      * Ordered here rather than at each of the three places that read them — the
