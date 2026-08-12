@@ -42,6 +42,31 @@ const LANGUAGES = {
 type Language = keyof typeof LANGUAGES;
 
 /**
+ * The same list, as somebody would write it down.
+ *
+ * For the picker on a code block in a document. Beside LANGUAGES rather than in
+ * the component, so that carrying a new grammar is one edit in one file and a
+ * language can never be offered that we cannot colour.
+ *
+ * Not translated: these are the names of the languages, and "JavaScript" is
+ * JavaScript in Dutch too.
+ */
+export const LANGUAGE_LABELS: Record<Language, string> = {
+    bash: 'Bash',
+    blade: 'Blade',
+    css: 'CSS',
+    html: 'HTML',
+    javascript: 'JavaScript',
+    json: 'JSON',
+    php: 'PHP',
+    python: 'Python',
+    sql: 'SQL',
+    typescript: 'TypeScript',
+    vue: 'Vue',
+    yaml: 'YAML',
+};
+
+/**
  * What somebody types, and the grammar it means.
  *
  * "js" and "ts" are here because nobody writes ```javascript in a chat, and a

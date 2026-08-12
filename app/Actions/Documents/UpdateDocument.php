@@ -13,6 +13,8 @@ class UpdateDocument
 {
     public function __construct(
         private readonly AnnounceDocument $announceDocument,
+        private readonly ReconcileDocumentFiles $reconcileDocumentFiles,
+        private readonly RecordDocumentRevision $recordDocumentRevision,
     ) {}
 
     /**
@@ -28,6 +30,12 @@ class UpdateDocument
      * the version, deciding, and then writing would leave a gap in which the
      * very thing being guarded against happens.
      *
+     * @param  bool  $replacesWholesale  Whether this save puts something else
+     *                                   in place of the document rather than
+     *                                   continuing to write in it. Then the
+     *                                   previous text is kept whatever the
+     *                                   coalescing window says — see
+     *                                   RecordDocumentRevision.
      * @param  array<string, mixed>|null  $body  Null leaves the document alone,
      *                                           which is how a rename saves
      *                                           without shipping the whole
@@ -43,6 +51,7 @@ class UpdateDocument
         ?string $title = null,
         ?array $body = null,
         ?string $bodyText = null,
+        bool $replacesWholesale = false,
     ): Document {
         /*
          * The flattened text is not a field of its own — it is the document
@@ -62,7 +71,7 @@ class UpdateDocument
         $renamedTo = null;
 
         $saved = DB::transaction(function () use (
-            $document, $editor, $expectedVersion, $title, $body, $bodyText, &$renamedTo
+            $document, $editor, $expectedVersion, $title, $body, $bodyText, $replacesWholesale, &$renamedTo
         ): Document {
             $locked = Document::query()->whereKey($document->id)->lockForUpdate()->firstOrFail();
 
@@ -83,6 +92,19 @@ class UpdateDocument
             }
 
             if ($body !== null) {
+                /*
+                 * Keep what is there before it is replaced, and do it inside
+                 * the same transaction as the write.
+                 *
+                 * Not for tidiness: outside it there is a gap in which the new
+                 * body is stored and the old one has not been kept, and a
+                 * crash in that gap loses exactly the thing this exists to
+                 * save. Either both happen or neither does.
+                 *
+                 * The lock is already held, so nothing can slip in between.
+                 */
+                $this->recordDocumentRevision->handle($locked, $editor, $replacesWholesale);
+
                 $locked->body = $body;
                 /*
                  * The flattened text comes from the client, which already has
@@ -101,6 +123,19 @@ class UpdateDocument
 
             return $locked;
         });
+
+        /*
+         * Only when the body actually changed: a rename says nothing about
+         * which files the document mentions, and running this on one would put
+         * a delete behind every edit of a title.
+         *
+         * Outside the transaction as well, and for a plainer reason than the
+         * announcement below — this removes files from disk, and a rollback
+         * cannot put those back.
+         */
+        if ($body !== null) {
+            $this->reconcileDocumentFiles->handle($saved);
+        }
 
         // Outside the transaction, for the reason set out in CreateDocument.
         if ($renamedTo !== null) {

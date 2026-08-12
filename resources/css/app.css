@@ -533,6 +533,91 @@
     color: var(--muted-foreground);
 }
 
+/*
+ * A table may be wider than the page, and scrolls sideways instead of being
+ * squeezed.
+ *
+ * That is a decision rather than a fallback: columns crushed until every word
+ * wraps one letter per line are unreadable on a phone, and a table you push
+ * along is not. The overflow goes on Yoopta's own block wrapper — done in CSS
+ * rather than by replacing the plugin's render, which would take the colgroup
+ * and the column-resize handles with it.
+ *
+ * :has() is what makes that possible: only the block that actually contains a
+ * table becomes a scroll container, so nothing else on the page changes.
+ */
+.document-prose .yoopta-block:has(> [data-element-type='table']),
+.document-prose .yoopta-block:has(table) {
+    overflow-x: auto;
+    /*
+     * Without this, momentum left over at the end of the table is read by iOS
+     * as a back gesture — a swipe through a wide table would navigate away from
+     * the document being read.
+     */
+    overscroll-behavior-x: contain;
+
+    /*
+     * A shadow on the side where there is more table, and none where there is
+     * not.
+     *
+     * Four background layers doing something clever, so it is worth saying what
+     * plainly. The two solid ones scroll *with* the content (`local`) and sit at
+     * the far ends; the two shadows are fixed to the frame (`scroll`). At the
+     * left edge the solid layer covers the shadow, so no shadow shows — until
+     * you scroll right, when the solid layer moves away and reveals it. The
+     * effect is a hint that appears exactly when there is something off-screen,
+     * with no JavaScript measuring anything and nothing to keep in sync.
+     */
+    background:
+        linear-gradient(to right, var(--background) 30%, transparent) 0 0,
+        linear-gradient(to left, var(--background) 30%, transparent) 100% 0,
+        radial-gradient(
+                farthest-side at 0 50%,
+                rgb(0 0 0 / 12%),
+                rgb(0 0 0 / 0%)
+            )
+            0 0,
+        radial-gradient(
+                farthest-side at 100% 50%,
+                rgb(0 0 0 / 12%),
+                rgb(0 0 0 / 0%)
+            )
+            100% 0;
+    background-repeat: no-repeat;
+    background-size:
+        28px 100%,
+        28px 100%,
+        12px 100%,
+        12px 100%;
+    background-attachment: local, local, scroll, scroll;
+}
+
+/*
+ * The half that actually makes it overflow. A table is a happy block child and
+ * shrinks to fit its container, so the wrapper above would never have anything
+ * to scroll and the columns would be squeezed after all. The two only work as a
+ * pair.
+ */
+.document-prose .yoopta-block table {
+    min-width: max-content;
+}
+
+.document-prose :is(td, th) {
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.6rem;
+    /*
+     * Cells keep their own width rather than wrapping at the first opportunity;
+     * the scroll above is what pays for it.
+     */
+    min-width: 6rem;
+}
+
+.document-prose th {
+    background: var(--muted);
+    font-weight: 600;
+    text-align: start;
+}
+
 .document-prose hr {
     border-color: var(--border);
     margin-block: 1.5em;
@@ -550,6 +635,39 @@
     border-radius: 0.5rem;
     padding: 0.85rem 1rem;
     overflow-x: auto;
+}
+
+/*
+ * A code block in a document.
+ *
+ * The colours are not here: a decoration hands every coloured stretch the same
+ * two custom properties a message's code block gets, and `.pd-code span` above
+ * resolves them per theme. So a document and a message colour code identically,
+ * from one highlighter and one stylesheet rule.
+ *
+ * What is here is the part a contenteditable needs and a read-only block does
+ * not. `white-space: pre-wrap` rather than `pre`: Slate puts the caret where
+ * the text is, and a long line that runs off the side would put it somewhere
+ * the writer cannot see. `break-spaces` keeps the indentation of a wrapped line
+ * from collapsing, which is the difference between wrapped code and mangled
+ * code.
+ */
+.document-prose .document-code pre {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-spaces;
+    tab-size: 2;
+}
+
+.document-prose .document-code code {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.875em;
+    /*
+     * The inline-code pill from further up would otherwise put a background and
+     * padding around every line of a block that already has both.
+     */
+    background: none;
+    padding: 0;
 }
 
 /* Inside a block that is already monospaced, a second background is noise. */

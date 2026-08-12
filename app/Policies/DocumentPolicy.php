@@ -89,6 +89,21 @@ class DocumentPolicy
     }
 
     /**
+     * Reading the history, and putting an old version back.
+     *
+     * The same rule as writing, and deliberately not the same as reading. A
+     * revision holds text somebody deliberately took out — a name they thought
+     * better of, a number that turned out wrong — and showing that to everyone
+     * who may read the channel would quietly undo every deletion anybody ever
+     * made. Whoever may rewrite the document already has that text in their
+     * hands.
+     */
+    public function viewHistory(User $user, Document $document): bool
+    {
+        return $this->update($user, $document);
+    }
+
+    /**
      * Throwing a document away.
      *
      * Narrower than writing in one, which everybody in the channel may do.
