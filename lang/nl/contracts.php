@@ -128,6 +128,28 @@ return [
         'completed' => '{1}":title" is getekend.|[2,*]Iedereen heeft ":title" getekend.',
     ],
 
+    'detail' => [
+        'tally' => ':done van de :total getekend',
+        'edit' => 'Vakken bewerken',
+        'remind' => 'Herinnering sturen',
+        'sent_by' => 'Verstuurd door',
+        'pages' => 'Omvang',
+        'expires_at' => 'Tekenen kan tot',
+        'no_deadline' => 'Geen einddatum',
+        'completed_at' => 'Afgerond op',
+        'people' => 'Ondertekenaars',
+        'nobody' => 'Er zijn nog geen ondertekenaars uitgenodigd.',
+        'signed' => 'Getekend',
+        'declined' => 'Afgewezen',
+        'opened' => 'Geopend',
+        'waiting' => 'Nog niets',
+        'reminded' => 'herinnerd :date',
+        'document' => 'Document bekijken',
+        'signed_copy' => 'Ondertekende versie',
+        'copy_pending' => 'De ondertekende versie wordt samengesteld.',
+        'copy_failed' => 'De ondertekende versie kon niet samengesteld worden. De handtekeningen staan vast.',
+    ],
+
     'field-types' => [
         'text' => 'Tekst',
         'multiline' => 'Tekst over meer regels',

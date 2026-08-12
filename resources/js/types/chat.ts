@@ -544,6 +544,8 @@ export interface ChatMessage {
     formCard: MessageFormCard | null;
     /** A secret put aside for one person: who it is for, never what. */
     sentSecretCard: MessageSentSecretCard | null;
+    /** A contract out for signature, and how far it has got — never who. */
+    contractCard: MessageContractCard | null;
     /** Set while the message is only in the browser, awaiting the server echo. */
     pending?: boolean;
 }
@@ -616,6 +618,35 @@ export interface MessageFormCard {
     /** How many questions it asks. Zero means it cannot be filled in yet. */
     fieldCount: number;
     isFillable: boolean;
+}
+
+/**
+ * A contract somebody linked to in a conversation.
+ *
+ * Counts rather than names, deliberately. Who has signed and who has not is a
+ * list of people at different stages of agreeing to something, and putting it
+ * under a message would show the channel exactly who is holding things up.
+ */
+export interface MessageContractCard {
+    id: string;
+    title: string;
+    signerCount: number;
+    signedCount: number;
+    /** Null for a contract with no deadline, which is allowed. */
+    expiresAt: string | null;
+    /**
+     * As the card reads it rather than as the column says it: a deadline that
+     * passed an hour ago has passed, whether or not the nightly command has
+     * been round.
+     */
+    state: 'draft' | 'sent' | 'completed' | 'cancelled' | 'expired';
+    /**
+     * The same link for everybody. The server sends a signer who still has
+     * something to do to their own page and everybody else to the contract — it
+     * cannot be decided here, because this card is broadcast to the whole
+     * channel at once.
+     */
+    url: string;
 }
 
 /**

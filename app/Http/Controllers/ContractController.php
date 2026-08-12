@@ -98,6 +98,108 @@ class ContractController extends Controller
     }
 
     /**
+     * One link in a channel, two destinations.
+     *
+     * A contract card is drawn once and broadcast to everybody in the channel
+     * at the same moment, so it cannot know who is looking at it. This is the
+     * first point where the viewer is known, and so this is where the question
+     * is answered — the same shape SecretFillController::show has.
+     *
+     * A signer who still has something to do goes to their own page. Everybody
+     * else who is allowed to look sees the contract itself. Anybody else has no
+     * business here at all, which is what the policy says a moment later.
+     */
+    public function show(Request $request, Workspace $workspace, Contract $contract): Response|RedirectResponse
+    {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $user = $request->user();
+
+        $mine = $contract->signers()
+            ->where('user_id', $user->id)
+            ->get()
+            ->first(fn (ContractSigner $signer): bool => $signer->canStillSign());
+
+        if ($mine !== null) {
+            /*
+             * Their own token, not the contract's id. There is no other way in:
+             * the signing page has no notion of a session, because most people
+             * who reach it have no account.
+             */
+            return redirect()->route('contracts.sign.show', $mine->token);
+        }
+
+        $this->authorize('view', $contract);
+
+        $contract->load(['signers', 'author:id,name']);
+
+        return Inertia::render('chat/contract-show', [
+            ...$this->buildChatShell->handle($workspace, $user),
+
+            'contract' => [
+                'id' => $contract->id,
+                'title' => $contract->title,
+                'message' => $contract->message,
+                'status' => $contract->status->value,
+                'statusLabel' => $contract->status->label(),
+                'statusDescription' => $contract->status->description(),
+                'pageCount' => $contract->page_count,
+                'authorName' => $contract->author?->name,
+                'createdAt' => $contract->created_at?->toIso8601String(),
+                'expiresAt' => $contract->expires_at?->toIso8601String(),
+                'completedAt' => $contract->completed_at?->toIso8601String(),
+
+                'signedCount' => $contract->signedCount(),
+                'signerCount' => $contract->signers->count(),
+
+                /*
+                 * Whether the finished document is ready, still coming, or went
+                 * wrong. Three answers rather than a link-or-not, because
+                 * "nog even geduld" and "dit is misgegaan" are different things
+                 * to tell somebody — see Contract::signedCopyState.
+                 */
+                'signedCopyState' => $contract->signedCopyState(),
+
+                'sourceUrl' => route('chat.contracts.source', [$workspace, $contract]),
+                'downloadUrl' => $contract->signedCopy() === null
+                    ? null
+                    : route('chat.contracts.download', [$workspace, $contract]),
+
+                /*
+                 * Here the names *are* carried, unlike on the card in the
+                 * channel. This screen is behind the policy — the author or
+                 * somebody who runs the workspace — and knowing who has not
+                 * signed yet is the entire reason they opened it.
+                 */
+                'signers' => $contract->signers->map(fn (ContractSigner $signer): array => [
+                    'name' => $signer->name,
+                    'email' => $signer->email,
+                    'openedAt' => $signer->opened_at?->toIso8601String(),
+                    'signedAt' => $signer->signed_at?->toIso8601String(),
+                    'declinedAt' => $signer->declined_at?->toIso8601String(),
+                    'declineReason' => $signer->decline_reason,
+                    'remindedAt' => $signer->reminded_at?->toIso8601String(),
+
+                    'state' => match (true) {
+                        $signer->hasSigned() => 'signed',
+                        $signer->hasDeclined() => 'declined',
+                        $signer->opened_at !== null => 'opened',
+                        default => 'waiting',
+                    },
+                ])->all(),
+            ],
+
+            'can' => [
+                'remind' => $user->can('remind', $contract),
+                'cancel' => $user->can('cancel', $contract),
+                'update' => $user->can('update', $contract),
+            ],
+
+            'workspaceSlug' => $workspace->slug,
+        ]);
+    }
+
+    /**
      * The editor: the document with whatever has been drawn over it so far.
      *
      * A screen of its own rather than a panel in a list, the same choice the

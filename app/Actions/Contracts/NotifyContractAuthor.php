@@ -140,16 +140,12 @@ class NotifyContractAuthor
     /**
      * What the bot writes.
      *
-     * No link yet, and that is a gap rather than a decision. The address this
-     * wants is the contract's own — the one the chat card grows out of, which
-     * decides per reader where it takes them — and that screen does not exist
-     * until the overview does. A download link would be the wrong thing to put
-     * here anyway: this line is read by everybody in the channel, and the
-     * signed PDF is not.
-     *
-     * Until then the line still carries the news, which is most of the value:
-     * "Anna de Vries heeft Huurovereenkomst 2026 getekend" is what somebody
-     * reads in passing.
+     * The URL is on its own line, and it is the contract's own address rather
+     * than a download link. Two reasons, and the second is the one that
+     * matters: this line is read by everybody in the channel, and the signed
+     * PDF is not for all of them — while the contract's own address decides per
+     * reader where it takes them. The other is that the link is what the card
+     * grows out of, so the message reads as a card rather than as a URL.
      */
     private function body(Contract $contract, ContractProgressKind $kind, ?ContractSigner $signer): string
     {
@@ -169,7 +165,7 @@ class NotifyContractAuthor
             ),
         };
 
-        return $line;
+        return $line."\n".route('chat.contracts.show', [$contract->workspace, $contract]);
     }
 
     /**

@@ -6,6 +6,15 @@
  */
 
 return [
+    'contract' => [
+        'signed' => ':done of :total signed',
+        'draft' => 'not sent yet',
+        'open' => 'waiting for signatures',
+        'until' => 'can be signed until :date',
+        'completed' => 'complete',
+        'cancelled' => 'withdrawn',
+        'expired' => 'expired',
+    ],
     'guest' => [
         'label' => 'Guest',
         'hint' => 'Somebody from outside, only in the channels they were invited to',

@@ -2,6 +2,8 @@
 
 namespace App\Actions\Chat;
 
+use App\Enums\ContractStatus;
+use App\Models\Contract;
 use App\Models\Form;
 use App\Models\LinkPreview;
 use App\Models\Message;
@@ -64,6 +66,18 @@ class PresentMessage
      * @var array<string, Form|null>
      */
     private array $forms = [];
+
+    /**
+     * The contracts already looked up in this batch, by id.
+     *
+     * The same trick the arrays above play, and it earns its keep here for a
+     * reason of its own: a contract is usually announced once when it goes out
+     * and again by the bot every time somebody signs, so one screen of messages
+     * can hold four links to the same document.
+     *
+     * @var array<string, Contract|null>
+     */
+    private array $contracts = [];
 
     /**
      * Transfers already looked up, keyed by token.
@@ -163,6 +177,9 @@ class PresentMessage
             'formCard' => $deleted ? null : $this->formCard($message),
             // And a secret put aside for one person: who it is for, never what.
             'sentSecretCard' => $deleted ? null : $this->sentSecretCard($message),
+            // And a contract that went out to be signed, with how far it has
+            // got — never who signed and who did not.
+            'contractCard' => $deleted ? null : $this->contractCard($message),
         ];
     }
 
@@ -341,6 +358,76 @@ class PresentMessage
     }
 
     /**
+     * A contract somebody linked to in a conversation, and how far it has got.
+     *
+     * Counts rather than names, and that is the whole of the design here. Who
+     * has signed and who has not is a list of people at different stages of
+     * agreeing to something, and putting it under a message shows the channel
+     * exactly who is holding things up. "Twee van de drie" says what anybody
+     * reading actually needs.
+     *
+     * The expiry is carried because it is the one fact that changes what a
+     * reader should do: a contract running out on Friday is a different message
+     * from one with a month to go.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function contractCard(Message $message): ?array
+    {
+        $id = $this->contractIdIn($message->body);
+
+        if ($id === null) {
+            return null;
+        }
+
+        $contract = $this->contracts[$id] ??= Contract::query()
+            ->withCount([
+                'signers',
+                'signers as signed_count' => fn ($query) => $query->whereNotNull('signed_at'),
+            ])
+            ->find($id);
+
+        if ($contract === null || $contract->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'id' => $contract->id,
+            'title' => $contract->title,
+            'signerCount' => $contract->signers_count,
+            'signedCount' => $contract->signed_count,
+            'expiresAt' => $contract->expires_at,
+
+            /*
+             * The status as the card reads it, which is not quite the column.
+             * A deadline that passed an hour ago has passed, whether or not the
+             * nightly command has been round yet — see Contract::isSignable.
+             * A card that said "verstuurd" about a contract nobody can sign any
+             * more would be inviting somebody to go and try.
+             */
+            'state' => match (true) {
+                $contract->status->isEvidence() => 'completed',
+                $contract->status === ContractStatus::Cancelled => 'cancelled',
+                $contract->hasExpired() => 'expired',
+                $contract->status === ContractStatus::Draft => 'draft',
+                default => 'sent',
+            },
+
+            /*
+             * One link for everybody, and the server decides where it lands —
+             * see ContractController::show, which sends a signer to their own
+             * page and the author to the contract.
+             *
+             * It has to work that way round rather than being decided here:
+             * this output is also the broadcast payload, which goes to every
+             * member of the channel at once. Anything that differed per viewer
+             * would be wrong for all but one of them.
+             */
+            'url' => route('chat.contracts.show', [$message->workspace_id, $contract->id]),
+        ];
+    }
+
+    /**
      * What a link to one of our own secret requests is asking for.
      *
      * Note what is deliberately absent: which key was answered by whom, and of
@@ -458,6 +545,26 @@ class PresentMessage
      * transferTokenIn() is: a change to the URL shape must not leave this
      * quietly matching nothing.
      */
+    /**
+     * The contract a message links to, if it links to one of ours.
+     *
+     * Built from the route rather than from a hand-written pattern, so a change
+     * to the URL cannot leave this quietly matching nothing — the same way the
+     * form and secret extractors above are built.
+     */
+    private function contractIdIn(string $body): ?string
+    {
+        $prefix = route('chat.contracts.show', ['__WS__', '__ID__']);
+        [$before] = explode('__ID__', $prefix, 2);
+
+        $pattern = '/'.preg_quote($before, '/').'([0-9a-hjkmnp-tv-z]{26})\b/i';
+        $pattern = str_replace(preg_quote('__WS__', '/'), '[a-z0-9-]+', $pattern);
+
+        return preg_match($pattern, $body, $matches) === 1
+            ? mb_strtolower($matches[1])
+            : null;
+    }
+
     private function secretRequestIdIn(string $body): ?string
     {
         $prefix = route('secrets.show', '__ID__');

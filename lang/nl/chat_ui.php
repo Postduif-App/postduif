@@ -14,6 +14,15 @@
  */
 
 return [
+    'contract' => [
+        'signed' => ':done van de :total getekend',
+        'draft' => 'nog niet verstuurd',
+        'open' => 'wacht op handtekeningen',
+        'until' => 'tekenen kan tot :date',
+        'completed' => 'afgerond',
+        'cancelled' => 'ingetrokken',
+        'expired' => 'verlopen',
+    ],
     'guest' => [
         'label' => 'Gast',
         'hint' => 'Iemand van buiten, alleen in de kanalen waar ze voor zijn uitgenodigd',

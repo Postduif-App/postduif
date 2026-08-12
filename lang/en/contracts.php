@@ -128,6 +128,28 @@ return [
         'completed' => '{1}":title" has been signed.|[2,*]Everybody has signed ":title".',
     ],
 
+    'detail' => [
+        'tally' => ':done of :total signed',
+        'edit' => 'Edit fields',
+        'remind' => 'Send a reminder',
+        'sent_by' => 'Sent by',
+        'pages' => 'Size',
+        'expires_at' => 'Can be signed until',
+        'no_deadline' => 'No deadline',
+        'completed_at' => 'Completed on',
+        'people' => 'Signers',
+        'nobody' => 'No signers have been invited yet.',
+        'signed' => 'Signed',
+        'declined' => 'Turned down',
+        'opened' => 'Opened',
+        'waiting' => 'Nothing yet',
+        'reminded' => 'reminded :date',
+        'document' => 'View the document',
+        'signed_copy' => 'Signed copy',
+        'copy_pending' => 'The signed copy is being composed.',
+        'copy_failed' => 'The signed copy could not be composed. The signatures are safe.',
+    ],
+
     'field-types' => [
         'text' => 'Text',
         'multiline' => 'Text over several lines',

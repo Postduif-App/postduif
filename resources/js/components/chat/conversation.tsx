@@ -524,6 +524,7 @@ export function Conversation({
                 // and the browser has not made the transfer row yet.
                 transferCard: null,
                 secretCard: null,
+                contractCard: null,
                 pollCard: null,
                 formCard: null,
                 reactions: [],

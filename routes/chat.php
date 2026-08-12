@@ -298,6 +298,14 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                  * readable size, and it deserves an address somebody can come
                  * back to.
                  */
+                /*
+                 * Where a contract card in a channel leads. One address for
+                 * everybody, and the controller decides per viewer — see there
+                 * for why it cannot be decided when the card is drawn.
+                 */
+                Route::get('contracten/{contract}', [ContractController::class, 'show'])
+                    ->name('contracts.show');
+
                 Route::get('contracten/{contract}/bewerken', [ContractController::class, 'edit'])
                     ->name('contracts.edit');
                 Route::put('contracten/{contract}/velden', [ContractController::class, 'updateFields'])

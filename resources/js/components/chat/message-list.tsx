@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { ContractCard } from '@/components/chat/contract-card';
 import { ReactionEmoji } from '@/components/chat/custom-emoji';
 import { FormCard } from '@/components/chat/form-card';
 import { GuestBadge } from '@/components/chat/guest-badge';
@@ -811,6 +812,10 @@ function MessageRow({
 
                 {!deleted && message.secretCard && (
                     <SecretCard card={message.secretCard} />
+                )}
+
+                {!deleted && message.contractCard && (
+                    <ContractCard card={message.contractCard} />
                 )}
 
                 {!deleted && message.pollCard && (
