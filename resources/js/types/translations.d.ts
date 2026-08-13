@@ -1091,6 +1091,7 @@ export type TranslationKey =
     | 'flashes.contract.reminded'
     | 'flashes.contract.retrying'
     | 'flashes.contract.sent'
+    | 'flashes.contract.signers_saved'
     | 'flashes.custom_emoji.added'
     | 'flashes.custom_emoji.removed'
     | 'flashes.form.closed'
