@@ -256,9 +256,24 @@ class ValidateConfiguration
         }
     }
 
+    /**
+     * A person by id has to be one of this workspace's members.
+     *
+     * A person by address is left to the run, on the channel's reasoning: the
+     * field takes a variable now, and FindsTargets resolves an address against
+     * members() while the workflow runs. Somebody may be invited between the
+     * writing and the running, and a workflow written ahead of the person it is
+     * about should not refuse to save.
+     */
     private function member(mixed $value, Workspace $workspace, Closure $fail): void
     {
-        if ($workspace->members()->whereKey((string) $value)->doesntExist()) {
+        $id = (string) $value;
+
+        if (! ctype_digit($id)) {
+            return;
+        }
+
+        if ($workspace->members()->whereKey($id)->doesntExist()) {
             $fail(__('workflows.config.member_not_found'));
         }
     }

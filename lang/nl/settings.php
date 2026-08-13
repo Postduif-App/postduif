@@ -449,6 +449,8 @@ return [
         'record_from_trigger' => 'Wat de trigger meebracht',
         'record_from_variable' => 'Een variabele (bijvoorbeeld uit een eerdere stap)',
         'channel_variable_hint' => 'Een kanaalnaam of -id, bijvoorbeeld {{ trigger.channel.name }}. Wordt gezocht binnen deze workspace.',
+        'member_from_variable' => 'Een variabele (persoon pas bij het uitvoeren bekend)',
+        'member_variable_hint' => 'Een e-mailadres of id, bijvoorbeeld {{ trigger.author.id }}. Wordt gezocht onder de leden van deze workspace.',
         'insert_variable' => 'Gegeven invoegen…',
         'words_placeholder' => 'storing, defect',
         'webhook_url_pending' => 'Sla de workflow eerst op; daarna staat de URL hier.',

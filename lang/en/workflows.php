@@ -640,6 +640,7 @@ return [
         'no_owner' => 'This workflow has no owner left.',
         'may_not_post' => 'This workflow\'s owner may not post in #:channel.',
         'may_not_dm' => 'This workflow\'s owner may not message this person.',
+        'dm_to_self' => 'This step points at the workflow\'s own owner, and a DM with yourself does not exist.',
         'may_not_pin' => 'This workflow\'s owner may not pin anything here.',
         'may_not_archive' => 'This workflow\'s owner may not archive this channel.',
         'may_not_add_members' => 'This workflow\'s owner may not add anybody here.',

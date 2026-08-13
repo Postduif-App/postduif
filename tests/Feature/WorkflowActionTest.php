@@ -130,6 +130,101 @@ it('opens a conversation with somebody and says its piece there', function () {
         ->toEqualCanonicalizing([$owner->id, $recipient->id]);
 });
 
+it('sends its message to whoever the trigger brought, named with a variable', function () {
+    [$workflow, $workspace, $owner] = workflowWithChannel();
+
+    $recipient = User::factory()->create();
+    joinWorkspace($workspace, $recipient, SystemRole::Member);
+
+    /*
+     * The person nobody could name until now. A picker holds the colleagues
+     * this workspace has today; "de aanvrager van dit contract" is somebody
+     * else on every run, and only the trigger knows who.
+     */
+    $run = runStep($workflow, 'send-direct-message', [
+        'user_id' => '{{ trigger.author.id }}',
+        'body' => 'Er is iets met jouw contract.',
+    ], ['trigger' => ['author' => ['id' => $recipient->id]]]);
+
+    $dm = Channel::query()->where('type', ChannelType::Direct)->latest('id')->first();
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($dm)->not->toBeNull()
+        ->and($dm->members()->pluck('users.id')->all())
+        ->toEqualCanonicalizing([$owner->id, $recipient->id]);
+});
+
+it('finds that person by the address the trigger carried, not only by id', function () {
+    [$workflow, $workspace, $owner] = workflowWithChannel();
+
+    $recipient = User::factory()->create(['email' => 'joris@example.test']);
+    joinWorkspace($workspace, $recipient, SystemRole::Member);
+
+    // What a signer is, until they turn out to have an account here: an
+    // address and nothing else.
+    $run = runStep($workflow, 'send-direct-message', [
+        'user_id' => '{{ trigger.signer.email }}',
+        'body' => 'Bedankt voor het tekenen.',
+    ], ['trigger' => ['signer' => ['email' => 'Joris@Example.test']]]);
+
+    $dm = Channel::query()->where('type', ChannelType::Direct)->latest('id')->first();
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($dm)->not->toBeNull()
+        ->and($dm->members()->pluck('users.id')->all())
+        ->toEqualCanonicalizing([$owner->id, $recipient->id]);
+});
+
+it('messages nobody when the variable names somebody outside this workspace', function () {
+    [$workflow] = workflowWithChannel();
+
+    // A whole workspace of their own, and no membership here. This is the
+    // thing a variable in a person field must never become: a way to address
+    // somebody this workspace never let in.
+    $stranger = User::factory()->create(['email' => 'buiten@example.test']);
+    workspaceWithMember($stranger, SystemRole::Admin);
+
+    $run = runStep($workflow, 'send-direct-message', [
+        'user_id' => '{{ trigger.author.id }}',
+        'body' => 'Hallo daar.',
+    ], ['trigger' => ['author' => ['id' => $stranger->id]]]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('deze workspace')
+        ->and(Channel::query()->where('type', ChannelType::Direct)->exists())->toBeFalse();
+});
+
+it('says so rather than crashing when the variable turns out to be the owner', function () {
+    [$workflow, , $owner] = workflowWithChannel();
+
+    // Easily done now that a variable goes in this field: the author of the
+    // thing that set the workflow off is often the person who wrote the
+    // workflow. A DM with yourself does not exist here, so the step stops.
+    $run = runStep($workflow, 'send-direct-message', [
+        'user_id' => '{{ trigger.author.id }}',
+        'body' => 'Hallo daar.',
+    ], ['trigger' => ['author' => ['id' => $owner->id]]]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('met jezelf')
+        ->and(Channel::query()->where('type', ChannelType::Direct)->exists())->toBeFalse();
+});
+
+it('messages nobody when the variable names an address from outside', function () {
+    [$workflow] = workflowWithChannel();
+
+    User::factory()->create(['email' => 'buiten@example.test']);
+
+    $run = runStep($workflow, 'send-direct-message', [
+        'user_id' => '{{ trigger.signer.email }}',
+        'body' => 'Hallo daar.',
+    ], ['trigger' => ['signer' => ['email' => 'buiten@example.test']]]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('deze workspace')
+        ->and(Channel::query()->where('type', ChannelType::Direct)->exists())->toBeFalse();
+});
+
 it('hangs a reply under the message the trigger was about', function () {
     [$workflow, , $owner, $channel] = workflowWithChannel();
 

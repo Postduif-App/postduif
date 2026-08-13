@@ -662,6 +662,7 @@ return [
         'no_owner' => 'Deze workflow heeft geen eigenaar meer.',
         'may_not_post' => 'De eigenaar van deze workflow mag niet posten in #:channel.',
         'may_not_dm' => 'De eigenaar van deze workflow mag deze persoon geen bericht sturen.',
+        'dm_to_self' => 'Deze stap wijst de eigenaar van de workflow zelf aan, en een DM met jezelf bestaat niet.',
         'may_not_pin' => 'De eigenaar van deze workflow mag hier niets vastzetten.',
         'may_not_archive' => 'De eigenaar van deze workflow mag dit kanaal niet archiveren.',
         'may_not_add_members' => 'De eigenaar van deze workflow mag hier niemand toevoegen.',

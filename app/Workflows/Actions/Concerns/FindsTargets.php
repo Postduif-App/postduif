@@ -242,14 +242,9 @@ trait FindsTargets
     /**
      * The person a step names, or the one the trigger was about.
      *
-     * The same convention the record fields run on, applied to people — and it
-     * is the half of pcom-ybal.19 that can be had without touching the picker.
-     * A person picker takes no variable, so "de collega die zojuist inklokte"
-     * cannot be *named*; leaving the box empty says it instead, and that covers
-     * the case nearly every workflow about a person means.
-     *
-     * What it still cannot do is point at somebody the trigger did not bring —
-     * the author of a contract, the assignee of a ticket. That is the issue.
+     * The same convention the record fields run on, applied to people: an empty
+     * box means "wie dit in gang zette", which is what nearly every workflow
+     * about a person means and needs no variable at all.
      */
     protected function memberOrTriggerUser(WorkflowStepContext $context, string $key = 'user_id'): User
     {
@@ -263,13 +258,7 @@ trait FindsTargets
             throw new RuntimeException(__('workflows.errors.no_person_anywhere'));
         }
 
-        $member = $context->workspace()->members()->whereKey($id)->first();
-
-        if ($member === null) {
-            throw new RuntimeException(__('workflows.errors.person_not_found'));
-        }
-
-        return $member;
+        return $this->memberNamed($context, (string) $id);
     }
 
     /** Somebody in this workspace. */
@@ -281,7 +270,36 @@ trait FindsTargets
             throw new RuntimeException(__('workflows.errors.no_person_chosen'));
         }
 
-        $member = $context->workspace()->members()->whereKey($id)->first();
+        return $this->memberNamed($context, (string) $id);
+    }
+
+    /**
+     * The person a value names: by id, or by the address they are known under.
+     *
+     * An address as well as an id for the same reason the channel takes a name.
+     * A person field may hold a variable now, and what a trigger knows about
+     * somebody is not always their id — a signer is an e-mail address and
+     * nothing else until they turn out to have an account here. "Stuur de
+     * aanvrager een bericht" has to be sayable with whatever the trigger
+     * carried.
+     *
+     * Scoped to members() in both branches, and that scoping is the entire
+     * safety of letting a variable in here: whatever the value resolves to, it
+     * can only be somebody who is already in this workspace. A signer from
+     * outside finds nobody and the step stops with a sentence on the run
+     * screen, which is the correct outcome — a workflow is not a way to message
+     * strangers.
+     */
+    private function memberNamed(WorkflowStepContext $context, string $named): User
+    {
+        $named = trim($named);
+        $members = $context->workspace()->members();
+
+        $member = ctype_digit($named)
+            ? $members->whereKey($named)->first()
+            // Case-insensitively, because an address is typed by a person and
+            // arrives however they wrote it.
+            : $members->whereRaw('lower(users.email) = ?', [mb_strtolower($named)])->first();
 
         if ($member === null) {
             throw new RuntimeException(__('workflows.errors.person_not_found'));

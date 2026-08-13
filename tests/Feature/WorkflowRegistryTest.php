@@ -149,10 +149,15 @@ it('lets a variable into the fields that can be resolved, and keeps it out of th
          * something this workspace owns. See WorkflowFieldType.
          */
         ->and(WorkflowField::channel('channel_id', 'Kanaal')->acceptsVariables())->toBeTrue()
+        /*
+         * The person is in for the same reason and with the same guard: the
+         * lookup searches this workspace's members, by address or by id, so a
+         * variable naming somebody from outside finds nobody.
+         */
+        ->and(WorkflowField::member('user_id', 'Wie')->acceptsVariables())->toBeTrue()
         // And the form stays out: a ULID with no name to fall back on.
         ->and(WorkflowField::form('form_id', 'Formulier')->acceptsVariables())->toBeFalse()
-        ->and(WorkflowField::number('minutes', 'Minuten')->acceptsVariables())->toBeFalse()
-        ->and(WorkflowField::member('user_id', 'Wie')->acceptsVariables())->toBeFalse();
+        ->and(WorkflowField::number('minutes', 'Minuten')->acceptsVariables())->toBeFalse();
 });
 
 it('describes a field completely enough for a screen to draw it', function () {

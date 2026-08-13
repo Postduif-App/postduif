@@ -45,7 +45,7 @@ enum WorkflowFieldType: string
     /**
      * Whether a value of this type can hold {{ ... }}.
      *
-     * The free-text ones, and the channel.
+     * The free-text ones, the channel, the record and the person.
      *
      * The channel was excluded on the grounds that a variable could point a
      * step at a channel nobody chose, including one in another workspace. The
@@ -73,12 +73,23 @@ enum WorkflowFieldType: string
      * workspace and refuses what it does not find there. Leaving the field
      * empty says the same thing about the trigger's own record, which is the
      * commoner case and needs no variable at all.
+     *
+     * The person is in, for the channel's reasons and one of its own. "Stuur de
+     * aanvrager van dit contract een bericht" names somebody who is different
+     * on every run, so no list can hold them; the same goes for the person a
+     * ticket is assigned to and the colleague who just clocked in. What makes
+     * it safe is again the lookup rather than the picker: FindsTargets searches
+     * $context->workspace()->members() and nothing else, so a variable holding
+     * an address from outside finds nobody and the step stops. That is the
+     * whole security of it — a person field is a way to send somebody a
+     * message, and members() is what keeps that inside the workspace.
      */
     public function acceptsVariables(): bool
     {
         return $this === self::Text
             || $this === self::LongText
             || $this === self::Channel
+            || $this === self::Member
             || $this === self::Record;
     }
 }

@@ -267,6 +267,9 @@ const VARIABLE_CHANNEL = '__variable__';
 /** The same escape in a record picker, and never an id either. */
 const VARIABLE_RECORD = '__variable_record__';
 
+/** And in a person picker, where an id is a number and this is not. */
+const VARIABLE_MEMBER = '__variable_member__';
+
 /**
  * Where a block sits, as the way down to it.
  *
@@ -620,7 +623,13 @@ function summarise(
                 (one) => String(one.id) === String(value),
             );
 
-            return member?.name ?? null;
+            /*
+                Their name, or whatever was typed when it is a variable — the
+                record picker's reasoning: the line exists to tell two steps
+                apart, and "{{ trigger.author.id }}" does that where an empty
+                block does not.
+            */
+            return member?.name ?? String(value);
         }
 
         if (field.type === 'form') {
@@ -712,6 +721,11 @@ function FieldInput({
         field.type === 'record' && String(value ?? '').includes('{{'),
     );
 
+    /** And for a person, whose id or address may equally come from a variable. */
+    const [typedMember, setTypedMember] = useState(
+        field.type === 'member' && String(value ?? '').includes('{{'),
+    );
+
     return (
         <div className="grid gap-1">
             <Label htmlFor={field.key} className="text-xs">
@@ -770,10 +784,29 @@ function FieldInput({
                     </option>
                 </select>
             ) : field.type === 'member' ? (
+                /*
+                    A picker, plus the option of not picking — the channel's
+                    control, for the channel's reason. "Stuur de aanvrager van
+                    dit contract een bericht" names somebody who is different
+                    every run, so no list can hold them; the last entry switches
+                    to a box a variable goes in. The step then resolves it by id
+                    or by e-mail address, always inside this workspace's
+                    members; see FindsTargets.
+                */
                 <select
                     {...common}
-                    value={String(value ?? '')}
-                    onChange={(event) => onChange(event.target.value)}
+                    value={typedMember ? VARIABLE_MEMBER : String(value ?? '')}
+                    onChange={(event) => {
+                        if (event.target.value === VARIABLE_MEMBER) {
+                            setTypedMember(true);
+                            onChange('');
+
+                            return;
+                        }
+
+                        setTypedMember(false);
+                        onChange(event.target.value);
+                    }}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 >
                     <option value="">{t('settings.workflows.choose')}</option>
@@ -782,6 +815,9 @@ function FieldInput({
                             {member.name}
                         </option>
                     ))}
+                    <option value={VARIABLE_MEMBER}>
+                        {t('settings.workflows.member_from_variable')}
+                    </option>
                 </select>
             ) : field.type === 'form' ? (
                 <select
@@ -902,6 +938,20 @@ function FieldInput({
                     />
                     <p className="text-xs text-muted-foreground">
                         {t('settings.workflows.channel_variable_hint')}
+                    </p>
+                </>
+            )}
+
+            {typedMember && field.type === 'member' && (
+                <>
+                    <input
+                        value={String(value ?? '')}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder="{{ trigger.author.id }}"
+                        className="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {t('settings.workflows.member_variable_hint')}
                     </p>
                 </>
             )}

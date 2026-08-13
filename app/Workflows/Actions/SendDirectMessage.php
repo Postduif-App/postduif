@@ -70,6 +70,17 @@ class SendDirectMessage extends WorkflowAction
         }
 
         /*
+         * The owner, addressing themselves. Worth its own sentence since the
+         * person field started taking variables: {{ trigger.author.id }} is
+         * the workflow's own owner as often as not, and a DM with yourself does
+         * not exist here — StartDirectMessage refuses one with an exception
+         * nobody wrote for a run screen.
+         */
+        if ($owner->is($recipient)) {
+            throw new RuntimeException(__('workflows.errors.dm_to_self'));
+        }
+
+        /*
          * The owner may not be allowed to address this person at all — a guest
          * is cut off from the workspace, and directMessage() is where that is
          * decided. Asked with the owner as the subject, because that is whose

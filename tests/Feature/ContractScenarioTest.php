@@ -3,6 +3,7 @@
 use App\Actions\Contracts\PruneContracts;
 use App\Actions\Workflows\ResumeWaitingWorkflows;
 use App\Enums\ChannelTicketPolicy;
+use App\Enums\ChannelType;
 use App\Enums\ContractStatus;
 use App\Enums\SystemRole;
 use App\Enums\WorkflowBranch;
@@ -180,18 +181,26 @@ it('nudges the quiet ones three days after sending, and warns when the deadline 
 });
 
 /**
- * Scenario 2: somebody refuses → say so where the contract is followed, with
- * the reason they gave.
+ * Scenario 2: somebody refuses → say so where the contract is followed, and
+ * tell the colleague who asked for the signature.
  *
- * The finding here is what is *not* in this workflow. The story asked for a
- * message to the author as well, and that cannot be written: SendDirectMessage
- * picks a person from a list, and a person picker takes no variable — so
- * "de aanvrager van dit contract" has no way of being said — see pcom-ybal.19.
- * The channel gets the news; the author only hears about it because the
- * contract feature mails them itself.
+ * The second step is the one this scenario was originally written without: a
+ * person field took no variable, so "de aanvrager van dit contract" — somebody
+ * else on every contract — had no way of being said, and the channel was the
+ * only thing that could be told. It can be said now (pcom-ybal.19), and the
+ * lookup is what keeps it safe: {{ trigger.author.id }} is searched among this
+ * workspace's members and nowhere else.
+ *
+ * The requester is a colleague rather than the workflow's owner here, which is
+ * how a workspace with a contract service actually works — and a workflow
+ * cannot DM its own owner anyway, because a DM with yourself does not exist.
  */
-it('tells the channel when somebody refuses, and why', function () {
+it('tells the channel when somebody refuses, and warns whoever asked for the signature', function () {
     [$author, $workspace, $channel, $contract, , $stranger] = contractScenarioScene();
+
+    $requester = User::factory()->create(['name' => 'Ruben']);
+    joinWorkspace($workspace, $requester, SystemRole::Member);
+    $contract->forceFill(['created_by' => $requester->id])->save();
 
     $stranger->forceFill(['declined_at' => now(), 'decline_reason' => 'Prijs klopt niet'])->save();
 
@@ -203,11 +212,26 @@ it('tells the channel when somebody refuses, and why', function () {
             'body' => '{{ trigger.signer.name }} tekent {{ trigger.contract.title }} niet: {{ trigger.signer.decline_reason }}',
         ])->create();
 
+    WorkflowStep::factory()->for($workflow)->at(1)
+        ->doing('send-direct-message', [
+            'user_id' => '{{ trigger.author.id }}',
+            'body' => '{{ trigger.signer.name }} tekende {{ trigger.contract.title }} niet.',
+        ])->create();
+
     ContractDeclined::dispatch($contract->id, $stranger->id);
+
+    $dm = Channel::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('type', ChannelType::Direct)
+        ->first();
 
     expect(saidIn($channel))->toBe([
         'Jan de Vries tekent Offerte dakwerk niet: Prijs klopt niet',
-    ]);
+    ])
+        ->and($dm)->not->toBeNull()
+        ->and($dm->members()->pluck('users.id')->all())
+        ->toEqualCanonicalizing([$author->id, $requester->id])
+        ->and(saidIn($dm))->toBe(['Jan de Vries tekende Offerte dakwerk niet.']);
 });
 
 /**

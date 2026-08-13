@@ -424,6 +424,8 @@ return [
         'record_from_trigger' => 'Whatever the trigger brought',
         'record_from_variable' => 'A variable (from an earlier step, for instance)',
         'channel_variable_hint' => 'A channel name or id, for example {{ trigger.channel.name }}. Looked up inside this workspace.',
+        'member_from_variable' => 'A variable (person known only when it runs)',
+        'member_variable_hint' => 'An e-mail address or id, for example {{ trigger.author.id }}. Looked up among this workspace’s members.',
         'insert_variable' => 'Insert data…',
         'words_placeholder' => 'outage, broken',
         'webhook_url_pending' => 'Save the workflow first and the URL appears here.',
