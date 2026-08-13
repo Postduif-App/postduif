@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
@@ -180,6 +181,7 @@ it('shows how a channel can be set up, in the words the settings screen uses', f
             ->has('channelSettings.layout', count(ChannelLayout::cases()))
             ->has('channelSettings.posting', count(ChannelPostingPolicy::cases()))
             ->has('channelSettings.tickets', count(ChannelTicketPolicy::cases()))
+            ->has('channelSettings.documents', count(ChannelDocumentPolicy::cases()))
             ->where('channelSettings.layout.0.label', ChannelLayout::cases()[0]->getLabel())
         );
 });

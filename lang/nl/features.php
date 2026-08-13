@@ -19,7 +19,7 @@ return [
 
     'documents' => [
         'label' => 'Documenten',
-        'description' => 'Kanalen kunnen documenten bijhouden naast het gesprek, met een editor die als Notion werkt.',
+        'description' => 'Kanalen kunnen documenten bijhouden naast het gesprek. De editor bouwt een pagina op uit blokken: druk op / voor een kop, een lijst, een tabel.',
     ],
     'forms' => [
         'label' => 'Formulieren',

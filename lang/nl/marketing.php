@@ -68,6 +68,7 @@ return [
             'layout' => 'Weergave',
             'posting' => 'Wie er post',
             'tickets' => 'Tickets',
+            'documents' => 'Documenten',
         ],
 
         'workflow' => [

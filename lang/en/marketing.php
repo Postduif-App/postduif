@@ -68,6 +68,7 @@ return [
             'layout' => 'Layout',
             'posting' => 'Who posts',
             'tickets' => 'Tickets',
+            'documents' => 'Documents',
         ],
 
         'workflow' => [

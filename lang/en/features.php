@@ -12,7 +12,7 @@ return [
 
     'documents' => [
         'label' => 'Documents',
-        'description' => 'Channels can keep documents alongside the conversation, in an editor that works like Notion.',
+        'description' => 'Channels can keep documents alongside the conversation. The editor builds a page out of blocks: press / for a heading, a list, a table.',
     ],
     'forms' => [
         'label' => 'Forms',

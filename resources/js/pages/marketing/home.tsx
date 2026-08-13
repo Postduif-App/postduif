@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { DoveMark } from '@/components/marketing/logo';
 import {
     Card,
+    CardLabel,
     DescribedList,
     Note,
     SectionHead,
@@ -46,6 +47,7 @@ interface HomeProps {
         layout: Described[];
         posting: Described[];
         tickets: Described[];
+        documents: Described[];
     };
     workflow: { triggers: Described[]; actions: Described[] };
     token: {
@@ -409,53 +411,33 @@ export default function MarketingHome({
                     lead={t('marketing.home.channels.lead')}
                 />
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <Card>
-                        <div
-                            className="mb-4"
-                            style={{
-                                fontFamily: 'var(--pd-mono)',
-                                fontSize: 11,
-                                letterSpacing: '0.08em',
-                                color: '#8b8a7b',
-                                textTransform: 'uppercase',
-                            }}
-                        >
+                        <CardLabel>
                             {t('marketing.home.channels.layout')}
-                        </div>
+                        </CardLabel>
                         <DescribedList items={channelSettings.layout} />
                     </Card>
 
                     <Card>
-                        <div
-                            className="mb-4"
-                            style={{
-                                fontFamily: 'var(--pd-mono)',
-                                fontSize: 11,
-                                letterSpacing: '0.08em',
-                                color: '#8b8a7b',
-                                textTransform: 'uppercase',
-                            }}
-                        >
+                        <CardLabel>
                             {t('marketing.home.channels.posting')}
-                        </div>
+                        </CardLabel>
                         <DescribedList items={channelSettings.posting} />
                     </Card>
 
                     <Card>
-                        <div
-                            className="mb-4"
-                            style={{
-                                fontFamily: 'var(--pd-mono)',
-                                fontSize: 11,
-                                letterSpacing: '0.08em',
-                                color: '#8b8a7b',
-                                textTransform: 'uppercase',
-                            }}
-                        >
+                        <CardLabel>
                             {t('marketing.home.channels.tickets')}
-                        </div>
+                        </CardLabel>
                         <DescribedList items={channelSettings.tickets} />
+                    </Card>
+
+                    <Card>
+                        <CardLabel>
+                            {t('marketing.home.channels.documents')}
+                        </CardLabel>
+                        <DescribedList items={channelSettings.documents} />
                     </Card>
                 </div>
             </div>

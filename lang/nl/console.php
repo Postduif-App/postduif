@@ -13,6 +13,7 @@ return [
     'inbox_pruned' => '{1}1 inboxregel opgeruimd.|[2,*]:count inboxregels opgeruimd.',
     'transfers_pruned' => '{1}1 verzending opgeruimd.|[2,*]:count verzendingen opgeruimd.',
     'secrets_pruned' => '{1}1 verzoek opgeruimd.|[2,*]:count verzoeken opgeruimd.',
+    'documents_pruned' => '{1}1 document definitief verwijderd.|[2,*]:count documenten definitief verwijderd.',
     'contracts_expired' => '{0}Geen enkel contract verlopen.|{1}1 contract op verlopen gezet.|[2,*]:count contracten op verlopen gezet.',
     'contracts_pruned' => '{0}Geen contracten opgeruimd.|{1}1 contract opgeruimd.|[2,*]:count contracten opgeruimd.',
     'contracts_check_missing' => 'Ghostscript is niet te starten via :binary. Zonder deze binary weigert de contract-upload elk bestand.',

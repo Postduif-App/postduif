@@ -2,6 +2,7 @@
 
 namespace App\Actions\Marketing;
 
+use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
@@ -77,6 +78,11 @@ class BuildFeatureInventory
                 'label' => $case->label(),
                 'description' => $case->description(),
             ], ChannelTicketPolicy::cases()),
+
+            'documents' => array_map(fn (ChannelDocumentPolicy $case): array => [
+                'label' => $case->label(),
+                'description' => $case->description(),
+            ], ChannelDocumentPolicy::cases()),
         ];
     }
 
