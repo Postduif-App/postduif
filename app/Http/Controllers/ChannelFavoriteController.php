@@ -38,7 +38,7 @@ class ChannelFavoriteController extends Controller
         Channel $channel,
         ?CarbonInterface $favoritedAt,
     ): void {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $user = $request->user();
 

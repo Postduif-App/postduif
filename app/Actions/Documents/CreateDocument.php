@@ -2,6 +2,7 @@
 
 namespace App\Actions\Documents;
 
+use App\Events\DocumentCreated;
 use App\Events\DocumentUpdated;
 use App\Models\Channel;
 use App\Models\Document;
@@ -52,6 +53,13 @@ class CreateDocument
 
         // toOthers(): whoever just made it is already being redirected into it.
         broadcast(new DocumentUpdated($document))->toOthers();
+
+        /*
+         * And the one a workflow listens for, which is a different animal from
+         * the broadcast above: that one says "ga maar opnieuw kijken" to a
+         * screen, this one says what happened to whoever is not looking.
+         */
+        DocumentCreated::dispatch($document->id, $author->id);
 
         return $document;
     }

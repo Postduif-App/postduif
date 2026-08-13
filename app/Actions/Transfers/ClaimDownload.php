@@ -2,6 +2,7 @@
 
 namespace App\Actions\Transfers;
 
+use App\Events\TransferDownloaded;
 use App\Models\Transfer;
 use App\Models\TransferDownload;
 use App\Models\TransferRecipient;
@@ -91,5 +92,12 @@ class ClaimDownload
                 'user_agent' => mb_substr((string) $request->userAgent(), 0, 512) ?: null,
             ]);
         });
+
+        /*
+         * Outside the transaction, and carrying nothing but who and which —
+         * what is in a transfer is the sender's business and a workflow's
+         * business is only that it was collected. See the event.
+         */
+        TransferDownloaded::dispatch($transfer->id, $recipient?->id, $request->user()?->id);
     }
 }

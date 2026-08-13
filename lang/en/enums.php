@@ -103,6 +103,17 @@ return [
             'ThreadReply' => 'Thread',
             'PollVote' => 'Poll',
             'ContractProgress' => 'Contract',
+            'Reminder' => 'Reminder',
+        ],
+    ],
+    'mail-template-kind' => [
+        'label' => [
+            'ContractRequest' => 'Request to sign',
+            'ContractSigned' => 'The signed document',
+        ],
+        'description' => [
+            'ContractRequest' => 'The mail asking somebody to sign a contract. The reminder uses this text too.',
+            'ContractSigned' => 'The mail that goes to everybody who signed once it is done, with the signed PDF attached.',
         ],
     ],
     'mail-transport' => [
@@ -202,14 +213,48 @@ return [
             'NotEquals' => 'Is not equal to',
             'Contains' => 'Contains',
             'NotContains' => 'Does not contain',
+            'StartsWith' => 'Starts with',
+            'EndsWith' => 'Ends with',
+            'IsOneOf' => 'Is one of',
+            'IsNoneOf' => 'Is none of',
+            'GreaterThan' => 'Is greater than',
+            'LessThan' => 'Is less than',
+            'GreaterOrEqual' => 'Is at least',
+            'LessOrEqual' => 'Is at most',
+            'Before' => 'Is before',
+            'After' => 'Is after',
             'IsEmpty' => 'Is empty',
             'IsNotEmpty' => 'Is not empty',
+            'IsTrue' => 'Is true',
+            'IsFalse' => 'Is not true',
+        ],
+        'hint' => [
+            'list' => 'Several values, separated by commas.',
+            'date' => 'A date or time, or a variable holding one.',
+            'number' => 'Two numbers are compared as numbers, anything else as text.',
+        ],
+    ],
+    'workflow-condition-operator-group' => [
+        'label' => [
+            'Text' => 'Text',
+            'Number' => 'Numbers',
+            'Date' => 'Dates',
+            'Presence' => 'Presence',
         ],
     ],
     'workflow-condition-outcome' => [
         'label' => [
             'Skip' => 'skip just this step',
             'Stop' => 'stop the whole workflow',
+        ],
+    ],
+    'workflow-record-type' => [
+        'label' => [
+            'Ticket' => 'ticket',
+            'Contract' => 'contract',
+            'ContractTemplate' => 'template',
+            'Document' => 'document',
+            'Poll' => 'poll',
         ],
     ],
     'workflow-run-status' => [
@@ -248,6 +293,7 @@ return [
             'SeeHours' => "See colleagues' hours",
             'DeleteBotMessages' => 'Delete messages from bots',
             'SendContracts' => 'Have contracts signed',
+            'DeleteSignedContracts' => 'Delete signed contracts',
         ],
         'description' => [
             'ManageWorkspace' => 'The name, the roles, the permissions and the look. Whoever holds this can also give themselves and others more — it is the one right that reaches every other.',
@@ -262,6 +308,7 @@ return [
             'DeleteBotMessages' => 'Remove messages posted by a webhook or a workflow. Not about what people write themselves — those stay their own. Whoever manages a channel could already do this for that channel.',
             'SeeHours' => 'See how many hours colleagues clocked this week and who is clocked in right now. Everybody sees their own hours regardless; this is about somebody else\'s.',
             'SendContracts' => 'Send a PDF with fields on it to people to be signed, outside the workspace too. The document goes out under this workspace\'s name and comes back as evidence.',
+            'DeleteSignedContracts' => 'Throw away a contract everybody has already signed, including the signed PDF and the page recording who signed when. It cannot be undone and the signers are not told. Without this right you can only clear away what was never completed.',
         ],
     ],
     'workspace-accent' => [

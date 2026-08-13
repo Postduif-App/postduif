@@ -57,11 +57,31 @@ class ChannelPolicy
         $role = $channel->workspace->roleFor($user);
 
         if ($role === null) {
-            return false;
+            return $this->reachesThroughShare($user, $channel);
         }
 
         if ($channel->type === ChannelType::Public && ! $role->is_external) {
             return true;
+        }
+
+        return $channel->members()->whereKey($user->id)->exists();
+    }
+
+    /**
+     * Somebody standing outside the owning workspace, in a channel it has
+     * opened to theirs.
+     *
+     * Both halves are required and the second one is the important half: a live
+     * arrangement between two workspaces says their people *may* be let in, not
+     * that they are. Membership stays the thing that decides, exactly as it
+     * does for everybody else — which is why a public channel gives an outsider
+     * nothing here. Public means public within the workspace that owns it, and
+     * a share is not a merger of the two.
+     */
+    private function reachesThroughShare(User $user, Channel $channel): bool
+    {
+        if ($channel->externalShareFor($user) === null) {
+            return false;
         }
 
         return $channel->members()->whereKey($user->id)->exists();
@@ -120,7 +140,33 @@ class ChannelPolicy
             return false;
         }
 
-        return $channel->members()->whereKey($user->id)->exists();
+        if (! $channel->members()->whereKey($user->id)->exists()) {
+            return false;
+        }
+
+        /*
+         * Anybody from the workspace that owns the channel is done here.
+         *
+         * Somebody reaching in from another workspace has a second gate: the
+         * arrangement between the two has to be live and it has to allow
+         * writing. A share that only grants reading shuts replies and
+         * reactions along with new messages, which is the point — "may read,
+         * may not write" would be a strange promise if the other side could
+         * still put a thumbs-up on everything.
+         *
+         * Asked by workspace id rather than through the channel's workspace
+         * relation, and in this order rather than the other way round. Both are
+         * for the same caller: broadcasting writes to forty channels at once
+         * with nothing eager loaded, so reaching for a relation here would be a
+         * lazy load — which this application refuses outright — and looking for
+         * a share first would be a query per channel to learn that a table most
+         * installations never write is still empty.
+         */
+        if ($user->belongsToWorkspace($channel->workspace_id)) {
+            return true;
+        }
+
+        return $channel->externalShareFor($user)?->permitsPosting() ?? false;
     }
 
     /**
@@ -226,6 +272,21 @@ class ChannelPolicy
      */
     public function viewMembers(User $user, Channel $channel): bool
     {
+        /*
+         * Somebody from a workspace this channel was shared with is asked a
+         * different question. SeeMembers is an ability of the owning workspace
+         * and they are not in it, so allows() would refuse them out of hand —
+         * and a shared channel whose participants are invisible to one of the
+         * two sides is one where you cannot tell who you are talking to.
+         *
+         * What they get is this channel's members and nothing beyond it. The
+         * search over the whole workspace sits behind addMembers() below, which
+         * refuses them for exactly that reason.
+         */
+        if (! $user->belongsToWorkspace($channel->workspace_id)) {
+            return $this->view($user, $channel);
+        }
+
         if (! $channel->workspace->allows($user, WorkspaceAbility::SeeMembers)) {
             return false;
         }
@@ -247,6 +308,21 @@ class ChannelPolicy
     public function addMembers(User $user, Channel $channel): bool
     {
         if ($channel->isDirect() || $channel->archived_at !== null) {
+            return false;
+        }
+
+        /*
+         * Not from the other side of a share, whatever standing they have at
+         * home. The candidate list behind this button is the owning
+         * workspace's member directory, and handing an outside participant a
+         * search box over the host's staff would leak more than the channel
+         * they were let into.
+         *
+         * Their own colleagues come in through the share instead, added by
+         * whoever runs their workspace — see AddSharedChannelMembers, which
+         * only ever offers people from that workspace.
+         */
+        if (! $user->belongsToWorkspace($channel->workspace_id)) {
             return false;
         }
 

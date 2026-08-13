@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\ContractDocumentController;
 use App\Http\Controllers\ContractSignController;
 use App\Http\Controllers\CustomEmojiController;
 use App\Http\Controllers\IndexingController;
@@ -191,6 +192,16 @@ Route::prefix('ondertekenen/{token}')
             ->name('contracts.sign.signature.show');
 
         /*
+         * The mark of somebody who signed before this person, so their page can
+         * show the contract as it now reads. Reached with the reader's own
+         * token and the other signer's id — never with the other signer's
+         * token, which is permission to sign as them.
+         */
+        Route::get('getekend/{signer}/{kind}', [ContractSignController::class, 'signerMark'])
+            ->middleware('throttle:60,1')
+            ->name('contracts.sign.mark.show');
+
+        /*
          * The two endings. Throttled hardest of everything here, and not
          * because they are expensive: they are the requests that cannot be
          * taken back, and a stream of them is either a mistake or somebody
@@ -213,6 +224,23 @@ Route::prefix('ondertekenen/{token}')
             ->middleware('throttle:20,1')
             ->name('contracts.sign.copy');
     });
+
+/**
+ * The signed copy, fetched by a system we sent a webhook to.
+ *
+ * Outside auth like the signing pages above, and with the same kind of
+ * credential in the address — except that here it is a signature Laravel made
+ * rather than a token we stored, so nothing has to be looked up and nothing can
+ * be guessed. The `signed` middleware refuses a URL that was edited or has run
+ * out; DeliverContractWebhookJob is the only place that mints one, and gives it
+ * a week.
+ *
+ * Throttled like the other endpoint that hands over a whole PDF: a valid link is
+ * still a link somebody could sit and refresh.
+ */
+Route::get('contracten/{contract}/document', ContractDocumentController::class)
+    ->middleware(['signed', 'throttle:20,1'])
+    ->name(ContractDocumentController::ROUTE);
 
 /**
  * Picking up a secret somebody sent you.

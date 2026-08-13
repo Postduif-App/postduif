@@ -6,6 +6,7 @@ use App\Actions\Workspace\BuildThemeStyles;
 use App\Enums\Availability;
 use App\Enums\WorkspaceAbility;
 use App\Enums\WorkspaceFont;
+use App\Features\Contracts as ContractsFeature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Lang;
@@ -130,6 +131,18 @@ class HandleInertiaRequests extends Middleware
                 'canManageWorkflows' => $user !== null
                     && $workspace !== null
                     && $user->can('manageWorkflows', $workspace),
+                /*
+                 * And the same question for the contract webhooks, for exactly
+                 * the same reason: that screen answers 404 where contracts are
+                 * switched off, and a link that refuses to open is worse than
+                 * no link. Asked as two conditions rather than through a policy
+                 * method because there is nothing more to it than "runs the
+                 * workspace" and "has contracts" — see
+                 * ContractWebhookController, which asks the same two.
+                 */
+                'canManageContractWebhooks' => $workspace !== null
+                    && ($role?->allows(WorkspaceAbility::ManageWorkspace) ?? false)
+                    && $workspace->hasFeature(ContractsFeature::class),
                 // The role itself, so a screen can say "you are here as a
                 // guest" without inferring it from a handful of false flags.
                 // Every actual permission still comes from those flags — this

@@ -96,7 +96,7 @@ class ChannelMemberController extends Controller
         Channel $channel,
         User $user,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($workspace->hasMember($request->user()), 403);
         $this->authorize('removeMember', [$channel, $user]);
 
@@ -111,7 +111,7 @@ class ChannelMemberController extends Controller
         Channel $channel,
         string $ability,
     ): void {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($workspace->hasMember($request->user()), 403);
         $this->authorize($ability, $channel);
     }

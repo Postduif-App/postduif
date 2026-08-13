@@ -42,9 +42,11 @@ return [
         'emoji' => 'Emoji',
         'theme' => 'Theme',
         'mail' => 'Email',
+        'mail_texts' => 'Mail texts',
         'channels' => 'Channels',
         'members' => 'Members',
         'invitations' => 'Invitations',
+        'contract_webhooks' => 'Contract webhooks',
     ],
 
     'actions' => [
@@ -171,6 +173,68 @@ return [
         'revoked_toast' => 'Token withdrawn.',
         'api_endpoint' => 'API address',
         'copy_api_endpoint' => 'Copy API address',
+
+        /*
+         * Narrowing a token. Chosen when it is made and not afterwards: a token
+         * that widens or narrows later is a token nobody can say what it was
+         * allowed to do at the moment it was pasted somewhere.
+         */
+        'workspace' => 'Workspace',
+        'workspace_all' => 'All my workspaces',
+        'workspace_hint' => 'Pick one if this token is for a single workspace. Leave that workspace and the token stops working.',
+        'scopes' => 'Extra rights',
+        'scopes_hint' => 'With nothing ticked this token can do what you can do in the chat: read, post and set your status.',
+        'scope_contracts' => 'Contracts',
+        'scope_contracts_hint' => 'Fetching contracts and sending them out to be signed. The latter mails people outside Postduif.',
+        'for_workspace' => ':workspace only',
+        'for_all_workspaces' => 'all workspaces',
+    ],
+
+    'contract_webhooks' => [
+        'title' => 'Contract webhooks',
+        'description' => 'Let another system know when something happens to a contract',
+        'intro' => 'We POST to the address you give us, with a JSON message about the contract. Every message carries a signature in the X-Postduif-Signature header, made with the secret below — check it at the other end, or anybody can pretend to be us.',
+        'new' => 'New webhook',
+        'name' => 'Name',
+        'name_placeholder' => 'Where does this go? For example: Accounting',
+        'url' => 'Address',
+        'url_placeholder' => 'https://yoursystem.com/webhooks/contracts',
+        'url_hint' => 'Has to be reachable from outside: addresses inside our own network are refused.',
+        'events' => 'About what',
+        'events_hint' => 'Pick at least one event. Without a tick, nothing is ever sent.',
+        'event_signed' => 'Somebody signed',
+        'event_signed_hint' => 'Once per signer, the last one included.',
+        'event_declined' => 'Somebody refused',
+        'event_declined_hint' => 'With the reason, where one was given.',
+        'event_completed' => 'The contract is settled',
+        'event_completed_hint' => 'Everybody has answered and the signed PDF is ready. This message carries a temporary download link.',
+        'create' => 'Create',
+        'empty' => 'No webhooks yet',
+        'empty_hint' => 'Create one if another system needs to know what happens to your contracts.',
+        'secret' => 'Secret',
+        'copy_secret' => 'Copy secret',
+        'copy_url' => 'Copy address',
+        'rotate' => 'New secret',
+        'rotate_named' => 'New secret for :name',
+        'rotate_question' => 'New secret for :name?',
+        'rotate_explanation' => 'The old secret stops working straight away. Messages still go out, but the receiver will refuse them until you have entered the new secret there.',
+        'enable' => 'Switch on',
+        'disable' => 'Switch off',
+        'disabled' => 'off',
+        'delete' => 'Delete',
+        'delete_named' => 'Delete :name',
+        'delete_question' => 'Delete :name?',
+        'delete_explanation' => 'This address hears nothing from us afterwards. To stop it for a while, switch it off rather than throw it away.',
+        'never_delivered' => 'nothing sent yet',
+        'last_delivered' => 'last delivered :moment',
+        'last_failed' => 'last attempt failed :moment',
+        'last_status' => 'status :status',
+        'too_many' => 'More than :count webhooks per workspace is not possible.',
+        'created_toast' => 'Webhook created. Copy the secret into the other system.',
+        'rotated_toast' => 'New secret created. Copy it into the other system.',
+        'enabled_toast' => 'Webhook is on again.',
+        'disabled_toast' => 'Webhook is off.',
+        'deleted_toast' => 'Webhook deleted.',
     ],
 
     'workspace' => [
@@ -197,6 +261,27 @@ return [
     ],
 
     'mail' => [
+        /*
+         * The other direction: post coming in to the workspace. Deliberately in
+         * the same words as the rest of the screen — "where does mail arrive"
+         * is one question to a beheerder, not two systems.
+         */
+        'inbound' => [
+            'title' => 'Receiving post',
+            'description' => 'Let e-mail to your address arrive as a ticket in a channel. Replies to such a ticket come back as comments on the same ticket.',
+            'no_channels' => 'This needs tickets switched on for the workspace, and a channel that keeps them.',
+            'channel_label' => 'Channel',
+            'channel_hint' => 'Where new tickets from incoming post end up.',
+            'channel_none' => 'Nowhere — do not receive post',
+            'address_label' => 'Address that forwards here',
+            'address_hint' => 'The address people write to. We use it to recognise replies: a ticket gets the same address with +t<number> in it.',
+            'save' => 'Save',
+            'roll' => 'Make a new link',
+            'url_heading' => 'Delivery link',
+            'url_once' => 'Paste this at your mail provider as the destination for incoming post. You will not see it again.',
+            'url_hidden' => 'The delivery link was made earlier and is no longer shown. Make a new one if you have lost it — the old one then stops working.',
+            'copy' => 'Copy',
+        ],
         'head' => 'Workspace — email',
         'title' => 'Email',
         'description' => 'Where the mail from :workspace comes from',
@@ -336,6 +421,8 @@ return [
         'choose' => 'Choose…',
         'optional' => '(may be empty)',
         'channel_from_variable' => 'A variable (channel known only when it runs)',
+        'record_from_trigger' => 'Whatever the trigger brought',
+        'record_from_variable' => 'A variable (from an earlier step, for instance)',
         'channel_variable_hint' => 'A channel name or id, for example {{ trigger.channel.name }}. Looked up inside this workspace.',
         'insert_variable' => 'Insert data…',
         'words_placeholder' => 'outage, broken',

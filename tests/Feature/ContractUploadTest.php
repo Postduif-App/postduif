@@ -90,6 +90,23 @@ it('opens a draft on the uploaded document', function () {
         ->and($contract->hasSource())->toBeTrue();
 });
 
+it('lands on the contract page, where the signers get their names', function () {
+    [$user, $workspace] = contractSenderInWorkspace();
+
+    $response = actingAs($user)->post(route('chat.contracts.store', $workspace), [
+        'title' => 'Huurovereenkomst 2026',
+        'file' => uploadedPdf(),
+    ]);
+
+    /*
+     * Not the editor, which is the tempting answer. "In te vullen door" is a
+     * choice between numbers until the signers have names, so laying out the
+     * boxes first means holding in your head which number is whom — and who
+     * this is going to is already in mind at the moment somebody picks a PDF.
+     */
+    $response->assertRedirect(route('chat.contracts.show', [$workspace, Contract::sole()]));
+});
+
 it('keeps the name the author uploaded, although the bytes are a rewrite', function () {
     [$user, $workspace] = contractSenderInWorkspace();
 

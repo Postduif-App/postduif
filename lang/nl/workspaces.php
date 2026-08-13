@@ -1,21 +1,15 @@
 <?php
 
 /*
- * Making a workspace of your own — the screen somebody lands on straight after
- * signing up, when they belong nowhere yet.
+ * The screen somebody lands on when they belong to no workspace at all —
+ * everybody who has just signed up, until a beheerder puts them in one.
  */
 
 return [
-    'created' => ':name staat klaar.',
-
-    'create' => [
-        'head' => 'Workspace aanmaken',
-        'title' => 'Maak je workspace',
-        'description' => 'Een plek voor je team, je klanten en het werk ertussenin.',
-        'description_first' => 'Nog één ding: geef je workspace een naam. Daarna kun je aan de slag.',
-        'name' => 'Naam',
-        'name_placeholder' => 'De naam van je bedrijf of team',
-        'name_hint' => 'Het adres leiden we hiervan af. Je kunt beide later aanpassen.',
-        'submit' => 'Aanmaken',
+    'none' => [
+        'head' => 'Nog geen workspace',
+        'title' => 'Je hoort nog nergens bij',
+        'description' => 'Je account staat klaar, alleen je workspace nog niet.',
+        'body' => 'Workspaces worden door een beheerder aangemaakt. Vraag of je aan de juiste workspace gekoppeld wordt; daarna staat alles hier voor je klaar.',
     ],
 ];

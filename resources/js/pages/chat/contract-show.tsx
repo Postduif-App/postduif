@@ -6,14 +6,17 @@ import {
     Check,
     Clock,
     Copy,
+    CopyPlus,
     Download,
     Eye,
     FileText,
+    Mail,
     Pencil,
     Plus,
     RefreshCw,
     Send,
     Share2,
+    Trash2,
     Users,
     X,
 } from 'lucide-react';
@@ -26,25 +29,55 @@ import { CreateChannelDialog } from '@/components/chat/create-channel-dialog';
 import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserMenu } from '@/components/user-menu-content';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import {
     cancel,
+    destroy as destroyContract,
+    duplicate as duplicateContract,
     edit,
+    index as contractsIndex,
     post as postToChannel,
     remind,
     retry,
+    copy as sendSignedCopy,
     send as sendContract,
     show,
     signers as signersOf,
+    template as templateRoutes,
 } from '@/routes/chat/contracts';
+/*
+ * The nested one is imported on its own. The bundle above re-exports the
+ * template route as a bare function, and the sign-along address hangs off the
+ * generated sub-module rather than off that.
+ */
+import { signAlong as signAlongRoute } from '@/routes/chat/contracts/template';
 import type { Auth } from '@/types/auth';
 import type {
     ActiveThread,
@@ -69,6 +102,8 @@ interface SignerRow {
     declinedAt: string | null;
     declineReason: string | null;
     remindedAt: string | null;
+    /** When this person was posted the finished document. */
+    copySentAt: string | null;
     state: SignerState;
 }
 
@@ -89,10 +124,39 @@ interface ContractDetail {
     /** Whether the finished document is ready, coming, or went wrong. */
     signedCopyState: 'ready' | 'failed' | 'pending' | 'none';
     sourceUrl: string;
+    /** The finished document as a file to keep. */
     downloadUrl: string | null;
+    /** The same document, to read in a tab rather than to file away. */
+    signedCopyUrl: string | null;
     /** Where the viewer signs, when they are on the list themselves. */
     mySignUrl: string | null;
     signers: SignerRow[];
+}
+
+/**
+ * Everything that is true of a mould and of nothing else, or null when this row
+ * is an ordinary contract.
+ *
+ * The blockers arrive as a list of reasons rather than as a boolean with the
+ * reasons worked out here. Whether a template may be used is the server's
+ * question — it is the thing that has to refuse an API call — and a screen that
+ * re-derived the answer would be a second opinion waiting to disagree with the
+ * first.
+ */
+interface TemplateDetail {
+    /** How many people it will be sent to. Null while nobody has said. */
+    requiredSigners: number | null;
+    /** Those recipients plus the author, when they sign along. */
+    partyCount: number;
+    signsAlong: boolean;
+    authorSigned: boolean;
+    /** The author's own signing page, while they still have to sign. */
+    signUrl: string | null;
+    isReadyToSend: boolean;
+    blockers: ('document' | 'recipients' | 'fields' | 'signature')[];
+    maxRecipients: number;
+    /** The fewest the boxes already drawn will fit in. */
+    minRecipients: number;
 }
 
 interface ContractShowProps {
@@ -107,12 +171,27 @@ interface ContractShowProps {
     scheduledBroadcasts: ScheduledBroadcast[];
     workspaces: WorkspaceOption[];
     contract: ContractDetail;
+    /** Set only when this row is kept to be sent again rather than sent. */
+    template: TemplateDetail | null;
     can: {
         remind: boolean;
         cancel: boolean;
         update: boolean;
+        /** Throwing it away for good, which a finished contract never allows. */
+        delete: boolean;
         /** A draft still waiting for its signers, rather than a right of its own. */
         send: boolean;
+        /**
+         * Posting the finished document round again. False until there is one
+         * and somebody actually signed it.
+         */
+        sendCopy: boolean;
+        /**
+         * Making a fresh draft of this same document for other people. True
+         * whatever the status is — it is the one thing left to do with a
+         * contract that has been signed.
+         */
+        duplicate: boolean;
     };
     members: { id: number; name: string; email: string }[];
     workspaceSlug: string;
@@ -171,6 +250,7 @@ export default function ContractShow({
     scheduledBroadcasts,
     workspaces,
     contract,
+    template,
     can,
     members,
     workspaceSlug,
@@ -179,10 +259,13 @@ export default function ContractShow({
     const formats = useFormats();
 
     const [searchOpen, setSearchOpen] = useState(false);
+    useCommandPaletteShortcut(setSearchOpen);
     const [createOpen, setCreateOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
     const [broadcastOpen, setBroadcastOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [duplicateOpen, setDuplicateOpen] = useState(false);
 
     const moment = (value: string | null) =>
         value === null ? null : formats.dateTime.format(new Date(value));
@@ -214,7 +297,7 @@ export default function ContractShow({
                 <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                     <ChannelMenuButton />
                     <Link
-                        href={`/app/${workspaceSlug}`}
+                        href={contractsIndex.url(workspaceSlug)}
                         aria-label={t('contracts.editor.back')}
                         className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
                     >
@@ -225,13 +308,32 @@ export default function ContractShow({
                         <h1 className="truncate text-sm font-semibold">
                             {contract.title}
                         </h1>
+                        {/*
+                            A template has no tally to give. "0 van de 1
+                            getekend" would be counting the one row it may have
+                            against a roster that does not exist, so it says what
+                            it is and how many parties it is drawn for instead.
+                        */}
                         <p className="truncate text-xs text-muted-foreground">
-                            {contract.statusLabel}
-                            {' · '}
-                            {t('contracts.detail.tally', {
-                                done: contract.signedCount,
-                                total: contract.signerCount,
-                            })}
+                            {template === null ? (
+                                <>
+                                    {contract.statusLabel}
+                                    {' · '}
+                                    {t('contracts.detail.tally', {
+                                        done: contract.signedCount,
+                                        total: contract.signerCount,
+                                    })}
+                                </>
+                            ) : (
+                                <>
+                                    {t('contracts.template.title')}
+                                    {' · '}
+                                    {tChoice(
+                                        'contracts.template.parties',
+                                        template.partyCount,
+                                    )}
+                                </>
+                            )}
                         </p>
                     </div>
 
@@ -275,6 +377,24 @@ export default function ContractShow({
                         )}
 
                         {/*
+                            The way to reuse a contract that can no longer be
+                            changed, which after the first signature is every
+                            contract. It leaves this one alone and starts a new
+                            draft — so it sits with the harmless buttons, on
+                            this side of the two destructive ones.
+                        */}
+                        {can.duplicate && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setDuplicateOpen(true)}
+                            >
+                                <CopyPlus className="size-4" />
+                                {t('contracts.detail.duplicate')}
+                            </Button>
+                        )}
+
+                        {/*
                             Withdrawing stays available on a half-signed
                             contract, where editing does not: stopping something
                             is not the same as changing it, and that is exactly
@@ -300,6 +420,26 @@ export default function ContractShow({
                                 {t('contracts.detail.cancel')}
                             </Button>
                         )}
+
+                        {/*
+                            Beside withdrawing rather than instead of it, and
+                            behind a confirmation the withdraw button does not
+                            have: intrekken is a step in a contract's life and
+                            can be explained to whoever holds a link, while this
+                            takes the document off the disk and leaves that
+                            person with nothing to read at all.
+                        */}
+                        {can.delete && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteOpen(true)}
+                            >
+                                <Trash2 className="size-4" />
+                                {t('contracts.detail.delete')}
+                            </Button>
+                        )}
                     </div>
                 </header>
 
@@ -307,7 +447,9 @@ export default function ContractShow({
                     <div className="mx-auto max-w-3xl space-y-8 px-4 py-6">
                         <section className="space-y-2">
                             <p className="text-sm text-muted-foreground">
-                                {contract.statusDescription}
+                                {template === null
+                                    ? contract.statusDescription
+                                    : t('contracts.template.lead')}
                             </p>
 
                             {contract.message && (
@@ -328,17 +470,34 @@ export default function ContractShow({
                                         contract.pageCount,
                                     )}
                                 />
-                                <Fact
-                                    label={t('contracts.detail.expires_at')}
-                                    value={
-                                        moment(contract.expiresAt) ??
-                                        t('contracts.detail.no_deadline')
-                                    }
-                                />
-                                <Fact
-                                    label={t('contracts.detail.completed_at')}
-                                    value={moment(contract.completedAt)}
-                                />
+                                {/*
+                                    A template never runs out and is never
+                                    finished, so both of these would be a row
+                                    saying "nooit" about something that cannot
+                                    happen — see CreateContract, which refuses to
+                                    put a deadline on one.
+                                */}
+                                {template === null && (
+                                    <>
+                                        <Fact
+                                            label={t(
+                                                'contracts.detail.expires_at',
+                                            )}
+                                            value={
+                                                moment(contract.expiresAt) ??
+                                                t(
+                                                    'contracts.detail.no_deadline',
+                                                )
+                                            }
+                                        />
+                                        <Fact
+                                            label={t(
+                                                'contracts.detail.completed_at',
+                                            )}
+                                            value={moment(contract.completedAt)}
+                                        />
+                                    </>
+                                )}
                             </dl>
                         </section>
 
@@ -349,7 +508,7 @@ export default function ContractShow({
                             withdraw away from the person most likely to need it
                             — so the way to their own page is a link.
                         */}
-                        {contract.mySignUrl !== null && (
+                        {contract.mySignUrl !== null && template === null && (
                             <a
                                 href={contract.mySignUrl}
                                 className={cn(
@@ -360,6 +519,22 @@ export default function ContractShow({
                                 <Pencil className="size-4" />
                                 {t('contracts.detail.sign_yourself')}
                             </a>
+                        )}
+
+                        {/*
+                            The panel that stands in for the send panel. A
+                            template is never sent, so what it asks for instead
+                            is the two things a roster would otherwise have
+                            settled: how many people, and whether the author is
+                            one of them.
+                        */}
+                        {template !== null && (
+                            <TemplatePanel
+                                contractId={contract.id}
+                                template={template}
+                                canEdit={can.update}
+                                workspaceSlug={workspaceSlug}
+                            />
                         )}
 
                         {can.send && (
@@ -374,27 +549,37 @@ export default function ContractShow({
                             />
                         )}
 
-                        <section className="space-y-1">
-                            <h2 className="text-xs font-semibold text-muted-foreground uppercase">
-                                {t('contracts.detail.people')}
-                            </h2>
+                        {/*
+                            Left out entirely on a template with nobody on it.
+                            "Er zijn nog geen ondertekenaars uitgenodigd" is a
+                            true sentence about a contract that is waiting to go
+                            out and a misleading one about a mould, which is
+                            never going to invite anybody: the panel above is
+                            where its parties are decided.
+                        */}
+                        {(template === null || contract.signers.length > 0) && (
+                            <section className="space-y-1">
+                                <h2 className="text-xs font-semibold text-muted-foreground uppercase">
+                                    {t('contracts.detail.people')}
+                                </h2>
 
-                            <ul className="divide-y rounded-lg border">
-                                {contract.signers.map((signer) => (
-                                    <SignerLine
-                                        key={signer.email}
-                                        signer={signer}
-                                        moment={moment}
-                                    />
-                                ))}
+                                <ul className="divide-y rounded-lg border">
+                                    {contract.signers.map((signer) => (
+                                        <SignerLine
+                                            key={signer.email}
+                                            signer={signer}
+                                            moment={moment}
+                                        />
+                                    ))}
 
-                                {contract.signers.length === 0 && (
-                                    <li className="px-4 py-6 text-sm text-muted-foreground">
-                                        {t('contracts.detail.nobody')}
-                                    </li>
-                                )}
-                            </ul>
-                        </section>
+                                    {contract.signers.length === 0 && (
+                                        <li className="px-4 py-6 text-sm text-muted-foreground">
+                                            {t('contracts.detail.nobody')}
+                                        </li>
+                                    )}
+                                </ul>
+                            </section>
+                        )}
 
                         <section className="flex flex-wrap items-center gap-2 border-t pt-4">
                             <a
@@ -410,16 +595,72 @@ export default function ContractShow({
                                 {t('contracts.detail.document')}
                             </a>
 
+                            {/*
+                                Reading it and keeping it are two errands, and
+                                somebody who only wants to check what the
+                                finished document says should not end up with a
+                                file in their downloads folder to prove it. One
+                                route and one policy behind both — see
+                                ContractController::download.
+                            */}
+                            {contract.signedCopyUrl !== null && (
+                                <a
+                                    href={contract.signedCopyUrl}
+                                    className={cn(
+                                        buttonVariants({ size: 'sm' }),
+                                    )}
+                                >
+                                    <Eye className="size-4" />
+                                    {t('contracts.detail.view_signed')}
+                                </a>
+                            )}
+
                             {contract.downloadUrl !== null && (
                                 <a
                                     href={contract.downloadUrl}
                                     className={cn(
-                                        buttonVariants({ size: 'sm' }),
+                                        buttonVariants({
+                                            variant: 'outline',
+                                            size: 'sm',
+                                        }),
                                     )}
                                 >
                                     <Download className="size-4" />
                                     {t('contracts.detail.signed_copy')}
                                 </a>
+                            )}
+
+                            {/*
+                                Sending it round again, by hand.
+
+                                It has already gone out by itself the moment the
+                                copy was composed — see
+                                RenderSignedContractJob — so this button is not
+                                the way people normally get their document. It is
+                                the answer to "ik heb hem nooit ontvangen", which
+                                is a thing that happens to mail, and the useful
+                                answer to that is to send it rather than to look
+                                up whether it was sent.
+                            */}
+                            {can.sendCopy && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title={t('contracts.detail.send_copy_hint')}
+                                    onClick={() =>
+                                        router.post(
+                                            sendSignedCopy.url({
+                                                workspace: workspaceSlug,
+                                                contract: contract.id,
+                                            }),
+                                            {},
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    <Mail className="size-4" />
+                                    {t('contracts.detail.send_copy')}
+                                </Button>
                             )}
 
                             {/*
@@ -479,6 +720,58 @@ export default function ContractShow({
                 </div>
             </main>
 
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{contract.title}</AlertDialogTitle>
+                        {/*
+                            Two sentences, chosen by what is actually being
+                            thrown away. A finished contract is the only thing
+                            here somebody outside is relying on, and the right
+                            to delete one is handed out on purpose — so the
+                            person who has it is told exactly what goes, rather
+                            than reading the same line that covers a draft
+                            nobody ever sent.
+                        */}
+                        <AlertDialogDescription>
+                            {t(
+                                contract.status === 'completed'
+                                    ? 'contracts.detail.delete_confirm_signed'
+                                    : 'contracts.detail.delete_confirm',
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t('settings.actions.cancel')}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className={buttonVariants({
+                                variant: 'destructive',
+                            })}
+                            onClick={() =>
+                                router.delete(
+                                    destroyContract.url({
+                                        workspace: workspaceSlug,
+                                        contract: contract.id,
+                                    }),
+                                )
+                            }
+                        >
+                            {t('contracts.detail.delete')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <DuplicateDialog
+                open={duplicateOpen}
+                onOpenChange={setDuplicateOpen}
+                contractId={contract.id}
+                title={contract.title}
+                workspaceSlug={workspaceSlug}
+            />
+
             <SearchDialog
                 workspace={workspace}
                 channels={channels}
@@ -533,6 +826,224 @@ export default function ContractShow({
                 onOpenChange={setBroadcastOpen}
             />
         </div>
+    );
+}
+
+/**
+ * What a template has instead of a send panel.
+ *
+ * The two questions a roster would otherwise have answered, and they are asked
+ * here because a template cannot answer them the ordinary way: the people it
+ * will go to do not exist yet, so all it can say is how many of them there will
+ * be, and whether the author stands at the head of the queue.
+ *
+ * The reasons it is not ready are spelled out rather than left to a greyed-out
+ * button. A template that cannot be used is the most confusing thing on this
+ * screen — nothing about the document looks wrong — and the four things that can
+ * be missing are all in different places: the PDF, the number here, the boxes in
+ * the editor, and a signature on a page of its own.
+ *
+ * Two saves rather than one form, because the two are governed differently. The
+ * number is an ordinary edit and stops being allowed the moment the author signs;
+ * the switch has to keep working after that, since taking your own signature back
+ * off is the only way to a template you can edit again.
+ */
+function TemplatePanel({
+    contractId,
+    template,
+    /** False once the author has signed — see ContractPolicy::update. */
+    canEdit,
+    workspaceSlug,
+}: {
+    contractId: string;
+    template: TemplateDetail;
+    canEdit: boolean;
+    workspaceSlug: string;
+}) {
+    const { t, tChoice } = useTranslate();
+
+    /*
+     * Held as the string the box contains rather than as a number. Somebody
+     * clearing the field to type "12" passes through "" on the way, and a state
+     * that insisted on a number would put a 0 or a 1 back under their cursor.
+     */
+    const [recipients, setRecipients] = useState(
+        template.requiredSigners === null
+            ? ''
+            : String(template.requiredSigners),
+    );
+    const [busy, setBusy] = useState(false);
+
+    const wanted = Number(recipients);
+
+    const valid =
+        recipients !== '' &&
+        Number.isInteger(wanted) &&
+        wanted >= template.minRecipients &&
+        wanted <= template.maxRecipients;
+
+    const saveRecipients = () => {
+        setBusy(true);
+
+        router.put(
+            templateRoutes.url({
+                workspace: workspaceSlug,
+                contract: contractId,
+            }),
+            { required_signers: wanted },
+            { preserveScroll: true, onFinish: () => setBusy(false) },
+        );
+    };
+
+    const toggleSigningAlong = (wantedAlong: boolean) => {
+        setBusy(true);
+
+        router.put(
+            signAlongRoute.url({
+                workspace: workspaceSlug,
+                contract: contractId,
+            }),
+            { signs_along: wantedAlong },
+            { preserveScroll: true, onFinish: () => setBusy(false) },
+        );
+    };
+
+    return (
+        <section className="space-y-4 rounded-lg border p-4">
+            <div className="flex flex-wrap items-center gap-2">
+                <h2 className="mr-auto text-xs font-semibold text-muted-foreground uppercase">
+                    {t('contracts.template.title')}
+                </h2>
+
+                <span
+                    className={cn(
+                        'text-xs font-medium',
+                        template.isReadyToSend
+                            ? 'text-emerald-600'
+                            : 'text-muted-foreground',
+                    )}
+                >
+                    {t(
+                        template.isReadyToSend
+                            ? 'contracts.template.ready'
+                            : 'contracts.template.not_ready',
+                    )}
+                </span>
+            </div>
+
+            {/*
+                Every reason at once rather than the first one. Somebody who has
+                to upload a document, set a number and draw the boxes should be
+                able to see all three from here instead of discovering them one
+                refusal at a time.
+            */}
+            {template.blockers.length > 0 && (
+                <div className="space-y-1 rounded-md border border-dashed px-3 py-2">
+                    <p className="text-xs font-medium">
+                        {t('contracts.template.missing')}
+                    </p>
+                    <ul className="list-inside list-disc text-xs text-muted-foreground">
+                        {template.blockers.map((reason) => (
+                            <li key={reason}>
+                                {t(`contracts.template.blockers.${reason}`)}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <div className="grid gap-1 sm:max-w-xs">
+                <Label htmlFor="template-recipients" className="text-xs">
+                    {t('contracts.template.recipients')}
+                </Label>
+
+                <div className="flex items-center gap-2">
+                    <Input
+                        id="template-recipients"
+                        type="number"
+                        min={template.minRecipients}
+                        max={template.maxRecipients}
+                        value={recipients}
+                        disabled={!canEdit}
+                        onChange={(event) => setRecipients(event.target.value)}
+                    />
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        disabled={busy || !valid || !canEdit}
+                        onClick={saveRecipients}
+                    >
+                        <Users className="size-4" />
+                        {t('contracts.template.recipients_save')}
+                    </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                    {t('contracts.template.recipients_hint')}
+                </p>
+
+                {/*
+                    Only worth saying once it is actually a limit. On a template
+                    whose boxes all belong to the first party the floor is one,
+                    and announcing that would be explaining a rule nobody can
+                    break.
+                */}
+                {template.minRecipients > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                        {t('contracts.template.recipients_floor', {
+                            count: template.minRecipients,
+                        })}
+                    </p>
+                )}
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+                <label className="flex items-start gap-2 text-sm">
+                    <Checkbox
+                        checked={template.signsAlong}
+                        disabled={busy}
+                        onCheckedChange={(checked) =>
+                            toggleSigningAlong(checked === true)
+                        }
+                    />
+                    <span>
+                        {t('contracts.template.sign_along')}
+                        <span className="block text-xs text-muted-foreground">
+                            {t('contracts.template.sign_along_hint')}
+                        </span>
+                    </span>
+                </label>
+
+                {/*
+                    The way to the author's own signing page — the ordinary one,
+                    the same page a stranger would see. A signature made anywhere
+                    else would be recorded differently from the ones it is going
+                    to be copied beside.
+                */}
+                {template.signUrl !== null && (
+                    <a
+                        href={template.signUrl}
+                        className={cn(buttonVariants({ size: 'sm' }), 'w-fit')}
+                    >
+                        <Pencil className="size-4" />
+                        {t('contracts.template.sign_now')}
+                    </a>
+                )}
+
+                {template.authorSigned && (
+                    <p className="text-xs text-muted-foreground">
+                        {t('contracts.template.signed')}{' '}
+                        {t('contracts.template.signed_locks')}
+                    </p>
+                )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+                {tChoice('contracts.template.parties', template.partyCount)}
+            </p>
+        </section>
     );
 }
 
@@ -902,6 +1413,133 @@ function SendPanel({
 }
 
 /**
+ * Making a fresh draft of this same document, for other people.
+ *
+ * A dialog rather than a button that acts on the spot, and the name is the whole
+ * reason. A contract is named once and never renamed — there is no screen for it
+ * — so the moment of copying is the only chance anybody gets to say which
+ * exemplaar this is. "(kopie)" is offered as a starting point rather than
+ * imposed, because a list of five contracts all ending in "(kopie)" is the same
+ * problem one step later.
+ *
+ * The original is not mentioned in the confirmation on purpose: nothing happens
+ * to it, and a dialog that reassures you about a danger that does not exist is a
+ * dialog that teaches people to read the next one less carefully.
+ */
+function DuplicateDialog({
+    open,
+    onOpenChange,
+    contractId,
+    title,
+    workspaceSlug,
+}: {
+    open: boolean;
+    onOpenChange: (next: boolean) => void;
+    contractId: string;
+    /** The original's name, which the suggestion is built from. */
+    title: string;
+    workspaceSlug: string;
+}) {
+    const { t } = useTranslate();
+
+    const suggestion = t('contracts.detail.duplicate_default', { title });
+
+    /*
+     * Null means "nog niets ingetypt", and the suggestion is used instead.
+     *
+     * Held that way round rather than seeding the state with the suggestion,
+     * because of where this dialog ends up: duplicating navigates to the copy,
+     * which is the same page component, so this component is never unmounted
+     * and its state is never rebuilt. A name seeded once would go on suggesting
+     * "Huurovereenkomst (kopie)" while standing on "Huurovereenkomst (kopie)",
+     * and the second copy would be offered the first one's name.
+     */
+    const [name, setName] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const value = name ?? suggestion;
+
+    /** Shut it, and forget what was typed. */
+    const close = () => {
+        setName(null);
+        onOpenChange(false);
+    };
+
+    const submit = () => {
+        setBusy(true);
+
+        router.post(
+            duplicateContract.url({
+                workspace: workspaceSlug,
+                contract: contractId,
+            }),
+            { title: value },
+            {
+                /*
+                 * Shut on the way out, and only on success.
+                 *
+                 * Not in onFinish, which also runs when the server refused the
+                 * name — closing then would take the message away along with
+                 * the box it belongs to. And not left to the navigation either:
+                 * the copy opens on this same page component, so nothing here
+                 * unmounts and a dialog nobody closed is a dialog still sitting
+                 * over the contract that was just made.
+                 */
+                onSuccess: close,
+                onFinish: () => setBusy(false),
+            },
+        );
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => (next ? onOpenChange(true) : close())}
+        >
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>
+                        {t('contracts.detail.duplicate_title')}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {t('contracts.detail.duplicate_explainer')}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="duplicate-title">
+                        {t('contracts.detail.duplicate_name')}
+                    </Label>
+                    <Input
+                        id="duplicate-title"
+                        value={value}
+                        autoFocus
+                        maxLength={200}
+                        onChange={(event) => setName(event.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {t('contracts.detail.duplicate_name_hint')}
+                    </p>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={close}>
+                        {t('settings.actions.cancel')}
+                    </Button>
+                    <Button
+                        onClick={submit}
+                        disabled={busy || value.trim() === ''}
+                    >
+                        <CopyPlus className="size-4" />
+                        {t('contracts.detail.duplicate_confirm')}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/**
  * The two ways to hand this contract's address to colleagues.
  *
  * Neither invites anybody to sign — the signers hold links of their own. This
@@ -1044,6 +1682,20 @@ function SignerLine({
                     <p className="text-xs text-muted-foreground">
                         {t('contracts.detail.reminded', {
                             date: moment(signer.remindedAt) ?? '',
+                        })}
+                    </p>
+                )}
+
+                {/*
+                    Only for somebody who signed, because they are the only
+                    people this is ever sent to — and it is the answer to "heeft
+                    hij zijn exemplaar wel gehad", which is the question that
+                    reaches for the button below.
+                */}
+                {signer.state === 'signed' && signer.copySentAt !== null && (
+                    <p className="text-xs text-muted-foreground">
+                        {t('contracts.detail.copy_sent', {
+                            date: moment(signer.copySentAt) ?? '',
                         })}
                     </p>
                 )}

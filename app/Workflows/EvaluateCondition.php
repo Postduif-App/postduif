@@ -5,6 +5,9 @@ namespace App\Workflows;
 use App\Enums\WorkflowConditionMatch;
 use App\Enums\WorkflowConditionOperator;
 use App\Enums\WorkflowConditionOutcome;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use Carbon\Exceptions\InvalidFormatException;
 
 /**
  * Decide whether a step gets its turn.
@@ -134,6 +137,7 @@ class EvaluateCondition
     private function compare(WorkflowConditionOperator $operator, mixed $left, string $right): bool
     {
         $subject = $this->flatten($left);
+        $ranking = $this->ranking($subject, $right);
 
         return match ($operator) {
             /*
@@ -147,8 +151,31 @@ class EvaluateCondition
             WorkflowConditionOperator::NotEquals => ! $this->same($subject, $right),
             WorkflowConditionOperator::Contains => $this->holds($subject, $right),
             WorkflowConditionOperator::NotContains => ! $this->holds($subject, $right),
+            WorkflowConditionOperator::StartsWith => $this->begins($subject, $right),
+            WorkflowConditionOperator::EndsWith => $this->ends($subject, $right),
+            WorkflowConditionOperator::IsOneOf => $this->oneOf($subject, $right),
+            WorkflowConditionOperator::IsNoneOf => ! $this->oneOf($subject, $right),
+
+            /*
+             * Null means one of the two sides was not there to compare, and
+             * every one of these then says no. That is the opposite of what an
+             * unreadable operator does a few lines up, and for a different
+             * reason: an operator nobody recognises is our failure and the step
+             * should still run, but "is het aantal groter dan tien" asked about
+             * a path that holds nothing has an answer, and the answer is no.
+             */
+            WorkflowConditionOperator::GreaterThan => $ranking !== null && $ranking > 0,
+            WorkflowConditionOperator::LessThan => $ranking !== null && $ranking < 0,
+            WorkflowConditionOperator::GreaterOrEqual => $ranking !== null && $ranking >= 0,
+            WorkflowConditionOperator::LessOrEqual => $ranking !== null && $ranking <= 0,
+
+            WorkflowConditionOperator::Before => $this->ordered($subject, $right, before: true),
+            WorkflowConditionOperator::After => $this->ordered($subject, $right, before: false),
+
             WorkflowConditionOperator::IsEmpty => $subject === '',
             WorkflowConditionOperator::IsNotEmpty => $subject !== '',
+            WorkflowConditionOperator::IsTrue => $this->truthy($subject),
+            WorkflowConditionOperator::IsFalse => ! $this->truthy($subject),
         };
     }
 
@@ -168,6 +195,125 @@ class EvaluateCondition
     private function holds(string $subject, string $needle): bool
     {
         return $needle !== '' && str_contains(mb_strtolower($subject), mb_strtolower($needle));
+    }
+
+    /** Same emptiness rule as holds(), for the same reason. */
+    private function begins(string $subject, string $needle): bool
+    {
+        return $needle !== '' && str_starts_with(mb_strtolower(trim($subject)), mb_strtolower(trim($needle)));
+    }
+
+    private function ends(string $subject, string $needle): bool
+    {
+        return $needle !== '' && str_ends_with(mb_strtolower(trim($subject)), mb_strtolower(trim($needle)));
+    }
+
+    /**
+     * Whether the value is one of the things on a comma-separated list.
+     *
+     * The alternative to three rules joined by "any of these", written once.
+     * "hoog, urgent" is a condition somebody can read back a month later;
+     * the same thing as an "any" block with two rules in it is a thing they
+     * have to unfold first.
+     *
+     * An empty list holds in nothing, which is what a half-written rule looks
+     * like — and it means "is geen van" passes while somebody is still typing,
+     * rather than switching the step off under them.
+     */
+    private function oneOf(string $subject, string $list): bool
+    {
+        $subject = mb_strtolower(trim($subject));
+
+        foreach (explode(',', $list) as $candidate) {
+            $candidate = mb_strtolower(trim($candidate));
+
+            if ($candidate !== '' && $candidate === $subject) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Where the left side sits relative to the right: below, level or above.
+     *
+     * Null when either side is blank — there is nothing to rank against.
+     *
+     * Two numbers are ranked as numbers, which is the whole reason these
+     * operators exist: as text, "9" comes after "10". Anything else is ranked
+     * as text, so "is groter dan" on two words still answers something
+     * defensible rather than pretending both were nought.
+     */
+    private function ranking(string $subject, string $value): ?int
+    {
+        $subject = trim($subject);
+        $value = trim($value);
+
+        if ($subject === '' || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($subject) && is_numeric($value)) {
+            return (float) $subject <=> (float) $value;
+        }
+
+        return mb_strtolower($subject) <=> mb_strtolower($value);
+    }
+
+    /**
+     * Whether one moment comes before (or after) another.
+     *
+     * Separate from ranking() because dates are the one place where the text a
+     * trigger hands over and the thing it means come apart: "2026-08-13T09:00"
+     * and "vandaag om 9 uur" are the same moment and share no characters.
+     *
+     * Both sides go through Carbon, and both have to survive it. A bare number
+     * is refused before it gets there: Carbon reads "3" as the third of this
+     * month, so a condition that meant "more than three" and picked the wrong
+     * operator would quietly compare against a date nobody wrote.
+     */
+    private function ordered(string $subject, string $value, bool $before): bool
+    {
+        $left = $this->moment($subject);
+        $right = $this->moment($value);
+
+        if ($left === null || $right === null) {
+            return false;
+        }
+
+        return $before ? $left->lt($right) : $left->gt($right);
+    }
+
+    private function moment(string $value): ?CarbonInterface
+    {
+        $value = trim($value);
+
+        if ($value === '' || is_numeric($value)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (InvalidFormatException) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether this reads as a yes.
+     *
+     * Booleans arrive here already turned into "ja" or "yes" by flatten(),
+     * which is why the workspace's own word is on the list beside the ones a
+     * webhook might send. A number is deliberately not on it: 5 is not a yes,
+     * and somebody who means "more than nought" has an operator for that.
+     */
+    private function truthy(string $subject): bool
+    {
+        $subject = mb_strtolower(trim($subject));
+
+        return in_array($subject, ['1', 'true', 'yes', 'ja', 'on', 'waar'], true)
+            || $subject === mb_strtolower(__('workflows.value.yes'));
     }
 
     /**

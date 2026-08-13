@@ -33,6 +33,7 @@ class PresentContractForSigner
      *     signedCount: int,
      *     marks: array<string, string|null>,
      *     fields: list<array<string, mixed>>,
+     *     filled: list<array<string, mixed>>,
      * }
      */
     public function handle(ContractSigner $signer): array
@@ -123,7 +124,150 @@ class PresentContractForSigner
                     'filled' => $value?->filled_at !== null,
                 ];
             })->all(),
+
+            /*
+             * What the people before this person already put down.
+             *
+             * Read-only, and never mixed in with the list above: these are
+             * boxes belonging to somebody else, and a page that let signer two
+             * type into signer one's box would be handing out an edit to a
+             * signature that has already been given.
+             */
+            'filled' => $this->alreadySigned($signer),
         ];
+    }
+
+    /**
+     * The boxes other people have already dealt with, as this page should draw
+     * them.
+     *
+     * Why this is here at all: a contract with three signers used to look
+     * identical to the second and third of them as it did to the first — an
+     * empty document with their own boxes on it. There was no way to tell "ik
+     * ben de eerste" from "de anderen zijn al langs geweest", which is exactly
+     * the thing somebody wants to know before they put their name under it.
+     *
+     * Only from signers who have *signed*. A half-typed draft is somebody
+     * thinking out loud: it can still be cleared, retyped, or end in a refusal,
+     * and showing it to the next person would present a guess as a commitment.
+     * filled_at is the same line drawn per box — see ContractFieldValue.
+     *
+     * Still no names and still no tokens. What is shown is the contract as it
+     * now reads, which is what everybody signing it is entitled to see; who was
+     * asked remains the author's business — see the payload above.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function alreadySigned(ContractSigner $signer): array
+    {
+        $contract = $signer->contract;
+
+        $others = $contract->signers
+            ->filter(fn (ContractSigner $other): bool => $other->id !== $signer->id && $other->hasSigned())
+            ->keyBy('id');
+
+        if ($others->isEmpty()) {
+            return [];
+        }
+
+        /*
+         * Every answer in one query rather than one query per signer: a
+         * contract signed by four people is a page that would otherwise open
+         * with five round trips before it draws anything.
+         */
+        $answers = ContractFieldValue::query()
+            ->whereIn('contract_signer_id', $others->keys()->all())
+            ->whereNotNull('filled_at')
+            ->get()
+            ->groupBy('contract_signer_id');
+
+        $filled = [];
+
+        foreach ($others as $other) {
+            /** @var array<int, ContractFieldValue> $theirs */
+            $theirs = ($answers[$other->id] ?? collect())->keyBy('contract_field_id')->all();
+
+            foreach ($contract->fields as $field) {
+                if (! $field->belongsToSigner($other)) {
+                    continue;
+                }
+
+                $box = $this->filledBox($signer, $field, $other, $theirs[$field->id] ?? null);
+
+                if ($box !== null) {
+                    $filled[] = $box;
+                }
+            }
+        }
+
+        return $filled;
+    }
+
+    /**
+     * One of somebody else's boxes, or nothing where they left it empty.
+     *
+     * The split between drawn and typed runs through this whole feature: a
+     * drawn field's answer is an image hanging on the signer and its value row
+     * carries only the fact that it happened, so the picture is fetched by
+     * address while a typed one travels as text. See ContractFieldType.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function filledBox(
+        ContractSigner $reader,
+        ContractField $field,
+        ContractSigner $other,
+        ?ContractFieldValue $value,
+    ): ?array {
+        $box = [
+            'id' => $field->id,
+            'page' => $field->page,
+            'x' => (float) $field->x,
+            'y' => (float) $field->y,
+            'width' => (float) $field->width,
+            'height' => (float) $field->height,
+            'type' => $field->type->value,
+        ];
+
+        if ($field->type->isDrawn()) {
+            if ($value === null || $other->mark($field->type) === null) {
+                return null;
+            }
+
+            return [...$box, 'value' => null, 'mark' => $this->otherMarkUrl($reader, $other, $field->type)];
+        }
+
+        /*
+         * An empty answer is drawn as nothing rather than as an empty box. The
+         * boxes on the page belong to the document; a blank one from somebody
+         * who has already signed says only that they left it blank, and a grey
+         * rectangle saying that over the paragraph it sits on is noise.
+         */
+        if ($value === null || $value->value === null || $value->value === '') {
+            return null;
+        }
+
+        return [...$box, 'value' => $value->value, 'mark' => null];
+    }
+
+    /**
+     * The address of somebody else's mark, reached with this reader's own
+     * token.
+     *
+     * Never the other person's token, which is the one rule this route exists
+     * to keep: their token is permission to sign as them, and a signature
+     * image on a page is not.
+     */
+    private function otherMarkUrl(ContractSigner $reader, ContractSigner $other, ContractFieldType $type): string
+    {
+        $media = $other->mark($type);
+
+        return route('contracts.sign.mark.show', [
+            'token' => $reader->token,
+            'signer' => $other->id,
+            'kind' => $type->value,
+            'v' => $media?->updated_at?->timestamp,
+        ]);
     }
 
     /**

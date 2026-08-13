@@ -8,6 +8,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleLocale;
 use App\Http\Middleware\RedirectToInstallation;
+use App\Http\Middleware\RequireApiScope;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -60,6 +61,14 @@ return Application::configure(basePath: dirname(__DIR__))
              * last_used_at, which is exactly what an API caller needs.
              */
             'api.token' => AuthenticateApiToken::class,
+            /*
+             * Beside it rather than folded into it: `api.token` says who is
+             * calling, this says whether their token was cut for the door they
+             * are at. Routes that have always been open to any personal token
+             * carry only the first, which is what keeps them working for tokens
+             * minted before scopes existed.
+             */
+            'api.scope' => RequireApiScope::class,
         ]);
 
         // After HandleInertiaRequests on purpose: a suspended member gets sent

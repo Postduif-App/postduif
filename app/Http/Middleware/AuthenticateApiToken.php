@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\ApiToken;
+use App\Support\ApiTokenContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,27 @@ class AuthenticateApiToken
         }
 
         /*
+         * A token tied to one workspace is only worth what its member is still
+         * worth there.
+         *
+         * Checked on every request rather than cleaned up when somebody leaves,
+         * because leaving happens in half a dozen places — removed by an admin,
+         * a workspace deleted, an account suspended and put back — and a
+         * revocation that has to be remembered at each of them is a revocation
+         * that will be forgotten at one of them. The row stays; what it opens
+         * is decided here, now.
+         *
+         * A workspace that is gone lands here as well. The foreign key cascades
+         * the token away with it, and if a row ever outlives its workspace by
+         * some other route the membership it is asked about no longer exists —
+         * so it refuses, rather than resolving to nothing and widening back to
+         * "all workspaces", which is the failure mode worth being careful about.
+         */
+        if ($record->workspace_id !== null && ! $record->user->belongsToWorkspace($record->workspace_id)) {
+            return $this->refuse();
+        }
+
+        /*
          * Stamped before the request runs rather than after: this is what a
          * member looks at to decide whether a token is still in use, and a
          * request that fails halfway is still a request that was made with it.
@@ -44,6 +66,17 @@ class AuthenticateApiToken
         $record->forceFill(['last_used_at' => now()])->save();
 
         Auth::setUser($record->user);
+
+        /*
+         * The row itself travels on, not only the member behind it.
+         *
+         * Auth::setUser() answers "who" and nothing else, and a token now also
+         * carries "where" and "what for". Handing the record over rather than
+         * copying two values out of it means the next thing a token learns to
+         * hold needs no change here — see ApiTokenContext, which is the only
+         * place that knows this key.
+         */
+        $request->attributes->set(ApiTokenContext::ATTRIBUTE, $record);
 
         return $next($request);
     }

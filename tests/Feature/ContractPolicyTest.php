@@ -122,6 +122,21 @@ it('refuses to withdraw or delete a contract that is finished', function () {
         ->and($author->can('download', $contract))->toBeTrue();
 });
 
+it('lets a draft or a contract that came to nothing be thrown away', function () {
+    ['author' => $author, 'colleague' => $colleague, 'admin' => $admin, 'contract' => $contract] = contractCast();
+
+    // A draft is a scrap of paper, and the two who may see it may bin it.
+    expect($author->can('delete', $contract))->toBeTrue()
+        ->and($admin->can('delete', $contract))->toBeTrue()
+        ->and($colleague->can('delete', $contract))->toBeFalse();
+
+    foreach ([ContractStatus::Cancelled, ContractStatus::Expired, ContractStatus::Sent] as $status) {
+        $contract->update(['status' => $status]);
+
+        expect($author->can('delete', $contract->fresh()))->toBeTrue();
+    }
+});
+
 it('will not remind anybody about a contract that has run out', function () {
     ['author' => $author, 'contract' => $contract] = contractCast([
         'status' => ContractStatus::Sent,

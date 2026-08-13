@@ -48,7 +48,7 @@ class ChannelController extends Controller
         Workspace $workspace,
         Channel $channel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $type = $request->has('type')
             ? ChannelType::from($request->string('type')->value())
@@ -134,7 +134,7 @@ class ChannelController extends Controller
         Workspace $workspace,
         Channel $channel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('deleteChannel', $channel);
 
         $name = $channel->name;
@@ -168,7 +168,7 @@ class ChannelController extends Controller
      */
     public function archive(Request $request, Workspace $workspace, Channel $channel): RedirectResponse
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('archiveChannel', $channel);
 
         $archiving = $channel->archived_at === null;
@@ -199,7 +199,7 @@ class ChannelController extends Controller
      */
     public function join(Request $request, Workspace $workspace, Channel $channel): RedirectResponse
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('join', $channel);
 
         $already = $channel->members()->whereKey($request->user()->id)->exists();

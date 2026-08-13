@@ -40,6 +40,29 @@ Schedule::command('chat:dispatch-scheduled')
     ->withoutOverlapping();
 
 /**
+ * Every minute. An appointment at two o'clock announced at ten past two is one
+ * people have already given up on — the same reasoning as the scheduled
+ * messages above, and the reason both run at this interval rather than a
+ * cheaper one.
+ */
+Schedule::command('huddles:announce-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+/**
+ * Every minute, for the same reason as the scheduled messages above: somebody
+ * who asks to be reminded at nine means nine, and a coarser interval would turn
+ * the moment they picked into a rough indication.
+ *
+ * withoutOverlapping beside the claim in the sweep itself. The sweep already
+ * refuses to deliver a reminder twice — it fills delivered_at before it writes
+ * anything — so this is the cheap outer guard rather than the correctness one.
+ */
+Schedule::command('chat:deliver-reminders')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+/**
  * Every minute. Somebody who says their status changes at nine means nine, and
  * a coarser interval would turn the time they picked into a rough indication —
  * the same reasoning as the scheduled messages above.

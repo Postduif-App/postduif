@@ -44,4 +44,25 @@ return [
         ],
     ],
 
+    /*
+     * Where recorded huddles go to be turned into words.
+     *
+     * An OpenAI-compatible /audio/transcriptions endpoint, which is what both
+     * OpenAI itself and the self-hosted whisper servers speak — so a workspace
+     * that will not send audio out of the building points the base URL at
+     * localhost and changes nothing else.
+     *
+     * With no base URL configured nothing is transcribed and every recording
+     * says so, rather than appearing to have been transcribed into silence.
+     * See NullTranscriber.
+     */
+    'transcription' => [
+        'url' => env('TRANSCRIPTION_URL'),
+        'token' => env('TRANSCRIPTION_TOKEN'),
+        'model' => env('TRANSCRIPTION_MODEL', 'whisper-1'),
+        // Audio is slow. A half-hour meeting takes minutes to come back, and
+        // the default of ten seconds would fail every recording worth having.
+        'timeout' => (int) env('TRANSCRIPTION_TIMEOUT', 600),
+    ],
+
 ];

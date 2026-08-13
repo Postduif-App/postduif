@@ -37,6 +37,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property string|null $signed_document_hash
  * @property Carbon|null $declined_at
  * @property Carbon|null $reminded_at
+ * @property Carbon|null $copy_sent_at
  * @property string|null $decline_reason
  * @property string|null $ip_address
  * @property string|null $user_agent
@@ -84,6 +85,7 @@ class ContractSigner extends Model implements HasMedia
             'signed_at' => 'datetime',
             'declined_at' => 'datetime',
             'reminded_at' => 'datetime',
+            'copy_sent_at' => 'datetime',
             'signature_method' => SignatureMethod::class,
         ];
     }
@@ -121,6 +123,19 @@ class ContractSigner extends Model implements HasMedia
     public function signUrl(): string
     {
         return route('contracts.sign.show', $this->token);
+    }
+
+    /**
+     * Where this person fetches the finished document afterwards.
+     *
+     * On the same token as the signing page, because it is the same person and
+     * they still have no account. The finished copy travels as an attachment as
+     * well — see ContractSignedMail — and this is what is left when a mail
+     * server strips it or somebody deletes the mail and comes back a year later.
+     */
+    public function signedCopyUrl(): string
+    {
+        return route('contracts.sign.copy', $this->token);
     }
 
     /** @return BelongsTo<Contract, $this> */

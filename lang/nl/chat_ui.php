@@ -126,6 +126,27 @@ return [
 
     /* De balk boven het gesprek als er gepraat wordt, of gepraat kan worden. */
     'huddle' => [
+        /*
+         * Een huddle inplannen. Bewust "inplannen" en niet "aanmaken": er
+         * gebeurt op dat moment nog niets, en het kanaal merkt er pas iets van
+         * als het zover is.
+         */
+        'schedule' => [
+            'title' => 'Huddle inplannen',
+            'description' => 'Zet een gesprek in de agenda van dit kanaal. Het kanaal krijgt er bericht van zodra het zover is — niet nu.',
+            'upcoming' => 'Staat al gepland',
+            'cancel' => 'Afzeggen',
+            'title_label' => 'Waar gaat het over',
+            'title_placeholder' => 'Sprintplanning',
+            'when_label' => 'Wanneer',
+            'duration_label' => 'Hoe lang',
+            'minutes' => ':count min',
+            'invitees_label' => 'Wie vraag je erbij',
+            'invitees_none' => 'Niemand aangevinkt: dan is het voor het hele kanaal.',
+            'invitees_hint' => 'Wie je aanvinkt wordt bij naam genoemd in de aankondiging.',
+            'save' => 'Inplannen',
+        ],
+
         'talking' => '{1}is aan het praten|[2,*]zijn aan het praten',
         'alone' => 'Je wacht tot er iemand bij komt.',
         'starting' => 'Bezig met verbinden…',

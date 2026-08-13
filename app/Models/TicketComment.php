@@ -20,12 +20,15 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $ticket_id
- * @property int $user_id
+ * @property int|null $user_id
+ * @property string|null $sender_email
+ * @property string|null $sender_name
+ * @property string|null $mail_message_id
  * @property string $body
  * @property Carbon|null $edited_at
  * @property Carbon|null $created_at
  */
-#[Fillable(['ticket_id', 'user_id', 'body'])]
+#[Fillable(['ticket_id', 'user_id', 'sender_email', 'sender_name', 'mail_message_id', 'body'])]
 class TicketComment extends Model
 {
     /** @use HasFactory<TicketCommentFactory> */

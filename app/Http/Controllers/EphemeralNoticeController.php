@@ -24,7 +24,7 @@ class EphemeralNoticeController extends Controller
         Channel $channel,
         EphemeralNotice $notice,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($notice->user_id === $request->user()->id, 404);
 
         $notice->delete();

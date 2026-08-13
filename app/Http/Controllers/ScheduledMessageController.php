@@ -23,7 +23,7 @@ class ScheduledMessageController extends Controller
         Workspace $workspace,
         Channel $channel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         /*
          * Converted to UTC before it is stored, not merely parsed.
@@ -116,7 +116,7 @@ class ScheduledMessageController extends Controller
         Channel $channel,
         ScheduledMessage $scheduledMessage,
     ): void {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($scheduledMessage->channel_id === $channel->id, 404);
         abort_unless($scheduledMessage->user_id === $request->user()->id, 403);
     }

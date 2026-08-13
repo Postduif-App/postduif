@@ -3,6 +3,7 @@
 use App\Enums\ChannelType;
 use App\Enums\SystemRole;
 use App\Features\Tickets;
+use App\Filament\Resources\Workspaces\Pages\CreateWorkspace;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspaceFeatures;
 use App\Filament\Resources\Workspaces\Pages\ListWorkspaces;
@@ -98,6 +99,52 @@ test('it keeps the owner attached to the workspace', function () {
         'pageClass' => EditWorkspace::class,
     ])
         ->assertTableActionDisabled('detach', $workspace->owner);
+});
+
+/**
+ * The admin panel is the only place a workspace is made now, so it is the only
+ * place that can get this wrong. owner_id is a column on the workspace; being
+ * in it is a row between the two, and setting the first without the second
+ * left an owner no policy would let through the door.
+ */
+test('it puts the owner inside the workspace it just made', function () {
+    $owner = User::factory()->create();
+
+    Livewire::test(CreateWorkspace::class)
+        ->fillForm([
+            'name' => 'Bouwbedrijf Jansen',
+            'slug' => 'bouwbedrijf-jansen',
+            'owner_id' => $owner->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $workspace = Workspace::where('slug', 'bouwbedrijf-jansen')->sole();
+
+    expect($workspace->hasMember($owner))->toBeTrue()
+        ->and($workspace->roleFor($owner)?->key)->toBe(SystemRole::Owner->value);
+});
+
+test('it puts a new owner inside the workspace they were handed', function () {
+    $workspace = Workspace::factory()->create();
+    $successor = User::factory()->create();
+
+    Livewire::test(EditWorkspace::class, ['record' => $workspace->slug])
+        ->fillForm(['owner_id' => $successor->id])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($workspace->refresh()->hasMember($successor))->toBeTrue()
+        ->and($workspace->roleFor($successor)?->key)->toBe(SystemRole::Owner->value);
+});
+
+test('it refuses a slug the router has spoken for', function () {
+    $workspace = Workspace::factory()->create();
+
+    Livewire::test(EditWorkspace::class, ['record' => $workspace->slug])
+        ->fillForm(['slug' => 'settings'])
+        ->call('save')
+        ->assertHasFormErrors(['slug']);
 });
 
 test('it archives a channel from the workspace page', function () {

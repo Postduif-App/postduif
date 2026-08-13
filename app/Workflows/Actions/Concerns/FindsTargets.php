@@ -2,10 +2,16 @@
 
 namespace App\Workflows\Actions\Concerns;
 
+use App\Enums\WorkflowRecordType;
 use App\Models\Channel;
+use App\Models\Contract;
+use App\Models\Document;
 use App\Models\Message;
+use App\Models\Poll;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Workflows\WorkflowStepContext;
+use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 
 /**
@@ -114,6 +120,156 @@ trait FindsTargets
         }
 
         return $message;
+    }
+
+    /**
+     * A ticket, a contract, or whatever else a step can be pointed at.
+     *
+     * The generalisation of message() above, and it works the same way for the
+     * same reason: an empty field means the record the trigger was about.
+     * "Herinner het contract dat zojuist verstuurd is" is one step with nothing
+     * filled in, and asking somebody to carry an id through a workflow they
+     * cannot read back would be asking them to write something worse.
+     *
+     * Three refusals, all with a sentence that ends up on the run screen:
+     * nothing named and nothing in the trigger, no such record in this
+     * workspace, and not the owner's to see. The last two say the same thing
+     * on purpose — telling them apart is a way to find out which ids exist.
+     */
+    protected function record(WorkflowStepContext $context, WorkflowRecordType $type, ?string $key = null): Model
+    {
+        $id = $context->setting($key ?? "{$type->value}_id");
+
+        if (blank($id)) {
+            $id = $context->value($type->triggerPath());
+        }
+
+        if (blank($id)) {
+            throw new RuntimeException(__('workflows.errors.no_record', ['what' => $type->label()]));
+        }
+
+        $record = $type->find($context->workspace(), (string) $id);
+
+        if ($record === null || $this->actor($context)->cannot('view', $record)) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', ['what' => $type->label()]));
+        }
+
+        return $record;
+    }
+
+    /**
+     * The same thing, said in a type the caller can use.
+     *
+     * The generic one hands back a Model, which is honest and useless: an
+     * action that wants a ticket wants its number and its status. One line per
+     * kind of record buys every action after it a typed answer, and the
+     * scoping still happens in exactly one place.
+     */
+    protected function ticket(WorkflowStepContext $context, string $key = 'ticket_id'): Ticket
+    {
+        $ticket = $this->record($context, WorkflowRecordType::Ticket, $key);
+
+        // Never false in practice — find() is the only thing that fills it and
+        // it queries that model. Said out loud because the day a record type
+        // returns something else, this is where it should stop.
+        if (! $ticket instanceof Ticket) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', [
+                'what' => WorkflowRecordType::Ticket->label(),
+            ]));
+        }
+
+        return $ticket;
+    }
+
+    /** The contract a step names, or the one the trigger was about. */
+    protected function contract(WorkflowStepContext $context, string $key = 'contract_id'): Contract
+    {
+        return $this->contractOfKind($context, WorkflowRecordType::Contract, $key);
+    }
+
+    /**
+     * The template a step names, which is never the one the trigger brought.
+     *
+     * Nothing happens to a mould, so there is no trigger to fall back on: this
+     * one has to be picked, and a step that forgot says so.
+     */
+    protected function contractTemplate(WorkflowStepContext $context, string $key = 'template_id'): Contract
+    {
+        return $this->contractOfKind($context, WorkflowRecordType::ContractTemplate, $key);
+    }
+
+    private function contractOfKind(WorkflowStepContext $context, WorkflowRecordType $type, string $key): Contract
+    {
+        $contract = $this->record($context, $type, $key);
+
+        // Never false in practice — find() queries that model. Said out loud
+        // because this is where it should stop if that ever stops being true.
+        if (! $contract instanceof Contract) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', ['what' => $type->label()]));
+        }
+
+        return $contract;
+    }
+
+    /** The document a step names, or the one the trigger was about. */
+    protected function document(WorkflowStepContext $context, string $key = 'document_id'): Document
+    {
+        $document = $this->record($context, WorkflowRecordType::Document, $key);
+
+        if (! $document instanceof Document) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', [
+                'what' => WorkflowRecordType::Document->label(),
+            ]));
+        }
+
+        return $document;
+    }
+
+    /** The poll a step names, or the one the trigger was about. */
+    protected function poll(WorkflowStepContext $context, string $key = 'poll_id'): Poll
+    {
+        $poll = $this->record($context, WorkflowRecordType::Poll, $key);
+
+        if (! $poll instanceof Poll) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', [
+                'what' => WorkflowRecordType::Poll->label(),
+            ]));
+        }
+
+        return $poll;
+    }
+
+    /**
+     * The person a step names, or the one the trigger was about.
+     *
+     * The same convention the record fields run on, applied to people — and it
+     * is the half of pcom-ybal.19 that can be had without touching the picker.
+     * A person picker takes no variable, so "de collega die zojuist inklokte"
+     * cannot be *named*; leaving the box empty says it instead, and that covers
+     * the case nearly every workflow about a person means.
+     *
+     * What it still cannot do is point at somebody the trigger did not bring —
+     * the author of a contract, the assignee of a ticket. That is the issue.
+     */
+    protected function memberOrTriggerUser(WorkflowStepContext $context, string $key = 'user_id'): User
+    {
+        if (filled($context->setting($key))) {
+            return $this->member($context, $key);
+        }
+
+        $id = $context->value('trigger.user.id');
+
+        if (blank($id)) {
+            throw new RuntimeException(__('workflows.errors.no_person_anywhere'));
+        }
+
+        $member = $context->workspace()->members()->whereKey($id)->first();
+
+        if ($member === null) {
+            throw new RuntimeException(__('workflows.errors.person_not_found'));
+        }
+
+        return $member;
     }
 
     /** Somebody in this workspace. */

@@ -54,6 +54,10 @@ return [
         'label' => 'Geplande berichten',
         'description' => 'Leden kunnen een bericht klaarzetten dat later vanzelf verstuurd wordt.',
     ],
+    'shared-channels' => [
+        'label' => 'Gedeelde kanalen',
+        'description' => 'Een kanaal openstellen voor een andere workspace, zodat een klant of leverancier meepraat zonder lid van deze workspace te worden. Beide workspaces moeten dit aanzetten, en de andere kant ziet alleen het gedeelde kanaal.',
+    ],
     'secret-requests' => [
         'label' => 'Geheimen',
         'description' => 'Wachtwoorden en sleutels opvragen via een formulier, en er zelf één versturen die de ontvanger precies één keer kan bekijken — in plaats van ze in een gesprek te laten plakken.',

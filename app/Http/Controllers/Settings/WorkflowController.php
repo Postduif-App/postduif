@@ -9,6 +9,7 @@ use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowConditionMatch;
 use App\Enums\WorkflowConditionOperator;
 use App\Enums\WorkflowConditionOutcome;
+use App\Enums\WorkflowRecordType;
 use App\Enums\WorkflowStepKind;
 use App\Http\Controllers\Controller;
 use App\Models\Form;
@@ -18,6 +19,7 @@ use App\Models\WorkflowStep;
 use App\Workflows\Actions\HttpRequest;
 use App\Workflows\Triggers\SlashCommandTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
+use App\Workflows\ValidateConfiguration;
 use App\Workflows\WorkflowRegistry;
 use App\Workflows\WorkflowTrigger;
 use Illuminate\Database\Eloquent\Collection;
@@ -131,6 +133,16 @@ class WorkflowController extends Controller
              */
             'grammar' => [
                 'operators' => WorkflowConditionOperator::options(),
+
+                /*
+                 * The same operators under their four headings, and with the
+                 * two things the builder would otherwise have to know for
+                 * itself: whether one compares against a value at all, and what
+                 * to say beside the box when it does. Both were a list in the
+                 * screen until the operators outgrew a single dropdown, and a
+                 * list in the screen is a list that goes stale silently.
+                 */
+                'operatorGroups' => WorkflowConditionOperator::grouped(),
                 'matches' => WorkflowConditionMatch::options(),
                 'outcomes' => WorkflowConditionOutcome::options(),
                 'branches' => WorkflowBranch::options(),
@@ -185,6 +197,21 @@ class WorkflowController extends Controller
                         ])
                         ->values()
                         ->all(),
+                ])
+                ->all(),
+
+            /*
+             * And what a record picker chooses from, per kind of record.
+             *
+             * Only what this member may see, and only the most recent handful —
+             * see WorkflowRecordType::options(). A dropdown is not a search,
+             * and the workflows worth writing about a record are mostly about
+             * the one the trigger brought rather than one chosen a month in
+             * advance: the picker is the exception here, not the rule.
+             */
+            'records' => collect(WorkflowRecordType::cases())
+                ->mapWithKeys(fn (WorkflowRecordType $record): array => [
+                    $record->value => $record->options($workspace, $request->user()),
                 ])
                 ->all(),
         ]);
@@ -290,6 +317,7 @@ class WorkflowController extends Controller
         Request $request,
         Workflow $workflow,
         WorkflowRegistry $registry,
+        ValidateConfiguration $configuration,
     ): RedirectResponse {
         $this->authorizeWorkflow($request, $workflow);
 
@@ -329,6 +357,17 @@ class WorkflowController extends Controller
             $data['trigger_type'],
             $data['trigger_config'] ?? [],
         );
+
+        /*
+         * And now what the register says each of those fields needs. A second
+         * pass rather than rules woven into the first, because which fields a
+         * step has depends on which action it named — something no static rule
+         * can know, and something the first pass has just established.
+         *
+         * After settleSlashCommand, so the command it fills in for a workflow
+         * that forgot one is judged the same as one somebody typed.
+         */
+        $configuration->handle($data, $workflow->workspace, $request->user());
 
         DB::transaction(function () use ($workflow, $data): void {
             $workflow->update([

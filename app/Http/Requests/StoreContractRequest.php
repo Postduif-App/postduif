@@ -42,6 +42,14 @@ class StoreContractRequest extends FormRequest
              */
             'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:365'],
 
+            /*
+             * Whether this document is being kept to be sent again rather than
+             * sent. Asked here, at the upload, and not offered as a button on a
+             * contract that already exists — see ContractController::store for
+             * why turning one into the other is not the same act at all.
+             */
+            'as_template' => ['sometimes', 'boolean'],
+
             'file' => [
                 'required',
                 'file',

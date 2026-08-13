@@ -42,7 +42,7 @@ class MessageWorkflowController extends Controller
          * missing one here is a message from another channel being handed to a
          * workflow in another workspace.
          */
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($message->channel_id === $channel->id, 404);
         abort_unless($workflow->workspace_id === $workspace->id, 404);
 

@@ -31,7 +31,7 @@ class ChannelLinkWorkflowController extends Controller
         ChannelLink $link,
         StartWorkflow $startWorkflow,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         // Seeing the channel is the whole of it: the button is drawn for
         // everyone who can, guests included, and a button somebody can see but

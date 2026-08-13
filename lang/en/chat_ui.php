@@ -106,6 +106,27 @@ return [
     ],
 
     'huddle' => [
+        /*
+         * Scheduling a huddle. "Schedule" rather than "create": nothing happens
+         * at that moment, and the channel only hears about it when the time
+         * comes.
+         */
+        'schedule' => [
+            'title' => 'Schedule a huddle',
+            'description' => 'Put a conversation in this channel\'s diary. The channel hears about it when the time comes — not now.',
+            'upcoming' => 'Already scheduled',
+            'cancel' => 'Call off',
+            'title_label' => 'What it is about',
+            'title_placeholder' => 'Sprint planning',
+            'when_label' => 'When',
+            'duration_label' => 'How long',
+            'minutes' => ':count min',
+            'invitees_label' => 'Who to ask',
+            'invitees_none' => 'Nobody ticked: then it is for the whole channel.',
+            'invitees_hint' => 'Everybody you tick is named in the announcement.',
+            'save' => 'Schedule',
+        ],
+
         'talking' => '{1}is talking|[2,*]are talking',
         'alone' => 'Waiting for somebody to join.',
         'starting' => 'Connecting…',

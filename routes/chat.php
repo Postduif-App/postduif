@@ -12,6 +12,7 @@ use App\Http\Controllers\ChannelLinkWorkflowController;
 use App\Http\Controllers\ChannelMemberController;
 use App\Http\Controllers\ChannelMuteController;
 use App\Http\Controllers\ChannelSectionController;
+use App\Http\Controllers\ChannelShareController;
 use App\Http\Controllers\ChannelTagController;
 use App\Http\Controllers\ChannelWebhookController;
 use App\Http\Controllers\ChatController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\DocumentRevisionController;
 use App\Http\Controllers\EphemeralNoticeController;
 use App\Http\Controllers\FormFillController;
 use App\Http\Controllers\HuddleController;
+use App\Http\Controllers\HuddleRecordingController;
 use App\Http\Controllers\InviteLinkController;
 use App\Http\Controllers\MessageAttachmentController;
 use App\Http\Controllers\MessageBookmarkController;
@@ -31,9 +33,11 @@ use App\Http\Controllers\MessageDeletionController;
 use App\Http\Controllers\MessageEditController;
 use App\Http\Controllers\MessageForwardController;
 use App\Http\Controllers\MessagePinController;
+use App\Http\Controllers\MessageReminderController;
 use App\Http\Controllers\MessageWorkflowController;
 use App\Http\Controllers\PollController;
 use App\Http\Controllers\ReactionController;
+use App\Http\Controllers\ScheduledHuddleController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecretRequestController;
@@ -48,7 +52,6 @@ use App\Http\Controllers\TimeclockController;
 use App\Http\Controllers\TimeEntryController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WorkspaceBookmarkController;
-use App\Http\Controllers\WorkspaceCreationController;
 use App\Http\Controllers\WorkspaceFormAnswerController;
 use App\Http\Controllers\WorkspaceFormController;
 use App\Http\Controllers\WorkspaceInboxController;
@@ -62,17 +65,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
     Route::get('/', [ChatController::class, 'home'])->name('chat.home');
-
-    /*
-     * Making one of your own. Above the wildcard below and named in
-     * Workspace::RESERVED_SLUGS, so neither the router nor a workspace can
-     * claim the address.
-     */
-    Route::get('nieuw', [WorkspaceCreationController::class, 'create'])
-        ->name('workspaces.create');
-    Route::post('nieuw', [WorkspaceCreationController::class, 'store'])
-        ->middleware('throttle:10,1')
-        ->name('workspaces.store');
 
     /**
      * The workspace slug is a wildcard directly under /app, so it could swallow
@@ -332,6 +324,23 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('contracts.signers');
 
                 /*
+                 * The two things a template has instead of a roster.
+                 *
+                 * How many people it will go to, and whether the author is one
+                 * of them. Apart from each other because they are governed
+                 * differently: the number is an ordinary edit and stops being
+                 * allowed once anybody has signed, while taking your own
+                 * signature off has to keep working after that — it is the only
+                 * way back to a template you can still change. See the two
+                 * methods, where that split is written down.
+                 */
+                Route::put('contracten/{contract}/sjabloon', [ContractController::class, 'updateTemplate'])
+                    ->name('contracts.template');
+
+                Route::put('contracten/{contract}/sjabloon/meetekenen', [ContractController::class, 'signAlong'])
+                    ->name('contracts.template.sign-along');
+
+                /*
                  * Naming the people and putting it in the post. A POST rather
                  * than a flag on the save above: laying out the boxes is a
                  * thing you do half a dozen times, and handing the document to
@@ -350,12 +359,34 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('contracts.remind');
 
                 /*
+                 * The same document, asked of somebody else.
+                 *
+                 * A POST that creates a contract, which is why it sits beside
+                 * store() rather than under the row it copies in spirit: what
+                 * comes back is a new draft with a new address. Throttled like
+                 * sending, because every call duplicates a PDF on the disk.
+                 */
+                Route::post('contracten/{contract}/dupliceren', [ContractController::class, 'duplicate'])
+                    ->middleware('throttle:10,1')
+                    ->name('contracts.duplicate');
+
+                /*
                  * Stopping it. A DELETE on the contract would read as throwing
                  * it away, which is a different act with a different policy —
                  * see ContractPolicy, where cancel outlives delete.
                  */
                 Route::post('contracten/{contract}/intrekken', [ContractController::class, 'cancel'])
                     ->name('contracts.cancel');
+
+                /*
+                 * And throwing it away, which is the other act the comment above
+                 * keeps apart. Withdrawing leaves the record standing and tells
+                 * whoever holds a link that it was stopped; this removes the row,
+                 * the PDF and every signature drawn on it. Never on a finished
+                 * contract — see ContractPolicy::delete.
+                 */
+                Route::delete('contracten/{contract}', [ContractController::class, 'destroy'])
+                    ->name('contracts.destroy');
 
                 // Telling the colleagues, which is not the same as asking the
                 // signers — see PostContractToChannel.
@@ -365,6 +396,20 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::post('contracten/{contract}/opnieuw', [ContractController::class, 'retryRender'])
                     ->middleware('throttle:6,1')
                     ->name('contracts.retry');
+
+                /*
+                 * Posting the finished document to everybody who signed it, by
+                 * hand.
+                 *
+                 * It already goes out by itself the moment the copy is composed
+                 * — see RenderSignedContractJob — so this is the answer to "ik
+                 * heb hem nooit gekregen", which is a thing that happens to
+                 * mail. Throttled as hard as the retry beside it and for the
+                 * same reason as sending: it reaches strangers' inboxes.
+                 */
+                Route::post('contracten/{contract}/kopie-versturen', [ContractController::class, 'sendSignedCopy'])
+                    ->middleware('throttle:6,1')
+                    ->name('contracts.copy');
 
                 /*
                  * The document itself, for the editor and the signing page to
@@ -648,6 +693,37 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 ->name('channels.links.destroy');
 
             /*
+             * Opening a channel to another workspace.
+             *
+             * Two halves under one switch, and note which workspace each is
+             * under. The first is the host's — the channel is theirs, so it
+             * hangs off the channel. The other three are the invited
+             * workspace's, and they hang off nothing but the share itself,
+             * because the people using them are not members of the workspace
+             * that owns the channel and never will be.
+             *
+             * The feature is therefore asked of whichever workspace is in the
+             * path, which is exactly right: a workspace with shared channels
+             * switched off can neither offer one nor be talked into accepting
+             * one.
+             */
+            Route::middleware('feature:shared-channels')->group(function () {
+                Route::get('c/{channel}/shares', [ChannelShareController::class, 'index'])
+                    ->name('channels.shares.index');
+                Route::post('c/{channel}/shares', [ChannelShareController::class, 'store'])
+                    ->name('channels.shares.store');
+
+                Route::patch('shares/{share}', [ChannelShareController::class, 'update'])
+                    ->name('shares.update');
+                Route::get('shares/{share}/members', [ChannelShareController::class, 'candidates'])
+                    ->name('shares.members.index');
+                Route::post('shares/{share}/members', [ChannelShareController::class, 'members'])
+                    ->name('shares.members.store');
+                Route::delete('shares/{share}', [ChannelShareController::class, 'destroy'])
+                    ->name('shares.destroy');
+            });
+
+            /*
              * Talking in a channel. Behind the feature flag because it needs a
              * relay server arranged before it works for everybody — see the
              * Huddles feature.
@@ -665,6 +741,35 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::patch('c/{channel}/huddle/{huddle}', [HuddleController::class, 'update'])
                     ->scopeBindings()
                     ->name('huddles.ping');
+
+                /*
+                 * Recording one, and playing it back. Announcing comes first
+                 * and is its own address on purpose: it is called when
+                 * recording starts, because a notice posted when the file
+                 * arrives would have recorded a conversation nobody knew was
+                 * being recorded.
+                 */
+                Route::post('c/{channel}/huddle/{huddle}/recording/announce', [HuddleRecordingController::class, 'announce'])
+                    ->scopeBindings()
+                    ->name('huddles.recording.announce');
+                Route::post('c/{channel}/huddle/{huddle}/recording', [HuddleRecordingController::class, 'store'])
+                    ->scopeBindings()
+                    ->name('huddles.recording.store');
+                Route::get('c/{channel}/recordings/{recording}', [HuddleRecordingController::class, 'show'])
+                    ->name('huddles.recording.show');
+
+                /*
+                 * The same conversation, arranged beforehand. Under the same
+                 * feature switch and the same channel, because an appointment
+                 * is only worth anything where the button to join one exists.
+                 *
+                 * Cancelling hangs off the appointment rather than the channel:
+                 * it is one row, and the controller decides whose it is.
+                 */
+                Route::post('c/{channel}/scheduled-huddles', [ScheduledHuddleController::class, 'store'])
+                    ->name('huddles.schedule');
+                Route::delete('scheduled-huddles/{scheduled}', [ScheduledHuddleController::class, 'destroy'])
+                    ->name('huddles.schedule.destroy');
 
                 Route::delete('c/{channel}/huddle/{huddle}', [HuddleController::class, 'destroy'])
                     ->scopeBindings()
@@ -905,6 +1010,22 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->scopeBindings()
                     ->name('messages.unbookmark');
             });
+
+            /*
+             * "Herinner me hier straks aan." Beside the bookmark above and
+             * behind no feature switch of its own: a bookmark is a shelf and
+             * this is an alarm clock, and neither of them is a capability a
+             * workspace grants — they change nothing anybody else can see.
+             *
+             * Cancelling hangs off the reminder rather than the message,
+             * because a reminder belongs to a person and not to the channel it
+             * happens to be about.
+             */
+            Route::post('c/{channel}/messages/{message}/reminder', [MessageReminderController::class, 'store'])
+                ->scopeBindings()
+                ->name('messages.reminder');
+            Route::delete('reminders/{reminder}', [MessageReminderController::class, 'destroy'])
+                ->name('reminders.destroy');
 
             // Pinning is one flag on the message, so there is nothing to
             // address beyond the message itself — POST puts it up, DELETE takes

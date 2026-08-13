@@ -2,6 +2,7 @@
 
 use App\Actions\Contracts\NotifyContractAuthor;
 use App\Actions\Contracts\RenderSignedContract;
+use App\Actions\Contracts\SendSignedContract;
 use App\Enums\ContractProgressKind;
 use App\Enums\ContractStatus;
 use App\Enums\InboxItemType;
@@ -122,6 +123,7 @@ it('announces the completion from the job, with the download in it', function ()
     (new RenderSignedContractJob($contract->id))->handle(
         app(RenderSignedContract::class),
         app(NotifyContractAuthor::class),
+        app(SendSignedContract::class),
     );
 
     Notification::assertSentTo(

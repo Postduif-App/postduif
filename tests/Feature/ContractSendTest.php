@@ -7,8 +7,6 @@ use App\Mail\ContractRequestMail;
 use App\Models\Contract;
 use App\Models\ContractSigner;
 use App\Models\User;
-use App\Models\Workspace;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
@@ -21,31 +19,6 @@ use function Pest\Laravel\actingAs;
  * The step where the feature stops being internal: from here on there are links
  * in strangers' inboxes, and every one of them is a credential.
  */
-
-/** @return array{0: User, 1: Workspace, 2: Contract} */
-function sendableContract(array $state = []): array
-{
-    Storage::fake('local');
-    Mail::fake();
-
-    $author = User::factory()->create();
-    $workspace = workspaceWithMember($author, SystemRole::Admin);
-
-    Feature::for($workspace)->activate(ContractsFeature::class);
-
-    $contract = Contract::factory()->create([
-        'workspace_id' => $workspace->id,
-        'created_by' => $author->id,
-        ...$state,
-    ]);
-
-    // A document has to be on it: a contract without one is a link to nothing.
-    $contract->addMedia(UploadedFile::fake()->create('contract.pdf', 20))
-        ->toMediaCollection(Contract::SOURCE);
-
-    return [$author, $workspace, $contract];
-}
-
 it('gives every signer a link of their own and puts it in the post', function () {
     [$author, $workspace, $contract] = sendableContract();
 

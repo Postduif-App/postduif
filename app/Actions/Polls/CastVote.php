@@ -4,6 +4,7 @@ namespace App\Actions\Polls;
 
 use App\Actions\Chat\AnnounceInbox;
 use App\Enums\InboxItemType;
+use App\Events\PollVoteCast;
 use App\Models\InboxItem;
 use App\Models\Poll;
 use App\Models\PollOption;
@@ -33,7 +34,7 @@ class CastVote
      */
     public function handle(Poll $poll, PollOption $option, User $voter): bool
     {
-        return DB::transaction(function () use ($poll, $option, $voter): bool {
+        $ticked = DB::transaction(function () use ($poll, $option, $voter): bool {
             $existing = PollVote::query()
                 ->whereIn('poll_option_id', $poll->options()->select('id'))
                 ->where('user_id', $voter->id)
@@ -68,6 +69,16 @@ class CastVote
 
             return true;
         });
+
+        /*
+         * Outside the transaction, and for both directions: unticking changes
+         * the count as surely as ticking, and the count is what anybody waiting
+         * on a poll is watching. Which of the two it was travels with the
+         * event, so a workflow that only wants the ticking asks in a condition.
+         */
+        PollVoteCast::dispatch($poll->id, $option->id, $voter->id, $ticked);
+
+        return $ticked;
     }
 
     /**

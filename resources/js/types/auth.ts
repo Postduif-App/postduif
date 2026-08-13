@@ -46,6 +46,8 @@ export type Auth = {
     canInviteToWorkspace: boolean;
     /** Whether the settings navigation should offer the workflow builder. */
     canManageWorkflows: boolean;
+    /** The same, for the outgoing webhooks a workspace sets on its contracts. */
+    canManageContractWebhooks: boolean;
     /**
      * The clock, or null where this workspace has none — switched off, or the
      * person is a guest here.

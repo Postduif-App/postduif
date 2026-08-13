@@ -65,6 +65,13 @@ return [
     'sign' => [
         'addressed_to' => 'Dit verzoek staat op naam van :name.',
         'autosaves' => 'Wat je invult wordt vanzelf bewaard. Je kunt dit scherm tussendoor sluiten en later verder gaan.',
+
+        /*
+         * Dezelfde belofte in drie woorden. Op dit scherm staat hij in de balk
+         * boven het document en niet als zin eronder; de lange versie hangt er
+         * als uitleg aan vast, voor wie er met de muis op blijft staan.
+         */
+        'autosave_short' => 'Wordt vanzelf bewaard',
         'saved' => 'Opgeslagen.',
         'errors' => [
             'not_outstanding' => 'Dit contract loopt niet meer, dus er valt niets in te trekken.',
@@ -83,6 +90,14 @@ return [
         'cancel' => 'Terug',
         'remaining' => '{0}Alles is ingevuld.|{1}Nog 1 vak te gaan.|[2,*]Nog :count vakken te gaan.',
         'signature_pending' => 'Handtekening',
+
+        /*
+         * Wat de mensen vóór jou al hebben ingevuld staat gewoon op het
+         * document. De uitleg hangt eraan als titel en niet als zin ernaast: op
+         * een pagina vol vakken zou die zin twintig keer terugkomen.
+         */
+        'filled_by_other' => 'Dit is al ingevuld door iemand die eerder tekende.',
+        'signed_before' => '{1}Eén van de :total ondertekenaars heeft al getekend; wat diegene invulde staat er al in.|[2,*]:count van de :total ondertekenaars hebben al getekend; wat zij invulden staat er al in.',
         'closed' => [
             'signed' => [
                 'title' => 'Je hebt dit al getekend',
@@ -150,6 +165,17 @@ return [
 
     'detail' => [
         'cancel' => 'Intrekken',
+        'delete' => 'Verwijderen',
+        'delete_confirm' => 'Dit contract, de PDF en alles wat eraan hangt worden weggegooid. Wie een link heeft, komt daarna op een lege pagina uit. Intrekken laat het contract staan en legt uit dat het gestopt is.',
+
+        /*
+         * Een afgerond contract is het enige hier waar iemand buiten de
+         * workspace op rekent. Daarom een eigen zin, die zegt wat er precies
+         * verdwijnt in plaats van het bij "en alles wat eraan hangt" te laten:
+         * wie dit leest heeft dit recht met opzet gekregen en moet kunnen zien
+         * waar het over gaat.
+         */
+        'delete_confirm_signed' => 'Dit contract is getekend en afgerond. Het getekende PDF, de bijlage met wie wanneer tekende en de handtekeningen zelf worden weggegooid. Dat is niet terug te draaien, de ondertekenaars horen er niets van, en hun eigen kopie is daarna het enige wat er nog van bestaat.',
         'retry' => 'Opnieuw proberen',
         'copy_link' => 'Link kopiëren',
         'post_channel' => 'Kanaal',
@@ -170,25 +196,114 @@ return [
         'opened' => 'Geopend',
         'waiting' => 'Nog niets',
         'reminded' => 'herinnerd :date',
+        'copy_sent' => 'document gestuurd :date',
         'document' => 'Document bekijken',
-        'signed_copy' => 'Ondertekende versie',
+        'view_signed' => 'Ondertekende versie bekijken',
+        'signed_copy' => 'Ondertekende versie downloaden',
         'copy_pending' => 'De ondertekende versie wordt samengesteld.',
         'copy_failed' => 'De ondertekende versie kon niet samengesteld worden. De handtekeningen staan vast.',
+        'send_copy' => 'Naar ondertekenaars mailen',
+        'send_copy_hint' => 'Iedereen die getekend heeft krijgt het ondertekende document als bijlage. Dat gebeurt automatisch zodra het contract rond is; hiermee stuur je het opnieuw.',
+        'duplicate' => 'Opnieuw gebruiken',
+        'duplicate_title' => 'Dit contract opnieuw gebruiken',
+        'duplicate_explainer' => 'Je krijgt een nieuw concept met dezelfde PDF en dezelfde invulvakken. Dit contract en de handtekeningen eronder blijven precies zoals ze zijn. Wie het nieuwe contract tekent, kies je op het volgende scherm.',
+        'duplicate_name' => 'Naam van het nieuwe contract',
+        // De naam ligt hierna vast: een contract kan niet hernoemd worden.
+        'duplicate_name_hint' => 'Deze naam staat vast zodra het concept er is, dus zet erbij waar of voor wie dit exemplaar is.',
+        'duplicate_default' => ':title (kopie)',
+        'duplicate_confirm' => 'Concept aanmaken',
+    ],
+
+    /*
+     * Een sjabloon is een contract dat nooit verstuurd wordt. Het heeft dus geen
+     * status maar een vraag: kan hij al gebruikt worden? Alles hieronder gaat
+     * over die vraag en over wat er nog aan ontbreekt — en dat laatste met zoveel
+     * woorden, want "nog niet klaar" zonder te zeggen waarom laat iemand staan
+     * met een scherm vol knoppen die niets doen.
+     */
+    'template' => [
+        'title' => 'Sjabloon',
+        'lead' => 'Dit document wordt niet verstuurd. Het staat klaar om er contracten uit te maken — via de API of straks met één klik — en wat je hier instelt geldt voor elk contract dat eruit komt.',
+        'ready' => 'Klaar voor gebruik',
+        'not_ready' => 'Nog niet klaar voor gebruik',
+        'missing' => 'Wat er nog moet gebeuren:',
+        'blockers' => [
+            'document' => 'Er hoort nog een PDF bij dit sjabloon.',
+            'recipients' => 'Er is nog niet ingesteld naar hoeveel mensen dit gaat.',
+            'fields' => 'Er staan nog geen invulvakken op het document.',
+            'signature' => 'Je hebt aangegeven zelf mee te tekenen, maar je hebt nog niet getekend.',
+        ],
+        'recipients' => 'Aantal ontvangers',
+        'recipients_hint' => 'Hoeveel mensen krijgen dit straks toegestuurd? Hun namen vul je pas in bij het versturen; hier bepaal je alleen voor hoeveel partijen je de vakken neerzet.',
+        'recipients_save' => 'Aantal opslaan',
+        'recipients_floor' => 'Lager dan :count kan niet: er staan vakken op het document die voor die partijen bedoeld zijn.',
+        'sign_along' => 'Ik onderteken zelf ook mee',
+        'sign_along_hint' => 'Je zet je handtekening één keer, op dit sjabloon. Elk contract dat eruit komt draagt hem dan al, zonder dat je opnieuw hoeft te tekenen.',
+        'sign_now' => 'Sjabloon ondertekenen',
+        'signed' => 'Je hebt dit sjabloon ondertekend.',
+        'signed_locks' => 'Zolang je handtekening erop staat kunnen de vakken niet meer verplaatst worden. Haal het vinkje weg om het sjabloon weer te kunnen bewerken — je handtekening wordt dan gewist.',
+        'parties' => '{1}1 partij|[2,*]:count partijen',
+
+        /*
+         * De namen die in de editor naast elk vak staan. Voor een gewoon
+         * contract staan daar mensen; hier bestaan die mensen nog niet, dus staat
+         * er wat ze straks zullen zijn.
+         */
+        'myself' => 'Ikzelf',
+        'recipient' => 'Ontvanger :number',
+        'editor_hint' => 'Dit is een sjabloon: de ontvangers bestaan nog niet. Je kiest per vak welke partij het invult.',
     ],
 
     'list' => [
         'title' => 'Contracten',
+        'tab_contracts' => 'Contracten',
+        'tab_templates' => 'Sjablonen',
+        'as_template' => 'Bewaren als sjabloon',
+        'as_template_hint' => 'Voor een document dat je vaker verstuurt. Het gaat zelf nooit de deur uit: je stelt in hoeveel mensen het straks tekenen, tekent er eventueel zelf op mee, en maakt er daarna contracten uit.',
+        'templates_empty' => 'Nog geen sjablonen',
+        'templates_empty_hint' => 'Upload een PDF met "bewaren als sjabloon" aangevinkt. Dat is de moeite waard bij een document dat elke maand opnieuw de deur uit gaat.',
         'new' => 'Nieuw contract',
         'new_hint' => 'Upload de PDF die getekend moet worden. Wie hem tekent en wanneer, bepaal je op het volgende scherm — met het document erbij.',
         'field_title' => 'Waar gaat het over',
         'field_file' => 'De PDF',
+        'drop' => 'Sleep de PDF hierheen',
+        'drop_or' => 'of klik om er een te kiezen',
+        'drop_hint' => 'Alleen PDF, maximaal :size en :pages.',
+        'drop_pages' => '{1}1 pagina|[2,*]:count pagina\'s',
+        'replace' => 'Andere kiezen',
+        'remove' => 'Weghalen',
         'upload' => 'Uploaden',
         'empty' => 'Nog geen contracten',
         'empty_hint' => 'Upload een PDF, zet er invulvakken op en stuur hem naar wie moet tekenen.',
+        'search' => 'Zoek op titel of ondertekenaar',
+        'clear_search' => 'Zoekopdracht wissen',
+        'no_results' => 'Niets gevonden',
+        'no_results_hint' => 'Geen contract met deze titel, en niemand met deze naam of dit e-mailadres op de lijst met ondertekenaars.',
     ],
 
     'errors' => [
         'not_outstanding' => 'Dit contract loopt niet meer, dus er valt niets in te trekken.',
+    ],
+
+    /*
+     * Wat de API terugmeldt aan een systeem, niet aan een lezer.
+     *
+     * Toch in het Nederlands en met dezelfde zorg geschreven als de rest: de
+     * ontvanger is een programmeur die zit te kijken waarom zijn aanroep niet
+     * doorgaat, en die is met "ongeldig verzoek" niet geholpen.
+     */
+    'api' => [
+        'token_without_workspace' => 'Dit token hoort niet bij één workspace. Maak een token aan dat aan de workspace gekoppeld is waaruit je contracten wilt versturen.',
+        'no_workspace' => 'Deze workspace bestaat niet, doet niet aan contracten, of jij mag er geen versturen.',
+        'no_template' => 'Dit sjabloon bestaat niet in deze workspace.',
+        'template_unfinished' => 'Dit sjabloon is nog niet klaar om te versturen: er ontbreekt een document, invulvakken, het aantal ontvangers of de handtekening van de afzender.',
+        'no_contract' => 'Dit contract bestaat niet, of jij mag het niet zien.',
+        'no_signed_copy' => 'Er is nog geen ondertekend document om op te halen (:state).',
+        'wrong_recipient_count' => 'Dit sjabloon verwacht :expected ontvanger(s), je gaf er :given.',
+        'duplicate_recipient' => 'Twee ontvangers met hetzelfde e-mailadres: iedereen tekent onder zijn eigen adres.',
+        'recipient_is_sender' => ':email heeft dit sjabloon zelf al ondertekend en staat er dus al op.',
+        'unknown_field' => 'Veld :field hoort niet bij deze ontvanger.',
+        'secret_without_url' => 'Een callback_secret zonder callback_url ondertekent niets.',
     ],
 
     'field-types' => [

@@ -7,6 +7,7 @@ use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
+use App\Features\Contracts as ContractsFeature;
 use App\Features\Documents as DocumentsFeature;
 use App\Features\Forms;
 use App\Features\Huddles as HuddlesFeature;
@@ -16,6 +17,7 @@ use App\Features\Transfers;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\ApiToken;
 use App\Models\Channel;
+use App\Models\Contract;
 use App\Models\Message;
 use App\Models\Poll;
 use App\Models\PollOption;
@@ -33,6 +35,7 @@ use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
@@ -816,4 +819,39 @@ function reverbIsDown(int $status = 500): void
     freshHttpClient();
     Http::preventStrayRequests();
     Http::fake(fn () => Http::response(status: $status));
+}
+
+/**
+ * A contract with a document on it, ready to be sent.
+ *
+ * Here rather than in the file that first needed it, and that is the whole
+ * point of the move: two suites use it, and a helper declared inside a test
+ * file only exists once that file has been loaded. The parallel runner splits
+ * files across processes, so a suite borrowing another suite's helper passes or
+ * fails depending on which process it landed in — which is not a thing anybody
+ * should have to debug twice.
+ *
+ * @return array{0: User, 1: Workspace, 2: Contract}
+ */
+function sendableContract(array $state = []): array
+{
+    Storage::fake('local');
+    Mail::fake();
+
+    $author = User::factory()->create();
+    $workspace = workspaceWithMember($author, SystemRole::Admin);
+
+    Feature::for($workspace)->activate(ContractsFeature::class);
+
+    $contract = Contract::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $author->id,
+        ...$state,
+    ]);
+
+    // A document has to be on it: a contract without one is a link to nothing.
+    $contract->addMedia(UploadedFile::fake()->create('contract.pdf', 20))
+        ->toMediaCollection(Contract::SOURCE);
+
+    return [$author, $workspace, $contract];
 }

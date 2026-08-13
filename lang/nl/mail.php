@@ -11,7 +11,28 @@
  */
 
 return [
+    /*
+     * Post die binnenkomt en een ticket wordt. Eén zin, en die is nodig: een
+     * mail zonder onderwerp levert anders een ticket zonder naam op, en daar
+     * kan niemand naar verwijzen.
+     */
+    'inbound' => [
+        'no_subject' => 'Bericht zonder onderwerp',
+    ],
+
     'closing' => 'Groeten,',
+
+    /*
+     * How a date reads inside a mail. Here rather than in the call, because
+     * "3 maart 2027 om 14:05" and "3 March 2027 at 14:05" differ by more than
+     * the month name — the little word in the middle is part of the language,
+     * and a format string hardcoded in PHP put a Dutch "om" in every English
+     * mail for as long as it lived there.
+     */
+    'format' => [
+        'date' => 'j F Y',
+        'date_time' => 'j F Y \o\m H:i',
+    ],
 
     'invitation' => [
         'heading' => 'Je bent uitgenodigd',
@@ -22,12 +43,57 @@ return [
         'expires' => 'Deze link verloopt op :date. Was deze uitnodiging niet voor jou bedoeld? Dan hoef je niets te doen.',
     ],
 
+    /*
+     * The two contract mails below are written as templates rather than as
+     * loose sentences, because a workspace may replace them with a template of
+     * its own — see WorkspaceMailTemplate. Everything in {{ }} is a placeholder
+     * RenderMailTemplate knows how to fill in, and a line holding one that
+     * comes up empty drops out whole: no deadline means no sentence about a
+     * deadline, no note from the author means no quote.
+     *
+     * That is also why these are one blob per mail instead of a key per
+     * paragraph. What somebody edits on the settings screen is "de tekst", and
+     * an override that had to be given paragraph by paragraph would let a
+     * workspace rewrite three of the four and leave ours sitting in between.
+     */
     'contract' => [
+        'subject' => '{{afzender}} vraagt je om {{titel}} te tekenen',
         'heading' => 'Er ligt een contract voor je klaar om te tekenen',
-        'intro' => ':sender vraagt je om ":title" te ondertekenen.',
         'button' => 'Contract openen en tekenen',
-        'expires' => 'Deze link verloopt op :date. Daarna kun je niet meer tekenen en moet er een nieuw verzoek gestuurd worden.',
-        'personal' => 'Deze link is persoonlijk en staat op jouw naam. Stuur hem niet door — wie hem opent, tekent namens jou.',
+        'body' => <<<'MARKDOWN'
+            {{afzender}} vraagt je om "{{titel}}" te ondertekenen.
+
+            > {{bericht}}
+
+            {{knop}}
+
+            Deze link verloopt op {{vervaldatum}}. Daarna kun je niet meer tekenen en moet er een nieuw verzoek gestuurd worden.
+
+            Deze link is persoonlijk en staat op jouw naam. Stuur hem niet door — wie hem opent, tekent namens jou.
+
+            Groeten,
+            {{afzender}}
+            MARKDOWN,
+    ],
+
+    'contract_signed' => [
+        'subject' => 'Het ondertekende document: {{titel}}',
+        'heading' => 'Hier is het ondertekende document',
+        'button' => 'Ondertekende versie downloaden',
+        'body' => <<<'MARKDOWN'
+            Iedereen heeft gereageerd op "{{titel}}". Hierbij de ondertekende versie, met achterin een overzicht van wie wanneer heeft getekend.
+
+            Jij hebt op {{ondertekend_op}} getekend.
+
+            De PDF zit als bijlage bij deze mail. Bewaar hem goed: dit is jouw exemplaar.
+
+            {{knop}}
+
+            Werkt de bijlage niet, dan kun je het document via de knop hierboven ophalen. Die link is persoonlijk — stuur hem niet door.
+
+            Groeten,
+            {{afzender}}
+            MARKDOWN,
     ],
 
     'transfer' => [

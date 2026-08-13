@@ -123,6 +123,14 @@ return [
             'note' => 'Een workspace laat standaard niets met een token binnen. Zolang die schakelaar uit staat, geeft de kanalenlijst er niets uit terug en antwoordt posten er met 404 — hetzelfde antwoord als een kanaal dat niet bestaat, want het verschil zou verklappen wat er wél is.',
         ],
 
+        'contracts' => [
+            'title' => 'Contracten laten tekenen',
+            'lead' => 'Iemand in de workspace maakt één keer een sjabloon: de PDF, de vakken, het aantal ontvangers, en zijn eigen handtekening eronder. Daarna gaat er een contract de deur uit op jouw aanroep, zonder dat er nog iemand een scherm opent. Hiervoor heb je een token nodig dat aan één workspace gekoppeld is én het recht "contracten" draagt — je maakt er een bij Instellingen → API-tokens.',
+            'callback' => 'Wat er bij je binnenkomt',
+            'verify' => 'De handtekening controleren',
+            'note' => 'Er zijn drie gebeurtenissen: signed als iemand tekent, declined als iemand weigert, en completed als iedereen geweest is — die laatste pas als het ondertekende document klaarstaat, zodat je hem meteen kunt ophalen. Teken over de ruwe body, niet over een opnieuw gecodeerde versie: één spatie verschil en de vergelijking klopt niet meer. Een aflevering die mislukt wordt opnieuw geprobeerd; dat het bij jou misgaat houdt het tekenen nooit tegen.',
+        ],
+
         'webhooks' => [
             'title' => 'Zonder token van een persoon',
             'lead' => 'Een webhook draagt zijn sleutel in het pad, want dat is wat de tools die erop wijzen verwachten. Hij komt dus in logs terecht — en dat is precies waarom hij in te trekken en opnieuw te maken is.',
@@ -165,6 +173,33 @@ return [
                 'body' => ['rule' => 'verplicht, max 4000', 'about' => 'De tekst zelf; bijlagen kunnen hier niet'],
                 'parent_id' => ['rule' => 'optioneel, ULID', 'about' => 'Antwoord in een bestaande thread in hetzelfde kanaal'],
             ],
+        ],
+        'api_v1_contract-templates_index' => [
+            'summary' => 'De sjablonen die dit token mag versturen. Per sjabloon hoeveel ontvangers het verwacht, of de afzender er zelf al onder staat, en welke vakken je vooraf mag invullen. readyToSend is het veld om op te kijken: staat die op false, dan wordt versturen geweigerd.',
+        ],
+        'api_v1_contracts_store' => [
+            'summary' => 'Stuur een sjabloon naar de mensen die moeten tekenen. Er wordt een nieuw contract van gemaakt — hetzelfde document, dezelfde vakken, en de handtekening die de afzender één keer onder het sjabloon zette — en iedere ontvanger krijgt zijn eigen tekenlink per mail. De afzender wordt niets meer gevraagd.',
+            'params' => [
+                'template_id' => ['rule' => 'verplicht, ULID', 'about' => 'Uit GET /v1/contract-templates'],
+                'recipients' => ['rule' => 'verplicht, precies requiredSigners', 'about' => 'Lijst van {name, email}, in de volgorde waarin de vakken zijn getekend; optioneel values met veld-id → waarde'],
+                'title' => ['rule' => 'optioneel, max 200', 'about' => 'Anders de titel van het sjabloon'],
+                'message' => ['rule' => 'optioneel, max 2000', 'about' => 'Het zinnetje in de uitnodigingsmail; staat nooit op de PDF'],
+                'valid_for_days' => ['rule' => 'optioneel, 1–365', 'about' => 'Geteld vanaf nu; daarna opent de link niets meer'],
+                'callback_url' => ['rule' => 'optioneel, https', 'about' => 'Hier wordt gemeld dat er getekend, geweigerd of afgerond is — alleen voor dit contract'],
+                'callback_secret' => ['rule' => 'optioneel, min 16', 'about' => 'Waarmee X-Postduif-Signature wordt gezet. Laat je hem weg, dan krijg je er één terug in het antwoord — dat is de enige keer dat je hem ziet. Zonder callback_url heeft hij geen betekenis'],
+            ],
+        ],
+        'api_v1_contracts_index' => [
+            'summary' => 'Wat er loopt. Standaard zonder de concepten; geef status mee om iets anders te vragen.',
+            'params' => [
+                'status' => ['rule' => 'optioneel', 'about' => 'draft, sent, completed, cancelled of expired'],
+            ],
+        ],
+        'api_v1_contracts_show' => [
+            'summary' => 'Hoe ver één contract is: per ondertekenaar wanneer hij het opende, tekende of weigerde, en of het ondertekende document al klaarstaat. De tekenlinks staan hier bewust niet in — die gaan alleen naar de ontvanger zelf.',
+        ],
+        'api_v1_contracts_document' => [
+            'summary' => 'De ondertekende PDF, met alle handtekeningen erop en het audit-blad erachter. Geeft 409 zolang er nog niets klaarstaat; signedCopy uit het contract vertelt of het nog komt of misging.',
         ],
         'webhooks_messages_store' => [
             'summary' => 'Een bericht posten zonder token van een persoon. De sleutel zit in het pad, want dat is wat de tools die hierop wijzen verwachten — en dat is ook waarom een webhook in te trekken en opnieuw te maken is.',

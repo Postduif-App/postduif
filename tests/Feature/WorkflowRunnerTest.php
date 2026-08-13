@@ -377,6 +377,34 @@ it('skips a step whose condition says no, and says that it skipped it', function
         ->and($run->fresh()->status)->toBe(WorkflowRunStatus::Succeeded);
 });
 
+/**
+ * The same thing the condition test proves in isolation, once through the
+ * runner: a number that arrives from a JSON column, compared as a quantity,
+ * deciding whether a step gets its turn.
+ */
+it('lets a step through on how many rather than on what it says', function () {
+    [$workflow] = readyWorkflow();
+
+    WorkflowStep::factory()->for($workflow)->at(0)
+        ->doing('noting-action', ['mark' => 'bijna om'])
+        ->onlyIf(['path' => 'trigger.contract.days_until_expiry', 'operator' => 'less-or-equal', 'value' => '3'])
+        ->create();
+
+    WorkflowStep::factory()->for($workflow)->at(1)
+        ->doing('noting-action', ['mark' => 'nog even'])
+        ->onlyIf(['path' => 'trigger.contract.days_until_expiry', 'operator' => 'greater-than', 'value' => '3'])
+        ->create();
+
+    $run = WorkflowRun::factory()->for($workflow)->create([
+        'context' => ['trigger' => ['contract' => ['days_until_expiry' => 2]], 'depth' => 1],
+    ]);
+
+    app(RunWorkflow::class)->handle($run);
+
+    expect(NotingAction::$ran)->toBe(['bijna om'])
+        ->and($run->fresh()->status)->toBe(WorkflowRunStatus::Succeeded);
+});
+
 it('fills in what a step says with what the trigger saw', function () {
     [$workflow] = readyWorkflow();
 

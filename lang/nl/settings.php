@@ -51,9 +51,11 @@ return [
         'emoji' => 'Emoji',
         'theme' => 'Thema',
         'mail' => 'E-mail',
+        'mail_texts' => 'Mailteksten',
         'channels' => 'Kanalen',
         'members' => 'Leden',
         'invitations' => 'Uitnodigingen',
+        'contract_webhooks' => 'Contract-webhooks',
     ],
 
     'actions' => [
@@ -186,6 +188,73 @@ return [
         'revoked_toast' => 'Token ingetrokken.',
         'api_endpoint' => 'Adres van de API',
         'copy_api_endpoint' => 'API-adres kopiëren',
+
+        /*
+         * Het inperken van een token. Alleen te kiezen bij het aanmaken: een
+         * token dat achteraf ruimer of krapper wordt, is een token waarvan
+         * niemand meer weet wat het mocht toen het ergens werd ingeplakt.
+         */
+        'workspace' => 'Workspace',
+        'workspace_all' => 'Al mijn workspaces',
+        'workspace_hint' => 'Kies er een als dit token voor één workspace is. Verlaat je die workspace, dan werkt het token niet meer.',
+        'scopes' => 'Extra rechten',
+        'scopes_hint' => 'Zonder vinkje kan dit token wat je zelf kunt in de chat: lezen, plaatsen en je status zetten.',
+        'scope_contracts' => 'Contracten',
+        'scope_contracts_hint' => 'Contracten opvragen en ter ondertekening versturen. Dat laatste stuurt e-mail naar mensen buiten Postduif.',
+        'for_workspace' => 'alleen :workspace',
+        'for_all_workspaces' => 'alle workspaces',
+    ],
+
+    /*
+     * Uitgaande webhooks voor contracten. De andere kant op dan de webhooks van
+     * een kanaal: daar post iemand anders bij ons, hier posten wij bij iemand
+     * anders — en dat verschil moet uit elke zin op dit scherm blijken.
+     */
+    'contract_webhooks' => [
+        'title' => 'Contract-webhooks',
+        'description' => 'Laat een ander systeem weten wanneer er iets met een contract gebeurt',
+        'intro' => 'Wij doen een POST naar het adres dat je opgeeft, met een JSON-bericht over het contract. Bij elk bericht zit een handtekening in de header X-Postduif-Signature, gemaakt met het geheim hieronder — controleer die aan de andere kant, anders kan iedereen zich voor ons uitgeven.',
+        'new' => 'Nieuwe webhook',
+        'name' => 'Naam',
+        'name_placeholder' => 'Waar gaat dit heen? Bijvoorbeeld: Boekhouding',
+        'url' => 'Adres',
+        'url_placeholder' => 'https://jouwsysteem.nl/webhooks/contracten',
+        'url_hint' => 'Moet van buiten bereikbaar zijn: adressen binnen ons eigen netwerk worden geweigerd.',
+        'events' => 'Waarover',
+        'events_hint' => 'Kies minstens één gebeurtenis. Zonder vinkje wordt er nooit iets verstuurd.',
+        'event_signed' => 'Iemand heeft getekend',
+        'event_signed_hint' => 'Bij elke ondertekenaar apart, ook bij de laatste.',
+        'event_declined' => 'Iemand heeft geweigerd',
+        'event_declined_hint' => 'Met de reden erbij, als die is opgegeven.',
+        'event_completed' => 'Het contract is rond',
+        'event_completed_hint' => 'Iedereen heeft geantwoord en de getekende pdf staat klaar. In dit bericht zit een tijdelijke downloadlink.',
+        'create' => 'Aanmaken',
+        'empty' => 'Nog geen webhooks',
+        'empty_hint' => 'Maak er een aan als een ander systeem moet weten wat er met jullie contracten gebeurt.',
+        'secret' => 'Geheim',
+        'copy_secret' => 'Geheim kopiëren',
+        'copy_url' => 'Adres kopiëren',
+        'rotate' => 'Nieuw geheim',
+        'rotate_named' => 'Nieuw geheim voor :name',
+        'rotate_question' => 'Nieuw geheim voor :name?',
+        'rotate_explanation' => 'Het oude geheim werkt daarna niet meer. Berichten worden gewoon verstuurd, maar de ontvanger wijst ze af tot je het nieuwe geheim daar hebt ingevuld.',
+        'enable' => 'Aanzetten',
+        'disable' => 'Uitzetten',
+        'disabled' => 'uit',
+        'delete' => 'Verwijderen',
+        'delete_named' => ':name verwijderen',
+        'delete_question' => ':name verwijderen?',
+        'delete_explanation' => 'Dit adres hoort daarna niets meer van ons. Wil je het maar even stilleggen, zet het dan uit in plaats van weg te gooien.',
+        'never_delivered' => 'nog niets verstuurd',
+        'last_delivered' => 'laatst afgeleverd :moment',
+        'last_failed' => 'laatste poging mislukt :moment',
+        'last_status' => 'status :status',
+        'too_many' => 'Meer dan :count webhooks per workspace gaat niet.',
+        'created_toast' => 'Webhook aangemaakt. Neem het geheim over in het andere systeem.',
+        'rotated_toast' => 'Nieuw geheim aangemaakt. Neem het over in het andere systeem.',
+        'enabled_toast' => 'Webhook staat weer aan.',
+        'disabled_toast' => 'Webhook staat uit.',
+        'deleted_toast' => 'Webhook verwijderd.',
     ],
 
     'workspace' => [
@@ -214,6 +283,27 @@ return [
     ],
 
     'mail' => [
+        /*
+         * De andere kant op: post die naar de workspace toe komt. Bewust in
+         * dezelfde woorden als de rest van het scherm — "waar komt post
+         * binnen" is voor een beheerder één vraag, niet twee systemen.
+         */
+        'inbound' => [
+            'title' => 'Post ontvangen',
+            'description' => 'Laat e-mail aan jullie adres binnenkomen als ticket in een kanaal. Antwoorden op zo\'n ticket komen als reactie terug op hetzelfde ticket.',
+            'no_channels' => 'Hiervoor moet je eerst tickets aanzetten voor deze workspace, en een kanaal hebben dat tickets bijhoudt.',
+            'channel_label' => 'Kanaal',
+            'channel_hint' => 'Waar nieuwe tickets uit binnenkomende post terechtkomen.',
+            'channel_none' => 'Nergens — geen post ontvangen',
+            'address_label' => 'Adres dat hierheen doorstuurt',
+            'address_hint' => 'Het adres waar mensen naartoe schrijven. We gebruiken het om antwoorden te herkennen: een ticket krijgt hetzelfde adres met +t<nummer> erin.',
+            'save' => 'Opslaan',
+            'roll' => 'Nieuwe link maken',
+            'url_heading' => 'Bezorglink',
+            'url_once' => 'Plak deze bij je mailprovider als bestemming voor binnenkomende post. Je ziet hem hierna niet meer.',
+            'url_hidden' => 'De bezorglink is eerder aangemaakt en wordt niet meer getoond. Maak een nieuwe als je hem kwijt bent — de oude werkt dan niet meer.',
+            'copy' => 'Kopiëren',
+        ],
         'head' => 'Workspace — e-mail',
         'title' => 'E-mail',
         'description' => 'Waar de mail van :workspace vandaan komt',
@@ -356,6 +446,8 @@ return [
         'choose' => 'Kies…',
         'optional' => '(mag leeg)',
         'channel_from_variable' => 'Een variabele (kanaal pas bij het uitvoeren bekend)',
+        'record_from_trigger' => 'Wat de trigger meebracht',
+        'record_from_variable' => 'Een variabele (bijvoorbeeld uit een eerdere stap)',
         'channel_variable_hint' => 'Een kanaalnaam of -id, bijvoorbeeld {{ trigger.channel.name }}. Wordt gezocht binnen deze workspace.',
         'insert_variable' => 'Gegeven invoegen…',
         'words_placeholder' => 'storing, defect',

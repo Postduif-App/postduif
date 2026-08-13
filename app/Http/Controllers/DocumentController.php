@@ -30,7 +30,7 @@ class DocumentController extends Controller
         Channel $channel,
         CreateDocument $createDocument,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $document = $createDocument->handle(
             channel: $channel,
@@ -63,7 +63,7 @@ class DocumentController extends Controller
         Document $document,
         UpdateDocument $updateDocument,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $updateDocument->handle(
             document: $document,
@@ -90,7 +90,7 @@ class DocumentController extends Controller
         Document $document,
         DeleteDocument $deleteDocument,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $this->authorize('delete', $document);
 

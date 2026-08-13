@@ -111,6 +111,17 @@ return [
             'ThreadReply' => 'Thread',
             'PollVote' => 'Poll',
             'ContractProgress' => 'Contract',
+            'Reminder' => 'Herinnering',
+        ],
+    ],
+    'mail-template-kind' => [
+        'label' => [
+            'ContractRequest' => 'Verzoek om te tekenen',
+            'ContractSigned' => 'Het ondertekende document',
+        ],
+        'description' => [
+            'ContractRequest' => 'De mail waarmee je iemand vraagt een contract te ondertekenen. Ook de herinnering gebruikt deze tekst.',
+            'ContractSigned' => 'De mail die na afloop naar iedereen gaat die tekende, met de ondertekende PDF erbij.',
         ],
     ],
     'mail-transport' => [
@@ -210,14 +221,48 @@ return [
             'NotEquals' => 'Is niet gelijk aan',
             'Contains' => 'Bevat',
             'NotContains' => 'Bevat niet',
+            'StartsWith' => 'Begint met',
+            'EndsWith' => 'Eindigt op',
+            'IsOneOf' => 'Is een van',
+            'IsNoneOf' => 'Is geen van',
+            'GreaterThan' => 'Is groter dan',
+            'LessThan' => 'Is kleiner dan',
+            'GreaterOrEqual' => 'Is minstens',
+            'LessOrEqual' => 'Is hoogstens',
+            'Before' => 'Is eerder dan',
+            'After' => 'Is later dan',
             'IsEmpty' => 'Is leeg',
             'IsNotEmpty' => 'Is niet leeg',
+            'IsTrue' => 'Is waar',
+            'IsFalse' => 'Is niet waar',
+        ],
+        'hint' => [
+            'list' => 'Meerdere waarden, gescheiden door komma’s.',
+            'date' => 'Een datum of tijdstip, of een variabele die er een bevat.',
+            'number' => 'Twee getallen worden als getal vergeleken, al het andere als tekst.',
+        ],
+    ],
+    'workflow-condition-operator-group' => [
+        'label' => [
+            'Text' => 'Tekst',
+            'Number' => 'Getallen',
+            'Date' => 'Datums',
+            'Presence' => 'Aanwezigheid',
         ],
     ],
     'workflow-condition-outcome' => [
         'label' => [
             'Skip' => 'sla alleen deze stap over',
             'Stop' => 'stop de hele workflow',
+        ],
+    ],
+    'workflow-record-type' => [
+        'label' => [
+            'Ticket' => 'ticket',
+            'Contract' => 'contract',
+            'ContractTemplate' => 'sjabloon',
+            'Document' => 'document',
+            'Poll' => 'poll',
         ],
     ],
     'workflow-run-status' => [
@@ -256,6 +301,7 @@ return [
             'SeeHours' => 'Uren van collega\'s inzien',
             'DeleteBotMessages' => 'Berichten van bots verwijderen',
             'SendContracts' => 'Contracten laten ondertekenen',
+            'DeleteSignedContracts' => 'Getekende contracten verwijderen',
         ],
         'description' => [
             'ManageWorkspace' => 'De naam, de rollen, de rechten en het uiterlijk. Wie dit heeft, kan ook zichzelf en anderen meer geven — het is het enige recht dat bij alle andere kan.',
@@ -270,6 +316,7 @@ return [
             'DeleteBotMessages' => 'Berichten weghalen die door een webhook of een workflow geplaatst zijn. Gaat niet over wat mensen zelf schrijven — dat blijft van henzelf. Wie een kanaal beheert kon dit al voor dat kanaal.',
             'SeeHours' => 'Zien hoeveel uur collega\'s deze week geklokt hebben en wie er nu ingeklokt staat. Iedereen ziet sowieso zijn eigen uren; dit gaat over die van een ander.',
             'SendContracts' => 'Een PDF met invulvakken naar mensen sturen om te laten tekenen, ook buiten de workspace. Het document gaat met de naam van deze workspace de deur uit en komt terug als bewijsstuk.',
+            'DeleteSignedContracts' => 'Een contract weggooien waar iedereen al onder heeft getekend, inclusief het getekende PDF en de bijlage met wie wanneer tekende. Dat is niet terug te draaien en de ondertekenaars horen er niets van. Zonder dit recht kun je alleen opruimen wat nooit is afgerond.',
         ],
     ],
     'workspace-accent' => [

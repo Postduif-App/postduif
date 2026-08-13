@@ -20,7 +20,7 @@ class TicketCommentController extends Controller
         Ticket $ticket,
         CommentOnTicket $commentOnTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $commentOnTicket->handle(
             ticket: $ticket,
@@ -40,7 +40,7 @@ class TicketCommentController extends Controller
         TicketComment $comment,
         CommentOnTicket $commentOnTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('update', $comment);
 
         $body = $request->validate([
@@ -64,7 +64,7 @@ class TicketCommentController extends Controller
         TicketComment $comment,
         CommentOnTicket $commentOnTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('delete', $comment);
 
         $commentOnTicket->withdraw($comment);

@@ -28,7 +28,6 @@ return [
     ],
 
     'contract' => [
-        'subject' => ':sender is asking you to sign :what',
         'subject_signed' => ':name has signed :title',
         'subject_declined' => ':name will not sign :title',
         'subject_completed' => ':title is complete',

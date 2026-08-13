@@ -27,7 +27,7 @@ class ChannelFormController extends Controller
 {
     public function store(Request $request, Workspace $workspace, Channel $channel, PostFormToChannel $post): RedirectResponse
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $validated = $request->validate([
             'form_id' => [

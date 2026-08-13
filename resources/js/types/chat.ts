@@ -153,6 +153,7 @@ export interface WorkspaceFeatures {
     transfers: boolean;
     'secret-requests': boolean;
     'ai-access': boolean;
+    'shared-channels': boolean;
 }
 
 /** Handles that address a group rather than a person. */
@@ -204,6 +205,48 @@ export interface ChannelSummary {
         /** Whose status this is, so a socket update finds the right row. */
         userId: number;
     } | null;
+    /**
+     * The workspace this channel belongs to, when it is not the one being
+     * looked at — a channel another organisation has opened to us.
+     *
+     * Null for every ordinary row, which is what keeps the badge off nearly all
+     * of them. It is in the sidebar rather than only inside the channel because
+     * somebody about to write here has to know whose room it is beforehand.
+     */
+    sharedFrom?: string | null;
+}
+
+/**
+ * A channel another workspace has offered this one, still waiting on an answer.
+ *
+ * Only ever sent to somebody who may answer it; for everybody else the list is
+ * empty. Accepting it is not the same as letting anybody in — the people who
+ * take part are added one by one afterwards.
+ */
+export interface ChannelShareInvitation {
+    id: number;
+    channelName: string | null;
+    /** The organisation asking, which is what the decision actually turns on. */
+    workspaceName: string;
+    invitedBy: string | null;
+    /** Whether our side would be able to write, or only read along. */
+    canPost: boolean;
+    /**
+     * Whether this workspace has already said yes.
+     *
+     * The two states share a row because they are two steps of one job: an
+     * unanswered offer needs an answer, and an accepted one needs colleagues
+     * put into it. Refused and withdrawn ones never arrive here at all.
+     */
+    accepted: boolean;
+}
+
+/** One workspace this channel stands open to, as the host's panel draws it. */
+export interface ChannelShare {
+    id: number;
+    workspace: { name: string; slug: string };
+    canPost: boolean;
+    state: 'pending' | 'accepted' | 'declined' | 'revoked';
 }
 
 /**
@@ -279,6 +322,24 @@ export interface ChannelWebhook {
     lastUsedAt: string | null;
     revokedAt: string | null;
     url: string | null;
+}
+
+/**
+ * A huddle in the channel's diary.
+ *
+ * canCancel is worked out by the server, not here: it is the same pair of
+ * questions the endpoint asks — did you arrange it, or do you run the channel —
+ * and a screen that guessed would offer a button that then refuses.
+ */
+export interface ScheduledHuddle {
+    id: number;
+    title: string;
+    /** ISO, in UTC. Drawn on the reader's own clock. */
+    startsAt: string;
+    durationMinutes: number;
+    /** Who was asked. Empty means the channel at large, which is a real answer. */
+    invitees: { id: number; name: string }[];
+    canCancel: boolean;
 }
 
 export interface ActiveChannel extends ChannelSummary {
@@ -364,6 +425,14 @@ export interface ActiveChannel extends ChannelSummary {
      * connects for two people on the same wifi is worse than no button.
      */
     canHuddle: boolean;
+    /**
+     * Appointments this channel still has coming, soonest first.
+     *
+     * Beside the live huddle rather than inside it: one is a conversation you
+     * can walk into now, the other is a time nobody has arrived at yet. Empty
+     * where the workspace has huddles switched off.
+     */
+    scheduledHuddles: ScheduledHuddle[];
     /**
      * What to hand RTCPeerConnection. Empty for anybody who may not join; the
      * relay credential in it is signed and expires, so it is not shared out.

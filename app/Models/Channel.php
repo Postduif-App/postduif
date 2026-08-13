@@ -194,6 +194,80 @@ class Channel extends Model
     }
 
     /**
+     * The other workspaces this channel has been opened to, in every state —
+     * offered, accepted, refused and withdrawn.
+     *
+     * @return HasMany<ChannelShare, $this>
+     */
+    public function shares(): HasMany
+    {
+        return $this->hasMany(ChannelShare::class);
+    }
+
+    /**
+     * The arrangement that lets this member in from outside, or null when there
+     * is none.
+     *
+     * Null is the ordinary answer and means nothing is wrong: everybody in the
+     * workspace that owns the channel gets null here, because they are not
+     * reaching in from anywhere — they are already inside.
+     *
+     * Read off the loaded shares when they are in hand, so a policy asked about
+     * forty sidebar rows does not send forty queries for a table that is empty
+     * in most workspaces. The fallback is a query, because a policy has to
+     * answer correctly whether or not somebody remembered to eager load.
+     */
+    public function externalShareFor(User $user): ?ChannelShare
+    {
+        if ($this->relationLoaded('shares')) {
+            return $this->shares
+                ->first(fn (ChannelShare $share): bool => $share->isLive()
+                    && $user->belongsToWorkspace($share->workspace_id));
+        }
+
+        return $this->shares()
+            ->live()
+            ->whereIn('workspace_id', $user->workspaces()->select('workspaces.id'))
+            ->first();
+    }
+
+    /** Whether anybody outside the owning workspace can reach this channel. */
+    public function isShared(): bool
+    {
+        return $this->relationLoaded('shares')
+            ? $this->shares->contains(fn (ChannelShare $share): bool => $share->isLive())
+            : $this->shares()->live()->exists();
+    }
+
+    /**
+     * Channels a workspace's sidebar may draw: its own, plus the ones another
+     * workspace has opened to it.
+     *
+     * Deliberately separate from visibleTo(). This one answers "does this
+     * channel belong in this workspace's screen at all", which used to be the
+     * plain `workspace_id = ?` that every caller wrote inline; visibleTo()
+     * still answers the second question, "and may this person see it". Both
+     * have to hold, and keeping them apart is what stops a shared channel from
+     * showing up for the whole guest workspace rather than for the people
+     * actually put into it.
+     *
+     * @param  Builder<$this>  $query
+     */
+    public function scopeReachableFrom(Builder $query, Workspace $workspace): void
+    {
+        $query->where(fn (Builder $query) => $query
+            ->where('workspace_id', $workspace->id)
+            // The shares by subquery rather than through whereHas, for the
+            // same reason scopeVisibleTo() reaches for Workspace by hand a few
+            // lines down: a relation named by a string leaves the closure's
+            // builder over no model, and live() is a scope on channel shares.
+            ->orWhereIn('id', ChannelShare::query()
+                ->live()
+                ->where('workspace_id', $workspace->id)
+                ->select('channel_id')));
+    }
+
+    /**
      * Channels the given user is allowed to see: the ones they are a member of,
      * plus — for anyone who may browse the workspace — its public channels.
      *

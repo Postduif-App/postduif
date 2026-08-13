@@ -15,6 +15,22 @@ return [
     'reaction_someone' => 'somebody else',
     'reaction_others' => ':count others',
 
+    /*
+     * Reminders on a message. The choices are deliberately coarse: somebody who
+     * wants an exact time schedules a message. This is for "I will come back to
+     * this in a bit".
+     */
+    'reminder' => [
+        'heading' => 'Remind me',
+        'when' => [
+            '20m' => 'In 20 minutes',
+            '1h' => 'In an hour',
+            '3h' => 'In three hours',
+            'tomorrow' => 'Tomorrow morning',
+            'next_week' => 'Monday next week',
+        ],
+    ],
+
     'actions' => [
         'copy_text' => 'Copy text',
         'copy_link' => 'Copy a link to this message',
@@ -22,6 +38,7 @@ return [
         'quote_key' => 'Quote (R)',
         'ticket' => 'Make a ticket of this message',
         'forward' => 'Forward to another channel',
+        'remind' => 'Remind me about this',
         'save' => 'Save for later',
         'unsave' => 'Stop saving',
         'pin' => 'Pin in this channel',

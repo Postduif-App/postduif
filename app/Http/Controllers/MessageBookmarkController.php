@@ -58,7 +58,7 @@ class MessageBookmarkController extends Controller
 
     private function ensureReadable(Workspace $workspace, Channel $channel, Message $message): void
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($message->channel_id === $channel->id, 404);
 
         $this->authorize('view', $channel);

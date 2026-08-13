@@ -139,6 +139,137 @@ it('does not tell one signer who the others are', function () {
         ->and(json_encode($props['contract']))->not->toContain('Bram Jansen');
 });
 
+/**
+ * What the people before you already put down.
+ *
+ * The rule underneath all five of these: a signed answer is shown, and nothing
+ * else is. A draft can still be retyped or end in a refusal, so presenting one
+ * to the next signer would show a guess as a commitment.
+ */
+it('shows what somebody who already signed filled in', function () {
+    [$contract, $mine] = contractOutForSignature();
+
+    $theirs = ContractSigner::factory()->inPosition(1)->signed()->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    $field = ContractField::factory()->forSigner(1)->create([
+        'contract_id' => $contract->id,
+        'page' => 2,
+        'label' => 'Naam verhuurder',
+    ]);
+
+    ContractFieldValue::factory()->create([
+        'contract_field_id' => $field->id,
+        'contract_signer_id' => $theirs->id,
+        'value' => 'Anna de Vries',
+    ]);
+
+    get(route('contracts.sign.show', $mine->token))
+        ->assertInertia(fn ($page) => $page
+            // Still only this person's own boxes to fill in...
+            ->has('contract.fields', 0)
+
+            // ...and the contract as it now reads beside them.
+            ->has('contract.filled', 1)
+            ->where('contract.filled.0.value', 'Anna de Vries')
+            ->where('contract.filled.0.page', 2)
+            ->where('contract.filled.0.mark', null));
+});
+
+it('keeps a half-typed draft of somebody else off the page', function () {
+    [$contract, $mine] = contractOutForSignature();
+
+    $theirs = ContractSigner::factory()->inPosition(1)->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    $field = ContractField::factory()->forSigner(1)->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    ContractFieldValue::factory()->draft()->create([
+        'contract_field_id' => $field->id,
+        'contract_signer_id' => $theirs->id,
+        'value' => 'Nog aan het nadenken',
+    ]);
+
+    // They have not signed, so this is somebody thinking out loud.
+    get(route('contracts.sign.show', $mine->token))
+        ->assertInertia(fn ($page) => $page->has('contract.filled', 0));
+});
+
+it('points at another signer\'s mark without handing over their token', function () {
+    [$contract, $mine] = contractOutForSignature();
+
+    $theirs = ContractSigner::factory()->inPosition(1)->signed()->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    $theirs->addMedia(UploadedFile::fake()->image('signature.png'))
+        ->toMediaCollection(ContractSigner::SIGNATURE);
+
+    $field = ContractField::factory()->forSigner(1)->signature()->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    ContractFieldValue::factory()->drawn()->create([
+        'contract_field_id' => $field->id,
+        'contract_signer_id' => $theirs->id,
+    ]);
+
+    $props = get(route('contracts.sign.show', $mine->token))
+        ->viewData('page')['props'];
+
+    expect($props['contract']['filled'])->toHaveCount(1)
+        ->and($props['contract']['filled'][0]['mark'])->toContain($mine->token)
+
+        /*
+         * The other person's token is permission to sign as them. A picture of
+         * their signature is not, so the address carries the reader's own.
+         */
+        ->and(json_encode($props['contract']))->not->toContain($theirs->token);
+
+    get(route('contracts.sign.mark.show', [
+        'token' => $mine->token,
+        'signer' => $theirs->id,
+        'kind' => 'signature',
+    ]))->assertOk()->assertHeader('Content-Type', 'image/png');
+});
+
+it('will not hand over the mark of somebody who has not signed yet', function () {
+    [$contract, $mine] = contractOutForSignature();
+
+    $theirs = ContractSigner::factory()->inPosition(1)->create([
+        'contract_id' => $contract->id,
+    ]);
+
+    $theirs->addMedia(UploadedFile::fake()->image('signature.png'))
+        ->toMediaCollection(ContractSigner::SIGNATURE);
+
+    // Drawn in a draft, and a draft can still be cleared and drawn again.
+    get(route('contracts.sign.mark.show', [
+        'token' => $mine->token,
+        'signer' => $theirs->id,
+        'kind' => 'signature',
+    ]))->assertNotFound();
+});
+
+it('will not hand over a mark from a different contract', function () {
+    [, $mine] = contractOutForSignature();
+    [, $stranger] = contractOutForSignature([], ['signed_at' => now()->subDay()]);
+
+    $stranger->addMedia(UploadedFile::fake()->image('signature.png'))
+        ->toMediaCollection(ContractSigner::SIGNATURE);
+
+    // A token is permission to see one document, never a key to the table.
+    get(route('contracts.sign.mark.show', [
+        'token' => $mine->token,
+        'signer' => $stranger->id,
+        'kind' => 'signature',
+    ]))->assertNotFound();
+});
+
 it('records the moment the link was first opened', function () {
     [, $signer] = contractOutForSignature();
 

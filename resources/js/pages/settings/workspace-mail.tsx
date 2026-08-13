@@ -2,6 +2,7 @@ import { Form, Head, router } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2, Mail, Send, Server } from 'lucide-react';
 import { useState } from 'react';
 
+import { InboundMailSection } from '@/components/inbound-mail-section';
 import InputError from '@/components/input-error';
 import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,20 @@ interface MailSettings {
     has_lettermint_token: boolean;
     verified_at: string | null;
     last_error: string | null;
+
+    /*
+     * The other direction. Same rule as the secrets above: whether there is a
+     * delivery token, never which — it is shown once, when it is made.
+     */
+    has_inbound_token: boolean;
+    inbound_channel_id: number | null;
+    inbound_address: string | null;
+}
+
+/** A channel that keeps tickets, and so can hold what the post brings in. */
+interface InboundChannel {
+    id: number;
+    name: string | null;
 }
 
 interface WorkspaceMailProps {
@@ -62,6 +77,12 @@ interface WorkspaceMailProps {
     encryptionOptions: EncryptionOption[];
     /** Where a test message would land: the address of whoever is looking. */
     testRecipient: string;
+    /**
+     * Channels the letterbox may point at. Empty when the workspace has tickets
+     * switched off, and the section then says so rather than offering an empty
+     * dropdown.
+     */
+    inboundChannels: InboundChannel[];
 }
 
 /**
@@ -120,6 +141,7 @@ export default function WorkspaceMailSettings({
     transportOptions,
     encryptionOptions,
     testRecipient,
+    inboundChannels,
 }: WorkspaceMailProps) {
     const [transport, setTransport] = useState(settings.transport);
     const [encryption, setEncryption] = useState(settings.smtp_encryption);
@@ -599,6 +621,18 @@ export default function WorkspaceMailSettings({
                     )}
                 </SettingsSection>
             )}
+
+            {/*
+                The other direction, last on the screen because it is the later
+                decision: a workspace arranges where its mail leaves from before
+                it arranges where mail to it comes back.
+            */}
+            <InboundMailSection
+                channels={inboundChannels}
+                channelId={settings.inbound_channel_id}
+                address={settings.inbound_address}
+                hasToken={settings.has_inbound_token}
+            />
         </>
     );
 }

@@ -69,6 +69,8 @@ return [
             'links_description' => 'Shortcuts to places outside the app, in a bar above the conversation.',
             'webhooks' => 'Webhooks',
             'webhooks_description' => 'What may post into this channel from the outside.',
+            'shares' => 'Sharing',
+            'shares_description' => 'Open this channel to another workspace, so a customer or supplier can take part without joining this one.',
         ],
 
         'name_hint_lead' => 'Spaces and capitals become dashes and lowercase letters. Links to this channel keep working, but an',

@@ -27,7 +27,7 @@ class ChannelLinkController extends Controller
         Workspace $workspace,
         Channel $channel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $channel->links()->create([
             'label' => $request->string('label')->trim()->value(),
@@ -50,7 +50,7 @@ class ChannelLinkController extends Controller
         Channel $channel,
         ChannelLink $link,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $link->update([
             ...$request->has('label') ? ['label' => $request->string('label')->trim()->value()] : [],
@@ -78,7 +78,7 @@ class ChannelLinkController extends Controller
         Channel $channel,
         ChannelLink $link,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('manageSettings', $channel);
 
         $link->delete();
@@ -102,7 +102,7 @@ class ChannelLinkController extends Controller
         Workspace $workspace,
         Channel $channel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('manageSettings', $channel);
 
         $validated = $request->validate([

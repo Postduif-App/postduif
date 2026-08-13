@@ -282,6 +282,42 @@ return [
         ],
 
         /*
+         * Outgoing webhooks, which also talk to the open internet — and, unlike
+         * the link cards, wait for somebody else's server to say "ontvangen".
+         *
+         * Its own pool rather than a share of the previews, because the two fail
+         * differently: a preview is fetched once and forgotten, while a delivery
+         * that nobody answers comes back three more times over the next five
+         * minutes. A receiver having a bad afternoon should keep its retries to
+         * itself instead of sitting in the pool that draws link cards.
+         *
+         * The timeout has room for DeliverContractWebhookJob's five seconds and
+         * the connect timeout before it, with slack for a payload that has to be
+         * built from a contract with a long list of signers.
+         */
+        'supervisor-webhooks' => [
+            'connection' => 'redis',
+            'queue' => ['webhooks'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            /*
+             * One here, and four on the job.
+             *
+             * The supervisor's number is the floor for anything that does not
+             * say — and this queue's one job says. Leaving it at one means a
+             * worker killed mid-send does not silently hand the delivery a
+             * fifth attempt the job never asked for.
+             */
+            'tries' => 1,
+            'timeout' => 30,
+            'nice' => 10,
+        ],
+
+        /*
          * Anything that names no queue, which today is whatever Laravel itself
          * puts there. Kept watched rather than dropped: a deploy that renames
          * queues leaves whatever was already in flight sitting on this one, and
@@ -322,6 +358,12 @@ return [
                 'balanceCooldown' => 3,
             ],
 
+            'supervisor-webhooks' => [
+                'maxProcesses' => 3,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
+
             'supervisor-default' => [
                 'maxProcesses' => 2,
                 'balanceMaxShift' => 1,
@@ -333,6 +375,7 @@ return [
             'supervisor-notifications' => ['maxProcesses' => 2],
             'supervisor-workflows' => ['maxProcesses' => 2],
             'supervisor-previews' => ['maxProcesses' => 1],
+            'supervisor-webhooks' => ['maxProcesses' => 1],
             'supervisor-default' => ['maxProcesses' => 1],
         ],
     ],

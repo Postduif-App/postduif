@@ -3,6 +3,7 @@
 namespace App\Actions\Contracts;
 
 use App\Enums\ContractStatus;
+use App\Events\ContractCancelled;
 use App\Models\Contract;
 use Illuminate\Support\Facades\DB;
 
@@ -58,6 +59,14 @@ class CancelContract
             if ($claimed === 0) {
                 throw new SigningRefused(__('contracts.errors.not_outstanding'));
             }
+
+            /*
+             * After the claim, so this only ever announces a cancel that
+             * actually happened — the race above is a cancel arriving together
+             * with the last signature, and the loser must change nothing and
+             * say nothing.
+             */
+            ContractCancelled::dispatch($contract->id);
 
             return $contract->refresh();
         });

@@ -54,7 +54,7 @@ class DocumentFileController extends Controller
         Document $document,
         StoreDocumentFile $storeDocumentFile,
     ): JsonResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $file = $storeDocumentFile->handle(
             document: $document,
@@ -165,7 +165,7 @@ class DocumentFileController extends Controller
         Document $document,
         DocumentFile $file,
     ): void {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($document->channel_id === $channel->id, 404);
         abort_unless($file->document_id === $document->id, 404);
     }

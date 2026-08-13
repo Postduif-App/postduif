@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Polls\CastVote;
 use App\Actions\Polls\CreatePoll;
+use App\Events\PollClosed;
 use App\Http\Requests\StorePollRequest;
 use App\Models\Channel;
 use App\Models\Poll;
@@ -61,7 +62,7 @@ class PollController extends Controller
         Channel $channel,
         CreatePoll $createPoll,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $createPoll->handle(
             channel: $channel,
@@ -116,6 +117,14 @@ class PollController extends Controller
 
         if ($poll->closed_at === null) {
             $poll->forceFill(['closed_at' => now()])->save();
+
+            /*
+             * Inside the if, so pressing stop on a poll that is already stopped
+             * announces nothing. Only this way of closing is announced — a poll
+             * whose deadline simply passes has nothing running at that moment
+             * to say so; see the event.
+             */
+            PollClosed::dispatch($poll->id);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.poll.closed')]);

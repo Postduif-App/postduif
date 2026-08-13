@@ -32,7 +32,7 @@ class SlashCommandController extends Controller
         StartWorkflow $startWorkflow,
         NoticeInChannel $noticeInChannel,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         // Posting rather than viewing, unlike the button in the bar: this is
         // reached from the message field, and somebody who may not say anything

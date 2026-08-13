@@ -41,3 +41,26 @@ it('ends every font stack in a fallback the browser already has', function (Work
     expect($font->stack())->toEndWith("'Noto Color Emoji'")
         ->and($font->label())->not->toBeEmpty();
 })->with(WorkspaceFont::cases());
+
+/*
+ * The one thing BuildThemeStyles cannot check about itself.
+ *
+ * It writes --font-sans to :root and that is all it can do; whether anything
+ * reads that variable is decided in app.css, by whether the token sits in
+ * `@theme` or `@theme inline`. Inlined, Tailwind spells the default face out
+ * inside `.font-sans` and the workspace's choice lands nowhere — a regression
+ * with no error, no failing assertion anywhere else, and nothing to see but the
+ * wrong letters. So it is checked against the compiled stylesheet, which is the
+ * only place the answer exists.
+ */
+it('routes the font utility through the variable the theme overrides', function () {
+    $build = dirname(__DIR__, 2).'/public/build';
+
+    $manifest = json_decode((string) file_get_contents($build.'/manifest.json'), true);
+    $css = file_get_contents($build.'/'.$manifest['resources/css/app.css']['file']);
+
+    expect($css)->toContain('var(--font-sans)');
+})->skip(
+    ! file_exists(dirname(__DIR__, 2).'/public/build/manifest.json'),
+    'Needs built assets; run npm run build.'
+);

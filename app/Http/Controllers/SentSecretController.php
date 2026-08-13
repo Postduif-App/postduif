@@ -26,7 +26,7 @@ class SentSecretController extends Controller
 
     public function store(StoreSentSecretRequest $request, Workspace $workspace, Channel $channel): RedirectResponse
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $recipient = User::query()->findOrFail($request->integer('recipient_id'));
 

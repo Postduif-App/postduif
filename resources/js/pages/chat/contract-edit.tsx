@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserMenu } from '@/components/user-menu-content';
+import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useTranslate } from '@/hooks/use-translate';
 import { placeBox, pointerFraction, roundBox } from '@/lib/contract-fields';
 import type { FieldBox, RenderedPage } from '@/lib/contract-fields';
@@ -66,7 +67,17 @@ interface ContractBeingLaidOut {
     /** Where pdf.js fetches the document — a policy-guarded route. */
     sourceUrl: string;
     fields: SavedField[];
+    /**
+     * Who a box can be handed to, by their place in the queue.
+     *
+     * People on a contract, placeholders on a template — "Ikzelf" and "Ontvanger
+     * 1" — because a template's recipients do not exist yet. Both come from the
+     * server for the same reason: the numbering is a rule about the document,
+     * not a label, and the browser working it out for itself is how the boxes
+     * end up pointing at the wrong party. See ContractController::parties.
+     */
     signers: { index: number; name: string }[];
+    isTemplate: boolean;
 }
 
 interface ContractEditProps {
@@ -126,6 +137,7 @@ export default function ContractEdit({
     const { t, tChoice } = useTranslate();
 
     const [searchOpen, setSearchOpen] = useState(false);
+    useCommandPaletteShortcut(setSearchOpen);
     const [createOpen, setCreateOpen] = useState(false);
     const [directOpen, setDirectOpen] = useState(false);
     const [inviteOpen, setInviteOpen] = useState(false);
@@ -304,7 +316,10 @@ export default function ContractEdit({
                 <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
                     <ChannelMenuButton />
                     <Link
-                        href={`/app/${workspaceSlug}`}
+                        href={show.url({
+                            workspace: workspaceSlug,
+                            contract: contract.id,
+                        })}
                         aria-label={t('contracts.editor.back')}
                         className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
                     >
@@ -487,13 +502,32 @@ export default function ContractEdit({
                                     </Link>
                                 </p>
                             ) : (
-                                <ol className="space-y-1 text-xs text-muted-foreground">
-                                    {contract.signers.map((signer) => (
-                                        <li key={signer.index}>
-                                            {signer.index + 1}. {signer.name}
-                                        </li>
-                                    ))}
-                                </ol>
+                                <>
+                                    <ol className="space-y-1 text-xs text-muted-foreground">
+                                        {contract.signers.map((signer) => (
+                                            <li key={signer.index}>
+                                                {signer.index + 1}.{' '}
+                                                {signer.name}
+                                            </li>
+                                        ))}
+                                    </ol>
+
+                                    {/*
+                                        Said once, above the list, rather than
+                                        beside every name. On a template these
+                                        are places rather than people, and
+                                        somebody who does not know that reads
+                                        "Ontvanger 1" as a person whose name has
+                                        gone missing.
+                                    */}
+                                    {contract.isTemplate && (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t(
+                                                'contracts.template.editor_hint',
+                                            )}
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
 

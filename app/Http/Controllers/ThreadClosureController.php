@@ -29,7 +29,7 @@ class ThreadClosureController extends Controller
         Channel $channel,
         Message $message,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('view', $channel);
 
         $message->closeFor($request->user());
@@ -47,7 +47,7 @@ class ThreadClosureController extends Controller
         Channel $channel,
         Message $message,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('view', $channel);
 
         $message->reopenFor($request->user());

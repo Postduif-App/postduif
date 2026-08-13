@@ -16,7 +16,7 @@ class MessageController extends Controller
         Channel $channel,
         SendMessage $sendMessage,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $sendMessage->handle(
             channel: $channel,

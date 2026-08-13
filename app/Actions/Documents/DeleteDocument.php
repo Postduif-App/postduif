@@ -2,6 +2,7 @@
 
 namespace App\Actions\Documents;
 
+use App\Events\DocumentDeleted;
 use App\Events\DocumentUpdated;
 use App\Models\Document;
 use App\Models\User;
@@ -39,5 +40,9 @@ class DeleteDocument
         // The list has to lose it for everybody, not only for whoever removed
         // it — they are already being sent back to it.
         broadcast(new DocumentUpdated($document))->toOthers();
+
+        // Soft-deleted, so a listener can still read the row — with
+        // withTrashed(), which is the only way it will find it.
+        DocumentDeleted::dispatch($document->id, $actor->id);
     }
 }

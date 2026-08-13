@@ -8,30 +8,75 @@ use App\Models\Workflow;
 use App\Support\Dns\DnsHostResolver;
 use App\Support\Dns\HostResolver;
 use App\Support\PlatformStatistics;
+use App\Support\Transcription\NullTranscriber;
+use App\Support\Transcription\Transcriber;
+use App\Support\Transcription\WhisperTranscriber;
 use App\Workflows\Actions\AddChannelMembers;
 use App\Workflows\Actions\AddReaction;
+use App\Workflows\Actions\AppendToDocument;
 use App\Workflows\Actions\ArchiveChannel;
+use App\Workflows\Actions\AssignTicket;
+use App\Workflows\Actions\CancelContract;
+use App\Workflows\Actions\ClockOut;
+use App\Workflows\Actions\ClosePoll;
+use App\Workflows\Actions\CommentOnTicket;
 use App\Workflows\Actions\CreateChannel;
+use App\Workflows\Actions\CreateDocument;
+use App\Workflows\Actions\CreateInviteLink;
+use App\Workflows\Actions\CreatePoll;
+use App\Workflows\Actions\CreateSecretRequest;
 use App\Workflows\Actions\CreateTicket;
 use App\Workflows\Actions\Delay;
+use App\Workflows\Actions\ForwardMessage;
 use App\Workflows\Actions\GetChannelInfo;
 use App\Workflows\Actions\HttpRequest;
 use App\Workflows\Actions\PinMessage;
+use App\Workflows\Actions\PostContractToChannel;
+use App\Workflows\Actions\PostToBoard;
+use App\Workflows\Actions\RemindContractSigners;
 use App\Workflows\Actions\RemoveReaction;
 use App\Workflows\Actions\ReplyInThread;
+use App\Workflows\Actions\RetryContractRender;
 use App\Workflows\Actions\SendChannelMessage;
+use App\Workflows\Actions\SendContractFromTemplate;
 use App\Workflows\Actions\SendDirectMessage;
+use App\Workflows\Actions\SendSignedContract;
+use App\Workflows\Actions\SummariseHours;
 use App\Workflows\Actions\UnarchiveChannel;
 use App\Workflows\Actions\UnpinMessage;
+use App\Workflows\Actions\UpdateTicket;
 use App\Workflows\Triggers\ButtonTrigger;
 use App\Workflows\Triggers\ChannelJoinTrigger;
+use App\Workflows\Triggers\ChannelShareAnsweredTrigger;
+use App\Workflows\Triggers\ChannelShareOfferedTrigger;
+use App\Workflows\Triggers\ChannelShareRevokedTrigger;
+use App\Workflows\Triggers\ContractCancelledTrigger;
+use App\Workflows\Triggers\ContractCompletedTrigger;
+use App\Workflows\Triggers\ContractDeclinedTrigger;
+use App\Workflows\Triggers\ContractExpiredTrigger;
+use App\Workflows\Triggers\ContractOpenedTrigger;
+use App\Workflows\Triggers\ContractRenderFailedTrigger;
+use App\Workflows\Triggers\ContractSentTrigger;
+use App\Workflows\Triggers\ContractSignedTrigger;
+use App\Workflows\Triggers\DocumentCreatedTrigger;
+use App\Workflows\Triggers\DocumentDeletedTrigger;
 use App\Workflows\Triggers\FormSubmittedTrigger;
+use App\Workflows\Triggers\InviteLinkRedeemedTrigger;
 use App\Workflows\Triggers\LinkTrigger;
 use App\Workflows\Triggers\MessageKeywordTrigger;
+use App\Workflows\Triggers\PollClosedTrigger;
+use App\Workflows\Triggers\PollCreatedTrigger;
+use App\Workflows\Triggers\PollVotedTrigger;
 use App\Workflows\Triggers\ReactionTrigger;
 use App\Workflows\Triggers\ScheduleTrigger;
+use App\Workflows\Triggers\SecretRequestAnsweredTrigger;
 use App\Workflows\Triggers\SlashCommandTrigger;
+use App\Workflows\Triggers\TicketChangedTrigger;
+use App\Workflows\Triggers\TicketCommentedTrigger;
+use App\Workflows\Triggers\TicketCreatedTrigger;
+use App\Workflows\Triggers\TicketStaleTrigger;
 use App\Workflows\Triggers\TimeclockTrigger;
+use App\Workflows\Triggers\TransferDownloadedTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
@@ -66,6 +111,28 @@ class AppServiceProvider extends ServiceProvider
          * on a development box points *.test at localhost.
          */
         $this->app->bind(HostResolver::class, DnsHostResolver::class);
+
+        /*
+         * Which transcriber a recorded huddle is handed to, decided once here
+         * rather than checked wherever a transcript is wanted. With nothing
+         * configured this is the one that refuses with a sentence — see
+         * NullTranscriber, and the reason it refuses instead of returning
+         * nothing.
+         */
+        $this->app->bind(Transcriber::class, function (): Transcriber {
+            $url = config('services.transcription.url');
+
+            if (! is_string($url) || $url === '') {
+                return new NullTranscriber;
+            }
+
+            return new WhisperTranscriber(
+                $url,
+                config('services.transcription.token'),
+                (string) config('services.transcription.model'),
+                (int) config('services.transcription.timeout'),
+            );
+        });
 
         $this->registerWorkflowRegistry();
     }
@@ -104,6 +171,56 @@ class AppServiceProvider extends ServiceProvider
                  * inklokt", which belongs beside joining a channel.
                  */
                 TimeclockTrigger::class,
+                /*
+                 * The eight contract moments, in the order a contract lives
+                 * through them rather than by how often they are reached for.
+                 * They read as a story that way, and somebody scanning for the
+                 * one they want finds it by where it sits in that story.
+                 *
+                 * Together they are nearly half the list, which is the honest
+                 * cost of a feature with eight distinct moments — see
+                 * ContractTrigger for why this is not one trigger with a
+                 * dropdown.
+                 */
+                ContractSentTrigger::class,
+                ContractOpenedTrigger::class,
+                ContractSignedTrigger::class,
+                ContractDeclinedTrigger::class,
+                ContractCompletedTrigger::class,
+                ContractCancelledTrigger::class,
+                ContractExpiredTrigger::class,
+                ContractRenderFailedTrigger::class,
+                /*
+                 * The four ticket moments. Four where the contracts have eight,
+                 * because everything that happens to a ticket carries the same
+                 * cargo and the differences fit in a dropdown — see
+                 * TicketTrigger, which sets that rule out.
+                 */
+                TicketCreatedTrigger::class,
+                TicketChangedTrigger::class,
+                TicketCommentedTrigger::class,
+                TicketStaleTrigger::class,
+                /*
+                 * Two for documents and three for polls, both cut by the same
+                 * rule as the rest: a trigger per moment something can act on,
+                 * and none for the moments that fire on typing.
+                 */
+                DocumentCreatedTrigger::class,
+                DocumentDeletedTrigger::class,
+                PollCreatedTrigger::class,
+                PollVotedTrigger::class,
+                PollClosedTrigger::class,
+                /*
+                 * The governance handful: who is being let in, and which rooms
+                 * are shared with whom. They sit at the end of the workspace's
+                 * own happenings and before the manual three.
+                 */
+                InviteLinkRedeemedTrigger::class,
+                ChannelShareOfferedTrigger::class,
+                ChannelShareAnsweredTrigger::class,
+                ChannelShareRevokedTrigger::class,
+                TransferDownloadedTrigger::class,
+                SecretRequestAnsweredTrigger::class,
                 LinkTrigger::class,
                 /*
                  * Beside the link trigger, because the two are the manual pair:
@@ -129,6 +246,38 @@ class AppServiceProvider extends ServiceProvider
                 SendDirectMessage::class,
                 ReplyInThread::class,
                 CreateTicket::class,
+                UpdateTicket::class,
+                AssignTicket::class,
+                CommentOnTicket::class,
+                CreateDocument::class,
+                AppendToDocument::class,
+                CreatePoll::class,
+                ClosePoll::class,
+                /*
+                 * The clock's two, which round off the trigger it has had all
+                 * along: a workspace could hang a workflow off somebody
+                 * clocking and then do nothing about it.
+                 */
+                ClockOut::class,
+                SummariseHours::class,
+                CreateInviteLink::class,
+                CreateSecretRequest::class,
+                PostToBoard::class,
+                ForwardMessage::class,
+                /*
+                 * The contract handful, in the order a contract needs them:
+                 * send one, nudge whoever is quiet, put it where people can see
+                 * it, stop it, hand out the finished copy, and only then the
+                 * repair. They sit here rather than at the end because they
+                 * belong with opening a ticket — things a workflow does *for*
+                 * somebody, as opposed to the things it does to a message.
+                 */
+                SendContractFromTemplate::class,
+                RemindContractSigners::class,
+                PostContractToChannel::class,
+                CancelContract::class,
+                SendSignedContract::class,
+                RetryContractRender::class,
                 AddReaction::class,
                 RemoveReaction::class,
                 PinMessage::class,
@@ -258,6 +407,20 @@ class AppServiceProvider extends ServiceProvider
             ->by(Workflow::hashWebhookToken((string) $request->route('token'))));
 
         /*
+         * Incoming mail, on a far longer leash than either of the above. What
+         * arrives here is not one integration's choice of pace but a mailbox:
+         * a customer forwarding a thread, a monitoring system that fired
+         * twenty alerts at once, a morning's post arriving in a burst. Too low
+         * a limit here does not slow anything down — it drops mail, which is
+         * the one thing a letterbox may never do.
+         *
+         * Keyed by the hash of the token, like the two above, so a secret never
+         * becomes a cache key.
+         */
+        RateLimiter::for('inbound-mail', fn (Request $request) => Limit::perMinute(120)
+            ->by(hash('sha256', (string) $request->route('token'))));
+
+        /*
          * The token API, keyed per token for the same reason a webhook is: one
          * script polling too eagerly must not be able to lock out somebody
          * else's.
@@ -268,6 +431,18 @@ class AppServiceProvider extends ServiceProvider
          * is exactly what a limit is for.
          */
         RateLimiter::for('api-token', fn (Request $request) => Limit::perMinute(60)
+            ->by(ApiToken::hashToken((string) $request->bearerToken()) ?: $request->ip()));
+
+        /*
+         * Sending a contract, which is the one call in this API that puts mail
+         * in a stranger's inbox from an address a workspace owns. Ten a minute
+         * is generous for the thing it is — a lease, a quotation, a set of
+         * terms — and mean enough that a loop in somebody's integration cannot
+         * turn a workspace's mail domain into a source of complaints before
+         * anybody notices. The screens' own send route is limited at the same
+         * number for the same reason.
+         */
+        RateLimiter::for('contract-send', fn (Request $request) => Limit::perMinute(10)
             ->by(ApiToken::hashToken((string) $request->bearerToken()) ?: $request->ip()));
     }
 

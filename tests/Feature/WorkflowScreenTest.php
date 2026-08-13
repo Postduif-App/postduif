@@ -13,6 +13,7 @@ use App\Models\Workflow;
 use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\WorkflowStepRun;
+use App\Workflows\WorkflowRegistry;
 use Laravel\Pennant\Feature;
 
 it('hands the builder the questions a form asks, under the keys they arrive as', function () {
@@ -71,14 +72,18 @@ it('lists a workspace his workflows without drawing any of them', function () {
             // that gets slower each time somebody writes another one.
             ->missing('workflows.0.steps')
             // Only the triggers, because the only thing built here is a new
-            // workflow's first question.
-            ->has('triggers', 10)
+            // workflow's first question. Counted against the register rather
+            // than against a number: a screen that has to be edited every time
+            // an action is written is a screen whose test says nothing.
+            ->has('triggers', count(app(WorkflowRegistry::class)->triggers()))
             ->missing('catalogue')
         );
 });
 
 it('shows a beheerder the builder with everything it can be built from', function () {
     [$admin, $workspace] = workflowBeheerder();
+
+    $registry = app(WorkflowRegistry::class);
 
     $workflow = Workflow::factory()->create([
         'workspace_id' => $workspace->id,
@@ -90,8 +95,15 @@ it('shows a beheerder the builder with everything it can be built from', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workflow-edit')
-            ->has('catalogue.triggers', 10)
-            ->has('catalogue.actions', 15)
+            ->has('catalogue.triggers', count($registry->triggers()))
+            ->has('catalogue.actions', count($registry->actions()))
+            // The operators come down grouped, with whether each of them has a
+            // right-hand side at all. Both were written out in the screen until
+            // there were twenty of them, and a list in the screen is a list
+            // that goes stale without saying so.
+            ->has('grammar.operatorGroups', 4)
+            ->where('grammar.operatorGroups.0.operators.0.value', 'equals')
+            ->where('grammar.operatorGroups.0.operators.0.needsValue', true)
             // The fields come down with them: a builder that had to ask for
             // them would drift from what the runner reads.
             ->has('catalogue.triggers.0.fields')
@@ -185,7 +197,9 @@ it('saves the name a workflow his messages are signed with', function () {
         'name' => 'Storingsmelder',
         'bot_name' => 'Storingsdienst',
         'trigger_type' => 'message-keyword',
-        'trigger_config' => [],
+        // The words are what this trigger cannot do without, and saving is
+        // where that is now said — see ValidateConfiguration.
+        'trigger_config' => ['keywords' => ['storing']],
         'steps' => [],
     ]);
 
@@ -208,7 +222,7 @@ it('reads an emptied box as the workflow his own name again', function () {
         // middleware has turned it into null by the time the rules see it.
         'bot_name' => '   ',
         'trigger_type' => 'message-keyword',
-        'trigger_config' => [],
+        'trigger_config' => ['keywords' => ['storing']],
         'steps' => [],
     ]);
 

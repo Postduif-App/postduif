@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\Tickets\FindStaleTickets;
 use App\Enums\Availability;
+use App\Events\TicketWentStale;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
@@ -43,6 +44,21 @@ class NotifyStaleTickets extends Command
             $notified++;
         }
 
+        /*
+         * And the same news to whatever the workspace built for itself, one
+         * event per ticket. Announced from here rather than from
+         * FindStaleTickets because this is where the cooldown lives: that
+         * action is a query and would answer the same question as often as it
+         * were asked, which for a workflow would mean an hourly reminder about
+         * a ticket nobody has touched.
+         *
+         * Before the stamp, so a listener reading the row still sees the
+         * reminded_at it had when it was found.
+         */
+        foreach ($stale as $ticket) {
+            TicketWentStale::dispatch($ticket->id, $this->whyStale($ticket));
+        }
+
         // Stamped whether or not anybody could be reached. A channel with no
         // reachable members would otherwise be re-examined every hour forever,
         // and the cooldown exists to bound the work as much as the noise.
@@ -53,6 +69,19 @@ class NotifyStaleTickets extends Command
             : $notified.' herinneringen verstuurd.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Which of the two kinds of neglect this is.
+     *
+     * A broken promise or a silence — see FindStaleTickets, which looks for
+     * both. Asked here rather than carried out of that action because it is one
+     * comparison, and because a workflow wants it as a word it can put in a
+     * condition rather than as two dates to work out for itself.
+     */
+    private function whyStale(Ticket $ticket): string
+    {
+        return $ticket->due_at !== null && $ticket->due_at->isPast() ? 'overdue' : 'unanswered';
     }
 
     /**

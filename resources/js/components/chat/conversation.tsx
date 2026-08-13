@@ -31,6 +31,7 @@ import { MessageList } from '@/components/chat/message-list';
 import { MuteMenu } from '@/components/chat/mute-menu';
 import { NoticeList } from '@/components/chat/notice-list';
 import { PinnedBar, PinnedPanel } from '@/components/chat/pinned-messages';
+import { ScheduleHuddleDialog } from '@/components/chat/schedule-huddle-dialog';
 import { ScheduledPanel } from '@/components/chat/scheduled-panel';
 import { SectionMenu } from '@/components/chat/section-menu';
 import { ThreadPanel } from '@/components/chat/thread-panel';
@@ -62,6 +63,7 @@ import {
     bookmark,
     destroy,
     pin,
+    reminder as setReminder,
     unbookmark,
     unpin,
     update,
@@ -321,6 +323,7 @@ export function Conversation({
      */
     const [scheduledOpen, setScheduledOpen] = useState(false);
     const [membersOpen, setMembersOpen] = useState(false);
+    const [scheduleOpen, setScheduleOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [createTicketOpen, setCreateTicketOpen] = useState(false);
     const [createDocumentOpen, setCreateDocumentOpen] = useState(false);
@@ -713,6 +716,29 @@ export function Conversation({
     );
 
     /**
+     * "Herinner me hier straks aan."
+     *
+     * Nothing is shown optimistically and nothing needs to be: the reminder is
+     * for later, so the only thing that happens now is the toast the server
+     * sends back — which is also the only place the actual moment is spelled
+     * out, because the menu says "over een uur" and not what o'clock that is.
+     */
+    const remind = useCallback(
+        (message: ChatMessage, when: string) => {
+            router.post(
+                setReminder.url({
+                    workspace: workspace.slug,
+                    channel: channel.id,
+                    message: message.id,
+                }),
+                { when },
+                { preserveScroll: true, preserveState: true },
+            );
+        },
+        [channel.id, workspace.slug],
+    );
+
+    /**
      * Take one file off a message.
      *
      * Nothing is removed optimistically: the server also deletes the message
@@ -1076,6 +1102,38 @@ export function Conversation({
                             )}
                         >
                             <Headphones className="size-3.5" />
+                        </button>
+                    )}
+
+                    {/*
+                        Arranging one for later. Its own button beside the one
+                        that walks into a huddle, because they are opposite
+                        gestures — that one is "now", this one is "not now" —
+                        and a menu hiding both behind a click would cost the
+                        common case a step.
+
+                        The dot is the whole of what the header says about the
+                        diary: a channel with something coming up shows it,
+                        everything else is behind the button.
+                    */}
+                    {channel.canHuddle && (
+                        <button
+                            type="button"
+                            onClick={() => setScheduleOpen(true)}
+                            aria-label={t(
+                                'conversation.header.schedule_huddle',
+                            )}
+                            title={t('conversation.header.schedule_huddle')}
+                            className={cn(
+                                'relative rounded-md border p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:outline-none',
+                                channel.scheduledHuddles.length > 0 &&
+                                    'border-primary/40 text-primary',
+                            )}
+                        >
+                            <CalendarClock className="size-3.5" />
+                            {channel.scheduledHuddles.length > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-primary" />
+                            )}
                         </button>
                     )}
 
@@ -1470,6 +1528,7 @@ export function Conversation({
                                 onDelete={remove}
                                 onRemoveAttachment={removeAttachment}
                                 bookmarkedIds={saved}
+                                onRemind={remind}
                                 onToggleBookmark={
                                     workspace.features['saved-messages']
                                         ? toggleBookmark
@@ -1689,6 +1748,25 @@ export function Conversation({
                     workspaceTags={workspaceTags}
                     open={settingsOpen}
                     onOpenChange={setSettingsOpen}
+                />
+            )}
+
+            {/*
+                Its own dialog rather than a panel in the huddle bar: that bar
+                only exists while somebody is talking, and the whole point of
+                arranging one is that nobody is.
+
+                The picker is fed the channel's own members, which the page
+                already carries — a second fetch would be a list of the same
+                people arriving a moment later.
+            */}
+            {channel.canHuddle && (
+                <ScheduleHuddleDialog
+                    workspace={workspace}
+                    channel={channel}
+                    members={channel.members}
+                    open={scheduleOpen}
+                    onOpenChange={setScheduleOpen}
                 />
             )}
 

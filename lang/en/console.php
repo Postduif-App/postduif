@@ -24,4 +24,9 @@ return [
     'no_stale_huddles' => 'No huddles to clear up.',
     'huddles_swept' => '{1}1 huddle closed.|[2,*]:count huddles closed.',
     'notices_pruned' => '{1}1 notice pruned.|[2,*]:count notices pruned.',
+    'role_abilities_in_sync' => 'Every system role already holds the rights it should.',
+    'role_abilities_owners_synced' => '{0}No owner role changed.|{1}1 owner role updated.|[2,*]:count owner roles updated.',
+    'role_abilities_others_synced' => '{0}No other system roles changed.|{1}1 other system role updated.|[2,*]:count other system roles updated.',
+    'role_abilities_owners_pending' => '{0}No owner role would change.|{1}1 owner role would be updated.|[2,*]:count owner roles would be updated.',
+    'role_abilities_others_pending' => '{0}No other system roles would change.|{1}1 other system role would be updated.|[2,*]:count other system roles would be updated.',
 ];

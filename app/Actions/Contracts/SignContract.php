@@ -3,6 +3,7 @@
 namespace App\Actions\Contracts;
 
 use App\Enums\ContractProgressKind;
+use App\Events\ContractSigned;
 use App\Jobs\RenderSignedContractJob;
 use App\Models\ContractField;
 use App\Models\ContractFieldValue;
@@ -45,7 +46,7 @@ class SignContract
 
         $this->assertEverythingRequiredIsDone($signer);
 
-        return DB::transaction(function () use ($signer, $hash, $ip, $userAgent): ContractSigner {
+        $signer = DB::transaction(function () use ($signer, $hash, $ip, $userAgent): ContractSigner {
             /*
              * One statement, and the whole of the "only once" guarantee.
              *
@@ -93,6 +94,18 @@ class SignContract
             $signer->refresh();
 
             /*
+             * A template's author signing it is not news, and there is nothing
+             * to render: what they have just done is put their half of a
+             * document in place for the contracts that will be made from it —
+             * see InstantiateTemplate, which carries this signature across to
+             * every one of them. A rendered "signed copy" of a template would
+             * be a finished agreement between one person and nobody.
+             */
+            if ($signer->contract->is_template) {
+                return $signer;
+            }
+
+            /*
              * Inside the transaction that just stamped this signer, so a
              * contract can never be observed with everybody signed and a status
              * that still says otherwise.
@@ -122,6 +135,25 @@ class SignContract
 
             return $signer;
         });
+
+        /*
+         * Announced after the commit, and outside the transaction rather than
+         * with afterCommit on the listener, because there is nothing to gain
+         * from being inside one: everything this event carries is already
+         * written, and the listener it wakes only plans deliveries. Outside is
+         * also the honest place for it — an event that fires inside a
+         * transaction is an event that can be rolled back after the world has
+         * been told.
+         *
+         * A template announces nothing, for the reason set out above: its
+         * author signing it is not an agreement, and a subscriber would read
+         * "getekend" about a document that was never sent to anybody.
+         */
+        if (! $signer->contract->is_template) {
+            ContractSigned::dispatch($signer->contract->id, $signer->id);
+        }
+
+        return $signer;
     }
 
     /**

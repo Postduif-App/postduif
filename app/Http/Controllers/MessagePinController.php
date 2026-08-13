@@ -35,7 +35,7 @@ class MessagePinController extends Controller
         Channel $channel,
         Message $message,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('pin', $message);
 
         if (! $message->isPinned()) {
@@ -58,7 +58,7 @@ class MessagePinController extends Controller
         Channel $channel,
         Message $message,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('pin', $message);
 
         $message->unpin();

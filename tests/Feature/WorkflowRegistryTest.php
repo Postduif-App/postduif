@@ -78,6 +78,39 @@ it('offers every trigger the application was built with', function () {
         'reaction',
         'form-submitted',
         'timeclock',
+        // The eight contract moments in the order a contract lives through
+        // them, which is the order somebody scanning the list expects to find
+        // them in — see the register, where the order is the choice.
+        'contract-sent',
+        'contract-opened',
+        'contract-signed',
+        'contract-declined',
+        'contract-completed',
+        'contract-cancelled',
+        'contract-expired',
+        'contract-render-failed',
+        // And four for tickets, cut by what they carry rather than by event —
+        // see TicketTrigger, which sets out why these are four where the
+        // contracts are eight.
+        'ticket-created',
+        'ticket-changed',
+        'ticket-commented',
+        'ticket-stale',
+        // Two for documents — there is no "gewijzigd", because saving happens
+        // by itself while somebody types — and three for polls.
+        'document-created',
+        'document-deleted',
+        'poll-created',
+        'poll-voted',
+        'poll-closed',
+        // And the governance handful: who is being let in, which rooms are
+        // shared with whom, and whether what was sent was collected.
+        'invite-link-redeemed',
+        'channel-share-offered',
+        'channel-share-answered',
+        'channel-share-revoked',
+        'transfer-downloaded',
+        'secret-request-answered',
         'link',
         'slash-command',
         'button',
@@ -133,6 +166,9 @@ it('describes a field completely enough for a screen to draw it', function () {
         'required' => false,
         'acceptsVariables' => false,
         'options' => ['daily' => 'Elke dag'],
+        // Null for everything that is not a record picker, and the builder
+        // draws its control from that.
+        'record' => null,
     ]);
 });
 

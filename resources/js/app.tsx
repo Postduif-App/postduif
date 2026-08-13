@@ -124,9 +124,9 @@ if (import.meta.hot?.data.mounted !== true) {
                     return ChatLayout;
                 case name.startsWith('auth/'):
                     return AuthLayout;
-                // Making your first workspace. The auth shell rather than the chat
-                // one: there is no sidebar to draw, because there is nothing yet to
-                // put in it.
+                // Belonging to no workspace yet. The auth shell rather than the
+                // chat one: there is no sidebar to draw, because there is nothing
+                // yet to put in it.
                 case name.startsWith('workspaces/'):
                     return AuthLayout;
                 // A download link is followed by somebody who may have no account
@@ -134,6 +134,22 @@ if (import.meta.hot?.data.mounted !== true) {
                 // one card, no navigation, nothing to sign in to.
                 case name.startsWith('transfers/'):
                     return AuthLayout;
+                /*
+                 * Signing a contract: no shell at all, not even the one-card one.
+                 *
+                 * Whoever follows this link came from an email to do one thing,
+                 * often on a telephone, and often without an account here — so a
+                 * sidebar offering them a dashboard is both useless and slightly
+                 * alarming beside a document they are being asked to sign. The
+                 * page owns the whole viewport and brings its own two bars.
+                 *
+                 * It landed on the app shell by falling through to the default,
+                 * which cost it more than the sidebar: that shell clips its
+                 * overflow, and a sticky bar inside something that does cannot
+                 * stick.
+                 */
+                case name.startsWith('contracts/'):
+                    return null;
                 /*
                  * The requester reading what came in. Wider than the rest of this
                  * shell, because a decrypted key wrapped over four lines in a
@@ -164,6 +180,14 @@ if (import.meta.hot?.data.mounted !== true) {
                  */
                 case name === 'settings/members':
                 case name === 'settings/workspace-channels':
+                    return WideSettingsLayout;
+                /*
+                 * The roles screen, since it became a list beside an editor. Two
+                 * columns in a reading width leave the editor about 400px, which
+                 * is not enough for a right and its explanation on one line —
+                 * every row wrapped to three and the catalogue read as a wall.
+                 */
+                case name === 'settings/workspace-roles':
                     return WideSettingsLayout;
                 /*
                  * The workflow builder and its run history, for the same reason as

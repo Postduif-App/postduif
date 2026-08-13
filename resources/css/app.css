@@ -23,12 +23,46 @@
     }
 }
 
+/*
+ * The default face, and pointedly not in the `inline` block below.
+ *
+ * `inline` and this token want opposite things, because this one is a literal
+ * rather than a reference. Inlined, `font-sans` compiles to the letters spelled
+ * out here and --font-sans is left as a variable nothing reads — so a workspace
+ * that picked Inter would have its choice written to :root by BuildThemeStyles,
+ * see it land nowhere, and read in Instrument Sans like everybody else.
+ *
+ * Kept plain, `font-sans` compiles to var(--font-sans), which is exactly the
+ * indirection the workspace theme is written against. The colours below need
+ * `inline` to get the same indirection, for the reason given there. Same goal,
+ * opposite keyword — because a `var()` on the right-hand side is what decides
+ * which way round it falls.
+ */
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+}
 
+/*
+ * `inline` is what makes the two blocks below mean anything.
+ *
+ * Without it Tailwind resolves `--color-background: var(--background)` once, at
+ * :root, and every `bg-background` in the application carries that one answer
+ * down the tree. A shell that re-declares `--background` on itself — which is
+ * exactly what `.postduif` and `.dark .postduif.pd-themed` do — would then be
+ * overriding a variable nothing reads any more: the paper page would come out
+ * right and every Button, Input and Dialog on it would still be wearing the
+ * application's palette. In light that is nearly invisible, because the default
+ * tokens are a near-white and a near-black that pass for paper and ink. In dark
+ * it is a black card on a sheet of paper.
+ *
+ * With `inline`, the utility resolves where it is used, so the nearest shell
+ * wins — and the promise made further down this file, that overriding these
+ * tokens re-dresses every control on the external screens, is true.
+ */
+@theme inline {
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);

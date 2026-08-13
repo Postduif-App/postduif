@@ -63,6 +63,13 @@ class ContractPolicy
      * Withdrawing and starting again is the way to change a sent contract. That
      * is deliberately more work, because it is also more honest: everybody who
      * was asked gets told the old one is dead.
+     *
+     * A template is caught by the same signature condition, and that is the
+     * intended answer rather than an accident of sharing the rule. Once the
+     * author has signed it, moving a box would move their signature somewhere
+     * they never put it — and every contract made from the template afterwards
+     * would carry that. Taking their own signature off it again unlocks the
+     * editor, which is the honest version of the same wish.
      */
     public function update(User $user, Contract $contract): bool
     {
@@ -82,7 +89,9 @@ class ContractPolicy
      */
     public function cancel(User $user, Contract $contract): bool
     {
-        return $this->view($user, $contract) && $contract->status->isOutstanding();
+        return $this->view($user, $contract)
+            && ! $contract->is_template
+            && $contract->status->isOutstanding();
     }
 
     /**
@@ -93,10 +102,16 @@ class ContractPolicy
      * longer exists. The throttle that stops this becoming harassment is not
      * here; it belongs to the action, because it is about how often rather than
      * about who.
+     *
+     * Templates are named separately because isSignable() says yes to them —
+     * their author has to be able to open the signing page. Nudging one would
+     * mean mailing yourself about a document you are holding.
      */
     public function remind(User $user, Contract $contract): bool
     {
-        return $this->view($user, $contract) && $contract->isSignable();
+        return $this->view($user, $contract)
+            && ! $contract->is_template
+            && $contract->isSignable();
     }
 
     /**
@@ -112,15 +127,57 @@ class ContractPolicy
     }
 
     /**
+     * Using it again, for other people.
+     *
+     * Two questions at once, and both have to hold: may this person see this
+     * contract, and may they start one at all. The second is not implied by the
+     * first — a manager sees every contract in the workspace, and somebody whose
+     * right to send them was taken away still sees the ones they sent — and what
+     * comes out of this is a new contract, not a view of an old one.
+     *
+     * Nothing here about the status, deliberately. This is the only thing left
+     * that may be done with a completed contract, and it is the reason it is
+     * offered: update() has refused since the first signature landed, because
+     * changing a document somebody signed is the one thing a contract may never
+     * do. Copying it changes nothing — the original stays exactly as it was.
+     */
+    public function duplicate(User $user, Contract $contract): bool
+    {
+        return $this->view($user, $contract)
+            && $contract->workspace->allows($user, WorkspaceAbility::SendContracts);
+    }
+
+    /**
      * Throwing it away for good.
      *
-     * Never once it is completed, and not by an admin's judgement either. A
-     * signed contract is the only thing here that somebody else relies on: the
-     * person who signed it has a copy and a right to assume this one still
-     * exists. What may be deleted is correspondence that came to nothing.
+     * Correspondence that came to nothing goes on the same terms as everything
+     * else here: whoever may see it. A draft nobody sent, a contract that was
+     * withdrawn, one that ran out — none of those is holding anything up.
+     *
+     * A completed one is the exception, and it needs a right of its own. It is
+     * the only thing in this feature somebody outside is relying on: they
+     * signed it, they hold a copy, and they may reasonably assume ours still
+     * exists. Deleting it takes the signed PDF, the audit page and the hash
+     * that ties them together off the disk, and nothing brings them back.
+     *
+     * So it is asked as two questions rather than one. May you see this
+     * contract — the same line as everywhere else, which is what stops this
+     * becoming a way to clear out work you cannot open — and has this workspace
+     * decided that your role may destroy a finished record. Not "are you an
+     * administrator": running the place and being trusted with that are
+     * different things, and a workspace should be able to keep them apart. See
+     * WorkspaceAbility::DeleteSignedContracts.
      */
     public function delete(User $user, Contract $contract): bool
     {
-        return $this->view($user, $contract) && ! $contract->status->isEvidence();
+        if (! $this->view($user, $contract)) {
+            return false;
+        }
+
+        if (! $contract->status->isEvidence()) {
+            return true;
+        }
+
+        return $contract->workspace->allows($user, WorkspaceAbility::DeleteSignedContracts);
     }
 }

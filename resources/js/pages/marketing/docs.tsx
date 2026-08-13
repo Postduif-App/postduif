@@ -30,7 +30,7 @@ interface Endpoint {
     path: string;
     summary: string;
     /** Which key opens it: a personal token, or a webhook URL. */
-    auth: 'token' | 'webhook';
+    auth: 'token' | 'contract-token' | 'webhook';
     /** Which limiter guards it, keyed into `limits`. */
     limiter: string;
     params?: Param[];
@@ -161,6 +161,16 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
     const tokenEndpoints = endpoints.filter(
         (endpoint) => endpoint.auth === 'token',
     );
+    /*
+     * A section of their own rather than among the token endpoints, because
+     * they ask for a different credential: a token tied to one workspace and
+     * carrying the contracts scope. Somebody who tried their ordinary token
+     * here would be refused, and a page that put the two side by side without
+     * saying so would be the reason why.
+     */
+    const contractEndpoints = endpoints.filter(
+        (endpoint) => endpoint.auth === 'contract-token',
+    );
     const webhookEndpoints = endpoints.filter(
         (endpoint) => endpoint.auth === 'webhook',
     );
@@ -241,10 +251,78 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
                 <Note>{t('marketing.docs.token.note')}</Note>
             </div>
 
-            {webhookEndpoints.length > 0 && (
+            {contractEndpoints.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
                         number="03"
+                        title={t('marketing.docs.contracts.title')}
+                        lead={t('marketing.docs.contracts.lead')}
+                    />
+
+                    <div className="grid grid-cols-1 gap-6">
+                        {contractEndpoints.map((endpoint) => (
+                            <EndpointCard
+                                key={endpoint.name}
+                                endpoint={endpoint}
+                                perMinute={limits[endpoint.limiter]?.perMinute}
+                            />
+                        ))}
+                    </div>
+
+                    <Card>
+                        <CardLabel>
+                            {t('marketing.docs.contracts.callback')}
+                        </CardLabel>
+                        <pre
+                            className="m-0 overflow-x-auto"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 13,
+                                lineHeight: 1.7,
+                            }}
+                        >
+                            {`POST <jouw-callback-url>
+X-Postduif-Event: signed
+X-Postduif-Signature: sha256=<hex>
+
+{
+  "event": "signed",
+  "occurredAt": "2026-08-13T09:12:44+00:00",
+  "contract": { "id": "01K…", "title": "Huurovereenkomst", "status": "sent", "completedAt": null },
+  "signers": [ { "name": "Anna de Vries", "email": "anna@example.com", "signedAt": "2026-08-13T09:12:44+00:00", "declinedAt": null, "declineReason": null } ],
+  "documentUrl": null
+}`}
+                        </pre>
+                    </Card>
+
+                    <Card>
+                        <CardLabel>
+                            {t('marketing.docs.contracts.verify')}
+                        </CardLabel>
+                        <pre
+                            className="m-0 overflow-x-auto"
+                            style={{
+                                fontFamily: 'var(--pd-mono)',
+                                fontSize: 13,
+                                lineHeight: 1.7,
+                            }}
+                        >
+                            {`$expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+
+if (! hash_equals($expected, $request->header('X-Postduif-Signature'))) {
+    abort(401);
+}`}
+                        </pre>
+                    </Card>
+
+                    <Note>{t('marketing.docs.contracts.note')}</Note>
+                </div>
+            )}
+
+            {webhookEndpoints.length > 0 && (
+                <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
+                    <SectionHead
+                        number="04"
                         title={t('marketing.docs.webhooks.title')}
                         lead={t('marketing.docs.webhooks.lead')}
                     />
@@ -264,7 +342,7 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
             {tools.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
-                        number="04"
+                        number="05"
                         title={t('marketing.docs.ai.title')}
                         lead={t('marketing.docs.ai.lead')}
                     />

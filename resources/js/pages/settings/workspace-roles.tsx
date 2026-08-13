@@ -45,13 +45,71 @@ interface RolesProps {
 }
 
 /**
+ * One role in the list on the left.
+ *
+ * Says only what somebody picks a role by: its name, and how many people are
+ * standing in it. What it may do is the other half of the screen — putting a
+ * summary of the rights here as well would mean saying the same thing twice and
+ * disagreeing with itself the moment a tickbox moves.
+ */
+function RoleRow({
+    role,
+    chosen,
+    onChoose,
+}: {
+    role: Role;
+    chosen: boolean;
+    onChoose: () => void;
+}) {
+    const { t, tChoice } = useTranslate();
+
+    return (
+        <li>
+            <button
+                type="button"
+                onClick={onChoose}
+                aria-current={chosen}
+                className={cn(
+                    'w-full rounded-md px-2.5 py-2 text-start transition-colors hover:bg-muted/60',
+                    chosen && 'bg-muted hover:bg-muted',
+                )}
+            >
+                <span className="flex items-center gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium">
+                        {role.name}
+                    </span>
+
+                    {role.isExternal && (
+                        // Only this one badge survives into the list. Whether a
+                        // role is from outside decides which channels exist for
+                        // the people in it, which is the one thing worth
+                        // knowing before you have clicked; "meegeleverd" is
+                        // trivia until you are already looking at the role.
+                        <span className="shrink-0 rounded border border-amber-500/40 px-1.5 text-[0.6875rem] text-amber-700 dark:text-amber-400">
+                            {t('workspace_roles.external')}
+                        </span>
+                    )}
+                </span>
+
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {tChoice('workspace_roles.holders', role.holders)}
+                </span>
+            </button>
+        </li>
+    );
+}
+
+/**
  * One role, with its rights.
  *
  * Saved as a whole rather than per tickbox. A role is a sentence — this name,
  * these rights — and saving half of it on every click would leave a moment
  * where somebody holds a role nobody wrote.
+ *
+ * Its state is seeded from the props once, so the page above it mounts a fresh
+ * one per role rather than reusing this one. See the `key` where it is rendered.
  */
-function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
+function RoleEditor({ role, abilities }: { role: Role; abilities: Ability[] }) {
     const { t, tChoice } = useTranslate();
 
     const [name, setName] = useState(role.name);
@@ -80,7 +138,7 @@ function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
         );
 
     return (
-        <div className="rounded-lg border p-4">
+        <div className="min-w-0 rounded-lg border p-5">
             <div className="mb-4 flex flex-wrap items-center gap-3">
                 <Input
                     value={name}
@@ -93,12 +151,6 @@ function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
                 {role.isSystem && (
                     <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {t('workspace_roles.system')}
-                    </span>
-                )}
-
-                {role.isExternal && (
-                    <span className="rounded border border-amber-500/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
-                        {t('workspace_roles.external')}
                     </span>
                 )}
 
@@ -132,7 +184,15 @@ function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
                 {t('workspace_roles.abilities')}
             </Label>
 
-            <ul className="m-0 mb-4 grid list-none gap-2 p-0 sm:grid-cols-2">
+            {/*
+                Two columns from `xl` up, and one below it. A right is a title
+                and a sentence explaining it, which wants a good 30ch to itself:
+                below that width two columns turn every row into three wrapped
+                lines, which is exactly the wall of text the split was meant to
+                undo. Above it the catalogue would otherwise run a screen and a
+                half in a single narrow strip down the middle of a wide page.
+            */}
+            <ul className="m-0 mb-4 grid list-none gap-x-8 gap-y-3 p-0 xl:grid-cols-2">
                 {abilities.map((ability) => (
                     <li key={ability.value}>
                         <label
@@ -170,7 +230,7 @@ function RoleCard({ role, abilities }: { role: Role; abilities: Ability[] }) {
                 ))}
             </ul>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 border-t pt-4">
                 <label
                     className={cn(
                         'flex items-center gap-2 text-sm',
@@ -222,6 +282,18 @@ export default function WorkspaceRoles({
 }: RolesProps) {
     const { t } = useTranslate();
     const [name, setName] = useState('');
+    const [chosenId, setChosenId] = useState<number | null>(
+        roles[0]?.id ?? null,
+    );
+
+    /*
+     * Which role the right-hand side is showing, worked out rather than stored.
+     * A role can leave under this screen's feet — somebody deletes the one they
+     * are looking at — and an id kept in state would then point at nothing.
+     * Falling back to the first role means the panel is never empty while there
+     * are roles, without a second piece of state to keep in step.
+     */
+    const chosen = roles.find((role) => role.id === chosenId) ?? roles[0];
 
     return (
         <>
@@ -242,54 +314,117 @@ export default function WorkspaceRoles({
                     {t('workspace_roles.explanation')}
                 </p>
 
-                <div className="space-y-4">
-                    {roles.map((role) => (
-                        <RoleCard
-                            key={role.id}
-                            role={role}
+                {/*
+                    Split rather than a stack of cards. Every role carries the
+                    whole catalogue of rights, so a workspace with eight of them
+                    used to be eight near-identical blocks of tickboxes — a page
+                    you scroll past rather than read. Picking one first makes
+                    the question on screen "wat mag deze rol" instead of "welke
+                    van deze vijftig vinkjes hoort bij wie".
+                */}
+                <div className="grid items-start gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-8">
+                    {/*
+                        Pinned while the rights scroll past. The catalogue on the
+                        right is longer than a screen, and a role list that
+                        scrolls away with it turns "look at the next role" into a
+                        scroll back up to find the list again.
+                    */}
+                    <div className="space-y-4 lg:sticky lg:top-4">
+                        <ul
+                            aria-label={t('workspace_roles.title')}
+                            className="m-0 list-none space-y-0.5 p-0"
+                        >
+                            {roles.map((role) => (
+                                <RoleRow
+                                    key={role.id}
+                                    role={role}
+                                    chosen={role.id === chosen?.id}
+                                    onChoose={() => setChosenId(role.id)}
+                                />
+                            ))}
+                        </ul>
+
+                        <div className="space-y-3 rounded-lg border border-dashed p-3">
+                            <Label htmlFor="new-role" className="text-xs">
+                                {t('workspace_roles.new')}
+                            </Label>
+
+                            <Input
+                                id="new-role"
+                                value={name}
+                                onChange={(event) =>
+                                    setName(event.target.value)
+                                }
+                                placeholder={t('workspace_roles.new_name')}
+                            />
+
+                            <Button
+                                size="sm"
+                                className="w-full"
+                                disabled={name.trim() === ''}
+                                onClick={() =>
+                                    router.post(
+                                        store.url(),
+                                        {
+                                            name,
+                                            is_external: false,
+                                            // Nothing ticked. A new role starts
+                                            // holding nothing and is filled in
+                                            // deliberately, which is the safe
+                                            // direction for a thing that hands
+                                            // out rights.
+                                            abilities: [],
+                                        },
+                                        {
+                                            preserveScroll: true,
+                                            onSuccess: (page) => {
+                                                setName('');
+
+                                                /*
+                                                 * Straight to the new role. It
+                                                 * was created empty, so leaving
+                                                 * the reader on whichever role
+                                                 * they had open would hide the
+                                                 * one thing that still has to
+                                                 * happen: ticking what it may
+                                                 * do. It arrives last, because
+                                                 * a new role starts at the
+                                                 * bottom of the order.
+                                                 */
+                                                const fresh = (
+                                                    page.props
+                                                        .roles as unknown as Role[]
+                                                ).at(-1);
+
+                                                if (fresh) {
+                                                    setChosenId(fresh.id);
+                                                }
+                                            },
+                                        },
+                                    )
+                                }
+                            >
+                                <Plus className="size-4" />
+                                {t('workspace_roles.create')}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {chosen && (
+                        /*
+                         * Keyed on the role, so picking another one mounts a
+                         * fresh editor instead of reusing this one. The name
+                         * and the tickboxes are state seeded from the props,
+                         * and without the key React would keep the state of the
+                         * role you just left — half-finished edits to one role
+                         * would appear under the name of the next.
+                         */
+                        <RoleEditor
+                            key={chosen.id}
+                            role={chosen}
                             abilities={abilities}
                         />
-                    ))}
-                </div>
-
-                <div className="space-y-3 rounded-lg border border-dashed p-4">
-                    <Label htmlFor="new-role">{t('workspace_roles.new')}</Label>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Input
-                            id="new-role"
-                            value={name}
-                            onChange={(event) => setName(event.target.value)}
-                            placeholder={t('workspace_roles.new_name')}
-                            className="max-w-xs"
-                        />
-
-                        <Button
-                            disabled={name.trim() === ''}
-                            onClick={() =>
-                                router.post(
-                                    store.url(),
-                                    {
-                                        name,
-                                        is_external: false,
-                                        // Nothing ticked. A new role starts
-                                        // holding nothing and is filled in
-                                        // deliberately, which is the safe
-                                        // direction for a thing that hands out
-                                        // rights.
-                                        abilities: [],
-                                    },
-                                    {
-                                        preserveScroll: true,
-                                        onSuccess: () => setName(''),
-                                    },
-                                )
-                            }
-                        >
-                            <Plus className="size-4" />
-                            {t('workspace_roles.create')}
-                        </Button>
-                    </div>
+                    )}
                 </div>
             </SettingsSection>
         </>

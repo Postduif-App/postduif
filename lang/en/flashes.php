@@ -32,6 +32,39 @@ return [
         'member_removed' => ':name has been removed from the channel.',
     ],
 
+    /*
+     * Sharing a channel with another workspace. Deliberately worded for what
+     * has actually happened: "invited" rather than "shared", because after this
+     * sentence the other side can still say no.
+     */
+    'channel-share' => [
+        'offered' => ':workspace has been invited to this channel.',
+        'accepted' => 'The channel is now in this workspace too.',
+        'declined' => 'Invitation declined.',
+        'revoked' => 'The channel is no longer shared.',
+        'members_added' => '{0}Nobody added.|{1}1 member added.|[2,*]:count members added.',
+    ],
+
+    /*
+     * Reminders. The time is in the sentence because it is the only one anybody
+     * can check afterwards: the menu says "in an hour", and only this line says
+     * what o'clock that is.
+     */
+    'reminder' => [
+        'set' => 'We will nudge you :time.',
+        'cancelled' => 'Reminder called off.',
+    ],
+
+    /*
+     * Scheduled huddles. "Scheduled" rather than "created": nothing happens
+     * yet, and the sentence should not suggest the channel has noticed
+     * anything.
+     */
+    'huddle' => [
+        'scheduled' => 'Huddle scheduled for :time.',
+        'cancelled' => 'Huddle called off.',
+    ],
+
     'message' => [
         'scheduled' => 'Message scheduled.',
         'updated' => 'Message changed.',
@@ -57,12 +90,24 @@ return [
         'created' => 'Document ready. Now put the fields on the pages.',
         'fields_saved' => 'Fields saved.',
         'cancelled' => 'Contract withdrawn. The links no longer work.',
+        'deleted' => 'Contract deleted.',
         'posted' => 'Contract posted in the channel.',
         'retrying' => 'We are trying to compose the signed copy again.',
         'signers_saved' => '{1}Signer saved. Choose in the editor who fills in each field.|[2,*]:count signers saved. Choose in the editor who fills in each field.',
         'sent' => '{1}Contract sent to 1 person.|[2,*]Contract sent to :count people.',
         'reminded' => '{1}Reminder sent to 1 person.|[2,*]Reminder sent to :count people.',
         'nobody_to_remind' => 'Nobody to remind: everybody has signed, or was already nudged today.',
+        'duplicated' => 'A new draft is ready with the same PDF and fields. Choose below who signs it.',
+        'copy_sent' => '{1}The signed document was sent to 1 person.|[2,*]The signed document was sent to :count people.',
+        'nobody_to_send_copy' => 'Nobody to send it to: no one has signed yet.',
+
+        // A template is never sent, so "ready to go" would give the wrong
+        // picture: nothing leaves the building, something goes on the shelf.
+        'template_created' => 'Template created. Set how many people it goes to and put the fields on the pages.',
+        'template_recipients' => '{1}This template will go to 1 person.|[2,*]This template will go to :count people.',
+        'template_signing_along' => 'You are the first party on this template. Put your signature on it now, and every contract made from it carries it already.',
+        'template_not_signing_along' => 'You are no longer signing along. Your signature has been taken off this template and the fields have moved up a place.',
+        'template_unchanged' => 'That was already set that way.',
     ],
 
     'transfer' => [

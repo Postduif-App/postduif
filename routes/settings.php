@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\AvatarController;
+use App\Http\Controllers\Settings\ContractWebhookController;
 use App\Http\Controllers\Settings\CustomEmojiController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Settings\WorkspaceChannelController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMailController;
+use App\Http\Controllers\Settings\WorkspaceMailTemplateController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
 use App\Http\Controllers\Settings\WorkspacePermissionController;
 use App\Http\Controllers\Settings\WorkspaceRoleController;
@@ -137,9 +139,64 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.mail.edit');
     Route::patch('app/settings/workspace/mail', [WorkspaceMailController::class, 'update'])
         ->name('workspace.mail.update');
+    /*
+     * The other direction: where mail sent *to* the workspace lands. Its own
+     * pair of endpoints beside the transport form, because rolling the delivery
+     * secret is not an edit to a form — it breaks a working arrangement with a
+     * provider until somebody pastes the new URL over there.
+     */
+    Route::patch('app/settings/workspace/mail/inbound', [WorkspaceMailController::class, 'inbound'])
+        ->name('workspace.mail.inbound');
+    Route::post('app/settings/workspace/mail/inbound/token', [WorkspaceMailController::class, 'regenerateInbound'])
+        ->name('workspace.mail.inbound.token');
+
     Route::post('app/settings/workspace/mail/test', [WorkspaceMailController::class, 'test'])
         ->middleware('throttle:6,1')
         ->name('workspace.mail.test');
+
+    /*
+     * What that mail says, as opposed to where it leaves from. A screen of its
+     * own next to the one above — see WorkspaceMailTemplateController for why
+     * the two are not one page.
+     *
+     * The preview is throttled and the other two are not, for the reason the
+     * test send is: it renders markdown somebody just typed, on demand, as fast
+     * as a keyboard can produce it.
+     */
+    Route::get('app/settings/workspace/mail-texts', [WorkspaceMailTemplateController::class, 'edit'])
+        ->name('workspace.mail-texts.edit');
+    Route::patch('app/settings/workspace/mail-texts', [WorkspaceMailTemplateController::class, 'update'])
+        ->name('workspace.mail-texts.update');
+    Route::post('app/settings/workspace/mail-texts/preview', [WorkspaceMailTemplateController::class, 'preview'])
+        ->middleware('throttle:60,1')
+        ->name('workspace.mail-texts.preview');
+
+    /*
+     * Where this workspace's contract news goes. No {workspace} in the path
+     * like everything else here, so the contracts feature is asked by the
+     * controller rather than by the feature middleware — same 404 either way.
+     *
+     * Creating one is throttled and the rest is not, and it is the one place in
+     * this file where that is about more than load: every stored address is one
+     * this server will go and fetch, and the address is resolved as it is saved.
+     * A form that could be posted as fast as a script can type is a way to make
+     * this machine resolve names for somebody.
+     *
+     * Rotating a secret is a POST rather than a PATCH: it does not change a
+     * field somebody chose, it replaces a credential and invalidates the one
+     * that was there — which is a thing that happens, not a value that is set.
+     */
+    Route::get('app/settings/workspace/contract-webhooks', [ContractWebhookController::class, 'index'])
+        ->name('workspace.contract-webhooks.index');
+    Route::post('app/settings/workspace/contract-webhooks', [ContractWebhookController::class, 'store'])
+        ->middleware('throttle:20,1')
+        ->name('workspace.contract-webhooks.store');
+    Route::patch('app/settings/workspace/contract-webhooks/{contractWebhook}', [ContractWebhookController::class, 'toggle'])
+        ->name('workspace.contract-webhooks.toggle');
+    Route::post('app/settings/workspace/contract-webhooks/{contractWebhook}/secret', [ContractWebhookController::class, 'rotate'])
+        ->name('workspace.contract-webhooks.rotate');
+    Route::delete('app/settings/workspace/contract-webhooks/{contractWebhook}', [ContractWebhookController::class, 'destroy'])
+        ->name('workspace.contract-webhooks.destroy');
 
     /*
      * No workspace in the path, like every other settings route — the current

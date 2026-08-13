@@ -2,10 +2,10 @@
 
 namespace App\Listeners;
 
-use App\Actions\Workflows\StartWorkflow;
 use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\Triggers\MessageKeywordTrigger;
 
 /**
@@ -17,26 +17,54 @@ use App\Workflows\Triggers\MessageKeywordTrigger;
  * workflows it comes back empty and nothing else happens. The matching is done
  * here rather than in a run, because creating a row for every message in order
  * to throw it away is a table that fills up with nothing.
+ *
+ * @extends StartsWorkflows<MessageSent>
  */
-class StartKeywordWorkflows
+class StartKeywordWorkflows extends StartsWorkflows
 {
-    public function __construct(private readonly StartWorkflow $startWorkflow) {}
-
     public function handle(MessageSent $event): void
     {
+        $this->start($event);
+    }
+
+    protected function trigger(): string
+    {
+        return MessageKeywordTrigger::class;
+    }
+
+    /**
+     * @param  MessageSent  $event
+     */
+    protected function workspaceOf(object $event): ?Workspace
+    {
+        return $event->message->workspace;
+    }
+
+    /**
+     * @param  MessageSent  $event
+     * @return array<string, mixed>|null
+     */
+    protected function contextFor(Workflow $workflow, object $event): ?array
+    {
         $message = $event->message;
+        $keyword = $this->matched($workflow, $message);
 
-        $workflows = Workflow::query()
-            ->listeningFor($message->workspace, MessageKeywordTrigger::key())
-            ->get();
-
-        foreach ($workflows as $workflow) {
-            $keyword = $this->matched($workflow, $message);
-
-            if ($keyword !== null) {
-                $this->startWorkflow->handle($workflow, $this->triggerData($message, $keyword));
-            }
+        if ($keyword === null) {
+            return null;
         }
+
+        return [
+            'message' => ['id' => $message->id, 'text' => $message->body],
+            'channel' => ['id' => $message->channel_id, 'name' => $message->channel?->name],
+            /*
+             * Empty for a bot message, which has no person behind it. Left
+             * empty rather than filled with the bot name: a workflow that says
+             * "Hoi {{ trigger.user.name }}" should come out visibly incomplete
+             * rather than greeting another workflow by name.
+             */
+            'user' => ['id' => $message->user_id, 'name' => $message->author?->name],
+            'keyword' => $keyword,
+        ];
     }
 
     /**
@@ -76,24 +104,5 @@ class StartKeywordWorkflows
         }
 
         return null;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function triggerData(Message $message, string $keyword): array
-    {
-        return [
-            'message' => ['id' => $message->id, 'text' => $message->body],
-            'channel' => ['id' => $message->channel_id, 'name' => $message->channel?->name],
-            /*
-             * Empty for a bot message, which has no person behind it. Left
-             * empty rather than filled with the bot name: a workflow that says
-             * "Hoi {{ trigger.user.name }}" should come out visibly incomplete
-             * rather than greeting another workflow by name.
-             */
-            'user' => ['id' => $message->user_id, 'name' => $message->author?->name],
-            'keyword' => $keyword,
-        ];
     }
 }

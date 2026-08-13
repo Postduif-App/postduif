@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import {
     Archive,
+    Building2,
     Check,
     FileText,
     Info,
@@ -13,6 +14,7 @@ import {
 import { useState } from 'react';
 
 import { ChannelLinksSection } from '@/components/chat/channel-links-section';
+import { ChannelSharesSection } from '@/components/chat/channel-shares-section';
 import { ChannelTagsField } from '@/components/chat/channel-tags-field';
 import { ChannelWebhooksSection } from '@/components/chat/channel-webhooks-section';
 import { Button } from '@/components/ui/button';
@@ -75,6 +77,7 @@ const TABS = [
     { id: 'document', icon: FileText },
     { id: 'links', icon: Link2 },
     { id: 'webhooks', icon: Webhook },
+    { id: 'shares', icon: Building2 },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -439,13 +442,15 @@ export function ChannelSettingsDialog({
      * rendered, and 'general' — where it starts — is not one of these.
      */
     const tabs = TABS.filter((tab) =>
-        tab.id === 'webhooks'
-            ? workspace.features.webhooks
-            : tab.id === 'tickets'
-              ? workspace.features.tickets
-              : tab.id === 'document'
-                ? workspace.features.documents
-                : true,
+        tab.id === 'shares'
+            ? workspace.features['shared-channels']
+            : tab.id === 'webhooks'
+              ? workspace.features.webhooks
+              : tab.id === 'tickets'
+                ? workspace.features.tickets
+                : tab.id === 'document'
+                  ? workspace.features.documents
+                  : true,
     );
 
     const reset = () => {
@@ -882,6 +887,13 @@ export function ChannelSettingsDialog({
 
                         {active === 'webhooks' && (
                             <ChannelWebhooksSection
+                                workspace={workspace}
+                                channel={channel}
+                            />
+                        )}
+
+                        {active === 'shares' && (
+                            <ChannelSharesSection
                                 workspace={workspace}
                                 channel={channel}
                             />

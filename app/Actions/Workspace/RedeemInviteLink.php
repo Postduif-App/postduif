@@ -2,6 +2,7 @@
 
 namespace App\Actions\Workspace;
 
+use App\Events\InviteLinkRedeemed;
 use App\Models\InviteLink;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,15 @@ class RedeemInviteLink
 
             if ($isNew) {
                 $link->increment('uses');
+            }
+
+            /*
+             * Only for somebody who was not in yet. A colleague opening the
+             * same link twice spends no use and joins nothing — announcing it
+             * would be announcing a thing that did not happen.
+             */
+            if ($isNew) {
+                InviteLinkRedeemed::dispatch($link->id, $user->id);
             }
 
             return true;

@@ -13,6 +13,26 @@
 
 return [
 
+    'shares' => [
+        'heading' => 'Delen met een andere workspace',
+        'explanation' => 'Zet dit kanaal open voor een andere organisatie op deze installatie. Zij zeggen zelf ja of nee, en kiezen zelf wie van hen meedoet. Ze zien alleen dit kanaal — niet jullie ledenlijst, niet jullie andere kanalen.',
+        'none' => 'Dit kanaal is met niemand gedeeld.',
+        'slug_label' => 'Naam van de workspace',
+        'slug_hint' => 'De korte naam uit hun webadres. Die kunnen ze je noemen.',
+        'slug_placeholder' => 'acme-bouw',
+        'can_post_label' => 'Zij mogen hier ook schrijven',
+        'offer' => 'Uitnodigen',
+        'revoke' => 'Intrekken',
+        'may_post' => 'mag meepraten',
+        'may_read' => 'leest mee',
+        'state' => [
+            'pending' => 'wacht op antwoord',
+            'accepted' => 'geaccepteerd',
+            'declined' => 'afgewezen',
+            'revoked' => 'ingetrokken',
+        ],
+    ],
+
     'webhooks' => [
         'heading' => 'Webhooks',
         'explanation' => 'Laat iets buiten Postduif in dit kanaal posten, onder een eigen naam en herkenbaar als bot.',

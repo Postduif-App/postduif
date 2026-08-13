@@ -57,12 +57,18 @@ interface Field {
         | 'emoji'
         | 'number'
         | 'words'
-        | 'choice';
+        | 'choice'
+        | 'record';
     label: string;
     hint: string | null;
     required: boolean;
     acceptsVariables: boolean;
     options: Record<string, string>;
+    /**
+     * Which kind of record a record field points at, and null for every other
+     * type. The picker chooses its list with this — see `records` below.
+     */
+    record: string | null;
 }
 
 interface Described {
@@ -161,9 +167,27 @@ interface Workflow {
  */
 interface Grammar {
     operators: Record<string, string>;
+    /**
+     * The operators again, under the four headings they are drawn in — and
+     * carrying what used to be hardcoded here: which of them compare against
+     * nothing, and what to say beside the box for the ones whose value has a
+     * shape (a comma-separated list, a date, a number).
+     */
+    operatorGroups: OperatorGroup[];
     matches: Record<string, string>;
     outcomes: Record<string, string>;
     branches: Record<string, string>;
+}
+
+interface OperatorGroup {
+    group: string;
+    label: string;
+    operators: {
+        value: string;
+        label: string;
+        needsValue: boolean;
+        hint: string | null;
+    }[];
 }
 
 /**
@@ -196,10 +220,37 @@ interface WorkflowEditProps {
         title: string;
         fields: { key: string; label: string }[];
     }[];
+    /**
+     * What a record picker chooses from, per kind of record: id => what it
+     * reads as.
+     *
+     * The most recent handful rather than everything — a dropdown is not a
+     * search. Whatever is not in it is still reachable the way the commoner
+     * case is: leave the field empty and the step acts on the record the
+     * trigger brought.
+     */
+    records: Record<string, Record<string, string>>;
 }
 
-/** The two that compare against nothing, so their value box is hidden. */
-const VALUELESS = ['is-empty', 'is-not-empty'];
+/**
+ * What the server says about one operator, or nothing when it says nothing.
+ *
+ * The fallback matters on the day an operator is taken out of the runner while
+ * a saved workflow still names it: the rule keeps its box and stays editable,
+ * rather than losing the value somebody typed because the screen no longer
+ * recognises the operator it was for.
+ */
+function describe(grammar: Grammar, operator: string) {
+    for (const group of grammar.operatorGroups) {
+        const found = group.operators.find((one) => one.value === operator);
+
+        if (found) {
+            return found;
+        }
+    }
+
+    return null;
+}
 
 /** The server refuses a sixth; saying so here beats a red flash on save. */
 const MAX_RULES = 5;
@@ -212,6 +263,9 @@ const MAX_RULES = 5;
  * "nog niets gekozen", and deliberately something no id can be.
  */
 const VARIABLE_CHANNEL = '__variable__';
+
+/** The same escape in a record picker, and never an id either. */
+const VARIABLE_RECORD = '__variable_record__';
 
 /**
  * Where a block sits, as the way down to it.
@@ -539,6 +593,7 @@ function summarise(
     channels: WorkflowEditProps['channels'],
     members: WorkflowEditProps['members'],
     forms: WorkflowEditProps['forms'],
+    records: WorkflowEditProps['records'],
 ): string | null {
     for (const field of described?.fields ?? []) {
         const value = config[field.key];
@@ -574,6 +629,18 @@ function summarise(
             return form?.title ?? null;
         }
 
+        if (field.type === 'record') {
+            /*
+                Whatever the picker calls it — "#42 Printer doet niets" — and
+                the raw value when it is a variable or a record the picker no
+                longer lists. Better an id on the block than nothing at all:
+                the point of this line is telling two steps apart.
+            */
+            return (
+                records[field.record ?? '']?.[String(value)] ?? String(value)
+            );
+        }
+
         return Array.isArray(value) ? value.join(', ') : String(value);
     }
 
@@ -587,6 +654,7 @@ function FieldInput({
     channels,
     members,
     forms,
+    records,
     variables,
 }: {
     field: Field;
@@ -595,6 +663,7 @@ function FieldInput({
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
     forms: WorkflowEditProps['forms'];
+    records: WorkflowEditProps['records'];
     variables: { path: string; what: string }[];
 }) {
     const { t } = useTranslate();
@@ -636,6 +705,11 @@ function FieldInput({
      */
     const [typedChannel, setTypedChannel] = useState(
         field.type === 'channel' && String(value ?? '').includes('{{'),
+    );
+
+    /** The same, for a record: braces in the stored value can only be typed. */
+    const [typedRecord, setTypedRecord] = useState(
+        field.type === 'record' && String(value ?? '').includes('{{'),
     );
 
     return (
@@ -723,6 +797,60 @@ function FieldInput({
                         </option>
                     ))}
                 </select>
+            ) : field.type === 'record' ? (
+                /*
+                    Three things in one control, and the order matters.
+
+                    Leaving it alone is the first option and the ordinary one:
+                    the step then acts on the record the trigger was about,
+                    which is what nearly every workflow about a record means.
+                    Picking one from the list is for the workflow that watches
+                    one particular thing. And the last entry switches to a box,
+                    for the case the list cannot hold — the record an earlier
+                    step made, named with a variable.
+
+                    The list is the most recent handful, never everything: a
+                    workspace has hundreds of tickets and a dropdown is not a
+                    search.
+                */
+                typedRecord ? (
+                    <Input
+                        {...common}
+                        value={String(value ?? '')}
+                        onChange={(event) => onChange(event.target.value)}
+                        placeholder="{{ steps.0.ticket.id }}"
+                    />
+                ) : (
+                    <select
+                        {...common}
+                        value={String(value ?? '')}
+                        onChange={(event) => {
+                            if (event.target.value === VARIABLE_RECORD) {
+                                setTypedRecord(true);
+                                onChange('');
+
+                                return;
+                            }
+
+                            onChange(event.target.value);
+                        }}
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                        <option value="">
+                            {t('settings.workflows.record_from_trigger')}
+                        </option>
+                        {Object.entries(records[field.record ?? ''] ?? {}).map(
+                            ([id, label]) => (
+                                <option key={id} value={id}>
+                                    {label}
+                                </option>
+                            ),
+                        )}
+                        <option value={VARIABLE_RECORD}>
+                            {t('settings.workflows.record_from_variable')}
+                        </option>
+                    </select>
+                )
             ) : field.type === 'choice' ? (
                 <select
                     {...common}
@@ -885,6 +1013,7 @@ function Blocks({
     channels,
     members,
     forms,
+    records,
     onSelect,
     onInsert,
     onMove,
@@ -899,6 +1028,7 @@ function Blocks({
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
     forms: WorkflowEditProps['forms'];
+    records: WorkflowEditProps['records'];
     onSelect: (path: Path) => void;
     onInsert: (path: Path, kind: Step['kind']) => void;
     onMove: (path: Path, to: number) => void;
@@ -957,6 +1087,7 @@ function Blocks({
                                           channels,
                                           members,
                                           forms,
+                                          records,
                                       ) ?? t('settings.workflows.unconfigured'))
                             }
                             selected={
@@ -1020,6 +1151,7 @@ function Blocks({
                                         channels={channels}
                                         members={members}
                                         forms={forms}
+                                        records={records}
                                         onSelect={onSelect}
                                         onInsert={onInsert}
                                         onMove={onMove}
@@ -1169,19 +1301,28 @@ function ConditionEditor({
                         }
                         className="rounded-md border bg-background px-2 py-1 text-xs"
                     >
-                        {Object.entries(grammar.operators).map(
-                            ([value, label]) => (
-                                <option key={value} value={value}>
-                                    {label}
-                                </option>
-                            ),
-                        )}
+                        {/* Under headings, because twenty operators in one
+                            list is a list you scroll rather than read — and
+                            the heading says which of them compare as
+                            quantities before anybody picks one. */}
+                        {grammar.operatorGroups.map((group) => (
+                            <optgroup key={group.group} label={group.label}>
+                                {group.operators.map((operator) => (
+                                    <option
+                                        key={operator.value}
+                                        value={operator.value}
+                                    >
+                                        {operator.label}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        ))}
                     </select>
 
-                    {/* Hidden for the two that compare against nothing: a box
+                    {/* Hidden for the ones that compare against nothing: a box
                         that is ignored is a box somebody fills in and then
                         wonders about. */}
-                    {!VALUELESS.includes(rule.operator) && (
+                    {describe(grammar, rule.operator)?.needsValue !== false && (
                         <Input
                             value={rule.value}
                             onChange={(event) =>
@@ -1189,6 +1330,14 @@ function ConditionEditor({
                                     ...rule,
                                     value: event.target.value,
                                 })
+                            }
+                            placeholder={
+                                describe(grammar, rule.operator)?.hint ??
+                                undefined
+                            }
+                            title={
+                                describe(grammar, rule.operator)?.hint ??
+                                undefined
                             }
                             className="h-7 w-40 text-xs"
                         />
@@ -1275,6 +1424,7 @@ export default function WorkflowEdit({
     channels,
     members,
     forms,
+    records,
 }: WorkflowEditProps) {
     const { t, tChoice } = useTranslate();
     const [name, setName] = useState(workflow.name);
@@ -1567,6 +1717,7 @@ export default function WorkflowEdit({
                                         channels,
                                         members,
                                         forms,
+                                        records,
                                     ) ?? t('settings.workflows.unconfigured')
                                 }
                                 selected={selected.kind === 'trigger'}
@@ -1585,6 +1736,7 @@ export default function WorkflowEdit({
                                 channels={channels}
                                 members={members}
                                 forms={forms}
+                                records={records}
                                 onSelect={(path) =>
                                     setSelected({ kind: 'step', path })
                                 }
@@ -1695,6 +1847,7 @@ export default function WorkflowEdit({
                                             channels={channels}
                                             members={members}
                                             forms={forms}
+                                            records={records}
                                             variables={[]}
                                         />
                                     ))}
@@ -1778,6 +1931,7 @@ export default function WorkflowEdit({
                                     channels={channels}
                                     members={members}
                                     forms={forms}
+                                    records={records}
                                     onChange={(change) =>
                                         changeStep(
                                             (selected as { path: Path }).path,
@@ -1815,6 +1969,7 @@ function StepPanel({
     channels,
     members,
     forms,
+    records,
     onChange,
 }: {
     path: Path;
@@ -1826,6 +1981,7 @@ function StepPanel({
     channels: WorkflowEditProps['channels'];
     members: WorkflowEditProps['members'];
     forms: WorkflowEditProps['forms'];
+    records: WorkflowEditProps['records'];
     onChange: (change: Partial<Step>) => void;
 }) {
     const { t } = useTranslate();
@@ -1904,6 +2060,7 @@ function StepPanel({
                     channels={channels}
                     members={members}
                     forms={forms}
+                    records={records}
                     variables={variables}
                 />
             ))}

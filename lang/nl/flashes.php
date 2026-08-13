@@ -32,6 +32,39 @@ return [
         'member_removed' => ':name is uit het kanaal verwijderd.',
     ],
 
+    /*
+     * Het delen van een kanaal met een andere workspace. Bewust in de
+     * gebiedende wijs van wat er echt gebeurd is: "aangeboden" en niet
+     * "gedeeld", want na deze zin kan de andere kant nog steeds nee zeggen.
+     */
+    'channel-share' => [
+        'offered' => ':workspace is uitgenodigd voor dit kanaal.',
+        'accepted' => 'Het kanaal staat nu ook in deze workspace.',
+        'declined' => 'Uitnodiging afgewezen.',
+        'revoked' => 'Het kanaal is niet langer gedeeld.',
+        'members_added' => '{0}Niemand toegevoegd.|{1}1 lid toegevoegd.|[2,*]:count leden toegevoegd.',
+    ],
+
+    /*
+     * Herinneringen. De tijd staat in de zin omdat dat de enige is die iemand
+     * daarna nog kan controleren: het menu zegt "over een uur", en pas deze
+     * zin zegt hoe laat dat is.
+     */
+    'reminder' => [
+        'set' => 'We porren je :time.',
+        'cancelled' => 'Herinnering ingetrokken.',
+    ],
+
+    /*
+     * Geplande huddles. "Ingepland" en niet "aangemaakt": er gebeurt nu nog
+     * niets, en de zin moet niet suggereren dat het kanaal al iets gemerkt
+     * heeft.
+     */
+    'huddle' => [
+        'scheduled' => 'Huddle ingepland voor :time.',
+        'cancelled' => 'Huddle afgezegd.',
+    ],
+
     'message' => [
         'scheduled' => 'Bericht ingepland.',
         'updated' => 'Bericht aangepast.',
@@ -57,12 +90,24 @@ return [
         'created' => 'Document klaargezet. Zet nu de invulvakken op de pagina\'s.',
         'fields_saved' => 'Vakken opgeslagen.',
         'cancelled' => 'Contract ingetrokken. De links werken niet meer.',
+        'deleted' => 'Contract verwijderd.',
         'posted' => 'Contract in het kanaal geplaatst.',
         'retrying' => 'We proberen de ondertekende versie opnieuw samen te stellen.',
         'signers_saved' => '{1}Ondertekenaar opgeslagen. Kies in de editor per vak wie het invult.|[2,*]:count ondertekenaars opgeslagen. Kies in de editor per vak wie het invult.',
         'sent' => '{1}Contract verstuurd naar 1 persoon.|[2,*]Contract verstuurd naar :count mensen.',
         'reminded' => '{1}Herinnering verstuurd naar 1 persoon.|[2,*]Herinnering verstuurd naar :count mensen.',
         'nobody_to_remind' => 'Niemand om te herinneren: iedereen heeft getekend, of is vandaag al gemaand.',
+        'duplicated' => 'Nieuw concept klaargezet met dezelfde PDF en vakken. Kies hieronder wie het tekent.',
+        'copy_sent' => '{1}Het ondertekende document is naar 1 persoon gestuurd.|[2,*]Het ondertekende document is naar :count mensen gestuurd.',
+        'nobody_to_send_copy' => 'Niemand om het naar te sturen: er heeft nog niemand getekend.',
+
+        // Een sjabloon wordt nooit verstuurd, dus "klaargezet" zou het verkeerde
+        // beeld geven: er gaat niets de deur uit, er komt iets op de plank.
+        'template_created' => 'Sjabloon aangemaakt. Stel in naar hoeveel mensen het gaat en zet de invulvakken op de pagina\'s.',
+        'template_recipients' => '{1}Dit sjabloon gaat straks naar 1 persoon.|[2,*]Dit sjabloon gaat straks naar :count mensen.',
+        'template_signing_along' => 'Je staat als eerste partij op dit sjabloon. Zet er nu je handtekening op, dan draagt elk contract dat eruit komt hem al.',
+        'template_not_signing_along' => 'Je tekent niet meer mee. Je handtekening is van dit sjabloon gehaald en de vakken zijn een plaats opgeschoven.',
+        'template_unchanged' => 'Dat stond al zo ingesteld.',
     ],
 
     'transfer' => [

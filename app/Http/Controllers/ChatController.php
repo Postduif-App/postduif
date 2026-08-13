@@ -22,6 +22,7 @@ use App\Models\EphemeralNotice;
 use App\Models\Huddle;
 use App\Models\HuddleParticipant;
 use App\Models\Message;
+use App\Models\ScheduledHuddle;
 use App\Models\ScheduledMessage;
 use App\Models\Ticket;
 use App\Models\User;
@@ -51,7 +52,7 @@ class ChatController extends Controller
      * The landing page after signing in. Sends the member to their workspace;
      * once a member can belong to several, this is where the picker goes.
      */
-    public function home(Request $request): RedirectResponse
+    public function home(Request $request): RedirectResponse|Response
     {
         // Same tiebreak as the switcher in BuildChatShell, so "the first one"
         // means the same thing in both places.
@@ -61,13 +62,16 @@ class ChatController extends Controller
             ->first();
 
         /*
-         * Somebody who belongs nowhere is sent to make a workspace rather than
-         * shown a 404. That is what happens to everybody who has just signed
-         * up: the account is real, and the only thing missing is the one thing
-         * this page can offer them.
+         * Somebody who belongs nowhere gets told so rather than shown a 404.
+         *
+         * They used to be sent to a form to make a workspace of their own.
+         * Workspaces are handed out from the admin panel now, so the only
+         * honest thing this page can do is say what is missing and who fixes
+         * it — an account with nothing behind it is otherwise indistinguishable
+         * from a broken one.
          */
         if ($workspace === null) {
-            return redirect()->route('workspaces.create');
+            return Inertia::render('workspaces/none');
         }
 
         return redirect()->route('chat.index', $workspace);
@@ -115,7 +119,8 @@ class ChatController extends Controller
      */
     private function firstVisibleChannel(User $user, Workspace $workspace): ?Channel
     {
-        return $workspace->channels()
+        return Channel::query()
+            ->reachableFrom($workspace)
             ->visibleTo($user)
             ->whereNull('archived_at')
             ->orderByRaw('last_message_at desc nulls last')
@@ -127,7 +132,24 @@ class ChatController extends Controller
         $user = $request->user();
 
         $this->authorizeMembership($user, $workspace);
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+
+        /*
+         * The channel has to belong on this workspace's screen. That used to
+         * mean "it is one of theirs" and now also covers a channel another
+         * workspace has opened to this one — which is why the check moved into
+         * a scope: the sidebar and this line have to agree about which rooms
+         * exist here, or a member would be looking at a channel they cannot
+         * open, or opening one that is not in their list.
+         *
+         * Still a 404 and not a 403. Whether a channel exists in a workspace
+         * you are standing in is not a question worth answering to somebody who
+         * guessed an id.
+         */
+        abort_unless(
+            Channel::query()->whereKey($channel->id)->reachableFrom($workspace)->exists(),
+            404,
+        );
+
         $this->authorize('view', $channel);
 
         $messages = $channel->rootMessages()
@@ -287,6 +309,19 @@ class ChatController extends Controller
                 'huddle' => $workspace->hasFeature(HuddlesFeature::class)
                     ? $this->huddle($channel, $user)
                     : null,
+                /*
+                 * What is still to come in this channel's diary. Beside the
+                 * live huddle rather than inside it, because they are different
+                 * things: one is a conversation you can walk into now, the
+                 * other is an appointment nobody has arrived at yet.
+                 *
+                 * Sent to everybody who may see the channel, on the same
+                 * reasoning as the live huddle above — knowing that there is a
+                 * meeting at two is what makes somebody be there at two.
+                 */
+                'scheduledHuddles' => $workspace->hasFeature(HuddlesFeature::class)
+                    ? $this->scheduledHuddles($channel, $user)
+                    : [],
                 'canHuddle' => $workspace->hasFeature(HuddlesFeature::class)
                     && $this->iceServers->configured()
                     && $user->can('join', [Huddle::class, $channel]),
@@ -560,6 +595,42 @@ class ChatController extends Controller
                     'name' => $participant->user?->name,
                 ])->values()->all(),
         ];
+    }
+
+    /**
+     * The appointments this channel still has coming, soonest first.
+     *
+     * Whether each one is this member's to call off is worked out here rather
+     * than in the browser: it is the same pair of questions the endpoint asks —
+     * did you arrange it, or do you run the channel — and a screen that guessed
+     * would offer a button that then refuses.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function scheduledHuddles(Channel $channel, User $user): array
+    {
+        if ($user->cannot('see', [Huddle::class, $channel])) {
+            return [];
+        }
+
+        return ScheduledHuddle::query()
+            ->upcomingIn($channel)
+            ->with('invitees:id,name')
+            ->get()
+            ->map(fn (ScheduledHuddle $scheduled): array => [
+                'id' => $scheduled->id,
+                'title' => $scheduled->title,
+                'startsAt' => $scheduled->starts_at->toIso8601String(),
+                'durationMinutes' => $scheduled->duration_minutes,
+                'invitees' => $scheduled->invitees
+                    ->map(fn (User $invitee): array => [
+                        'id' => $invitee->id,
+                        'name' => $invitee->name,
+                    ])->values()->all(),
+                'canCancel' => $scheduled->created_by === $user->id
+                    || $user->can('manageSettings', $channel),
+            ])
+            ->all();
     }
 
     /**

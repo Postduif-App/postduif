@@ -23,13 +23,15 @@ use Illuminate\Support\Str;
  *
  * @property int $id
  * @property int $user_id
+ * @property int|null $workspace_id
  * @property string $name
+ * @property list<string>|null $scopes
  * @property string $token_hash
  * @property string|null $token
  * @property Carbon|null $last_used_at
  * @property Carbon|null $revoked_at
  */
-#[Fillable(['user_id', 'name'])]
+#[Fillable(['user_id', 'workspace_id', 'name', 'scopes'])]
 class ApiToken extends Model
 {
     /** @use HasFactory<ApiTokenFactory> */
@@ -39,6 +41,29 @@ class ApiToken extends Model
     private const PREFIX = 'mcp_';
 
     private const RANDOM_LENGTH = 48;
+
+    /**
+     * Reaching the contracts of a workspace: reading them, and putting new ones
+     * in front of people to sign.
+     *
+     * A named scope rather than a general one because of what is behind it. The
+     * endpoints this opens send mail to people outside the application asking
+     * for a signature, and that is not something a token minted to set somebody
+     * status should be able to do by having been made first.
+     */
+    public const SCOPE_CONTRACTS = 'contracts';
+
+    /**
+     * Every scope there is, in the order a screen should offer them.
+     *
+     * Written here rather than in an enum: the set is a fixed list of strings
+     * the application decides, it is read by a middleware alias
+     * (`api.scope:contracts`) that can only carry a string anyway, and one
+     * member of a would-be enum is a type nobody can be wrong about.
+     *
+     * @var list<string>
+     */
+    public const SCOPES = [self::SCOPE_CONTRACTS];
 
     /**
      * Neither may reach a payload by accident: the token is the whole
@@ -59,6 +84,7 @@ class ApiToken extends Model
             // you cannot see again is a token you lose the moment you close
             // the tab, and this one is meant to be pasted into a config file.
             'token' => 'encrypted',
+            'scopes' => 'array',
             'last_used_at' => 'datetime',
             'revoked_at' => 'datetime',
         ];
@@ -68,6 +94,43 @@ class ApiToken extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The one workspace this token is for, or null for all of them.
+     *
+     * Null is the older and wider of the two: it means the token speaks for its
+     * member wherever that member is, which is what every token minted before
+     * this column existed does and what the status, channels and messages
+     * endpoints are written against.
+     *
+     * A workspace here does not by itself grant anything — the member still
+     * has to be in it, which AuthenticateApiToken checks on every request
+     * rather than trusting the row. Somebody who has left keeps the token in
+     * their config file; what they lose is what it opens.
+     *
+     * @return BelongsTo<Workspace, $this>
+     */
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * Whether this token was granted a particular scope.
+     *
+     * A null scopes column is not "all of them". It means the token predates
+     * scopes, or was made without asking for any, and both should reach exactly
+     * what they reached before — which is every endpoint that has never asked
+     * this question, and none of the ones that do.
+     *
+     * Written the other way round it would read better and be wrong: a token
+     * from last month would inherit whatever scope is invented next, including
+     * the ones that send mail out of the building.
+     */
+    public function allows(string $scope): bool
+    {
+        return in_array($scope, $this->scopes ?? [], strict: true);
     }
 
     /**

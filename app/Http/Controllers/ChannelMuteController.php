@@ -82,7 +82,7 @@ class ChannelMuteController extends Controller
      */
     private function member(Request $request, Workspace $workspace, Channel $channel): int
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $user = $request->user();
 

@@ -177,6 +177,19 @@ enum SystemRole: string implements HasLabel
             WorkspaceAbility::SendContracts => $this->canManageWorkspace(),
 
             /*
+             * Nobody below the owner, and unlike SeeHours this one is withheld
+             * because of what it destroys rather than what it reveals.
+             *
+             * An administrator can already stop, withdraw and clear away every
+             * contract that came to nothing. What this adds is the finished
+             * ones — the signed PDF and the audit page somebody on the outside
+             * is relying on — and that is not a thing to arrive with the job
+             * title. A workspace that wants it hands it out to a named role on
+             * purpose.
+             */
+            WorkspaceAbility::DeleteSignedContracts => false,
+
+            /*
              * Nobody below the owner, and not because it is weighty: everybody
              * who would get it from a seed already has it another way. Whoever
              * manages the workspace can configure any channel, and configuring

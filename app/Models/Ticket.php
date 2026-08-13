@@ -31,7 +31,10 @@ use Illuminate\Support\Carbon;
  * @property string $body
  * @property TicketStatus $status
  * @property TicketPriority $priority
- * @property int $opened_by
+ * @property int|null $opened_by
+ * @property string|null $sender_email
+ * @property string|null $sender_name
+ * @property string|null $mail_message_id
  * @property int|null $assigned_to
  * @property string|null $source_message_id
  * @property Carbon|null $due_at
@@ -41,7 +44,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['workspace_id', 'channel_id', 'number', 'title', 'body', 'status', 'priority', 'opened_by', 'assigned_to', 'source_message_id', 'due_at'])]
+#[Fillable(['workspace_id', 'channel_id', 'number', 'title', 'body', 'status', 'priority', 'opened_by', 'sender_email', 'sender_name', 'mail_message_id', 'assigned_to', 'source_message_id', 'due_at'])]
 class Ticket extends Model
 {
     /** @use HasFactory<TicketFactory> */
@@ -101,6 +104,36 @@ class Ticket extends Model
     public function opener(): BelongsTo
     {
         return $this->belongsTo(User::class, 'opened_by');
+    }
+
+    /**
+     * Whether this ticket walked in through the letterbox rather than being
+     * opened by somebody inside.
+     *
+     * Asked of the address rather than of a null opener, which is the same
+     * question today and would stop being it the moment anything else can open
+     * a ticket without a member behind it — a workflow, a scheduled sweep. The
+     * address is what this one actually means.
+     */
+    public function arrivedByEmail(): bool
+    {
+        return $this->sender_email !== null;
+    }
+
+    /**
+     * Who opened it, in words, whether that is a member or an address.
+     *
+     * The name their mail client sent when there is one, and the address when
+     * there is not — never both, because a queue reads worse with an address
+     * beside every name and the address is one click away on the ticket itself.
+     */
+    public function openedByName(): ?string
+    {
+        if (! $this->arrivedByEmail()) {
+            return $this->opener?->name;
+        }
+
+        return $this->sender_name ?? $this->sender_email;
     }
 
     /** @return BelongsTo<User, $this> */

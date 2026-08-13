@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { Hash, Inbox, Lock, MessageSquare } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { AlarmClock, Hash, Inbox, Lock, MessageSquare, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { BroadcastDialog } from '@/components/chat/broadcast-dialog';
@@ -17,6 +17,7 @@ import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { index as inboxIndex, open as inboxOpen } from '@/routes/chat/inbox';
 import { index as mentionsIndex } from '@/routes/chat/mentions';
+import { destroy as cancelReminder } from '@/routes/chat/reminders';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -29,7 +30,18 @@ import type {
 } from '@/types/chat';
 
 /** Why one row is in the inbox. Mirrors App\Enums\InboxItemType. */
-type InboxItemType = 'mention' | 'reply' | 'thread-reply' | 'poll-vote';
+type InboxItemType =
+    | 'mention'
+    | 'reply'
+    | 'thread-reply'
+    | 'poll-vote'
+    | 'contract-progress'
+    /**
+     * The only kind nobody else set off: you asked to be reminded of this. It
+     * carries no actor, which RowMeta already draws nothing for — being the
+     * actor of your own reminder would read as "Jij noemde jou".
+     */
+    | 'reminder';
 
 /** What every row carries, whatever put it there. */
 interface InboxRowBase {
@@ -81,6 +93,7 @@ const TABS: { value: InboxItemType | null; label: string }[] = [
     { value: 'reply', label: 'Antwoorden' },
     { value: 'thread-reply', label: 'Threads' },
     { value: 'poll-vote', label: 'Polls' },
+    { value: 'reminder', label: 'Herinneringen' },
 ];
 
 interface InboxProps {
@@ -102,6 +115,31 @@ interface InboxProps {
     items: InboxRow[];
     /** Which tab the server answered with; null when it is showing everything. */
     filter: InboxItemType | null;
+    /**
+     * Reminders this member has set and not yet been given.
+     *
+     * Sent whatever the filter, and drawn only on the reminder tab. They are
+     * not inbox rows and must not be mixed in with them: everything else in
+     * this list is something that has already happened, and these have not.
+     */
+    pendingReminders: PendingReminder[];
+}
+
+/**
+ * A reminder still to come.
+ *
+ * The message it points at, shaped like an inbox row so the same card can draw
+ * it, plus the moment it goes off — which is the only thing on this screen
+ * that is in the future.
+ */
+interface PendingReminder {
+    id: number;
+    remindAt: string;
+    note: string | null;
+    messageId: string;
+    author: string;
+    snippet: string;
+    channel: { id: number; label: string; type: ChannelType };
 }
 
 function ChannelIcon({ type }: { type: ChannelType }) {
@@ -199,6 +237,75 @@ function InboxCard({
 }
 
 /**
+ * One reminder that has not gone off yet.
+ *
+ * Not a link, unlike every other card on this screen. Those are addressed by
+ * the row and marked off by being opened; this one has nothing to mark off —
+ * it has not happened — so following it would be an ordinary jump into the
+ * channel, and the one thing somebody actually wants here is the button on the
+ * right.
+ */
+function PendingReminderCard({
+    reminder,
+    workspaceSlug,
+}: {
+    reminder: PendingReminder;
+    workspaceSlug: string;
+}) {
+    const { t } = useTranslate();
+    const formats = useFormats();
+
+    return (
+        <div className="flex flex-col gap-1 rounded-lg border border-dashed p-3">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <AlarmClock className="size-3.5 shrink-0" />
+                <span className="shrink-0 font-medium text-foreground/80">
+                    {formats.moment.format(new Date(reminder.remindAt))}
+                </span>
+                <span aria-hidden>·</span>
+                <ChannelIcon type={reminder.channel.type} />
+                <span className="truncate">{reminder.channel.label}</span>
+                <span aria-hidden>·</span>
+                <span className="truncate">{reminder.author}</span>
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        router.delete(
+                            cancelReminder.url({
+                                workspace: workspaceSlug,
+                                reminder: reminder.id,
+                            }),
+                            { preserveScroll: true },
+                        )
+                    }
+                    title={t('screens.inbox.reminders.cancel')}
+                    aria-label={t('screens.inbox.reminders.cancel')}
+                    className="ml-auto shrink-0 rounded p-1 hover:bg-muted hover:text-foreground"
+                >
+                    <X className="size-3.5" />
+                </button>
+            </span>
+
+            <span className="text-sm break-words text-foreground/90">
+                {reminder.snippet}
+            </span>
+
+            {/*
+                Why they wanted reminding, when they said. Below the message
+                rather than above it: the message is what this is about, and the
+                note is a word to their later self about it.
+            */}
+            {reminder.note && (
+                <span className="text-xs text-muted-foreground italic">
+                    {reminder.note}
+                </span>
+            )}
+        </div>
+    );
+}
+
+/**
  * Everything that asks something of you, in one list.
  *
  * Unread first and newest within that, because the question this screen answers
@@ -222,6 +329,7 @@ export default function WorkspaceInbox({
     workspaces,
     items,
     filter,
+    pendingReminders,
 }: InboxProps) {
     const { t } = useTranslate();
 
@@ -314,7 +422,30 @@ export default function WorkspaceInbox({
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    {items.length === 0 ? (
+                    {/*
+                        What is still coming, above what has already happened.
+                        Only on the reminder tab: everywhere else this list is a
+                        record of things that happened, and a future row among
+                        them would be read as one of them.
+                    */}
+                    {filter === 'reminder' && pendingReminders.length > 0 && (
+                        <div className="mx-auto mb-4 flex max-w-3xl flex-col gap-2">
+                            <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                {t('screens.inbox.reminders.pending')}
+                            </h2>
+
+                            {pendingReminders.map((reminder) => (
+                                <PendingReminderCard
+                                    key={reminder.id}
+                                    reminder={reminder}
+                                    workspaceSlug={workspace.slug}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {items.length === 0 &&
+                    !(filter === 'reminder' && pendingReminders.length > 0) ? (
                         <div className="mx-auto mt-12 max-w-md rounded-lg border border-dashed p-8 text-center">
                             <Inbox className="mx-auto size-6 text-muted-foreground" />
                             <p className="mt-3 text-sm font-medium">

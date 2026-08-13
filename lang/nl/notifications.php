@@ -42,7 +42,6 @@ return [
     ],
 
     'contract' => [
-        'subject' => ':sender vraagt je om :what te tekenen',
         'subject_signed' => ':name heeft :title getekend',
         'subject_declined' => ':name tekent :title niet',
         'subject_completed' => ':title is rond',

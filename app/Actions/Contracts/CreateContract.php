@@ -30,6 +30,10 @@ class CreateContract
     /**
      * @param  UploadedFile  $file  The PDF as the browser sent it. What ends up
      *                              stored is a rewrite of this — see NormalisePdf.
+     * @param  bool  $asTemplate  Whether this document is being kept to be sent
+     *                            again rather than sent. Decided here, at the
+     *                            upload, because it is decided in the author's
+     *                            head there — see ContractController::store.
      *
      * @throws PdfRefused When the upload is not something we will put a
      *                    signature on. Nothing is written when it is thrown.
@@ -41,6 +45,7 @@ class CreateContract
         string $title,
         ?string $message = null,
         ?int $validForDays = null,
+        bool $asTemplate = false,
     ): Contract {
         /*
          * Outside the transaction, and first.
@@ -54,16 +59,41 @@ class CreateContract
         $normalised = $this->normalise->handle($file->getRealPath());
 
         try {
-            return DB::transaction(function () use ($workspace, $author, $title, $message, $validForDays, $normalised, $file): Contract {
+            return DB::transaction(function () use ($workspace, $author, $title, $message, $validForDays, $asTemplate, $normalised, $file): Contract {
                 $contract = Contract::create([
                     'workspace_id' => $workspace->id,
                     'created_by' => $author->id,
                     'title' => $title,
                     'message' => $message,
                     'status' => ContractStatus::Draft,
+                    'is_template' => $asTemplate,
+
+                    /*
+                     * One recipient to begin with, rather than the null that
+                     * would mean "nog niet bepaald".
+                     *
+                     * Null is a state a template can be in — the API can make
+                     * one, and isReadyToSend refuses it — but it is a poor place
+                     * to start somebody off: the editor asks which party each
+                     * box is for, and a template with no parties at all cannot
+                     * answer that question even once. One recipient is also the
+                     * ordinary shape of these documents, so the number on the
+                     * template screen is usually already right.
+                     */
+                    'required_signers' => $asTemplate ? 1 : null,
+
                     'page_count' => $normalised['pages'],
                     'source_hash' => $normalised['hash'],
-                    'expires_at' => $validForDays === null ? null : now()->addDays($validForDays),
+
+                    /*
+                     * A template never runs out. The deadline belongs to the
+                     * invitation, and a template is never sent to anybody — a
+                     * mould that quietly expired would take a hundred contracts
+                     * nobody has made yet with it.
+                     */
+                    'expires_at' => $validForDays === null || $asTemplate
+                        ? null
+                        : now()->addDays($validForDays),
                 ]);
 
                 /*

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Tickets;
 
+use App\Events\TicketCommented;
 use App\Events\TicketUpdated;
 use App\Models\Ticket;
 use App\Models\TicketComment;
@@ -48,11 +49,21 @@ class CommentOnTicket
                 $this->store($comment, $ticket, $file);
             }
 
-            if ($ticket->first_responded_at === null && $ticket->opened_by !== $author->id) {
+            $firstResponse = $ticket->first_responded_at === null && $ticket->opened_by !== $author->id;
+
+            if ($firstResponse) {
                 $ticket->forceFill(['first_responded_at' => $comment->created_at])->save();
             }
 
             TicketUpdated::dispatch($ticket);
+
+            /*
+             * And the one a workflow listens for, which carries whether this
+             * was the answer the ticket had been waiting for — see the event.
+             * Worked out above rather than read back afterwards, because by
+             * then the column is set either way.
+             */
+            TicketCommented::dispatch($ticket->id, $comment->id, $author->id, $firstResponse);
 
             return $comment;
         });

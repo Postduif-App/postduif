@@ -36,6 +36,23 @@ class ContractFactory extends Factory
         ];
     }
 
+    /**
+     * A mould rather than a contract: kept to be copied, never sent.
+     *
+     * The count is how many people the sender fills in, so the default of one
+     * is the ordinary case — a document that goes to a single recipient. Pass a
+     * number for the two-party ones: template(2).
+     */
+    public function template(int $requiredSigners = 1): static
+    {
+        return $this->state([
+            'is_template' => true,
+            'status' => ContractStatus::Draft,
+            'required_signers' => $requiredSigners,
+            'expires_at' => null,
+        ]);
+    }
+
     /** Out with the signers, with a fortnight to answer. */
     public function sent(): static
     {

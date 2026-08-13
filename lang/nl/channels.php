@@ -80,6 +80,8 @@ return [
             'links_description' => 'Snelkoppelingen naar plekken buiten de app, in een balk boven het gesprek.',
             'webhooks' => 'Webhooks',
             'webhooks_description' => 'Wat er van buitenaf in dit kanaal mag posten.',
+            'shares' => 'Delen',
+            'shares_description' => 'Dit kanaal openstellen voor een andere workspace, zodat een klant of leverancier meepraat zonder lid van deze workspace te worden.',
         ],
 
         /*

@@ -36,6 +36,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { useTranslate } from '@/hooks/use-translate';
 import { spokenDuration, useElapsed } from '@/lib/duration';
+import { cn } from '@/lib/utils';
 import { logout } from '@/routes';
 import { clockIn } from '@/routes/chat/timeclock';
 import { edit } from '@/routes/profile';
@@ -65,14 +66,31 @@ type Props = {
  * literal check could see, because they sat in an expression rather than in
  * markup.
  */
-export function UserMenu() {
+export function UserMenu({
+    compact = false,
+}: {
+    /**
+     * The avatar on its own, for the rail standing without its column. The
+     * name and the status line are the first things to go: the rail is 3.5rem
+     * wide, and a face is what somebody looks for here anyway.
+     */
+    compact?: boolean;
+} = {}) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const getInitials = useInitials();
     const { t } = useTranslate();
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
+            <DropdownMenuTrigger
+                title={compact ? auth.user.name : undefined}
+                className={cn(
+                    'flex items-center rounded-md text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none',
+                    compact
+                        ? 'size-10 justify-center'
+                        : 'w-full gap-2 px-2 py-1.5',
+                )}
+            >
                 <Avatar className="size-8 shrink-0">
                     {/*
                         Above the fallback rather than instead of it: Radix
@@ -86,18 +104,24 @@ export function UserMenu() {
                         {getInitials(auth.user.name)}
                     </AvatarFallback>
                 </Avatar>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                        {auth.user.name}
+                {!compact && (
+                    <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                            {auth.user.name}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                            {auth.user.status_text
+                                ? `${auth.user.status_emoji ?? ''} ${auth.user.status_text}`.trim()
+                                : t('components.user_menu.set_status')}
+                        </span>
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                        {auth.user.status_text
-                            ? `${auth.user.status_emoji ?? ''} ${auth.user.status_text}`.trim()
-                            : t('components.user_menu.set_status')}
-                    </span>
-                </span>
+                )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start" className="w-56">
+            <DropdownMenuContent
+                side={compact ? 'right' : 'top'}
+                align={compact ? 'end' : 'start'}
+                className="w-56"
+            >
                 <UserMenuContent user={auth.user} />
             </DropdownMenuContent>
         </DropdownMenu>

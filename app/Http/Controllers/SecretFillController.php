@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SecretRequestAnswered;
 use App\Models\SecretRequest;
 use App\Models\SecretRequestKey;
 use App\Models\SecretValue;
@@ -120,6 +121,17 @@ class SecretFillController extends Controller
                 $answered++;
             }
         });
+
+        /*
+         * How many boxes were filled in, and nothing about what went in them —
+         * the values are encrypted in the browser and this application could
+         * not pass them on if a workflow asked. Only when something was
+         * actually answered: a form submitted with every box empty is not a
+         * handover.
+         */
+        if ($answered > 0) {
+            SecretRequestAnswered::dispatch($secretRequest->id, $answered, $request->user()?->id);
+        }
 
         /*
          * Nothing about what was submitted goes back. Not the values, and not a

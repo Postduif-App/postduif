@@ -5,15 +5,16 @@ import {
     ClipboardList,
     Clock,
     FileSignature,
+    FileUp,
     Inbox,
     KeyRound,
     Megaphone,
+    MessagesSquare,
     Pin,
-    Send,
     TicketIcon,
 } from 'lucide-react';
 
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { DoveMark } from '@/components/marketing/logo';
 
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
+import { index as chatIndex } from '@/routes/chat';
 import { index as boardIndex } from '@/routes/chat/board';
 import { index as contractsIndex } from '@/routes/chat/contracts';
 import { index as formsIndex } from '@/routes/chat/forms';
@@ -56,6 +58,8 @@ interface WorkspaceToolsProps {
     hasTickets: boolean;
     /** Whether this workspace has file sending switched on at all. */
     hasTransfers: boolean;
+    /** Whether a channel is open, which is what the chat entry marks. */
+    chatActive?: boolean;
     boardActive?: boolean;
     secretsActive?: boolean;
     mentionsActive?: boolean;
@@ -91,6 +95,7 @@ function toolEntries(
         inboxTotal,
         hasTickets,
         hasTransfers,
+        chatActive = false,
         boardActive = false,
         secretsActive = false,
         mentionsActive = false,
@@ -105,6 +110,31 @@ function toolEntries(
     t: ReturnType<typeof useTranslate>['t'],
 ): ToolEntry[] {
     const entries: ToolEntry[] = [];
+
+    /*
+        The chat itself, first and unconditional.
+
+        The rail grew from the things beside the conversation, so it never held
+        an entry for the conversation — which was fine while the rail stood next
+        to it and read as its own margin. It stopped being fine once the other
+        entries got screens of their own: from the contract list, the form list
+        or the clock, every icon in the column led somewhere further away, and
+        the way back to the talking was the browser's back button or the
+        workspace name at the top of the sheet.
+
+        The address is the workspace root rather than a channel, because which
+        channel is not a question the browser can answer: chat.index picks the
+        one this member spoke in most recently, of those they may see, and makes
+        an empty workspace a channel before it answers. See ChatController.
+    */
+    entries.push({
+        key: 'chat',
+        label: t('sidebar.rail.chat'),
+        icon: MessagesSquare,
+        href: chatIndex(workspace.slug),
+        active: chatActive,
+        badge: 0,
+    });
 
     /*
         Always there, unlike the ticket entry below: being named is something
@@ -194,7 +224,7 @@ function toolEntries(
         entries.push({
             key: 'transfers',
             label: t('sidebar.rail.transfers'),
-            icon: Send,
+            icon: FileUp,
             href: transfersIndex(workspace.slug),
             active: transfersActive,
             badge: 0,
@@ -395,7 +425,21 @@ export function WorkspaceToolLinks(props: WorkspaceToolsProps) {
     );
 }
 
-export function WorkspaceRail(props: WorkspaceToolsProps) {
+/**
+ * The rail, optionally standing on its own.
+ *
+ * Header and footer are empty while the channel column is beside it, because
+ * the column already carries the workspace's name at its top and the reader's
+ * own face at its bottom. On a screen where the column is gone — every screen
+ * that is not the chat — the rail is the only furniture left, and those two
+ * would go with it. See ChannelSidebar, which decides which of the two is on
+ * screen and hands the replacements down.
+ */
+export function WorkspaceRail({
+    header,
+    footer,
+    ...props
+}: WorkspaceToolsProps & { header?: ReactNode; footer?: ReactNode }) {
     const { t } = useTranslate();
 
     const entries = toolEntries(props, t);
@@ -430,6 +474,8 @@ export function WorkspaceRail(props: WorkspaceToolsProps) {
                 <DoveMark size={24} />
             </span>
 
+            {header && <div className="mb-1">{header}</div>}
+
             <div className="flex flex-1 flex-col items-center gap-1">
                 {places.map((entry) => (
                     <RailButton key={entry.key} entry={entry} />
@@ -448,6 +494,12 @@ export function WorkspaceRail(props: WorkspaceToolsProps) {
                     </div>
                 )}
             </div>
+
+            {footer && (
+                <div className="mt-1 w-full border-t border-sidebar-border px-2 pt-2">
+                    {footer}
+                </div>
+            )}
         </nav>
     );
 }

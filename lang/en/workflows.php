@@ -38,6 +38,168 @@ return [
             ],
         ],
 
+        'contract' => [
+            'channel' => [
+                'label' => 'In which notify channel',
+                'hint' => 'Only contracts whose news goes to this channel. Leave empty for all contracts.',
+            ],
+            'author' => [
+                'label' => 'Asked for by',
+                'hint' => 'Only contracts this colleague asked for. Leave empty for everybody.',
+            ],
+            'words' => [
+                'label' => 'Words in the title',
+                'hint' => 'Any one of these is enough. Leave empty for every title.',
+            ],
+        ],
+
+        'contract-sent' => [
+            'label' => 'When a contract is sent',
+            'description' => 'Runs the moment a contract goes out to its signers.',
+        ],
+        'contract-opened' => [
+            'label' => 'When a signer opens the contract',
+            'description' => 'Runs the first time somebody follows their link. Once per signer.',
+        ],
+        'contract-signed' => [
+            'label' => 'When somebody signs a contract',
+            'description' => 'Runs on every signature, the last one included. For "everybody has answered", take the completed contract instead.',
+        ],
+        'contract-declined' => [
+            'label' => 'When somebody refuses a contract',
+            'description' => 'Runs the moment a signer says no, which closes the whole contract.',
+        ],
+        'contract-completed' => [
+            'label' => 'When a contract is complete',
+            'description' => 'Runs once everybody has answered and the signed PDF is ready, so the download link works straight away.',
+        ],
+        'contract-cancelled' => [
+            'label' => 'When a contract is withdrawn',
+            'description' => 'Runs the moment the author stops a contract that was out.',
+        ],
+        'contract-expired' => [
+            'label' => 'When a contract expires',
+            'description' => 'Runs when the deadline passes without everybody signing. Settled overnight.',
+        ],
+        'contract-render-failed' => [
+            'label' => 'When the signed PDF could not be made',
+            'description' => 'Runs when composing the signed copy fails after every attempt. The contract itself is signed.',
+        ],
+
+        'ticket' => [
+            'channel' => [
+                'label' => 'In which channel',
+                'hint' => 'Only tickets from this channel. Leave empty for every channel in this workspace.',
+            ],
+        ],
+
+        'ticket-created' => [
+            'label' => 'When a ticket comes in',
+            'description' => 'Runs the moment somebody opens a ticket, mail included.',
+        ],
+        'ticket-changed' => [
+            'label' => 'When a ticket changes',
+            'description' => 'Runs on a new status, another priority, an assignment or a changed deadline.',
+            'kind' => [
+                'label' => 'On what',
+                'hint' => 'With "every change" the workflow also runs when only the deadline moves.',
+                'any' => 'Every change',
+                'status' => 'The status only',
+                'priority' => 'The priority only',
+                'assignee' => 'Assigning and unassigning only',
+                'due' => 'The deadline only',
+            ],
+        ],
+        'ticket-commented' => [
+            'label' => 'When somebody comments on a ticket',
+            'description' => 'Runs on every comment. Whether it was the first answer is in the variables.',
+        ],
+        'ticket-stale' => [
+            'label' => 'When a ticket is left sitting',
+            'description' => 'Runs on the nightly sweep, at most once a day per ticket.',
+            'reason' => [
+                'label' => 'On what',
+                'hint' => '"Never answered" is the one a customer notices first.',
+                'any' => 'Both',
+                'overdue' => 'Past the deadline',
+                'unanswered' => 'Never answered',
+            ],
+        ],
+
+        'document' => [
+            'channel' => [
+                'label' => 'In which channel',
+                'hint' => 'Only documents from this channel. Leave empty for every channel.',
+            ],
+        ],
+        'document-created' => [
+            'label' => 'When a document is started',
+            'description' => 'Runs the moment somebody starts a document. Not on the saves after that — those happen by themselves every few seconds.',
+        ],
+        'document-deleted' => [
+            'label' => 'When a document is removed',
+            'description' => 'Runs the moment somebody takes a document out of the channel. It is kept, just no longer shown.',
+        ],
+
+        'poll' => [
+            'channel' => [
+                'label' => 'In which channel',
+                'hint' => 'Only polls from this channel. Leave empty for every channel.',
+            ],
+        ],
+        'poll-created' => [
+            'label' => 'When a poll is started',
+            'description' => 'Runs the moment somebody puts a question to a channel.',
+        ],
+        'poll-voted' => [
+            'label' => 'When somebody votes on a poll',
+            'description' => 'Runs on every vote, including one being taken off. With a condition on the counts this is your threshold.',
+        ],
+        'poll-closed' => [
+            'label' => 'When a poll is closed',
+            'description' => 'Runs when somebody stops a poll. A poll that runs out by itself gives no signal.',
+        ],
+
+        'channel-share-offered' => [
+            'label' => 'When another workspace shares a channel with us',
+            'description' => 'Runs on our side the moment somebody else offers a channel. An invitation is then sitting there to be answered.',
+        ],
+        'channel-share-answered' => [
+            'label' => 'When our shared channel is answered',
+            'description' => 'Runs on our side the moment the other workspace says yes or no to a channel we offered.',
+            'answer' => [
+                'label' => 'On what',
+                'hint' => 'With "both" the workflow also runs when they say no.',
+                'any' => 'Both',
+                'accepted' => 'Only on yes',
+                'declined' => 'Only on no',
+            ],
+        ],
+        'channel-share-revoked' => [
+            'label' => 'When a shared channel is taken back',
+            'description' => 'Runs on our side the moment the other workspace withdraws a channel. Our people are already out of it by then.',
+        ],
+        'invite-link-redeemed' => [
+            'label' => 'When somebody joins through an invitation link',
+            'description' => 'Runs the moment somebody becomes a new member through a link. Somebody who was already a member does not count.',
+            'role' => [
+                'label' => 'With which role',
+                'hint' => 'The name of the role the link hands out. Leave empty for any link.',
+            ],
+        ],
+        'transfer-downloaded' => [
+            'label' => 'When a transfer is collected',
+            'description' => 'Runs the moment somebody downloads files you sent. Only that it happened — never what was in it.',
+        ],
+        'secret-request-answered' => [
+            'label' => 'When a secret request is filled in',
+            'description' => 'Runs the moment somebody fills something in. Only how much was answered; the values are encrypted and unreadable to Postduif.',
+            'channel' => [
+                'label' => 'In which channel',
+                'hint' => 'Only requests from this channel. Leave empty for every channel.',
+            ],
+        ],
+
         'reaction' => [
             'label' => 'When somebody uses an emoji',
             'description' => 'Runs as soon as this emoji is put on a message. Removing and re-adding it runs the workflow again.',
@@ -109,6 +271,191 @@ return [
     ],
 
     'actions' => [
+        'create-invite-link' => [
+            'label' => 'Make an invitation link',
+            'description' => 'Makes a link to let somebody in and leaves the address for a following step. Sends nothing itself.',
+            'role' => [
+                'label' => 'Which role',
+                'hint' => 'The name of a role in this workspace, "Guest" for instance.',
+            ],
+            'uses' => [
+                'label' => 'How often usable',
+                'hint' => 'Leave empty for no limit. One is the safest choice.',
+            ],
+            'days' => [
+                'label' => 'Valid for how many days',
+                'hint' => 'Leave empty to keep working until you withdraw it.',
+            ],
+        ],
+        'create-secret-request' => [
+            'label' => 'Ask for credentials',
+            'description' => 'Puts a request for credentials in a channel. Whatever is filled in is encrypted and unreadable to Postduif.',
+            'title' => [
+                'label' => 'What it is about',
+                'hint' => 'For instance: access to the webshop.',
+            ],
+            'keys' => [
+                'label' => 'What you are asking for',
+                'hint' => 'One per box, separated by commas. No variables here.',
+            ],
+            'days' => [
+                'label' => 'Valid for how many days',
+                'hint' => 'Leave empty for fourteen days.',
+            ],
+        ],
+        'post-to-board' => [
+            'label' => 'Post on the board',
+            'description' => "Puts a notice on the workspace board, in the name of this workflow's owner.",
+            'title' => ['label' => 'Heading'],
+        ],
+        'forward-message' => [
+            'label' => 'Forward a message',
+            'description' => 'Forwards the trigger\'s message to another channel, keeping who wrote it.',
+            'note' => [
+                'label' => 'Note above it',
+                'hint' => 'May be left empty; then only the message goes.',
+            ],
+        ],
+        'clock-out' => [
+            'label' => 'Clock somebody out',
+            'description' => 'Closes the shift that was running. Nothing running means nothing happens.',
+            'person' => [
+                'label' => 'Who',
+                'hint' => 'Leave empty for whoever the trigger was about.',
+            ],
+        ],
+        'summarise-hours' => [
+            'label' => 'Add up hours',
+            'description' => 'Adds up a week and leaves the result for a following step. Sends nothing itself.',
+            'person' => [
+                'label' => 'Whose',
+                'hint' => 'Leave empty for whoever the trigger was about.',
+            ],
+            'week' => [
+                'label' => 'Which week',
+                'hint' => 'A summary you send on Monday is usually about the week before.',
+                'this' => 'This week',
+                'last' => 'Last week',
+            ],
+        ],
+        'create-document' => [
+            'label' => 'Start a document',
+            'description' => 'Starts an empty document in a channel. Filling it in is the next step.',
+            'title' => [
+                'label' => 'Title',
+                'hint' => 'You can put trigger data in here.',
+            ],
+        ],
+        'append-to-document' => [
+            'label' => 'Add a line to a document',
+            'description' => 'Puts a paragraph at the bottom of a document. Useful as a log.',
+            'text' => [
+                'label' => 'What to add',
+                'hint' => 'One paragraph, at the bottom. You can put trigger data in here.',
+            ],
+        ],
+        'create-poll' => [
+            'label' => 'Start a poll',
+            'description' => 'Puts a question to a channel, with at least two answers.',
+            'question' => [
+                'label' => 'The question',
+                'hint' => 'You can put trigger data in here.',
+            ],
+            'options' => [
+                'label' => 'The answers',
+                'hint' => 'At least two, separated by commas. No variables here.',
+            ],
+            'multiple' => [
+                'label' => 'Allow several answers',
+                'no' => 'One answer per person',
+                'yes' => 'Several answers allowed',
+            ],
+            'closes' => [
+                'label' => 'Close after how many hours',
+                'hint' => 'Leave empty to stay open until somebody stops it.',
+            ],
+        ],
+        'close-poll' => [
+            'label' => 'Close a poll',
+            'description' => 'Stops a poll, so nobody can vote any more.',
+        ],
+        'update-ticket' => [
+            'label' => 'Update a ticket',
+            'description' => 'Sets the status, the priority and/or the deadline. Whatever you leave empty stays as it was.',
+            'leave_alone' => 'Leave empty to change nothing.',
+            'status' => ['label' => 'New status'],
+            'priority' => ['label' => 'New priority'],
+            'due' => [
+                'label' => 'Deadline in how many days',
+                'hint' => 'Counted from the moment this step runs.',
+            ],
+        ],
+        'assign-ticket' => [
+            'label' => 'Assign a ticket',
+            'description' => 'Hands the ticket to a colleague, or takes it off whoever had it.',
+            'person' => [
+                'label' => 'To whom',
+                'hint' => 'Leave empty to take the ticket off whoever had it.',
+            ],
+        ],
+        'comment-on-ticket' => [
+            'label' => 'Comment on a ticket',
+            'description' => "Puts a comment on the ticket, in the name of this workflow's owner.",
+        ],
+        'send-contract-from-template' => [
+            'label' => 'Send a contract from a template',
+            'description' => 'Makes a contract out of a template and sends it to one person. Your side of the template is already signed.',
+            'template' => [
+                'label' => 'Which template',
+                'hint' => 'Only finished templates can be sent.',
+            ],
+            'name' => [
+                'label' => "The signer's name",
+                'hint' => 'May be a variable, an answer from a form for instance.',
+            ],
+            'email' => [
+                'label' => "The signer's e-mail address",
+                'hint' => 'Where the invitation goes. May be a variable.',
+            ],
+            'title' => [
+                'label' => 'Title of the contract',
+                'hint' => "Leave empty for the template's own title.",
+            ],
+            'days' => [
+                'label' => 'Valid for how many days',
+                'hint' => 'Leave empty for whatever the template holds.',
+            ],
+            'channel' => [
+                'label' => 'Notify channel',
+                'hint' => 'Where news about this contract goes. May be left empty.',
+            ],
+        ],
+        'remind-contract-signers' => [
+            'label' => 'Remind the signers',
+            'description' => 'Sends the invitation again to everybody who has not answered. Anybody reminded in the last day is skipped.',
+        ],
+        'post-contract-to-channel' => [
+            'label' => 'Post a contract in a channel',
+            'description' => "Puts the contract card in a channel, in the name of this workflow's owner.",
+        ],
+        'cancel-contract' => [
+            'label' => 'Withdraw a contract',
+            'description' => 'Stops a contract that is out. The links keep working and say it was withdrawn.',
+        ],
+        'send-signed-contract' => [
+            'label' => 'Send the signed copy',
+            'description' => 'Mails the signed PDF to everybody who signed.',
+            'again' => [
+                'label' => 'Also to whoever had it already',
+                'hint' => 'Choose "again" when somebody has lost their copy.',
+                'no' => 'Only whoever had none',
+                'yes' => 'Again to everybody',
+            ],
+        ],
+        'retry-contract-render' => [
+            'label' => 'Try the signed PDF again',
+            'description' => 'Queues composing the signed copy once more.',
+        ],
 
         'fields' => [
             'channel' => 'Which channel',
@@ -117,11 +464,21 @@ return [
             'body_hint' => 'You can put data from the trigger in here.',
             'message' => 'Which message',
             'message_hint' => 'Leaving this empty means the message the trigger was about.',
+            'contract' => 'Which contract',
+            'contract_hint' => 'Leave empty for the contract the trigger was about.',
+            'ticket' => 'Which ticket',
+            'ticket_hint' => 'Leave empty for the ticket the trigger was about.',
+            'document' => 'Which document',
+            'document_hint' => 'Leave empty for the document the trigger was about.',
+            'poll' => 'Which poll',
+            'poll_hint' => 'Leave empty for the poll the trigger was about.',
             'added' => 'Whether somebody was actually added',
             'thread' => [
                 'id' => 'The thread the reply landed in',
             ],
             'emoji' => 'Which emoji',
+            'reminded' => 'How many were reminded',
+            'copies_sent' => 'How many copies were sent',
             'channel_name' => 'Name of the channel',
             'channel_name_hint' => 'May hold data from the trigger, for instance the name of whoever asked.',
             'channel_type' => 'Who may join',
@@ -219,12 +576,63 @@ return [
         ],
     ],
 
+    'config' => [
+        'no_variables' => 'This field cannot hold a variable.',
+        'not_text' => 'This field expects text.',
+        'too_long' => 'This field may hold at most :max characters.',
+        'not_a_number' => 'This field expects a number.',
+        'not_words' => 'This field expects a list of words.',
+        'too_many_words' => 'At most :max words.',
+        'unknown_choice' => 'Choose one of the options in the list.',
+        'channel_not_found' => 'That channel does not belong to this workspace.',
+        'member_not_found' => 'That person is not in this workspace.',
+        'form_not_found' => 'That form does not belong to this workspace.',
+        'record_not_found' => 'That is not a :what you can choose here.',
+    ],
     'errors' => [
+        'board_off' => 'This workspace no longer has a board.',
+        'forwarding_off' => 'This workspace no longer forwards messages.',
+        'secrets_off' => 'This workspace no longer asks for credentials.',
+        'invite_links_off' => 'This workspace no longer uses invitation links.',
+        'empty_board_post' => 'A board notice needs a heading and text.',
+        'empty_secret_request' => 'A request needs a description and at least one thing to ask for.',
+        'may_not_ask_secrets' => 'The owner of this workflow may not post in #:channel.',
+        'may_not_invite' => 'The owner of this workflow may not invite anybody.',
+        'no_role_named' => 'No role was given for the invitation link.',
+        'role_not_found' => 'This workspace has no role called ":role".',
+        'timeclock_off' => 'This workspace no longer keeps time.',
+        'no_person_anywhere' => 'This step is about a person, but none was chosen and the trigger brought none either.',
+        'documents_off' => 'This workspace no longer keeps documents.',
+        'polls_off' => 'This workspace no longer keeps polls.',
+        'may_not_create_document' => 'The owner of this workflow may not start a document in #:channel.',
+        'may_not_write_document' => 'The owner of this workflow may not write in ":title".',
+        'may_not_close_poll' => 'The owner of this workflow may not close this poll.',
+        'empty_document_title' => 'No title was left for the document.',
+        'empty_document_text' => 'No text was left to add to the document.',
+        'document_busy' => '":title" is being written in right now, so the line was not added.',
+        'empty_question' => 'No question was left to ask.',
+        'too_few_options' => 'A poll needs at least two answers.',
+        'may_not_manage_ticket' => 'The owner of this workflow may not update ticket #:number.',
+        'may_not_comment_on_ticket' => 'The owner of this workflow may not comment on ticket #:number.',
+        'assignee_cannot_see_ticket' => ':name cannot see this ticket, so it was not assigned to them.',
+        'nothing_to_change' => 'This step would change nothing: fill in a status, a priority or a deadline.',
+        'empty_comment' => 'No text was left to put on the ticket.',
+        'contracts_off' => 'This workspace no longer asks for signatures.',
+        'may_not_touch_contract' => 'The owner of this workflow may not do this to ":title".',
+        'may_not_send_contract' => 'The owner of this workflow may not send contracts.',
+        'template_unfinished' => 'The template ":title" is not finished: fields or a signature are missing.',
+        'template_wants_more_signers' => 'The template ":title" is for :count signers, and this step sends to one.',
+        'bad_signer_email' => '":email" is not a usable e-mail address.',
+        'no_signer_name' => 'No name was left for the signer.',
+        'signer_is_sender' => 'That address already signed the template itself (:email).',
+        'nothing_to_render' => 'There is nothing to compose for ":title": the contract is not finished.',
         'no_channel_chosen' => 'This step was given no channel.',
         'channel_not_found' => 'That channel is gone, or this workflow\'s owner cannot reach it.',
         'no_message' => 'This step is about a message, but there is none.',
         'message_not_found' => 'That message is gone.',
         'no_person_chosen' => 'This step was given no person.',
+        'no_record' => 'This step is about :what, but none was named and the trigger brought none either.',
+        'record_not_found' => 'That is not a :what of this workspace, or the owner of this workflow may not see it.',
         'person_not_found' => 'That person is no longer in this workspace.',
         'tickets_off' => 'This workspace no longer keeps tickets.',
         'may_not_open_ticket' => 'The owner of this workflow may not open a ticket in :channel.',
@@ -302,6 +710,112 @@ return [
     ],
 
     'provides' => [
+        'share' => [
+            'id' => 'The share',
+            'can_post' => 'Whether the guests may join in',
+            'accepted' => 'Whether the offer was taken up',
+            'channel_id' => 'The shared channel',
+            'channel_name' => 'The name of the shared channel',
+            'host_id' => 'The workspace that owns the channel',
+            'host_name' => 'The name of that workspace',
+            'guest_id' => 'The workspace that is the guest',
+            'guest_name' => 'The name of that workspace',
+        ],
+        'link' => [
+            'id' => 'The invitation link',
+            'url' => 'The address of the link',
+            'role' => 'The role the link hands out',
+            'uses' => 'How often the link was used',
+            'uses_left' => 'How often the link can still be used',
+            'expires_at' => 'Until when the link works',
+        ],
+        'transfer' => [
+            'id' => 'The transfer',
+            'title' => 'The title of the transfer',
+            'downloads' => 'How often it was downloaded',
+            'expires_at' => 'Until when the transfer works',
+            'sender_id' => 'Who sent it',
+            'sender_name' => 'The name of whoever sent it',
+            'recipient_id' => 'The recipient who collected it',
+            'recipient_email' => "That recipient's address",
+        ],
+        'secret' => [
+            'id' => 'The request',
+            'title' => 'What the request is about',
+            'url' => 'The link to fill it in',
+            'answered' => 'How much was filled in now',
+            'outstanding' => 'How much is still open',
+            'is_complete' => 'Whether everything is filled in',
+            'requester_id' => 'Who asked',
+            'requester_name' => 'The name of whoever asked',
+        ],
+        'board' => [
+            'id' => 'The board notice',
+            'title' => 'The heading of the board notice',
+        ],
+        'hours' => [
+            'total' => 'The hours in that week',
+            'spoken' => 'Those hours as a sentence',
+            'days_worked' => 'How many days were worked',
+            'from' => 'The Monday of that week',
+            'until' => 'The Sunday of that week',
+        ],
+        'document' => [
+            'id' => 'The document',
+            'number' => 'The document number',
+            'title' => 'The document title',
+            'actor_id' => 'Who did it',
+            'actor_name' => 'The name of whoever did it',
+        ],
+        'poll' => [
+            'id' => 'The poll',
+            'question' => 'The question',
+            'url' => 'Link to the poll',
+            'option_count' => 'Number of answers',
+            'vote_count' => 'Number of votes',
+            'voter_count' => 'How many people voted',
+            'leading_option' => 'The answer in front',
+            'top_votes' => 'Votes on the answer in front',
+            'is_closed' => 'Whether the poll is closed',
+            'closes_at' => 'When the poll closes',
+            'closed_now' => 'Whether this step actually closed it',
+            'asker_id' => 'Who asked',
+            'asker_name' => 'The name of whoever asked',
+            'vote_ticked' => 'Whether the vote went on or came off',
+            'option_id' => 'The answer that was voted on',
+            'option_label' => 'The text of that answer',
+            'option_votes' => 'Votes on that answer',
+            'voter_id' => 'Who voted',
+            'voter_name' => 'The name of whoever voted',
+        ],
+        'contract' => [
+            'id' => 'The contract',
+            'title' => 'The contract title',
+            'status' => 'Where the contract stands',
+            'url' => 'Link to the contract in Postduif',
+            'download_url' => 'Link to download the signed PDF',
+            'expires_at' => 'The deadline',
+            'days_until_expiry' => 'Days until the deadline',
+            'page_count' => 'Number of pages',
+            'signer_count' => 'Number of signers',
+            'signed_count' => 'How many have signed',
+            'declined_count' => 'How many have refused',
+            'remaining' => 'How many still have to answer',
+            'signers' => 'The signers by name',
+            'author_id' => 'Who asked for it',
+            'author_name' => 'The name of whoever asked',
+            'channel_id' => 'The notify channel',
+            'channel_name' => 'The name of the notify channel',
+        ],
+        'signer' => [
+            'id' => 'The signer',
+            'name' => 'The signer\'s name',
+            'email' => 'The signer\'s e-mail address',
+            'order' => 'Their place in the queue',
+            'is_external' => 'Whether they are from outside',
+            'is_last' => 'Whether they were the last to answer',
+            'decline_reason' => 'The reason given for refusing',
+        ],
         'http' => [
             'status' => 'The status code of the answer',
             'ok' => 'Whether the request worked',
@@ -313,6 +827,30 @@ return [
             'text' => 'What the message says',
         ],
         'ticket' => [
+            'title' => 'The ticket title',
+            'body' => 'The ticket description',
+            'status' => 'The ticket status',
+            'priority' => 'The priority',
+            'due_at' => 'The deadline',
+            'hours_open' => 'How many hours the ticket has been open',
+            'is_overdue' => 'Whether the deadline has passed',
+            'has_assignee' => 'Whether somebody has it',
+            'answered' => 'Whether anybody has replied yet',
+            'assignee_id' => 'Who has the ticket',
+            'assignee_name' => 'The name of whoever has it',
+            'reporter_id' => 'Who opened the ticket',
+            'reporter_name' => 'The name of whoever opened it',
+            'actor_id' => 'Who made this change',
+            'actor_name' => 'The name of whoever made this change',
+            'change_kind' => 'What changed',
+            'change_from' => 'What it was',
+            'change_to' => 'What it is now',
+            'comment_id' => 'The comment',
+            'comment_body' => 'The text of the comment',
+            'comment_first' => 'Whether this was the first reply',
+            'comment_author_id' => 'Who commented',
+            'comment_author_name' => 'The name of whoever commented',
+            'stale_reason' => 'Why it was left sitting',
             'id' => 'The ticket',
             'number' => 'The number of the ticket',
         ],
@@ -331,6 +869,7 @@ return [
             'hours' => 'How long the shift lasted, in hours (7.5)',
             'duration' => 'How long the shift lasted, written out',
             'started_at' => 'What time the shift began',
+            'was_running' => 'Whether a shift was really running',
         ],
         'user' => [
             'id' => 'Who did it',

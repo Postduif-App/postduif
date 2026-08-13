@@ -92,7 +92,7 @@ class DirectMessageController extends Controller
         Channel $channel,
         HideDirectMessage $hideDirectMessage,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($channel->isDirect(), 404);
 
         $user = $request->user();

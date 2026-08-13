@@ -3,6 +3,7 @@
 namespace App\Actions\Contracts;
 
 use App\Enums\ContractStatus;
+use App\Events\ContractExpired;
 use App\Models\Contract;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -37,9 +38,16 @@ class PruneContracts
     /**
      * Turn contracts whose deadline has passed to Expired.
      *
-     * A mass update rather than a loop, and it may be one: nothing hangs off
-     * this transition — no files to remove, no mail to send, no model event
-     * anybody listens for. It is the column catching up with the clock.
+     * Still one UPDATE over the set, but the ids are read first — and that is
+     * the whole reason this is no longer a single statement. Something does
+     * hang off this transition now: a workflow can be waiting for a contract to
+     * run out, and an UPDATE over a set fires no model events and dispatches
+     * nothing. A trigger hung off an event nobody sends is a workflow that
+     * quietly never runs, which is worse than not offering the trigger at all.
+     *
+     * The extra SELECT is a page of ids on a nightly command. It buys an event
+     * per contract, which is what the announcement has to be: "er zijn er zeven
+     * verlopen" is not something a workflow can act on.
      *
      * Note what the status column is *not* doing in the meantime. Anything that
      * asks "may this still be signed" asks Contract::isSignable(), which
@@ -49,11 +57,30 @@ class PruneContracts
      */
     private function closeWhatRanOut(): int
     {
-        return Contract::query()
+        $expired = Contract::query()
             ->where('status', ContractStatus::Sent->value)
             ->whereNotNull('expires_at')
             ->where('expires_at', '<', now())
+            ->pluck('id');
+
+        if ($expired->isEmpty()) {
+            return 0;
+        }
+
+        Contract::query()
+            ->whereIn('id', $expired)
             ->update(['status' => ContractStatus::Expired->value]);
+
+        /*
+         * Announced after the update, so anything that goes and reads the row
+         * finds it already Expired rather than racing the statement that put it
+         * there.
+         */
+        foreach ($expired as $id) {
+            ContractExpired::dispatch((string) $id);
+        }
+
+        return $expired->count();
     }
 
     /**

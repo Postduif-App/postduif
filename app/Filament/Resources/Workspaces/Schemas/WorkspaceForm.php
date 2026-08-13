@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Workspaces\Schemas;
 
 use App\Enums\MemberPanelVisibility;
 use App\Models\User;
+use App\Models\Workspace;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
@@ -34,6 +35,14 @@ class WorkspaceForm
                             ->maxLength(255)
                             ->alphaDash()
                             ->unique(ignoreRecord: true)
+                            /*
+                             * A slug is one segment under /app, where a handful
+                             * of addresses are not workspaces. The router
+                             * refuses those outright, so a workspace that
+                             * claimed one would exist and be unreachable — see
+                             * Workspace::RESERVED_SLUGS.
+                             */
+                            ->notIn(Workspace::RESERVED_SLUGS)
                             ->helperText('Staat in de URL. Bestaande links breken als je dit wijzigt.'),
 
                         Select::make('owner_id')

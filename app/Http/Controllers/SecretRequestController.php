@@ -25,7 +25,7 @@ class SecretRequestController extends Controller
         Channel $channel,
         CreateSecretRequest $createSecretRequest,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $createSecretRequest->handle(
             channel: $channel,

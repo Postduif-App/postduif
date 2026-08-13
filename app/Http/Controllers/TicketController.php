@@ -33,7 +33,7 @@ class TicketController extends Controller
         Channel $channel,
         CreateTicket $createTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $ticket = $createTicket->handle(
             channel: $channel,
@@ -66,7 +66,7 @@ class TicketController extends Controller
         Ticket $ticket,
         UpdateTicket $updateTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $user = $request->user();
 
@@ -127,7 +127,7 @@ class TicketController extends Controller
         Ticket $ticket,
         DeleteTicket $deleteTicket,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('delete', $ticket);
 
         $deleteTicket->handle($ticket);

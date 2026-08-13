@@ -1,21 +1,15 @@
 <?php
 
 /*
- * Making a workspace of your own — the screen somebody lands on straight after
- * signing up, when they belong nowhere yet.
+ * The screen somebody lands on when they belong to no workspace at all —
+ * everybody who has just signed up, until a moderator puts them in one.
  */
 
 return [
-    'created' => ':name is ready.',
-
-    'create' => [
-        'head' => 'Create a workspace',
-        'title' => 'Create your workspace',
-        'description' => 'A place for your team, your customers and the work in between.',
-        'description_first' => 'One more thing: give your workspace a name. Then you are ready to go.',
-        'name' => 'Name',
-        'name_placeholder' => 'Your company or team name',
-        'name_hint' => 'We derive the address from this. You can change both later.',
-        'submit' => 'Create',
+    'none' => [
+        'head' => 'No workspace yet',
+        'title' => 'You are not in a workspace yet',
+        'description' => 'Your account is ready; your workspace is not.',
+        'body' => 'Workspaces are created by a moderator. Ask to be added to the right one, and everything here will be waiting for you.',
     ],
 ];

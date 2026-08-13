@@ -58,6 +58,35 @@ class BuildApiReference
             'params' => ['channel_id', 'body', 'parent_id'],
             'returns' => 'id, channelId, body, parentId, sentAt',
         ],
+        /*
+         * The contract endpoints, which are the first here to need more than a
+         * token: one tied to a workspace, carrying the contracts scope. The
+         * auth key says so, and the prose beside it explains how to mint one —
+         * a caller who reads "token" and tries theirs would be refused with no
+         * idea why.
+         */
+        'api.v1.contract-templates.index' => [
+            'auth' => 'contract-token',
+            'returns' => 'id, title, requiredSigners, partyCount, preSigned, readyToSend, parties',
+        ],
+        'api.v1.contracts.store' => [
+            'auth' => 'contract-token',
+            'params' => ['template_id', 'recipients', 'title', 'message', 'valid_for_days', 'callback_url', 'callback_secret'],
+            'returns' => 'id, title, status, signedCopy, signers, expiresAt, completedAt',
+        ],
+        'api.v1.contracts.index' => [
+            'auth' => 'contract-token',
+            'params' => ['status'],
+            'returns' => 'id, title, status, signedCopy, signers, expiresAt, completedAt',
+        ],
+        'api.v1.contracts.show' => [
+            'auth' => 'contract-token',
+            'returns' => 'id, title, status, signedCopy, signers, expiresAt, completedAt',
+        ],
+        'api.v1.contracts.document' => [
+            'auth' => 'contract-token',
+            'returns' => 'application/pdf',
+        ],
         'webhooks.messages.store' => [
             'auth' => 'webhook',
         ],
@@ -73,6 +102,12 @@ class BuildApiReference
      * @var array<string, string>
      */
     private const LIMITERS = [
+        /*
+         * Before the prefix below, because the loop that reads this takes the
+         * first match: sending a contract has a limit of its own, and the
+         * general one would otherwise claim it and print the wrong number.
+         */
+        'api.v1.contracts.store' => 'contract-send',
         'api.v1.' => 'api-token',
         'webhooks.messages.store' => 'webhook',
         'workflows.webhook' => 'workflow-webhook',

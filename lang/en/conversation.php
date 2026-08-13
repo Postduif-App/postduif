@@ -10,6 +10,7 @@ return [
 
     'header' => [
         'huddle' => 'Talk now',
+        'schedule_huddle' => 'Schedule a huddle',
         'search' => 'Search in :channel',
         'members' => 'Members of this channel',
         'connecting' => 'Setting up the live connection…',

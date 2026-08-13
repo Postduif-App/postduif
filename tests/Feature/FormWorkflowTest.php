@@ -191,6 +191,23 @@ it('starts every workflow that was waiting for the same form', function () {
         ->and(runsOf($second))->toBe(1);
 });
 
+/**
+ * The feature check used to live only in the builder, which a listener never
+ * passes through: a workspace that switched forms off kept setting off the
+ * workflows that were written while it had them. The shared listener base asks
+ * availableFor() before it starts anything, which is what closes that.
+ */
+it('does not start a form workflow in a workspace that has switched forms off', function () {
+    [$owner, $filler, $form, $workspace, $channel] = formWorkflowScene();
+    $workflow = formWorkflow($owner, $channel, $form->id);
+
+    Feature::for($workspace)->deactivate(Forms::class);
+
+    app(SubmitForm::class)->handle($form, $filler, ['reden' => 'Zon', 'dagen' => '10']);
+
+    expect(runsOf($workflow))->toBe(0);
+});
+
 /** Nothing to point a form trigger at in a workspace that has no forms. */
 it('is only offered where forms are switched on', function () {
     [$owner, , , $workspace, $channel] = formWorkflowScene();

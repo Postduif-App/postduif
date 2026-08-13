@@ -10,6 +10,7 @@ use App\Actions\Contracts\SigningRefused;
 use App\Actions\Contracts\StoreSignature;
 use App\Enums\ContractFieldType;
 use App\Enums\SignatureMethod;
+use App\Events\ContractOpened;
 use App\Features\Contracts;
 use App\Models\ContractSigner;
 use Illuminate\Http\RedirectResponse;
@@ -57,6 +58,10 @@ class ContractSignController extends Controller
          */
         if ($signer->opened_at === null) {
             $signer->forceFill(['opened_at' => now()])->save();
+
+            // Inside the if, so it stays what the column is: the first visit,
+            // once. A reload is not news.
+            ContractOpened::dispatch($signer->contract_id, $signer->id);
         }
 
         return Inertia::render('contracts/sign', [
@@ -260,8 +265,42 @@ class ContractSignController extends Controller
      */
     public function signatureImage(string $token, string $kind): BinaryFileResponse
     {
-        $signer = $this->signer($token);
+        return $this->markImage($this->signer($token), $kind);
+    }
 
+    /**
+     * Somebody else's mark, on the page of the person reading it next.
+     *
+     * The address carries this reader's own token and the other signer's id,
+     * never the other signer's token — that token is permission to sign as
+     * them, and what is being asked for here is a picture.
+     *
+     * Only from somebody who has signed. A mark put down in a draft is not an
+     * answer yet: it can still be cleared, drawn again, or end in a refusal,
+     * and serving it would show the next person a signature that has not been
+     * given.
+     */
+    public function signerMark(string $token, string $signer, string $kind): BinaryFileResponse
+    {
+        $reader = $this->signer($token);
+
+        $other = $reader->contract->signers->firstWhere('id', $signer);
+
+        abort_if($other === null || ! $other->hasSigned(), 404);
+
+        return $this->markImage($other, $kind);
+    }
+
+    /**
+     * One signer's mark as a file response, whoever asked for it.
+     *
+     * Shared by the two methods above rather than written twice, because the
+     * difference between them is entirely about who may ask — and the headers
+     * below are the part that must not drift apart between the page you see
+     * before signing and the one you see while you do.
+     */
+    private function markImage(ContractSigner $signer, string $kind): BinaryFileResponse
+    {
         $type = ContractFieldType::tryFrom($kind);
 
         abort_if($type === null || ! $type->isDrawn(), 404);
@@ -387,7 +426,7 @@ class ContractSignController extends Controller
             $signer->hasDeclined() => 'declined',
             $signer->contract->status->isEvidence() => 'completed',
             $signer->contract->hasExpired() => 'expired',
-            ! $signer->contract->status->isSignable() => 'cancelled',
+            ! $signer->contract->isSignable() => 'cancelled',
             default => 'signing',
         };
     }

@@ -28,7 +28,7 @@ class DocumentRevisionController extends Controller
         Channel $channel,
         Document $document,
     ): JsonResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $this->authorize('viewHistory', $document);
 
@@ -67,7 +67,7 @@ class DocumentRevisionController extends Controller
         Document $document,
         DocumentRevision $revision,
     ): JsonResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($revision->document_id === $document->id, 404);
 
         $this->authorize('viewHistory', $document);
@@ -94,7 +94,7 @@ class DocumentRevisionController extends Controller
         DocumentRevision $revision,
         RestoreDocumentRevision $restoreDocumentRevision,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($revision->document_id === $document->id, 404);
 
         $this->authorize('viewHistory', $document);

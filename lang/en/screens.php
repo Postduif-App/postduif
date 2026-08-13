@@ -9,6 +9,15 @@ return [
     ],
 
     'inbox' => [
+        /*
+         * Reminders that have not gone off yet. Above the list and under a
+         * heading of their own on purpose: everything else on this screen has
+         * already happened, and these have not.
+         */
+        'reminders' => [
+            'pending' => 'Still waiting',
+            'cancel' => 'Call off this reminder',
+        ],
         'empty' => 'Nothing waiting for you',
         'empty_hint' => 'When somebody names you, answers you, or a thread you are in carries on, it lands here — from every channel you can see.',
         'title' => 'Inbox',

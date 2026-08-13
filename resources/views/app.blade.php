@@ -84,12 +84,16 @@
         @endif
 
         {{--
-            Only the face this workspace actually reads in. Loading all three
-            bundled families would mean two of them are downloaded and
-            preloaded for nothing on every single page.
+            The faces this screen actually reads in: the one the workspace
+            picked, plus the house style where the .postduif shell is worn.
+            Loading all eight bundled families would preload twenty-three
+            weights on every single page, most of them for nothing.
+
+            Note that this list decides more than preloading — a family left
+            out has no @font-face rule on the page at all. See PageFonts.
         --}}
-        @if ($page['props']['theme']['font'] ?? null)
-            @fonts([$page['props']['theme']['font']])
+        @if ($aliases = App\Support\PageFonts::for($page['component'], $page['props']['theme']['font'] ?? null))
+            @fonts($aliases)
         @endif
 
         @viteReactRefresh

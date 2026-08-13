@@ -39,7 +39,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property string $title
  * @property string|null $message
  * @property int|null $notify_channel_id
+ * @property string|null $callback_url
+ * @property string|null $callback_secret
  * @property ContractStatus $status
+ * @property bool $is_template
+ * @property int|null $required_signers
  * @property int $page_count
  * @property string|null $source_hash
  * @property Carbon|null $expires_at
@@ -57,9 +61,16 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * the quietest possible way for a contract to end up finished with no record of
  * when.
  */
+/*
+ * The two callback columns are fillable beside them for a different reason
+ * again: they are never typed on a screen, only ever set by the API endpoint
+ * that accepts a contract from another system, which is exactly the caller that
+ * builds a contract from an array in one go.
+ */
 #[Fillable([
     'workspace_id', 'created_by', 'title', 'message', 'notify_channel_id', 'status', 'page_count',
     'source_hash', 'expires_at', 'completed_at', 'cancelled_at', 'render_failed_at',
+    'is_template', 'required_signers', 'callback_url', 'callback_secret',
 ])]
 class Contract extends Model implements HasMedia
 {
@@ -109,11 +120,33 @@ class Contract extends Model implements HasMedia
         });
     }
 
+    /**
+     * The one thing on this row that must never leave it by accident.
+     *
+     * Encrypted at rest and readable through the cast, which is what the
+     * delivery job needs — but it is the key somebody verifies our signature
+     * with, and a row serialised whole would put it in a response nobody meant
+     * to send it in. Hidden here rather than remembered at each call site,
+     * because the call site that forgets is the one that matters.
+     *
+     * @var list<string>
+     */
+    protected $hidden = ['callback_secret'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
             'status' => ContractStatus::class,
+            /*
+             * Encrypted at rest, like a subscription's secret and for the same
+             * reason: it has to be produced in full to sign a body with, so
+             * there is nothing one-way to store, and a copied database row
+             * should not be enough to forge our signature.
+             */
+            'callback_secret' => 'encrypted',
+            'is_template' => 'boolean',
+            'required_signers' => 'integer',
             'page_count' => 'integer',
             'expires_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -150,6 +183,28 @@ class Contract extends Model implements HasMedia
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * The language the mails about this contract are written in.
+     *
+     * A signer has no account and no preference — that is the whole shape of
+     * this feature — so there is nobody to ask. What is left is the person who
+     * sent it, which is also the closest thing to right: somebody who works in
+     * Dutch is writing to a client they picked up the phone to in Dutch.
+     *
+     * Asked out loud rather than left to App::getLocale(), because half of
+     * these mails leave from somewhere that has no locale worth having. The
+     * signed copy goes out from a queued job, and a reminder from the
+     * scheduler; both run in the configured default, so without this the same
+     * contract would ask in one language and confirm in another.
+     *
+     * Falls back to the application default when the author is gone — a
+     * contract outlives whoever sent it, see created_by — or never chose.
+     */
+    public function mailLocale(): string
+    {
+        return $this->author?->preferredLocale() ?? (string) config('app.locale');
     }
 
     /**
@@ -240,6 +295,77 @@ class Contract extends Model implements HasMedia
         return $this->source() !== null;
     }
 
+    /**
+     * Whether this row is kept to be sent again rather than sent itself.
+     *
+     * Asked in a great many places, all of them saying the same thing: a
+     * template is a contract that is deliberately never going anywhere, so
+     * anything that would put it in front of a signer, count it as outstanding
+     * work or tidy it away on a timer has to step around it.
+     */
+    public function isTemplate(): bool
+    {
+        return $this->is_template;
+    }
+
+    /**
+     * The author's own row on a template, or null when they do not sign along.
+     *
+     * A template holds at most this one signer. The people it will eventually
+     * go to have no rows here — they do not exist yet, and inventing
+     * placeholders with made-up addresses would put rows in contract_signers
+     * that look exactly like people who were asked and never answered.
+     *
+     * Which means the author is always position zero when they take part, and
+     * the recipients follow at one and up. That is the whole of the numbering,
+     * and InstantiateTemplate leans on it to copy the boxes across without
+     * touching a single signer_index.
+     */
+    public function templateSigner(): ?ContractSigner
+    {
+        return $this->signers->first();
+    }
+
+    /**
+     * How many parties the finished contract has: the recipients, plus the
+     * author when they signed along.
+     *
+     * The number the boxes were laid out against, and the reason it is derived
+     * rather than stored: storing it would mean two columns that have to agree
+     * about the same document, and the moment the author adds or removes their
+     * own signature they would stop agreeing.
+     */
+    public function partyCount(): int
+    {
+        return ($this->required_signers ?? 0) + ($this->templateSigner() === null ? 0 : 1);
+    }
+
+    /**
+     * Whether this template can actually be sent to somebody.
+     *
+     * Four things have to be true, and each of them is a way a half-built
+     * template would fail at the worst moment — in an API call from somebody
+     * else's system, which cannot go and finish it. There is no document to
+     * sign, nobody knows how many people to ask, there is nothing to fill in,
+     * or the author said they would sign along and never did, in which case
+     * every derived contract would go out with an empty box where their
+     * signature was promised.
+     */
+    public function isReadyToSend(): bool
+    {
+        if (! $this->is_template || $this->required_signers === null || ! $this->hasSource()) {
+            return false;
+        }
+
+        if ($this->fields->isEmpty()) {
+            return false;
+        }
+
+        $author = $this->templateSigner();
+
+        return $author === null || $author->hasSigned();
+    }
+
     public function hasExpired(): bool
     {
         return $this->expires_at !== null && $this->expires_at->isPast();
@@ -252,9 +378,21 @@ class Contract extends Model implements HasMedia
      * to the status column because the status only turns Expired when the prune
      * command next runs. A deadline that passed an hour ago has passed, whatever
      * the column still says.
+     *
+     * A template answers yes while it is still a draft, which is the one place
+     * that sentence is not a contradiction. Its author has to put their
+     * signature on it once, and they do that through the same page every other
+     * signer uses — so the page has to open. There is no deadline to check
+     * because a template never has one, and nothing else can reach it: the only
+     * link that opens it is the author's own, and there is only ever the one
+     * signer row.
      */
     public function isSignable(): bool
     {
+        if ($this->is_template) {
+            return $this->status === ContractStatus::Draft;
+        }
+
         return $this->status->isSignable() && ! $this->hasExpired();
     }
 
@@ -296,6 +434,17 @@ class Contract extends Model implements HasMedia
      */
     public function settleIfEverybodyHasAnswered(): bool
     {
+        /*
+         * A template is never finished, however completely it has been filled
+         * in. Its one signer signing is the moment it becomes usable, not the
+         * moment it is done with — and a Completed template would be evidence
+         * by ContractStatus::isEvidence(), which is a strong claim to make
+         * about a document nobody has been shown.
+         */
+        if ($this->is_template) {
+            return false;
+        }
+
         $fresh = $this->fresh(['signers']);
 
         if ($fresh === null || ! $fresh->isFullyAnswered()) {
@@ -324,9 +473,34 @@ class Contract extends Model implements HasMedia
      */
     public function scopeOutstanding(Builder $query): void
     {
-        $query->whereIn('status', [ContractStatus::Draft->value, ContractStatus::Sent->value])
+        $query->where('is_template', false)
+            ->whereIn('status', [ContractStatus::Draft->value, ContractStatus::Sent->value])
             ->where(fn (Builder $query) => $query
                 ->whereNull('expires_at')
                 ->orWhere('expires_at', '>', now()));
+    }
+
+    /**
+     * The documents kept to be sent again.
+     *
+     * @param  Builder<Contract>  $query
+     */
+    public function scopeTemplates(Builder $query): void
+    {
+        $query->where('is_template', true);
+    }
+
+    /**
+     * Everything that is an actual contract rather than a mould for one.
+     *
+     * Its own scope, and used by every list and count there is, because
+     * forgetting it is silent: a template would simply appear among the drafts,
+     * looking for all the world like a contract somebody forgot to send.
+     *
+     * @param  Builder<Contract>  $query
+     */
+    public function scopeRealContracts(Builder $query): void
+    {
+        $query->where('is_template', false);
     }
 }

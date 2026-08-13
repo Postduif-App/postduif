@@ -2,38 +2,39 @@
 
 namespace App\Listeners;
 
-use App\Actions\Workflows\StartWorkflow;
 use App\Events\ClockPunched;
 use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\Triggers\TimeclockTrigger;
 
 /**
  * Set off the workflows that were waiting for somebody to clock.
  *
- * The direction is filtered here rather than in the query, the same way the
+ * The direction is filtered in PHP rather than in the query, the same way the
  * channel is on a join: it is one setting on a handful of workflows, and a
  * where on a JSON column to save reading three rows is a trade nobody comes out
  * ahead on.
+ *
+ * @extends StartsWorkflows<ClockPunched>
  */
-class StartTimeclockWorkflows
+class StartTimeclockWorkflows extends StartsWorkflows
 {
-    public function __construct(private readonly StartWorkflow $startWorkflow) {}
-
     public function handle(ClockPunched $event): void
     {
-        $workflows = Workflow::query()
-            ->listeningFor($event->workspace, TimeclockTrigger::key())
-            ->get();
+        $this->start($event);
+    }
 
-        foreach ($workflows as $workflow) {
-            $wanted = $workflow->triggerSetting('direction', 'both');
+    protected function trigger(): string
+    {
+        return TimeclockTrigger::class;
+    }
 
-            if ($wanted !== 'both' && $wanted !== $event->direction) {
-                continue;
-            }
-
-            $this->startWorkflow->handle($workflow, $this->context($event));
-        }
+    /**
+     * @param  ClockPunched  $event
+     */
+    protected function workspaceOf(object $event): ?Workspace
+    {
+        return $event->workspace;
     }
 
     /**
@@ -41,10 +42,17 @@ class StartTimeclockWorkflows
      * and the two have to be read together — a path offered there and missing
      * here is a variable that renders as nothing.
      *
-     * @return array<string, mixed>
+     * @param  ClockPunched  $event
+     * @return array<string, mixed>|null
      */
-    private function context(ClockPunched $event): array
+    protected function contextFor(Workflow $workflow, object $event): ?array
     {
+        $wanted = $workflow->triggerSetting('direction', 'both');
+
+        if ($wanted !== 'both' && $wanted !== $event->direction) {
+            return null;
+        }
+
         $entry = $event->entry;
         $minutes = intdiv($entry->seconds(), 60);
 

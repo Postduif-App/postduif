@@ -34,6 +34,15 @@ enum WorkflowFieldType: string
     case Choice = 'choice';
 
     /**
+     * Something this workspace has — a ticket today, a contract tomorrow.
+     *
+     * Which kind is not part of the type: the field says that, through
+     * WorkflowRecordType. One control in the builder for all of them, rather
+     * than a type and a picker per feature.
+     */
+    case Record = 'record';
+
+    /**
      * Whether a value of this type can hold {{ ... }}.
      *
      * The free-text ones, and the channel.
@@ -56,11 +65,20 @@ enum WorkflowFieldType: string
      * The number is excluded for the plainer reason that "{{ trigger.x }}
      * minutes" cannot be validated when it is saved, which is the one moment
      * somebody is there to be told.
+     *
+     * The record is in, on the channel's reasoning rather than the form's.
+     * "Sluit het ticket dat stap twee aanmaakte" is a sentence with no other
+     * way of being written, and what makes it safe is the same thing that makes
+     * a channel variable safe: the lookup only ever searches the workflow's own
+     * workspace and refuses what it does not find there. Leaving the field
+     * empty says the same thing about the trigger's own record, which is the
+     * commoner case and needs no variable at all.
      */
     public function acceptsVariables(): bool
     {
         return $this === self::Text
             || $this === self::LongText
-            || $this === self::Channel;
+            || $this === self::Channel
+            || $this === self::Record;
     }
 }

@@ -36,6 +36,7 @@ abstract class WorkspaceFeature
         MessageBoard::class,
         Tickets::class,
         Documents::class,
+        SharedChannels::class,
         Timeclock::class,
         Polls::class,
         Forms::class,

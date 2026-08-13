@@ -24,7 +24,7 @@ class MessageDeletionController extends Controller
         Message $message,
         DeleteMessage $deleteMessage,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('delete', $message);
 
         $deleteMessage->handle($message);

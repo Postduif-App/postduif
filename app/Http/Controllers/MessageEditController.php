@@ -27,7 +27,7 @@ class MessageEditController extends Controller
         Message $message,
         EditMessage $editMessage,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $editMessage->handle($message, $request->string('body')->value());
 

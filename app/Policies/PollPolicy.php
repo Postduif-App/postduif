@@ -8,6 +8,23 @@ use App\Models\User;
 class PollPolicy
 {
     /**
+     * Seeing a poll at all.
+     *
+     * Leans entirely on the channel, the way TicketPolicy and DocumentPolicy
+     * do: a poll is exactly as visible as the room it was asked in, and
+     * restating that here is how the two would eventually disagree.
+     *
+     * Written down rather than left implied because something now asks the
+     * question of the poll rather than of the channel — a workflow step pointed
+     * at one has a model and no room — and a policy with no answer denies,
+     * which would have been a step failing for a reason nobody could read.
+     */
+    public function view(User $user, Poll $poll): bool
+    {
+        return $user->can('view', $poll->channel);
+    }
+
+    /**
      * Voting.
      *
      * Anybody who can see the channel, guests included — they are in it, and

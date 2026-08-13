@@ -14,6 +14,8 @@ return [
     'rail' => [
         // De knop die op een smal scherm de kanalenlijst opent.
         'channels' => 'Kanalen',
+        // Het gesprek zelf, bovenaan de rail.
+        'chat' => 'Chat',
         'inbox' => 'Inbox',
         'board' => 'Prikbord',
         'secrets' => 'Geheimen',
@@ -33,8 +35,29 @@ return [
         'archived' => 'Gearchiveerd',
     ],
 
+    /*
+     * Gedeelde kanalen, gezien vanaf de kant die uitgenodigd is. Bewust "van
+     * :workspace" en niet "gedeeld met jullie": wie hier kijkt moet in één
+     * oogopslag zien dat de ruimte van een ander is.
+     */
+    'shares' => [
+        'heading' => 'Gedeelde kanalen',
+        'from' => 'Van :workspace',
+        'may_post' => 'Jullie mogen hier meepraten.',
+        'may_read' => 'Jullie lezen alleen mee.',
+        'accept' => 'Accepteren',
+        'decline' => 'Afwijzen',
+        'add_colleagues' => 'Collega\'s toevoegen',
+        'add_title' => 'Collega\'s toevoegen',
+        'add_description' => 'Wie van jullie doet mee in :channel bij :workspace? Alleen wie je hier aanvinkt ziet het kanaal.',
+        'add_confirm' => 'Toevoegen',
+        'already_in' => 'zit er al in',
+    ],
+
     'channel' => [
         'muted' => 'Meldingen staan uit',
+        // Gedeeld kanaal: van welke organisatie het kanaal zelf is.
+        'shared_from' => 'Kanaal van :workspace',
         'huddling' => '{1}1 iemand is hier aan het praten|[2,*]:count mensen zijn hier aan het praten',
         'open_tickets' => '{1}1 openstaand ticket|[2,*]:count openstaande tickets',
         'threads_show' => 'Threads in :channel tonen',

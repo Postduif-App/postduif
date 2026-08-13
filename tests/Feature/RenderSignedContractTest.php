@@ -2,6 +2,7 @@
 
 use App\Actions\Contracts\NotifyContractAuthor;
 use App\Actions\Contracts\RenderSignedContract;
+use App\Actions\Contracts\SendSignedContract;
 use App\Actions\Contracts\SigningRefused;
 use App\Enums\ContractStatus;
 use App\Enums\SignatureMethod;
@@ -220,6 +221,7 @@ it('clears the failure once a later attempt works', function () {
     (new RenderSignedContractJob($contract->id))->handle(
         app(RenderSignedContract::class),
         app(NotifyContractAuthor::class),
+        app(SendSignedContract::class),
     );
 
     // An overview that keeps flagging a contract whose PDF is sitting right
@@ -284,6 +286,37 @@ it('hands the finished copy to the author as a download', function () {
         ->assertHeader('Content-Type', 'application/pdf')
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('Content-Disposition', 'attachment; filename="Huurovereenkomst-2026-(ondertekend).pdf"');
+});
+
+it('shows the finished copy in the tab when that is all somebody wanted', function () {
+    [$contract, , $author] = signedContract();
+
+    app(RenderSignedContract::class)->handle($contract);
+
+    /*
+     * The same route and the same policy as the download above, because
+     * reading it and filing it away differ in one header and nothing else. A
+     * second way to the private disk would be a second thing to get wrong.
+     */
+    actingAs($author)
+        ->get(route('chat.contracts.download', [$contract->workspace, $contract, 'inline' => 1]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/pdf')
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->assertHeader('Content-Disposition', 'inline; filename="Huurovereenkomst-2026-(ondertekend).pdf"');
+});
+
+it('judges the same policy whether the copy is read or kept', function () {
+    [$contract] = signedContract();
+
+    app(RenderSignedContract::class)->handle($contract);
+
+    $colleague = User::factory()->create();
+    joinWorkspace($contract->workspace, $colleague, SystemRole::Member);
+
+    actingAs($colleague)
+        ->get(route('chat.contracts.download', [$contract->workspace, $contract, 'inline' => 1]))
+        ->assertForbidden();
 });
 
 it('keeps the finished copy from a colleague it was not shown to', function () {

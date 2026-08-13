@@ -51,6 +51,13 @@ class WorkspaceChannelController extends Controller
                 ->withCount(['members', 'messages', 'tickets', 'links', 'webhooks'])
                 ->orderBy('name')
                 ->get()
+                /*
+                 * ChannelPolicy asks a channel for its workspace, and every
+                 * channel here came out of this one. Handing it over saves a
+                 * query per row, and — with lazy loading disabled — is what
+                 * keeps the policy from throwing on the first row.
+                 */
+                ->each(fn (Channel $channel) => $channel->setRelation('workspace', $workspace))
                 ->map(fn (Channel $channel): array => [
                     'id' => $channel->id,
                     'name' => (string) $channel->name,

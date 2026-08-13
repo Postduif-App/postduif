@@ -75,15 +75,16 @@ it('says which features only exist once somebody switches them on', function () 
     expect($off)->toContain(Transfers::key())
         ->toContain(Forms::key())
         /*
-         * Eight, and each one hands out something a workspace should grant on
+         * Nine, and each one hands out something a workspace should grant on
          * purpose rather than find already granted: the ones that let something
          * reach past the workspace — transfers, secrets, a form behind a public
-         * link, a contract sent out to be signed — workflows, which stay inside
-         * it but act on channels with the rights of whoever wrote them, the
-         * clock, which records people, and huddles, which need a relay arranged
-         * before they work for everybody.
+         * link, a contract sent out to be signed, a channel opened to another
+         * workspace — workflows, which stay inside it but act on channels with
+         * the rights of whoever wrote them, the clock, which records people,
+         * and huddles, which need a relay arranged before they work for
+         * everybody.
          */
-        ->toHaveCount(8);
+        ->toHaveCount(9);
 });
 
 it('describes the roles as the code seeds them', function () {

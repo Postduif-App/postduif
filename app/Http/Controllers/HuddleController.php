@@ -30,7 +30,7 @@ class HuddleController extends Controller
         Channel $channel,
         JoinHuddle $joinHuddle,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         $this->authorize('join', [Huddle::class, $channel]);
 
         $joinHuddle->handle($channel, $request->user());
@@ -56,7 +56,7 @@ class HuddleController extends Controller
         Channel $channel,
         Huddle $huddle,
     ): Response {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $huddle->present()
             ->where('user_id', $request->user()->id)
@@ -72,7 +72,7 @@ class HuddleController extends Controller
         Huddle $huddle,
         LeaveHuddle $leaveHuddle,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         /*
          * Not authorised but simply done: leaving something you are not in is

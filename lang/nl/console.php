@@ -32,4 +32,9 @@ return [
     'no_stale_huddles' => 'Geen huddles om op te ruimen.',
     'huddles_swept' => '{1}1 huddle gesloten.|[2,*]:count huddles gesloten.',
     'notices_pruned' => '{1}1 melding opgeruimd.|[2,*]:count meldingen opgeruimd.',
+    'role_abilities_in_sync' => 'Alle systeemrollen hebben de rechten die ze horen te hebben.',
+    'role_abilities_owners_synced' => '{0}Geen eigenaarsrol aangepast.|{1}1 eigenaarsrol bijgewerkt.|[2,*]:count eigenaarsrollen bijgewerkt.',
+    'role_abilities_others_synced' => '{0}Geen overige systeemrollen aangepast.|{1}1 overige systeemrol bijgewerkt.|[2,*]:count overige systeemrollen bijgewerkt.',
+    'role_abilities_owners_pending' => '{0}Geen eigenaarsrol zou veranderen.|{1}1 eigenaarsrol zou bijgewerkt worden.|[2,*]:count eigenaarsrollen zouden bijgewerkt worden.',
+    'role_abilities_others_pending' => '{0}Geen overige systeemrollen zouden veranderen.|{1}1 overige systeemrol zou bijgewerkt worden.|[2,*]:count overige systeemrollen zouden bijgewerkt worden.',
 ];

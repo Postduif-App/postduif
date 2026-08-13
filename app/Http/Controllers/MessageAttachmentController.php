@@ -136,7 +136,7 @@ class MessageAttachmentController extends Controller
         Message $message,
         Media $media,
     ): void {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($message->channel_id === $channel->id, 404);
         abort_unless(
             $media->model_type === $message->getMorphClass()

@@ -3,6 +3,7 @@
 namespace App\Actions\Contracts;
 
 use App\Enums\ContractProgressKind;
+use App\Events\ContractDeclined;
 use App\Jobs\RenderSignedContractJob;
 use App\Models\ContractSigner;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class DeclineContract
             throw new SigningRefused(__('contracts.sign.errors.closed'));
         }
 
-        return DB::transaction(function () use ($signer, $reason): ContractSigner {
+        $signer = DB::transaction(function () use ($signer, $reason): ContractSigner {
             /*
              * The same conditional update the signing uses, and for the same
              * reason: two requests arriving together must not both succeed, and
@@ -70,6 +71,17 @@ class DeclineContract
              */
             $signer->refresh();
 
+            /*
+             * The same silence a template's author gets for signing it — see
+             * SignContract. Refusing your own template is an odd thing to do,
+             * but it is reachable from the signing page, and it should leave
+             * the template unusable rather than announce a refusal to the
+             * person who made it.
+             */
+            if ($signer->contract->is_template) {
+                return $signer;
+            }
+
             if ($signer->contract->settleIfEverybodyHasAnswered()) {
                 /*
                  * afterCommit, and it is not optional. A job dispatched inside
@@ -95,5 +107,20 @@ class DeclineContract
 
             return $signer;
         });
+
+        /*
+         * After the commit, outside the transaction, and never for a template —
+         * the same three decisions SignContract explains at more length.
+         *
+         * A refusal is news in exactly the way a signature is: it is the answer
+         * a system that sent this contract has been waiting for, and one that
+         * only ever heard about signatures would keep a refused contract open
+         * forever.
+         */
+        if (! $signer->contract->is_template) {
+            ContractDeclined::dispatch($signer->contract->id, $signer->id);
+        }
+
+        return $signer;
     }
 }

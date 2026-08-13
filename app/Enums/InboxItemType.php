@@ -5,7 +5,7 @@ namespace App\Enums;
 /**
  * Why something ended up in a member's inbox.
  *
- * Five ways a conversation can ask for you, kept apart so the inbox can say
+ * Six ways a conversation can ask for you, kept apart so the inbox can say
  * which one it was and so a filter can leave the others out. The distinction
  * matters most between Reply and ThreadReply: being answered directly is a
  * question put to you, while a thread you once spoke in carrying on is news —
@@ -36,6 +36,16 @@ enum InboxItemType: string
      */
     case ContractProgress = 'contract-progress';
 
+    /**
+     * You asked to be reminded of something, and the moment has come.
+     *
+     * The only kind nobody else set off. Every other case here is somebody
+     * doing something to you; this one is you, earlier — which is why the row
+     * carries no actor, and why it is the one type that can appear against a
+     * message that has been sitting there quietly for a week.
+     */
+    case Reminder = 'reminder';
+
     public function label(): string
     {
         return match ($this) {
@@ -44,6 +54,7 @@ enum InboxItemType: string
             self::ThreadReply => __('enums.inbox-item-type.label.ThreadReply'),
             self::PollVote => __('enums.inbox-item-type.label.PollVote'),
             self::ContractProgress => __('enums.inbox-item-type.label.ContractProgress'),
+            self::Reminder => __('enums.inbox-item-type.label.Reminder'),
         };
     }
 }

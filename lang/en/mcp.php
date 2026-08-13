@@ -18,6 +18,14 @@ return [
      */
     'token' => [
         'invalid' => 'Invalid or missing MCP token.',
+
+        /*
+         * The second refusal: the token is real, it was simply not cut for this
+         * door. Unlike the one above it names what is missing — that gives
+         * nobody's guess away, and without the name whoever mints a replacement
+         * cannot tell which box they failed to tick.
+         */
+        'scope_missing' => 'This token has no access to :scope. Create a new token that carries it.',
     ],
 
     /*

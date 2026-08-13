@@ -4,7 +4,10 @@ namespace App\Jobs;
 
 use App\Actions\Contracts\NotifyContractAuthor;
 use App\Actions\Contracts\RenderSignedContract;
+use App\Actions\Contracts\SendSignedContract;
 use App\Enums\ContractProgressKind;
+use App\Events\ContractCompleted;
+use App\Events\ContractRenderFailed;
 use App\Models\Contract;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,8 +49,11 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(public readonly string $contractId) {}
 
-    public function handle(RenderSignedContract $render, NotifyContractAuthor $notify): void
-    {
+    public function handle(
+        RenderSignedContract $render,
+        NotifyContractAuthor $notify,
+        SendSignedContract $sendCopies,
+    ): void {
         $contract = Contract::query()->with(['fields', 'signers', 'workspace', 'author'])->find($this->contractId);
 
         if ($contract === null) {
@@ -67,6 +73,40 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
         if ($contract->render_failed_at !== null) {
             $contract->forceFill(['render_failed_at' => null])->save();
         }
+
+        /*
+         * Only now is anybody outside told, and the position of this line in
+         * the method is the reason the event exists at all.
+         *
+         * The contract has been Completed since the signing transaction, some
+         * seconds ago. Announcing it there would have been announcing a
+         * document that did not exist yet, and every subscriber that went
+         * straight off to fetch it would have found nothing — so the event
+         * waits for the render, and the payload carries a link that works the
+         * moment it lands. See DeliverContractWebhookJob::documentUrl.
+         *
+         * Before the mails rather than after, because those go out one message
+         * at a time to people outside the building and can take a while. The
+         * webhook is planned in an instant and delivered on its own queue, so
+         * putting it first costs the mails nothing and saves whoever is waiting
+         * for the news the length of the mailing.
+         */
+        ContractCompleted::dispatch($contract->id);
+
+        /*
+         * The signers get their copy before the author gets the news, and the
+         * order is deliberate.
+         *
+         * These are mails to people outside the building who have no other way
+         * to a copy of what they signed, and they are the part of this job worth
+         * retrying for. Putting them first means a transport that gives out
+         * halfway down the list is retried with the author's notification still
+         * ahead of it — so the author is told once, on the run that finished,
+         * rather than once per attempt. SendSignedContract stamps each signer as
+         * it goes, which is what makes the second attempt resume instead of
+         * repeat.
+         */
+        $sendCopies->handle($contract);
 
         /*
          * Told from here rather than from the signing, and this is the reason
@@ -115,6 +155,15 @@ class RenderSignedContractJob implements ShouldBeUnique, ShouldQueue
         if ($contract !== null) {
             app(NotifyContractAuthor::class)->handle($contract, ContractProgressKind::Completed);
         }
+
+        /*
+         * And tell whoever keeps the workspace running, which the author's
+         * notification does not: they are being asked to wait, and somebody
+         * else has to go and press "opnieuw proberen". Dispatched even when the
+         * contract has since gone, because the id is all a listener needs to
+         * know what failed.
+         */
+        ContractRenderFailed::dispatch($this->contractId);
     }
 
     /**

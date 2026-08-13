@@ -3,6 +3,7 @@
 namespace App\Actions\Polls;
 
 use App\Actions\Chat\SendMessage;
+use App\Events\PollCreated;
 use App\Models\Channel;
 use App\Models\Poll;
 use App\Models\PollOption;
@@ -72,6 +73,12 @@ class CreatePoll
             author: $asker,
             body: trim($question.' '.route('chat.polls.show', [$channel->workspace->slug, $poll->id])),
         );
+
+        /*
+         * After the message rather than before, so anything acting on this
+         * finds a poll that is complete and already visible in the channel.
+         */
+        PollCreated::dispatch($poll->id);
 
         return $poll;
     }

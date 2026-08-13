@@ -1,25 +1,26 @@
+{{--
+    The layout, and nothing else. Every sentence in this mail is decided by
+    RenderMailTemplate — ours and the workspace's alike — so what is left here
+    is where the pieces sit and the one thing that is not negotiable: the
+    button. It is drawn between the two halves of the text whatever the
+    template said, which is what makes "de knop blijft altijd in beeld" true
+    even for somebody who deleted the placeholder.
+
+    Echoed unescaped because these are markdown source, not values. Anything a
+    person typed has already had its angle brackets defused a layer up — see
+    RenderMailTemplate::defuse — so a workspace can write **vet** without also
+    being able to write a link that looks like our button.
+--}}
 <x-mail::message>
-# {{ __('mail.contract.heading') }}
+# {!! $heading !!}
 
-{{ __('mail.contract.intro', ['sender' => $senderName ?? $workspaceName, 'title' => $contract->title]) }}
-
-@if ($contract->message)
-> {{ $contract->message }}
-@endif
+{!! $before !!}
 
 <x-mail::button :url="$url">
-{{ __('mail.contract.button') }}
+{!! $buttonLabel !!}
 </x-mail::button>
 
-@if ($contract->expires_at)
-{{ __('mail.contract.expires', ['date' => $contract->expires_at->translatedFormat('j F Y')]) }}
+@if ($after !== '')
+{!! $after !!}
 @endif
-
-{{-- Said out loud, because the link is the whole credential and the person
-     holding it has no account to fall back on. Somebody who forwards this mail
-     is handing over their signature. --}}
-{{ __('mail.contract.personal') }}
-
-{{ __('mail.closing') }}<br>
-{{ config('app.name') }}
 </x-mail::message>

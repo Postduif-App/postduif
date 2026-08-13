@@ -69,4 +69,29 @@ export default defineConfig({
             formVariants: true,
         }),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                /*
+                 * Assets houden hun eigen extensie, en één asset heeft daar
+                 * last van: de pdf.js-worker heet .mjs. Een nginx zonder
+                 * MIME-regel voor die extensie serveert hem als
+                 * application/octet-stream, en daar start geen browser een
+                 * module-worker uit op — zeker niet met de nosniff-header die
+                 * deze applicatie meestuurt. Zie contract-pdf.tsx.
+                 *
+                 * De inhoud is gewoon JavaScript, dus schrijven we hem als .js
+                 * weg. Dan hoeft geen enkele webserver iets te weten: de
+                 * standaard MIME-map heeft .js al.
+                 */
+                assetFileNames: (asset) => {
+                    const source = asset.names?.[0] ?? asset.name ?? '';
+
+                    return source.endsWith('.mjs')
+                        ? 'assets/[name]-[hash].js'
+                        : 'assets/[name]-[hash][extname]';
+                },
+            },
+        },
+    },
 });

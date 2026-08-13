@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AttachmentType;
+use App\Enums\MailTemplateKind;
 use App\Enums\MemberPanelVisibility;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
@@ -75,13 +76,14 @@ class Workspace extends Model
      *
      * The slug is a wildcard one segment under /app, so anything else living
      * there has to be kept out of it twice: the route pattern refuses these
-     * outright, and CreateWorkspace will not hand one out. Either alone leaves
-     * a hole — a workspace that claimed "settings" would be unreachable, and a
-     * pattern that forgot one would swallow the page.
+     * outright, and nothing that writes a slug will hand one out — the admin
+     * panel's form and CreateWorkspace both. Either alone leaves a hole: a
+     * workspace that claimed "settings" would be unreachable, and a pattern
+     * that forgot one would swallow the page.
      *
      * @var list<string>
      */
-    public const RESERVED_SLUGS = ['settings', 'nieuw'];
+    public const RESERVED_SLUGS = ['settings'];
 
     /**
      * A new workspace gets its roles before anybody can join it.
@@ -315,6 +317,43 @@ class Workspace extends Model
     public function mailSettings(): HasOne
     {
         return $this->hasOne(WorkspaceMailSettings::class);
+    }
+
+    /**
+     * What this workspace wants its contract mails to say, where it said.
+     *
+     * Many rather than one: there is a row per kind of mail per language, and
+     * a workspace that only rewrote the Dutch signing request has exactly one
+     * of them. Everything not written down here falls through to the
+     * platform's own text — see RenderMailTemplate.
+     *
+     * @return HasMany<WorkspaceMailTemplate, $this>
+     */
+    public function mailTemplates(): HasMany
+    {
+        return $this->hasMany(WorkspaceMailTemplate::class);
+    }
+
+    /**
+     * What this workspace wrote for one mail in one language, if anything.
+     *
+     * Reads from the loaded collection when there is one, and only asks the
+     * database when there is not. Both are needed: a send loops over twenty
+     * recipients with the same workspace in hand and should not ask twenty
+     * times, and a mailable built anywhere else has to be able to answer
+     * without the caller having known to eager-load — lazy loading is off here,
+     * so the alternative is an exception rather than a slow query.
+     */
+    public function mailTemplate(MailTemplateKind $kind, string $locale): ?WorkspaceMailTemplate
+    {
+        if ($this->relationLoaded('mailTemplates')) {
+            return $this->mailTemplates->first(
+                fn (WorkspaceMailTemplate $template): bool => $template->kind === $kind
+                    && $template->locale === $locale
+            );
+        }
+
+        return $this->mailTemplates()->for($kind, $locale)->first();
     }
 
     /** @return HasMany<Invitation, $this> */

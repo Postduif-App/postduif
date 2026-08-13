@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Where one workspace's mail leaves from.
@@ -38,6 +39,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $postmark_message_stream
  * @property string|null $lettermint_token
  * @property string|null $lettermint_route_id
+ * @property string|null $inbound_token
+ * @property int|null $inbound_channel_id
+ * @property string|null $inbound_address
  * @property Carbon|null $verified_at
  * @property string|null $last_error
  * @property Carbon|null $created_at
@@ -56,6 +60,8 @@ use Illuminate\Support\Carbon;
     'postmark_message_stream',
     'lettermint_token',
     'lettermint_route_id',
+    'inbound_channel_id',
+    'inbound_address',
 ])]
 class WorkspaceMailSettings extends Model
 {
@@ -110,6 +116,65 @@ class WorkspaceMailSettings extends Model
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * The channel that incoming mail opens tickets in.
+     *
+     * @return BelongsTo<Channel, $this>
+     */
+    public function inboundChannel(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'inbound_channel_id');
+    }
+
+    /**
+     * Whether mail sent to this workspace will actually land anywhere.
+     *
+     * Both halves, and no column of its own. A token with no channel is an
+     * endpoint that accepts deliveries and drops them; a channel with no token
+     * is a setting nothing can reach. An is_enabled flag beside these two could
+     * say yes while either was missing, and the delivery that arrived on the
+     * strength of it would be lost silently — which is the one failure a
+     * mailbox must not have.
+     */
+    public function receivesMail(): bool
+    {
+        return $this->inbound_token !== null && $this->inbound_channel_id !== null;
+    }
+
+    /**
+     * A fresh secret for the delivery endpoint, written straight onto the row.
+     *
+     * Handed back as well as stored, because the screen has to show it once —
+     * it is pasted into the provider's dashboard and never needed again.
+     */
+    public function regenerateInboundToken(): string
+    {
+        $token = Str::random(64);
+
+        $this->forceFill(['inbound_token' => $token]);
+
+        return $token;
+    }
+
+    /**
+     * The address a reply to this ticket should come back to.
+     *
+     * The workspace's own inbound address with +t<number> in the local part,
+     * which every mail client copies back verbatim. Null when the workspace has
+     * not said which address forwards here — the ticket is then still readable
+     * by mail, but the answer to it cannot be.
+     */
+    public function replyAddressFor(int $ticketNumber): ?string
+    {
+        if ($this->inbound_address === null || ! str_contains($this->inbound_address, '@')) {
+            return null;
+        }
+
+        [$local, $domain] = explode('@', $this->inbound_address, 2);
+
+        return sprintf('%s+t%d@%s', $local, $ticketNumber, $domain);
     }
 
     /**

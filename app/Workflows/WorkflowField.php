@@ -3,6 +3,7 @@
 namespace App\Workflows;
 
 use App\Enums\WorkflowFieldType;
+use App\Enums\WorkflowRecordType;
 
 /**
  * One thing a trigger or an action needs to be told.
@@ -26,6 +27,7 @@ final class WorkflowField
         public readonly ?string $hint = null,
         public readonly bool $required = true,
         public readonly array $options = [],
+        public readonly ?WorkflowRecordType $record = null,
     ) {}
 
     public static function text(string $key, string $label, ?string $hint = null, bool $required = true): self
@@ -81,6 +83,21 @@ final class WorkflowField
     }
 
     /**
+     * Something this workspace has: a ticket, and in time a contract.
+     *
+     * Optional by default, and that default is the interesting half of the
+     * field. An empty box does not mean "unfinished" here — it means the record
+     * the trigger was about, which is what almost every workflow acting on a
+     * record means. Declaring one of these required is saying that a step is
+     * only ever about a record somebody named in advance, which is the rarer
+     * case and worth writing out.
+     */
+    public static function record(string $key, WorkflowRecordType $record, string $label, ?string $hint = null, bool $required = false): self
+    {
+        return new self($key, WorkflowFieldType::Record, $label, $hint, $required, record: $record);
+    }
+
+    /**
      * Whether a value for this field may hold {{ ... }}.
      *
      * Asked of the type rather than settable per field, so there is one answer
@@ -107,6 +124,9 @@ final class WorkflowField
             'required' => $this->required,
             'acceptsVariables' => $this->acceptsVariables(),
             'options' => $this->options,
+            // Which kind of record the picker should offer. Null for every
+            // other type, and the builder draws its control from that.
+            'record' => $this->record?->value,
         ];
     }
 }

@@ -123,6 +123,14 @@ return [
             'note' => 'A workspace lets nothing in with a token by default. While that switch is off, the channel list returns nothing from it and posting there answers 404 — the same answer as a channel that does not exist, because the difference would give away what does.',
         ],
 
+        'contracts' => [
+            'title' => 'Getting contracts signed',
+            'lead' => 'Somebody in the workspace prepares a template once: the PDF, the fields, how many recipients it has, and their own signature under it. After that a contract goes out on your call, with nobody opening a screen. This needs a token tied to one workspace and carrying the contracts scope — you make one at Settings → API tokens.',
+            'callback' => 'What arrives at your end',
+            'verify' => 'Checking the signature',
+            'note' => 'There are three events: signed when somebody signs, declined when somebody refuses, and completed once everybody has been round — that last one only when the signed document is ready, so you can fetch it straight away. Sign over the raw body rather than a re-encoded one: a single space of difference and the comparison no longer holds. A delivery that fails is tried again, and a failure at your end never holds up the signing.',
+        ],
+
         'webhooks' => [
             'title' => 'Without anybody\'s token',
             'lead' => 'A webhook carries its key in the path, because that is what the tools pointing at it expect. So it ends up in logs — and that is exactly why it can be revoked and minted again.',
@@ -165,6 +173,33 @@ return [
                 'body' => ['rule' => 'required, max 4000', 'about' => 'The text itself; attachments cannot go here'],
                 'parent_id' => ['rule' => 'optional, ULID', 'about' => 'A reply in an existing thread in the same channel'],
             ],
+        ],
+        'api_v1_contract-templates_index' => [
+            'summary' => 'The templates this token may send. Per template: how many recipients it expects, whether the sender has already signed it, and which fields you may fill in ahead of time. readyToSend is the field to branch on — when it is false, sending will be refused.',
+        ],
+        'api_v1_contracts_store' => [
+            'summary' => 'Send a template to the people who have to sign it. A new contract is made from it — the same document, the same fields, and the signature the sender put under the template once — and every recipient gets their own signing link by mail. The sender is not asked again.',
+            'params' => [
+                'template_id' => ['rule' => 'required, ULID', 'about' => 'From GET /v1/contract-templates'],
+                'recipients' => ['rule' => 'required, exactly requiredSigners', 'about' => 'A list of {name, email} in the order the fields were drawn; optionally values with field id → value'],
+                'title' => ['rule' => 'optional, max 200', 'about' => 'Otherwise the template\'s own title'],
+                'message' => ['rule' => 'optional, max 2000', 'about' => 'The line in the invitation mail; never printed on the PDF'],
+                'valid_for_days' => ['rule' => 'optional, 1–365', 'about' => 'Counted from now; after that the link opens nothing'],
+                'callback_url' => ['rule' => 'optional, https', 'about' => 'Where signing, refusal and completion are reported — for this contract only'],
+                'callback_secret' => ['rule' => 'optional, min 16', 'about' => 'What X-Postduif-Signature is taken with. Leave it out and one comes back in the response — the only time you see it. Without a callback_url it means nothing'],
+            ],
+        ],
+        'api_v1_contracts_index' => [
+            'summary' => 'What is running. Without the drafts by default; pass status to ask something else.',
+            'params' => [
+                'status' => ['rule' => 'optional', 'about' => 'draft, sent, completed, cancelled or expired'],
+            ],
+        ],
+        'api_v1_contracts_show' => [
+            'summary' => 'How far one contract has got: per signer when they opened, signed or refused it, and whether the signed document is ready. The signing links are deliberately not here — those go to the recipient and nowhere else.',
+        ],
+        'api_v1_contracts_document' => [
+            'summary' => 'The signed PDF, with every signature on it and the audit page behind it. Answers 409 while there is nothing to fetch yet; signedCopy on the contract says whether it is still coming or went wrong.',
         ],
         'webhooks_messages_store' => [
             'summary' => 'Posting a message without anybody\'s token. The key sits in the path, because that is what the tools pointing at this expect — and that is also why a webhook can be revoked and minted again.',

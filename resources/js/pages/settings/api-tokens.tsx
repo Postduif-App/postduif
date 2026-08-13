@@ -15,8 +15,16 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useFormats } from '@/hooks/use-formats';
@@ -29,9 +37,18 @@ interface ApiToken {
     name: string;
     /** Readable again on purpose; null once revoked. */
     token: string | null;
+    /** The one workspace it is pinned to, by name; null for all of them. */
+    workspace: string | null;
+    /** What it may reach beyond the chat itself. Empty for most tokens. */
+    scopes: string[];
     lastUsedAt: string | null;
     revokedAt: string | null;
     createdAt: string | null;
+}
+
+interface Workspace {
+    id: number;
+    name: string;
 }
 
 interface ApiTokensProps {
@@ -39,8 +56,30 @@ interface ApiTokensProps {
     endpoint: string;
     /** Where the plain HTTP API lives; the same token opens it. */
     apiEndpoint: string;
+    /** The member's own workspaces, to pin a new token to one of them. */
+    workspaces: Workspace[];
+    /** Every scope there is, in the order the server wants them offered. */
+    scopes: string[];
     tokens: ApiToken[];
 }
+
+/**
+ * "All my workspaces" needs a value the select can hold, and the empty string
+ * is not one — Radix treats it as "nothing chosen" and the placeholder comes
+ * back. It never reaches the server: the hidden input below only appears once
+ * a real workspace is picked.
+ */
+const ALL_WORKSPACES = 'all';
+
+/**
+ * A choice you tick, drawn as a card.
+ *
+ * The same bordered row the notification screen and the invite dialog use, so
+ * that a right you are handing to a script looks like every other choice in the
+ * application rather than a bare checkbox beside two lines of grey text.
+ */
+const CHOICE_ROW =
+    'flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm transition-colors hover:bg-accent/40';
 
 function CopyButton({ value, label }: { value: string; label: string }) {
     const [copied, copy] = useClipboard();
@@ -73,11 +112,31 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 export default function ApiTokens({
     endpoint,
     apiEndpoint,
+    workspaces,
+    scopes,
     tokens,
 }: ApiTokensProps) {
     const [revoking, setRevoking] = useState<ApiToken | null>(null);
+    const [workspace, setWorkspace] = useState(ALL_WORKSPACES);
+    const [granted, setGranted] = useState<string[]>([]);
     const { t } = useTranslate();
     const formats = useFormats();
+
+    /*
+     * Spelled out per scope rather than looked up by key. Translation keys are
+     * a typed union here, so a name built from a string the server sent is not
+     * a key the compiler can check — and a scope added later should fail to
+     * build rather than draw itself as "contracts".
+     */
+    const scopeLabel = (scope: string) =>
+        scope === 'contracts'
+            ? t('settings.api_tokens.scope_contracts')
+            : scope;
+
+    const scopeHint = (scope: string) =>
+        scope === 'contracts'
+            ? t('settings.api_tokens.scope_contracts_hint')
+            : null;
 
     return (
         <>
@@ -161,30 +220,139 @@ export default function ApiTokens({
                     options={{ preserveScroll: true }}
                     resetOnSuccess
                     disableWhileProcessing
-                    className="grid gap-2"
+                    /*
+                        resetOnSuccess empties the fields the form owns; these
+                        two are React state and would otherwise stay on the last
+                        choice, so the next token would quietly inherit the
+                        workspace and the scopes of the one before it.
+                    */
+                    onSuccess={() => {
+                        setWorkspace(ALL_WORKSPACES);
+                        setGranted([]);
+                    }}
+                    className="grid gap-4"
                 >
                     {({ processing, errors }) => (
                         <>
-                            <Label htmlFor="token-name">
-                                {t('settings.api_tokens.new_token')}
-                            </Label>
-                            <div className="flex items-start gap-2">
-                                <span className="grid flex-1 gap-1">
-                                    <Input
-                                        id="token-name"
-                                        name="name"
-                                        maxLength={60}
-                                        required
-                                        placeholder={t(
-                                            'settings.api_tokens.name_placeholder',
+                            <div className="grid gap-2">
+                                <Label htmlFor="token-name">
+                                    {t('settings.api_tokens.new_token')}
+                                </Label>
+                                <div className="flex items-start gap-2">
+                                    <span className="grid flex-1 gap-1">
+                                        <Input
+                                            id="token-name"
+                                            name="name"
+                                            maxLength={60}
+                                            required
+                                            placeholder={t(
+                                                'settings.api_tokens.name_placeholder',
+                                            )}
+                                        />
+                                        <InputError message={errors.name} />
+                                    </span>
+                                    <Button type="submit">
+                                        {processing && <Spinner />}
+                                        {t('settings.api_tokens.create')}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/*
+                                Only worth asking of somebody who is in more
+                                than one place. With a single workspace the
+                                choice is between "that one" and "that one", and
+                                the wider of the two is the older behaviour.
+                            */}
+                            {workspaces.length > 1 && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="token-workspace">
+                                        {t('settings.api_tokens.workspace')}
+                                    </Label>
+                                    <Select
+                                        value={workspace}
+                                        onValueChange={setWorkspace}
+                                    >
+                                        <SelectTrigger
+                                            id="token-workspace"
+                                            className="w-72"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={ALL_WORKSPACES}>
+                                                {t(
+                                                    'settings.api_tokens.workspace_all',
+                                                )}
+                                            </SelectItem>
+                                            {workspaces.map((option) => (
+                                                <SelectItem
+                                                    key={option.id}
+                                                    value={String(option.id)}
+                                                >
+                                                    {option.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {/* The select is not a control the server
+                                        sees; this is. "Al mijn workspaces"
+                                        sends nothing, which the server reads as
+                                        the old, wider token. */}
+                                    {workspace !== ALL_WORKSPACES && (
+                                        <input
+                                            type="hidden"
+                                            name="workspace_id"
+                                            value={workspace}
+                                        />
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        {t(
+                                            'settings.api_tokens.workspace_hint',
                                         )}
-                                    />
-                                    <InputError message={errors.name} />
-                                </span>
-                                <Button type="submit">
-                                    {processing && <Spinner />}
-                                    {t('settings.api_tokens.create')}
-                                </Button>
+                                    </p>
+                                    <InputError message={errors.workspace_id} />
+                                </div>
+                            )}
+
+                            <div className="grid gap-2">
+                                <Label>{t('settings.api_tokens.scopes')}</Label>
+                                {scopes.map((scope) => (
+                                    <label key={scope} className={CHOICE_ROW}>
+                                        <Checkbox
+                                            checked={granted.includes(scope)}
+                                            onCheckedChange={(checked) =>
+                                                setGranted((held) =>
+                                                    checked
+                                                        ? [...held, scope]
+                                                        : held.filter(
+                                                              (one) =>
+                                                                  one !== scope,
+                                                          ),
+                                                )
+                                            }
+                                            className="mt-0.5"
+                                        />
+                                        {granted.includes(scope) && (
+                                            <input
+                                                type="hidden"
+                                                name="scopes[]"
+                                                value={scope}
+                                            />
+                                        )}
+                                        <span className="grid gap-1">
+                                            <span className="font-medium">
+                                                {scopeLabel(scope)}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {scopeHint(scope)}
+                                            </span>
+                                        </span>
+                                    </label>
+                                ))}
+                                <p className="text-xs text-muted-foreground">
+                                    {t('settings.api_tokens.scopes_hint')}
+                                </p>
                             </div>
                         </>
                     )}
@@ -214,6 +382,34 @@ export default function ApiTokens({
                                     <span className="block truncate font-mono text-xs text-muted-foreground">
                                         {token.token ??
                                             t('settings.api_tokens.hidden')}
+                                    </span>
+                                    {/*
+                                        What this one reaches, on the row rather
+                                        than behind a click: two tokens in this
+                                        list can differ in nothing a reader can
+                                        see except their name, and the narrow
+                                        one is the one they meant to paste.
+                                    */}
+                                    <span className="block truncate text-xs text-muted-foreground">
+                                        {token.workspace
+                                            ? t(
+                                                  'settings.api_tokens.for_workspace',
+                                                  {
+                                                      workspace:
+                                                          token.workspace,
+                                                  },
+                                              )
+                                            : t(
+                                                  'settings.api_tokens.for_all_workspaces',
+                                              )}
+                                        {token.scopes.map((scope) => (
+                                            <span
+                                                key={scope}
+                                                className="ml-1.5 rounded bg-muted px-1.5 py-0.5"
+                                            >
+                                                {scopeLabel(scope)}
+                                            </span>
+                                        ))}
                                     </span>
                                 </span>
 

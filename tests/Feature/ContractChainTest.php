@@ -256,7 +256,7 @@ it('keeps every contract file off the public disk', function () {
 
 it('throttles every public signing route', function () {
     /*
-     * The other half of the bead's audit. These nine addresses are the whole of
+     * The other half of the bead's audit. These ten addresses are the whole of
      * what the outside world can reach, and every one of them is opened with
      * nothing but a token — so a stream of guesses has to cost something.
      *
@@ -272,11 +272,11 @@ it('throttles every public signing route', function () {
         ->values();
 
     expect($unthrottled)->toBeEmpty()
-        // And there really are nine of them, so a route added later without one
+        // And there really are ten of them, so a route added later without one
         // cannot slip past by the filter finding nothing to check.
         ->and(collect(app('router')->getRoutes())
             ->filter(fn ($route): bool => str_starts_with((string) $route->getName(), 'contracts.sign'))
-            ->count())->toBe(9);
+            ->count())->toBe(10);
 });
 
 it('offers contracts and the right to send them on the public site', function () {

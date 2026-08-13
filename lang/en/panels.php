@@ -2,6 +2,26 @@
 
 return [
 
+    'shares' => [
+        'heading' => 'Share with another workspace',
+        'explanation' => 'Open this channel to another organisation on this installation. They say yes or no themselves, and choose which of their people take part. They see this channel and nothing else — not your member list, not your other channels.',
+        'none' => 'This channel is not shared with anybody.',
+        'slug_label' => 'Name of the workspace',
+        'slug_hint' => 'The short name from their web address. They can tell you what it is.',
+        'slug_placeholder' => 'acme-builders',
+        'can_post_label' => 'They may write here too',
+        'offer' => 'Invite',
+        'revoke' => 'Withdraw',
+        'may_post' => 'may take part',
+        'may_read' => 'reads along',
+        'state' => [
+            'pending' => 'awaiting an answer',
+            'accepted' => 'accepted',
+            'declined' => 'declined',
+            'revoked' => 'withdrawn',
+        ],
+    ],
+
     'webhooks' => [
         'heading' => 'Webhooks',
         'explanation' => 'Let something outside Postduif post in this channel, under a name of its own and plainly marked as a bot.',

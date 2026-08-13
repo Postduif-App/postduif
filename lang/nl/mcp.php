@@ -19,6 +19,14 @@ return [
      */
     'token' => [
         'invalid' => 'Ongeldig of ontbrekend MCP-token.',
+
+        /*
+         * De tweede weigering: het token klopt, maar is niet voor deze deur
+         * gemaakt. Anders dan hierboven staat er wél bij wát er ontbreekt —
+         * dat verraadt niemands gok, en zonder die naam weet degene die een
+         * nieuw token aanmaakt niet welk vinkje hij mist.
+         */
+        'scope_missing' => 'Dit token heeft geen toegang tot :scope. Maak een nieuw token aan met dat recht.',
     ],
 
     /*

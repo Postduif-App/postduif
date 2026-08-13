@@ -65,6 +65,7 @@ return [
     'sign' => [
         'addressed_to' => 'This request is in the name of :name.',
         'autosaves' => 'What you fill in is kept as you go. You can close this screen and carry on later.',
+        'autosave_short' => 'Kept as you go',
         'saved' => 'Saved.',
         'errors' => [
             'not_outstanding' => 'This contract is no longer running, so there is nothing to withdraw.',
@@ -83,6 +84,8 @@ return [
         'cancel' => 'Back',
         'remaining' => '{0}Everything is filled in.|{1}1 field to go.|[2,*]:count fields to go.',
         'signature_pending' => 'Signature',
+        'filled_by_other' => 'This was already filled in by somebody who signed earlier.',
+        'signed_before' => '{1}One of the :total signers has already signed; what they filled in is already on the document.|[2,*]:count of the :total signers have already signed; what they filled in is already on the document.',
         'closed' => [
             'signed' => [
                 'title' => 'You have already signed this',
@@ -150,6 +153,9 @@ return [
 
     'detail' => [
         'cancel' => 'Withdraw',
+        'delete' => 'Delete',
+        'delete_confirm' => 'This contract, its PDF and everything on it are thrown away. Anybody holding a link ends up on an empty page. Withdrawing leaves it standing and explains that it was stopped.',
+        'delete_confirm_signed' => 'This contract has been signed and completed. The signed PDF, the page recording who signed when, and the signatures themselves are thrown away. It cannot be undone, the signers are not told, and their own copy is then the only one left.',
         'retry' => 'Try again',
         'copy_link' => 'Copy link',
         'post_channel' => 'Channel',
@@ -170,25 +176,107 @@ return [
         'opened' => 'Opened',
         'waiting' => 'Nothing yet',
         'reminded' => 'reminded :date',
+        'copy_sent' => 'document sent :date',
         'document' => 'View the document',
-        'signed_copy' => 'Signed copy',
+        'view_signed' => 'View the signed copy',
+        'signed_copy' => 'Download the signed copy',
         'copy_pending' => 'The signed copy is being composed.',
         'copy_failed' => 'The signed copy could not be composed. The signatures are safe.',
+        'send_copy' => 'Mail it to the signers',
+        'send_copy_hint' => 'Everybody who signed gets the signed document as an attachment. That happens by itself once the contract is complete; this sends it again.',
+        'duplicate' => 'Use again',
+        'duplicate_title' => 'Use this contract again',
+        'duplicate_explainer' => 'You get a new draft with the same PDF and the same fields. This contract and the signatures on it stay exactly as they are. Who signs the new one is chosen on the next screen.',
+        'duplicate_name' => 'Name of the new contract',
+        'duplicate_name_hint' => 'This name is fixed once the draft exists, so say where or who this copy is for.',
+        'duplicate_default' => ':title (copy)',
+        'duplicate_confirm' => 'Create the draft',
+    ],
+
+    /*
+     * A template is a contract that is never sent. So it has no status but a
+     * question — can it be used yet? — and everything below is about that
+     * question and about what is still missing, spelled out rather than kept
+     * short: "not ready" without saying why leaves somebody in front of a screen
+     * full of buttons that do nothing.
+     */
+    'template' => [
+        'title' => 'Template',
+        'lead' => 'This document is never sent. It is kept to make contracts out of — through the API, or with one click later on — and what you set here holds for every contract that comes out of it.',
+        'ready' => 'Ready to use',
+        'not_ready' => 'Not ready to use yet',
+        'missing' => 'What still has to happen:',
+        'blockers' => [
+            'document' => 'This template still needs a PDF.',
+            'recipients' => 'Nobody has said how many people this goes to.',
+            'fields' => 'There are no fields on the document yet.',
+            'signature' => 'You said you would sign along, but you have not signed yet.',
+        ],
+        'recipients' => 'Number of recipients',
+        'recipients_hint' => 'How many people will this be sent to? Their names are filled in when it is sent; here you only decide how many parties the fields are laid out for.',
+        'recipients_save' => 'Save the number',
+        'recipients_floor' => 'It cannot go below :count: there are fields on the document meant for those parties.',
+        'sign_along' => 'I am signing this too',
+        'sign_along_hint' => 'You sign once, on this template. Every contract made from it then carries your signature already, without you having to sign again.',
+        'sign_now' => 'Sign the template',
+        'signed' => 'You have signed this template.',
+        'signed_locks' => 'While your signature is on it the fields cannot be moved. Clear the tickbox to edit the template again — your signature is then erased.',
+        'parties' => '{1}1 party|[2,*]:count parties',
+        'myself' => 'Myself',
+        'recipient' => 'Recipient :number',
+        'editor_hint' => 'This is a template: the recipients do not exist yet. You choose per field which party fills it in.',
     ],
 
     'list' => [
         'title' => 'Contracts',
+        'tab_contracts' => 'Contracts',
+        'tab_templates' => 'Templates',
+        'as_template' => 'Keep as a template',
+        'as_template_hint' => 'For a document you send over and over. It never goes out itself: you set how many people will sign it, sign along yourself if you want to, and then make contracts out of it.',
+        'templates_empty' => 'No templates yet',
+        'templates_empty_hint' => 'Upload a PDF with "keep as a template" ticked. That is worth doing for a document that goes out again every month.',
         'new' => 'New contract',
         'new_hint' => 'Upload the PDF that needs signing. Who signs it and by when are decided on the next screen, with the document in front of you.',
         'field_title' => 'What it is about',
         'field_file' => 'The PDF',
+        'drop' => 'Drag the PDF here',
+        'drop_or' => 'or click to choose one',
+        'drop_hint' => 'PDF only, at most :size and :pages.',
+        'drop_pages' => '{1}1 page|[2,*]:count pages',
+        'replace' => 'Choose another',
+        'remove' => 'Remove',
         'upload' => 'Upload',
         'empty' => 'No contracts yet',
         'empty_hint' => 'Upload a PDF, put fields on it and send it to whoever has to sign.',
+        'search' => 'Search by title or signer',
+        'clear_search' => 'Clear search',
+        'no_results' => 'Nothing found',
+        'no_results_hint' => 'No contract with this title, and nobody with this name or email address on the list of signers.',
     ],
 
     'errors' => [
         'not_outstanding' => 'This contract is no longer running, so there is nothing to withdraw.',
+    ],
+
+    /*
+     * What the API says back to a system rather than to a reader.
+     *
+     * Written with the same care as the rest all the same: the person seeing
+     * these is a developer working out why their call will not go through, and
+     * "invalid request" is no help to them.
+     */
+    'api' => [
+        'token_without_workspace' => 'This token is not tied to one workspace. Make a token for the workspace you want to send contracts from.',
+        'no_workspace' => 'This workspace does not exist, does not do contracts, or you may not send them here.',
+        'no_template' => 'There is no such template in this workspace.',
+        'template_unfinished' => 'This template is not ready to send: it is missing a document, fields, the number of recipients, or the sender\'s signature.',
+        'no_contract' => 'There is no such contract, or you may not see it.',
+        'no_signed_copy' => 'There is no signed document to fetch yet (:state).',
+        'wrong_recipient_count' => 'This template expects :expected recipient(s), you gave :given.',
+        'duplicate_recipient' => 'Two recipients with the same email address: everybody signs under their own.',
+        'recipient_is_sender' => ':email has already signed this template and is therefore already on it.',
+        'unknown_field' => 'Field :field does not belong to this recipient.',
+        'secret_without_url' => 'A callback_secret without a callback_url signs nothing.',
     ],
 
     'field-types' => [

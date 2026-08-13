@@ -46,6 +46,10 @@ return [
         'label' => 'Scheduled messages',
         'description' => 'Members can line up a message that sends itself later.',
     ],
+    'shared-channels' => [
+        'label' => 'Shared channels',
+        'description' => 'Open a channel to another workspace, so a customer or supplier can take part without joining this one. Both workspaces have to switch it on, and the other side sees nothing but the shared channel.',
+    ],
     'secret-requests' => [
         'label' => 'Secrets',
         'description' => 'Ask for passwords and keys through a form, and send one that the recipient can view exactly once — instead of having them pasted into a conversation.',

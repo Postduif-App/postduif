@@ -185,7 +185,7 @@ class ChannelWebhookController extends Controller
      */
     private function authorizeChannel(Request $request, Workspace $workspace, Channel $channel): void
     {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($workspace->hasMember($request->user()), 403);
         $this->authorize('manageSettings', $channel);
     }

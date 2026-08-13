@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Actions\Chat\BuildChatShell;
 use App\Actions\Contracts\CancelContract;
 use App\Actions\Contracts\CreateContract;
+use App\Actions\Contracts\DuplicateContract;
 use App\Actions\Contracts\PdfRefused;
 use App\Actions\Contracts\PostContractToChannel;
 use App\Actions\Contracts\RemindContractSigners;
 use App\Actions\Contracts\SaveContractFields;
 use App\Actions\Contracts\SaveContractSigners;
 use App\Actions\Contracts\SendContract;
+use App\Actions\Contracts\SendSignedContract;
+use App\Actions\Contracts\SetTemplateAuthor;
 use App\Actions\Contracts\SigningRefused;
 use App\Enums\ContractFieldType;
 use App\Enums\ContractStatus;
@@ -22,6 +25,7 @@ use App\Models\Contract;
 use App\Models\ContractField;
 use App\Models\ContractSigner;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -63,12 +67,29 @@ class ContractController extends Controller
      * A redirect rather than JSON, because this is a form being submitted and
      * the next thing that happens is a whole new screen — the editor, with the
      * document rendered in it.
+     *
+     * Whether it is a template is decided here, by a tick on the upload box, and
+     * deliberately nowhere else. The alternative — an "opslaan als sjabloon"
+     * button on a contract that already exists — reads as the cheaper option and
+     * is not: a real contract carries named signers with tokens and answers, and
+     * a template carries a count and at most the author, so converting one means
+     * throwing away rows that look exactly like people who were asked and never
+     * replied, and then guessing what the number was supposed to be. It also
+     * duplicates something the application already does well — DuplicateContract
+     * is the answer to "deze wil ik nog eens sturen", and a template is the
+     * answer to "deze ga ik honderd keer sturen".
+     *
+     * Which leaves the tick where the decision is actually made. Somebody
+     * uploading a standard lease knows before they choose the file that this is
+     * the mould rather than the letter.
      */
     public function store(
         StoreContractRequest $request,
         Workspace $workspace,
         CreateContract $createContract,
     ): RedirectResponse {
+        $asTemplate = $request->boolean('as_template');
+
         try {
             $contract = $createContract->handle(
                 workspace: $workspace,
@@ -77,6 +98,7 @@ class ContractController extends Controller
                 title: $request->string('title')->toString(),
                 message: $request->input('message'),
                 validForDays: $request->integer('valid_for_days') ?: null,
+                asTemplate: $asTemplate,
             );
         } catch (PdfRefused $refused) {
             /*
@@ -94,18 +116,40 @@ class ContractController extends Controller
                 ->withErrors(['file' => $refused->getMessage()]);
         }
 
+        /*
+         * A sentence of its own for a template, because the next step is a
+         * different one. A contract wants its signers named; a template wants a
+         * number of recipients and the author's own signature, and telling
+         * somebody to "zet nu de invulvakken op de pagina's" would send them
+         * past the one screen that explains what they are holding.
+         */
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('flashes.contract.created'),
+            'message' => __($asTemplate ? 'flashes.contract.template_created' : 'flashes.contract.created'),
         ]);
 
         /*
-         * Straight into the editor rather than back to the list. A contract
-         * with a document and no boxes on it cannot be signed, so the list is
-         * never where anybody wanted to end up — the same reasoning the form
-         * builder redirects on.
+         * On to the contract's own page rather than back to the list, and to
+         * that page rather than straight into the editor.
+         *
+         * The list is never where anybody wanted to end up: a contract with a
+         * document and no boxes on it cannot be signed, so uploading is the
+         * first half of one action and the redirect owes somebody the second.
+         *
+         * Which second half is the part worth stating. The editor was the
+         * obvious answer and it is the wrong one, because "in te vullen door"
+         * is a choice between numbers until the signers have names — a box laid
+         * out for the tenant on a contract where nobody has been named is a box
+         * assigned to "ondertekenaar 2", and the person drawing it has to hold
+         * in their head which number is whom. Naming them first turns the whole
+         * of that panel from numbers into people. It is also the answer to a
+         * question that is already in mind at upload: somebody who has just
+         * chosen a PDF knows who they are sending it to.
+         *
+         * The editor is one click away from there and stays where it was — see
+         * the contract page's own header.
          */
-        return to_route('chat.contracts.edit', [$workspace, $contract]);
+        return to_route('chat.contracts.show', [$workspace, $contract]);
     }
 
     /**
@@ -129,6 +173,8 @@ class ContractController extends Controller
 
         $manages = $workspace->allows($user, WorkspaceAbility::ManageWorkspace);
 
+        $terms = $request->string('q')->trim()->value();
+
         $contracts = $workspace->contracts()
             ->withCount([
                 'signers',
@@ -142,9 +188,52 @@ class ContractController extends Controller
              * around. Everybody else sees their own.
              */
             ->unless($manages, fn ($query) => $query->where('created_by', $user->id))
+            ->when($terms !== '', $this->matching($terms))
+
+            /*
+             * And nothing that is a mould rather than a letter.
+             *
+             * The one line in this method that is easy to forget and impossible
+             * to notice afterwards: a template has a status of Draft like any
+             * unsent contract, so without this it would sit in the list looking
+             * exactly like something somebody forgot to send — and the delete
+             * button beside it would throw away the document a hundred future
+             * contracts are made from.
+             */
+            ->realContracts()
             ->latest('created_at')
             ->limit(self::MAX_LISTED)
             ->get();
+
+        /*
+         * The moulds, fetched separately rather than sorted out of one list.
+         *
+         * Two queries because the two lists answer different questions and are
+         * shown apart — a contract is asked "hoe ver staat het", a template is
+         * asked "kan hij gebruikt worden" — and because a template's answer
+         * needs its boxes and its one signer in hand, which is a load every real
+         * contract in the list would otherwise pay for and never use.
+         */
+        $templates = $workspace->contracts()
+            ->with(['author:id,name', 'fields', 'signers', 'media'])
+            ->unless($manages, fn ($query) => $query->where('created_by', $user->id))
+            ->when($terms !== '', $this->matching($terms))
+            ->templates()
+            ->latest('created_at')
+            ->limit(self::MAX_LISTED)
+            ->get();
+
+        /*
+         * The workspace they all came from, handed back to them.
+         *
+         * ContractPolicy::view reaches for $contract->workspace when the viewer
+         * is not the author, and every row here came out of this one — so
+         * without this, asking the policy per row is a hundred queries for a
+         * model already in hand (and, outside production, a lazy-loading
+         * exception rather than a slow page).
+         */
+        $contracts->each(fn (Contract $contract) => $contract->setRelation('workspace', $workspace));
+        $templates->each(fn (Contract $template) => $template->setRelation('workspace', $workspace));
 
         return Inertia::render('chat/contracts', [
             ...$this->buildChatShell->handle($workspace, $user),
@@ -166,10 +255,104 @@ class ContractController extends Controller
                  * passed, whether or not the nightly command has been round.
                  */
                 'hasExpired' => $contract->hasExpired(),
+
+                /*
+                 * Asked per row rather than derived in the list from the status,
+                 * because the answer is three things at once — the policy's line
+                 * about who, the status, and whether this workspace gave this
+                 * role the right to delete a finished contract — and a screen
+                 * that works any of them out for itself is a screen that drifts
+                 * away from the rest. Cheap here: view() is already settled for
+                 * everybody in this list by the query above.
+                 */
+                'canDelete' => $user->can('delete', $contract),
             ])->all(),
 
+            /*
+             * A template says four things, and none of them is a status. It has
+             * none worth showing — it is a draft forever, by definition — so
+             * what the row has to answer instead is whether it can be used yet
+             * and, when it cannot, roughly how far off it is: how many parties
+             * it is laid out for, and whether the author's own signature is on
+             * it.
+             */
+            'templates' => $templates->map(fn (Contract $template): array => [
+                'id' => $template->id,
+                'title' => $template->title,
+                'authorName' => $template->author?->name,
+                'createdAt' => $template->created_at?->toIso8601String(),
+                'partyCount' => $template->partyCount(),
+
+                /*
+                 * Whether the author put themselves on it at all, and whether
+                 * they have actually signed. Two answers rather than one,
+                 * because "ik teken zelf mee" and "ik heb dat ook gedaan" are
+                 * different places to be stuck, and only the second is a thing
+                 * the reader still has to go and do.
+                 */
+                'signsAlong' => $template->templateSigner() !== null,
+                'authorSigned' => $template->templateSigner()?->hasSigned() ?? false,
+
+                'isReadyToSend' => $template->isReadyToSend(),
+                'canDelete' => $user->can('delete', $template),
+            ])->all(),
+
+            /*
+             * Handed back rather than left to the browser to remember. The box
+             * has to still hold what was typed once the answer lands, and what
+             * lands is a fresh set of props — so the server is the only thing
+             * that knows which list this is.
+             */
+            'search' => $terms,
+
             'workspaceSlug' => $workspace->slug,
+
+            /*
+             * The two limits the upload box says out loud, read from the same
+             * config StoreContractRequest and NormalisePdf enforce. A number
+             * typed into the interface would be a promise the server had never
+             * agreed to, and the day somebody raised CONTRACTS_MAX_UPLOAD_KB it
+             * would quietly start lying.
+             */
+            'maxUploadBytes' => (int) config('contracts.max_upload_kilobytes') * 1024,
+            'maxPages' => (int) config('contracts.max_pages'),
         ]);
+    }
+
+    /**
+     * Narrow the list to what somebody typed into the box.
+     *
+     * Two questions at once, because they are the two ways a person remembers a
+     * contract: what it was called, and who it went to. Somebody looking for
+     * "de huurovereenkomst" types the title; somebody looking for "wat heb ik
+     * ooit naar jan@example.com gestuurd" has only the address, and a search
+     * that only read titles would answer nothing for the second.
+     *
+     * @return callable(Builder<Contract>): void
+     */
+    private function matching(string $terms): callable
+    {
+        /*
+         * Escaped before it becomes a pattern. % and _ are wildcards to LIKE,
+         * so an unescaped "%" typed into the box would quietly match every
+         * contract in the workspace — a search that answers "alles" reads like
+         * a broken filter rather than like a wildcard nobody asked for.
+         */
+        $like = '%'.addcslashes($terms, '%_\\').'%';
+
+        return function (Builder $query) use ($like): void {
+            $query->where(fn (Builder $match) => $match
+                ->where('contracts.title', 'ilike', $like)
+                /*
+                 * whereHas rather than a join: a contract with three signers
+                 * whose addresses all contain the terms is still one row, and a
+                 * join would list it three times.
+                 */
+                ->orWhereHas('signers', fn (Builder $signers) => $signers
+                    ->where(fn (Builder $who) => $who
+                        ->where('contract_signers.name', 'ilike', $like)
+                        ->orWhere('contract_signers.email', 'ilike', $like))));
+        };
     }
 
     /**
@@ -195,6 +378,92 @@ class ContractController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.contract.cancelled')]);
 
         return back();
+    }
+
+    /**
+     * Use it again, for other people.
+     *
+     * The answer to the thing a completed contract cannot do. Editing it has
+     * been forbidden since the first signature landed — see ContractPolicy —
+     * so the way to send the same lease to next month's tenant is to make a
+     * fresh draft of it, which is what this does: the document and the boxes,
+     * none of the history.
+     *
+     * Straight to the new contract's own screen rather than back here, because
+     * the next thing to do is name the people, and that panel is there.
+     */
+    public function duplicate(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        DuplicateContract $duplicate,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('duplicate', $contract);
+
+        // Nothing to copy. A row whose PDF never arrived is the one case the
+        // action cannot do anything with — see there.
+        abort_unless($contract->hasSource(), 404);
+
+        /*
+         * The title is asked for rather than derived, and required rather than
+         * optional. This is the only moment a contract is ever named: there is
+         * no screen that renames one afterwards, so a copy that quietly
+         * inherited "Huurovereenkomst 2026" would sit in the list next to the
+         * original with no way to tell them apart.
+         */
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:200'],
+        ]);
+
+        $contract->load('fields');
+
+        $copy = $duplicate->handle($contract, $request->user(), $data['title']);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('flashes.contract.duplicated'),
+        ]);
+
+        return to_route('chat.contracts.show', [$workspace, $copy]);
+    }
+
+    /**
+     * Throw it away.
+     *
+     * The act cancel() is deliberately not. Withdrawing leaves the record
+     * standing and every link resolving, so that whoever holds one is told it
+     * was stopped; this takes the row, the PDF and the signatures off the disk
+     * and leaves those links resolving to nothing at all. Which is why it is
+     * offered mainly for the drafts and the fizzled-out correspondence that
+     * otherwise sit in the list until the prune command gets round to them.
+     *
+     * A finished contract goes this way only for a role a workspace has
+     * deliberately given the right to — see ContractPolicy::delete and
+     * WorkspaceAbility::DeleteSignedContracts. The signers hold a copy and may
+     * assume ours still exists, so that is a decision somebody makes on
+     * purpose rather than one that comes with running the place.
+     *
+     * Everything hanging off it goes with it and nothing here has to say so:
+     * the signers are taken down by Contract::booted, one at a time so that the
+     * media library actually removes their signature files, and the media
+     * library takes the two PDFs on the contract's own delete event.
+     *
+     * Back to the list rather than back(), because back() is this contract's
+     * own screen and that screen no longer exists.
+     */
+    public function destroy(Workspace $workspace, Contract $contract): RedirectResponse
+    {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('delete', $contract);
+
+        $contract->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.contract.deleted')]);
+
+        return to_route('chat.contracts.index', $workspace);
     }
 
     /**
@@ -260,6 +529,51 @@ class ContractController extends Controller
     }
 
     /**
+     * Post the finished document to everybody who signed it, again.
+     *
+     * It has already gone out once by itself, the moment the copy was composed
+     * — see RenderSignedContractJob. This exists because mail goes missing, and
+     * the only useful answer to "ik heb hem nooit ontvangen" is to send it
+     * rather than to look up whether it was sent.
+     *
+     * So it deliberately ignores the stamps the automatic send respects: asked
+     * by hand, everybody who signed gets it again. Behind download() rather than
+     * remind(), because what it hands over is the document — and remind() says
+     * no to a finished contract, which is the only kind this works on.
+     */
+    public function sendSignedCopy(
+        Workspace $workspace,
+        Contract $contract,
+        SendSignedContract $sendCopies,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        $this->authorize('download', $contract);
+
+        // Nothing to send until the copy exists. A 404 rather than a flash: the
+        // button is not drawn in any other state, so arriving here means the
+        // request was not made by the screen.
+        abort_unless($contract->signedCopyState() === 'ready', 404);
+
+        $sent = $sendCopies->handle($contract, again: true);
+
+        Inertia::flash('toast', [
+            /*
+             * Zero is an ordinary answer and gets an ordinary tone: a contract
+             * everybody refused is finished business with nobody to send
+             * anything to, and calling that a success would be claiming mail
+             * went out that did not.
+             */
+            'type' => $sent === 0 ? 'info' : 'success',
+            'message' => $sent === 0
+                ? __('flashes.contract.nobody_to_send_copy')
+                : trans_choice('flashes.contract.copy_sent', $sent),
+        ]);
+
+        return back();
+    }
+
+    /**
      * One link in a channel, two destinations.
      *
      * A contract card is drawn once and broadcast to everybody in the channel
@@ -302,7 +616,17 @@ class ContractController extends Controller
 
         $this->authorize('view', $contract);
 
-        $contract->load(['signers', 'author:id,name']);
+        // The boxes ride along only for a template, which is the one thing on
+        // this screen that has to know whether any have been drawn — see
+        // Contract::isReadyToSend. A real contract's detail page never counts
+        // them, and loading them for every one would be a query nobody reads.
+        $contract->load($contract->isTemplate()
+            ? ['signers', 'author:id,name', 'fields']
+            : ['signers', 'author:id,name']);
+
+        // The one it came out of, so the four policy questions below do not each
+        // go and fetch it again — the same reason index() does it.
+        $contract->setRelation('workspace', $workspace);
 
         return Inertia::render('chat/contract-show', [
             ...$this->buildChatShell->handle($workspace, $user),
@@ -343,9 +667,19 @@ class ContractController extends Controller
                 'mySignUrl' => $mine?->signUrl(),
 
                 'sourceUrl' => route('chat.contracts.source', [$workspace, $contract]),
+
+                /*
+                 * Two adresses to the same route and the same policy, because
+                 * reading the finished document and filing it away are two
+                 * different errands — see download() for which way round the
+                 * flag points.
+                 */
                 'downloadUrl' => $contract->signedCopy() === null
                     ? null
                     : route('chat.contracts.download', [$workspace, $contract]),
+                'signedCopyUrl' => $contract->signedCopy() === null
+                    ? null
+                    : route('chat.contracts.download', [$workspace, $contract, 'inline' => 1]),
 
                 /*
                  * Here the names *are* carried, unlike on the card in the
@@ -370,6 +704,14 @@ class ContractController extends Controller
                     'declineReason' => $signer->decline_reason,
                     'remindedAt' => $signer->reminded_at?->toIso8601String(),
 
+                    /*
+                     * When this person was posted the finished document. The
+                     * question somebody asks before pressing "opnieuw
+                     * versturen", which is why it is on the line rather than
+                     * summarised above it.
+                     */
+                    'copySentAt' => $signer->copy_sent_at?->toIso8601String(),
+
                     'state' => match (true) {
                         $signer->hasSigned() => 'signed',
                         $signer->hasDeclined() => 'declined',
@@ -379,17 +721,78 @@ class ContractController extends Controller
                 ])->all(),
             ],
 
+            /*
+             * Everything the screen needs to stop treating this like a contract,
+             * or null when it is one.
+             *
+             * A prop rather than a page of its own, and that is a decision worth
+             * defending: a template is the same document with the same boxes and
+             * the same author, and a second screen would mean a second copy of
+             * the header, the document links and the delete confirmation, all of
+             * which would then drift. What actually differs is one panel and the
+             * absence of four buttons, which is what this prop switches.
+             */
+            'template' => $contract->isTemplate() ? $this->templatePanel($contract, $mine) : null,
+
             'can' => [
                 'remind' => $user->can('remind', $contract),
                 'cancel' => $user->can('cancel', $contract),
                 'update' => $user->can('update', $contract),
+
+                /*
+                 * Beside cancel rather than instead of it. Both are usually
+                 * true at once on a draft, and the screen offers both, because
+                 * they answer different questions: "dit contract moet stoppen"
+                 * and "dit had hier nooit moeten staan".
+                 */
+                'delete' => $user->can('delete', $contract),
                 /*
                  * Whether there is anything to send. Not a right of its own —
                  * update() already answered that — but the difference between
                  * a draft waiting for signers and a contract that is out, which
                  * decides whether the screen shows a form or a list.
                  */
-                'send' => $user->can('update', $contract) && $contract->status === ContractStatus::Draft,
+                'send' => $user->can('update', $contract)
+                    && $contract->status === ContractStatus::Draft
+                    /*
+                     * Never on a template. It is a draft and will be one
+                     * forever, so the status alone would offer the whole
+                     * send panel — a form asking for the addresses of people a
+                     * mould is being posted to, which is the one thing it must
+                     * never be. Sending happens from a contract made out of it;
+                     * see InstantiateTemplate.
+                     */
+                    && ! $contract->isTemplate(),
+
+                /*
+                 * Posting the finished document round again. Only once there is
+                 * one and only to somebody who may fetch it themselves — the
+                 * same right, because mailing a document to the people who
+                 * signed it gives away nothing that downloading it does not.
+                 */
+                'sendCopy' => $user->can('download', $contract)
+                    && $contract->signedCopyState() === 'ready'
+                    && $contract->signers->contains(fn (ContractSigner $signer): bool => $signer->hasSigned()),
+
+                /*
+                 * Sending this same document to somebody else. Offered whatever
+                 * the status is — it is the one thing a completed contract
+                 * still allows, and the reason it exists — and the source is
+                 * asked about because a row whose PDF never arrived has nothing
+                 * to copy.
+                 */
+                'duplicate' => $user->can('duplicate', $contract)
+                    && $contract->hasSource()
+                    /*
+                     * Not on a template either, although the action would
+                     * happily copy one. What came back would be an ordinary
+                     * contract carrying the template's boxes and none of its
+                     * numbering, and without the author's signature — which is
+                     * the whole difference between duplicating and using. The
+                     * button that means "gebruik dit sjabloon" is
+                     * InstantiateTemplate's, and it is not this one.
+                     */
+                    && ! $contract->isTemplate(),
             ],
 
             /*
@@ -409,6 +812,181 @@ class ContractController extends Controller
 
             'workspaceSlug' => $workspace->slug,
         ]);
+    }
+
+    /**
+     * What the contract screen shows instead of a status, when the row is a
+     * mould rather than a letter.
+     *
+     * The blockers are the part worth explaining. isReadyToSend answers yes or
+     * no, which is the right answer for the API that has to refuse and the wrong
+     * one for a person who is standing in front of the thing wondering what is
+     * missing — so the same four conditions are asked again here, separately,
+     * and handed over as a list of reasons. Kept in one place rather than worked
+     * out in the browser: the day a fifth condition is added to isReadyToSend,
+     * this list has to gain a line or it starts saying "klaar" about a template
+     * the server refuses.
+     *
+     * @param  ContractSigner|null  $mine  The author's own row, when they still
+     *                                     have to sign. Their link, so it is
+     *                                     only ever built for them.
+     * @return array<string, mixed>
+     */
+    private function templatePanel(Contract $contract, ?ContractSigner $mine): array
+    {
+        $author = $contract->templateSigner();
+
+        $blockers = [];
+
+        if (! $contract->hasSource()) {
+            $blockers[] = 'document';
+        }
+
+        if ($contract->required_signers === null) {
+            $blockers[] = 'recipients';
+        }
+
+        if ($contract->fields->isEmpty()) {
+            $blockers[] = 'fields';
+        }
+
+        if ($author !== null && ! $author->hasSigned()) {
+            $blockers[] = 'signature';
+        }
+
+        return [
+            'requiredSigners' => $contract->required_signers,
+            'partyCount' => $contract->partyCount(),
+
+            'signsAlong' => $author !== null,
+            'authorSigned' => $author?->hasSigned() ?? false,
+
+            /*
+             * The author's own way in, which is the ordinary signing page every
+             * recipient uses. Deliberately not a shortcut of its own: the
+             * signature on a template has to be made under exactly the same
+             * conditions and recorded in exactly the same columns as one made by
+             * a stranger, or it is worth less than the ones it will be copied
+             * beside. See Contract::isSignable, which lets a draft template
+             * through for this.
+             */
+            'signUrl' => $mine?->signUrl(),
+
+            'isReadyToSend' => $contract->isReadyToSend(),
+            'blockers' => $blockers,
+
+            /*
+             * How many recipients may be asked for, and the least the boxes
+             * already drawn will fit in. Both read from the server, because both
+             * are rules it enforces — a number typed into the interface would be
+             * a promise nobody had agreed to.
+             */
+            'maxRecipients' => self::MAX_SIGNERS - 1,
+            'minRecipients' => app(SetTemplateAuthor::class)->recipientsNeededFor($contract),
+        ];
+    }
+
+    /**
+     * How many people this template will be sent to.
+     *
+     * Its own endpoint rather than a field in the send panel, because a template
+     * has no send panel and never will — the number stands in for the roster
+     * that a real contract writes down by name. What it is really setting is how
+     * many parties the boxes may be laid out against, which is why the floor is
+     * not one but whatever the boxes already drawn need: lowering it past them
+     * would leave a signature box belonging to a party the template says does not
+     * exist, and isReadyToSend would go on saying "klaar" about it, because it
+     * counts fields rather than asking who they are for.
+     */
+    public function updateTemplate(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        SetTemplateAuthor $templateAuthor,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        // Not a template, not this endpoint. A 404 rather than a flash: nothing
+        // draws this form for an ordinary contract, so arriving here means the
+        // request did not come from the screen.
+        abort_unless($contract->isTemplate(), 404);
+
+        $this->authorize('update', $contract);
+
+        /*
+         * One less than a contract's roster, because the author may still put
+         * themselves on top of it — see Contract::partyCount. Letting the full
+         * twenty through here would allow a template that produces a
+         * twenty-one-signer contract SendContract then refuses, which is a
+         * refusal nobody would see until the first time somebody tried to use
+         * the thing.
+         */
+        $data = $request->validate([
+            'required_signers' => [
+                'required',
+                'integer',
+                'min:'.$templateAuthor->recipientsNeededFor($contract),
+                'max:'.(self::MAX_SIGNERS - 1),
+            ],
+        ]);
+
+        $contract->update(['required_signers' => $data['required_signers']]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice('flashes.contract.template_recipients', $data['required_signers']),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * The author putting themselves on the template, or taking themselves off.
+     *
+     * Apart from the endpoint above because it is a different act with a
+     * different rule. Setting the number is an edit, and stops being allowed the
+     * moment anybody has signed; this one has to survive that, because taking
+     * your own signature off is the only way back to a template you can still
+     * change — see ContractPolicy::update, which says so out loud.
+     *
+     * So the policy asked here is view() rather than update(), and the narrower
+     * question that update() would have answered is asked directly: is this
+     * still a template, and is it still a draft. Everything else the action
+     * guards for itself.
+     */
+    public function signAlong(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        SetTemplateAuthor $templateAuthor,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+        abort_unless($contract->isTemplate() && $contract->status === ContractStatus::Draft, 404);
+
+        $this->authorize('view', $contract);
+
+        $data = $request->validate([
+            'signs_along' => ['required', 'boolean'],
+        ]);
+
+        $changed = $templateAuthor->handle($contract, $request->user(), $data['signs_along']);
+
+        /*
+         * Three sentences, because there are three outcomes and the middle one
+         * is the one people press by accident: turning it off throws a signature
+         * away, and saying "opgeslagen" about that would be the quietest
+         * possible way to lose it.
+         */
+        Inertia::flash('toast', [
+            'type' => $changed ? 'success' : 'info',
+            'message' => match (true) {
+                ! $changed => __('flashes.contract.template_unchanged'),
+                $data['signs_along'] => __('flashes.contract.template_signing_along'),
+                default => __('flashes.contract.template_not_signing_along'),
+            },
+        ]);
+
+        return back();
     }
 
     /**
@@ -470,10 +1048,11 @@ class ContractController extends Controller
                  * ordinary case here — the editor then simply does not offer
                  * the choice, because a contract with one signer has one answer.
                  */
-                'signers' => $contract->signers->map(fn (ContractSigner $signer): array => [
-                    'index' => $signer->signing_order,
-                    'name' => $signer->name,
-                ])->all(),
+                'signers' => $this->parties($contract),
+
+                // Whether the names beside the boxes are people or placeholders,
+                // so the editor can say which — see parties().
+                'isTemplate' => $contract->isTemplate(),
             ],
 
             /*
@@ -494,6 +1073,48 @@ class ContractController extends Controller
 
             'workspaceSlug' => $workspace->slug,
         ]);
+    }
+
+    /**
+     * Who a box can be handed to, by their place in the queue.
+     *
+     * Two ways of answering the same question, because a template has nobody to
+     * name. Its recipients do not exist yet — inventing placeholder rows for
+     * them would put records in contract_signers that look exactly like people
+     * who were asked and never answered — so the list is counted out of
+     * partyCount instead: the author at zero when they sign along, and
+     * "Ontvanger 1" upwards after them.
+     *
+     * Numbered from the reader's point of view rather than from the column's.
+     * The first recipient is "Ontvanger 1" whether they sit at index zero or
+     * index one, because which of those it is depends on a switch elsewhere on
+     * the screen and is nobody's business while they are drawing boxes.
+     *
+     * @return list<array{index: int, name: string}>
+     */
+    private function parties(Contract $contract): array
+    {
+        if (! $contract->isTemplate()) {
+            return $contract->signers->map(fn (ContractSigner $signer): array => [
+                'index' => $signer->signing_order,
+                'name' => $signer->name,
+            ])->all();
+        }
+
+        $signsAlong = $contract->templateSigner() !== null;
+
+        $parties = $signsAlong
+            ? [['index' => 0, 'name' => __('contracts.template.myself')]]
+            : [];
+
+        foreach (range(1, max(1, $contract->required_signers ?? 1)) as $number) {
+            $parties[] = [
+                'index' => $number - ($signsAlong ? 0 : 1),
+                'name' => __('contracts.template.recipient', ['number' => $number]),
+            ];
+        }
+
+        return $parties;
     }
 
     /**
@@ -520,6 +1141,10 @@ class ContractController extends Controller
          */
         $this->authorize('update', $contract);
 
+        // partyCount below reads the one signer row a template may have, and
+        // asks for it in memory rather than in SQL.
+        $contract->loadMissing('signers');
+
         $data = $request->validate([
             'fields' => ['present', 'array', 'max:'.self::MAX_FIELDS],
             'fields.*.id' => ['nullable', 'integer'],
@@ -545,12 +1170,18 @@ class ContractController extends Controller
              * ContractField::signerIndex. Bounded by the list that exists,
              * because a box for the fourth signer of a two-signer contract is
              * one nobody will ever be shown.
+             *
+             * A template counts its parties instead of listing them: the people
+             * it will go to have no rows here, so the rows would say one where
+             * the document is laid out for three. See Contract::partyCount.
              */
             'fields.*.signer_index' => [
                 'nullable',
                 'integer',
                 'min:0',
-                'max:'.max(0, $contract->signers()->count() - 1),
+                'max:'.max(0, ($contract->isTemplate()
+                    ? $contract->partyCount()
+                    : $contract->signers()->count()) - 1),
             ],
         ]);
 
@@ -766,10 +1397,18 @@ class ContractController extends Controller
      * is doing exactly the thing the audit trail is for.
      *
      * Offered as a download rather than inline, because this one is not there
-     * to be looked at in a tab — it is the copy that goes into a folder.
+     * to be looked at in a tab — it is the copy that goes into a folder. That
+     * is the other way around from source(), where ?download=1 is the
+     * exception; here ?inline=1 is, for the reader who only wants to check
+     * what the finished document says. Deliberately the same route either
+     * way: the file is on the private disk and there is one policy in front
+     * of it, and a second way in would be a second thing to get wrong.
      */
-    public function download(Workspace $workspace, Contract $contract): BinaryFileResponse
-    {
+    public function download(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+    ): BinaryFileResponse {
         abort_unless($contract->workspace_id === $workspace->id, 404);
 
         $this->authorize('download', $contract);
@@ -785,8 +1424,14 @@ class ContractController extends Controller
          */
         abort_if($media === null || ! is_file($media->getPath()), 404);
 
+        $inline = $request->boolean('inline');
+
         $response = response()->file($media->getPath(), [
-            'Content-Disposition' => 'attachment; filename="'.addslashes($media->file_name).'"',
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')
+                .'; filename="'.addslashes($media->file_name).'"',
+
+            // No guessing around the type. See source() for the longer version
+            // of why this is not optional on our own origin.
             'X-Content-Type-Options' => 'nosniff',
         ]);
 

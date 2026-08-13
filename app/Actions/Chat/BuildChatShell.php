@@ -4,9 +4,11 @@ namespace App\Actions\Chat;
 
 use App\Enums\AttachmentType;
 use App\Features\Huddles as HuddlesFeature;
+use App\Features\SharedChannels as SharedChannelsFeature;
 use App\Models\BoardPost;
 use App\Models\Channel;
 use App\Models\ChannelSection;
+use App\Models\ChannelShare;
 use App\Models\CustomEmoji;
 use App\Models\HuddleParticipant;
 use App\Models\InboxItem;
@@ -73,6 +75,20 @@ class BuildChatShell
              * Two lists in different orders would make "the first one" mean two
              * things.
              */
+            /*
+             * Channels another workspace has offered this one, still waiting on
+             * an answer.
+             *
+             * In the shell rather than behind a screen somebody has to go
+             * looking for: an unanswered offer is an organisation waiting on
+             * you, and a workspace that never notices it is a workspace whose
+             * partner concludes the software does not work.
+             *
+             * Only for whoever may answer. For everybody else it is an empty
+             * list rather than a missing key — the sidebar draws nothing, and
+             * no reader of this payload has to check which it got.
+             */
+            'channelShareInvitations' => $this->shareInvitations($workspace, $user),
             'workspaces' => $user->workspaces()
                 ->oldest('workspace_user.joined_at')
                 // Two workspaces joined in the same second are otherwise in
@@ -479,6 +495,18 @@ class BuildChatShell
             // their status is as much a part of them as their name. A channel
             // is a room; a room has no status.
             'status' => $this->directStatus($channel, $user),
+            /*
+             * Whose channel this is, when it is not this workspace's own.
+             *
+             * The one thing a shared row has to say, and it has to say it in
+             * the sidebar rather than on opening: somebody about to type here
+             * needs to know that the room belongs to another organisation
+             * before they write, not after. Null for every ordinary channel,
+             * which is what keeps the badge off nearly every row.
+             */
+            'sharedFrom' => $channel->workspace_id === $workspace->id
+                ? null
+                : $channel->workspace->name,
         ];
 
         return [
@@ -489,6 +517,54 @@ class BuildChatShell
                 ->filter(fn (Channel $channel) => $channel->isDirect())
                 ->map($present)->values()->all(),
         ];
+    }
+
+    /**
+     * Unanswered offers from other workspaces, for whoever may answer them.
+     *
+     * Accepting one lets another organisation's people into a channel of this
+     * workspace's, so it is the same right that runs the workspace — not the
+     * one that makes channels. The controller asks the same question again;
+     * this is only what decides whether the sidebar draws anything.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function shareInvitations(Workspace $workspace, User $user): array
+    {
+        if (! $workspace->hasFeature(SharedChannelsFeature::class) || $user->cannot('manage', $workspace)) {
+            return [];
+        }
+
+        return ChannelShare::query()
+            ->where('workspace_id', $workspace->id)
+            /*
+             * The unanswered ones and the live ones together, because they are
+             * the two halves of one job: answer what has been offered, and put
+             * your own people into what you already said yes to. Splitting them
+             * across two screens would leave the second half with nowhere to
+             * live — an accepted share is invisible from this side otherwise,
+             * and the colleagues who should be in it never get added.
+             *
+             * Refused and withdrawn ones are left out. Neither is anything this
+             * workspace can still act on, and a list of doors that are shut is
+             * not a list anybody opens a sidebar for.
+             */
+            ->where(fn ($query) => $query->pending()->orWhere(fn ($live) => $live->live()))
+            ->with(['channel.workspace', 'inviter'])
+            ->orderBy('id')
+            ->get()
+            ->map(fn (ChannelShare $share): array => [
+                'id' => $share->id,
+                'channelName' => $share->channel->name,
+                // Who is asking, which is the whole of what somebody needs to
+                // decide: a channel name on its own says nothing about whether
+                // this is a partner or a stranger.
+                'workspaceName' => $share->channel->workspace->name,
+                'invitedBy' => $share->inviter?->name,
+                'canPost' => $share->can_post,
+                'accepted' => $share->isLive(),
+            ])
+            ->all();
     }
 
     /**
@@ -503,22 +579,48 @@ class BuildChatShell
      */
     public function visibleChannels(Workspace $workspace, User $user)
     {
-        $channels = $workspace->channels()
+        /*
+         * Off Channel rather than off the workspace's own channels, because a
+         * sidebar is no longer a list of one workspace's rooms: reachableFrom()
+         * adds the ones another workspace has opened to this one. The two
+         * questions stay separate on purpose — that scope decides what belongs
+         * on this screen, visibleTo() decides whether this person may see it,
+         * and a shared channel needs both answers to be yes.
+         */
+        $channels = Channel::query()
+            ->reachableFrom($workspace)
             ->visibleTo($user)
             ->notHiddenBy($user)
             ->whereNull('archived_at')
-            ->with(['members', 'tags'])
+            // Shares along with the rest: every policy question about a shared
+            // channel reads them, and the sidebar asks about every row.
+            ->with(['members', 'tags', 'shares'])
             ->orderBy('name')
             ->get();
 
         /*
-         * Handed the workspace they came out of rather than eager loading it.
-         * These rows are its own channels, so the answer is already here and
-         * fetching it again would be a query for something in hand — and the
-         * policies asked about these channels one by one, which is what the
-         * ticket list does for every row, all reach for it.
+         * The workspaces these rows belong to, for the policies asked about
+         * them one by one — which is what the ticket list does for every row.
+         *
+         * This one is handed over rather than fetched: its own channels already
+         * have the answer in hand. The shared ones do not, and theirs is a
+         * different workspace than the one whose screen this is — setting this
+         * one on them would tell every policy that a guest is looking at a
+         * channel their own workspace owns, which is the one thing that must
+         * not be believed here.
          */
-        $channels->each->setRelation('workspace', $workspace);
+        $channels
+            ->filter(fn (Channel $channel): bool => $channel->workspace_id === $workspace->id)
+            ->each->setRelation('workspace', $workspace);
+
+        $channels->loadMissing('workspace');
+
+        /*
+         * Which workspaces this member belongs to, once. Without it every
+         * shared row asks the same question again while the policies work out
+         * whether this person is on the other side of the arrangement.
+         */
+        $user->loadMissing('workspaces');
 
         return $channels;
     }

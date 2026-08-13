@@ -53,6 +53,27 @@ enum WorkspaceAbility: string
     case SendContracts = 'send-contracts';
 
     /**
+     * Throwing away a contract everybody has already signed.
+     *
+     * Apart from SendContracts, and not a degree of it. Everything else in this
+     * feature adds to the record; this is the only thing that takes a finished
+     * one off the disk — the signed PDF, the audit page, the signatures and the
+     * hash that ties them to the document. The person on the other end has a
+     * copy and every reason to assume ours still exists.
+     *
+     * So it is asked as its own question. Somebody trusted to have the terms
+     * signed is not thereby trusted to make a signed set of terms disappear,
+     * and a workspace that wants that in one pair of hands — or in nobody's —
+     * has to be able to say so.
+     *
+     * Off for every seeded role but the owner, for the reason SeeHours is: it
+     * is handed out on purpose or not at all. What it does *not* widen is who
+     * can see the contract; a right to delete something you may not open would
+     * be a way to clear out other people's work by id.
+     */
+    case DeleteSignedContracts = 'delete-signed-contracts';
+
+    /**
      * Reading what the clock recorded about other people.
      *
      * Its own right, and off for every role until a workspace says otherwise —
@@ -97,6 +118,7 @@ enum WorkspaceAbility: string
             self::DeleteBotMessages => __('enums.workspace-ability.label.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.label.ShareFormsPublicly'),
             self::SendContracts => __('enums.workspace-ability.label.SendContracts'),
+            self::DeleteSignedContracts => __('enums.workspace-ability.label.DeleteSignedContracts'),
         };
     }
 
@@ -122,6 +144,7 @@ enum WorkspaceAbility: string
             self::DeleteBotMessages => __('enums.workspace-ability.description.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.description.ShareFormsPublicly'),
             self::SendContracts => __('enums.workspace-ability.description.SendContracts'),
+            self::DeleteSignedContracts => __('enums.workspace-ability.description.DeleteSignedContracts'),
         };
     }
 

@@ -24,7 +24,7 @@ class ReactionController extends Controller
         Message $message,
         ToggleReaction $toggleReaction,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $toggleReaction->handle(
             message: $message,

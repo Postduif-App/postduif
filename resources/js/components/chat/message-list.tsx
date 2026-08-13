@@ -30,6 +30,7 @@ import {
 } from '@/components/chat/message-toolbar';
 import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
+import { ReminderMenu } from '@/components/chat/reminder-menu';
 import { SecretCard } from '@/components/chat/secret-card';
 import { SentSecretCard } from '@/components/chat/sent-secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
@@ -427,6 +428,7 @@ function MessageRow({
     onPromote,
     onPin,
     bookmarked = false,
+    onRemind,
     onToggleBookmark,
     onForward,
     active,
@@ -473,6 +475,8 @@ function MessageRow({
      * Saving and unsaving in one callback, like pinning: which of the two it is
      * follows from `bookmarked`, so nothing has to keep them in step.
      */
+    /** Put this message aside to be brought back at the chosen moment. */
+    onRemind?: (message: ChatMessage, when: string) => void;
     onToggleBookmark?: (message: ChatMessage, bookmarked: boolean) => void;
     /** Carrying it into another conversation. Absent where there is nowhere to. */
     onForward?: (message: ChatMessage) => void;
@@ -973,6 +977,18 @@ function MessageRow({
                         </button>
                     )}
 
+                    {/*
+                        Setting the message aside until later. Beside the
+                        bookmark because the two are the same gesture with a
+                        different horizon: one is a shelf, the other an alarm
+                        clock.
+                    */}
+                    {onRemind && !message.pending && !deleted && (
+                        <ReminderMenu
+                            onSelect={(when) => onRemind(message, when)}
+                        />
+                    )}
+
                     {onToggleBookmark && !message.pending && (
                         <button
                             type="button"
@@ -1121,6 +1137,7 @@ export function MessageList({
     onPromote,
     onPin,
     bookmarkedIds,
+    onRemind,
     onToggleBookmark,
     onForward,
 }: {
@@ -1144,6 +1161,8 @@ export function MessageList({
     ) => void;
     /** The messages on this page this member set aside. */
     bookmarkedIds?: Set<string>;
+    /** Put this message aside to be brought back at the chosen moment. */
+    onRemind?: (message: ChatMessage, when: string) => void;
     onToggleBookmark?: (message: ChatMessage, bookmarked: boolean) => void;
     /** Carrying a message into another conversation. */
     onForward?: (message: ChatMessage) => void;
@@ -1336,6 +1355,7 @@ export function MessageList({
                                 canDeleteBotMessages={canDeleteBotMessages}
                                 onRemoveAttachment={onRemoveAttachment}
                                 bookmarked={bookmarkedIds?.has(message.id)}
+                                onRemind={onRemind}
                                 onToggleBookmark={onToggleBookmark}
                                 onForward={onForward}
                                 onEdit={onEdit}

@@ -13,6 +13,15 @@ return [
     ],
 
     'inbox' => [
+        /*
+         * Herinneringen die nog moeten afgaan. Bewust boven de lijst en met een
+         * eigen kopje: al het andere op dit scherm is al gebeurd, en deze nog
+         * niet.
+         */
+        'reminders' => [
+            'pending' => 'Staat nog te wachten',
+            'cancel' => 'Herinnering intrekken',
+        ],
         'empty' => 'Niets dat op je wacht',
         'empty_hint' => 'Word je genoemd, krijg je antwoord of loopt een thread door waar je in zit, dan staat het hier — uit alle kanalen die je kunt zien.',
         'title' => 'Inbox',

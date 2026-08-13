@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Workspace\CreateWorkspace;
 use App\Enums\SystemRole;
 use App\Models\User;
 use App\Models\Workspace;
@@ -8,17 +9,42 @@ use Inertia\Testing\AssertableInertia;
 use function Pest\Laravel\actingAs;
 
 /**
- * Making a workspace of your own.
+ * Where workspaces come from, and where they no longer do.
  *
- * The state this exists for is the one every new account starts in: signed in,
- * verified, and belonging nowhere. Before this, /app looked for a workspace,
- * found none and answered 404 — an account you cannot do anything with, handed
- * over one form after somebody asked for it.
+ * There used to be a form at /app/nieuw: anybody signed in could make one for
+ * themselves. That door is closed — a workspace is something a beheerder hands
+ * out from the admin panel, and nothing on the outside may make one.
+ *
+ * The action itself stays, because the installer still uses it to build the
+ * very first workspace on a fresh platform. The tests below drive it directly
+ * rather than through a request, which is now the only way it is reached.
  */
-it('sends somebody who belongs nowhere to make one', function () {
+it('has no public route left for making a workspace', function () {
+    expect(Route::has('workspaces.create'))->toBeFalse()
+        ->and(Route::has('workspaces.store'))->toBeFalse();
+});
+
+it('refuses a request to the address the form used to live at', function () {
+    // Not a 404: /app/nieuw is an ordinary workspace slug now, so the router
+    // matches the chat route and turns down the method. Either way nothing is
+    // made, which is the part that matters.
+    actingAs(User::factory()->create())
+        ->post('/app/nieuw', ['name' => 'Van Buiten'])
+        ->assertMethodNotAllowed();
+
+    expect(Workspace::count())->toBe(0);
+});
+
+/**
+ * The state every new account starts in: signed in, verified, and belonging
+ * nowhere. A 404 here would read as a broken account rather than as one that
+ * is waiting for an invitation, so the page says which of the two it is.
+ */
+it('tells somebody who belongs nowhere why there is nothing here', function () {
     actingAs(User::factory()->create())
         ->get(route('chat.home'))
-        ->assertRedirect(route('workspaces.create'));
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('workspaces/none'));
 });
 
 it('still sends a member straight to their workspace', function () {
@@ -30,32 +56,23 @@ it('still sends a member straight to their workspace', function () {
         ->assertRedirect(route('chat.index', $workspace));
 });
 
-it('says why somebody is here when they have nothing yet', function () {
-    actingAs(User::factory()->create())
-        ->get(route('workspaces.create'))
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('workspaces/create')
-            ->where('isFirst', true));
-});
+it('draws that page rather than falling back to an empty shell', function () {
+    // The page is mapped to the auth shell in app.tsx; a React error there
+    // would leave SSR quietly rendering nothing and the Inertia assertion
+    // above would still pass.
+    skipWithoutSsr();
 
-it('knows the difference when they already have one', function () {
-    $user = User::factory()->create();
-    workspaceWithMember($user);
+    $html = actingAs(User::factory()->create())
+        ->get(route('chat.home'))
+        ->getContent();
 
-    actingAs($user)
-        ->get(route('workspaces.create'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('isFirst', false));
+    expect($html)->toContain('Je hoort nog nergens bij');
 });
 
 it('makes the workspace, its owner and somewhere to talk in one go', function () {
     $user = User::factory()->create();
 
-    actingAs($user)
-        ->post(route('workspaces.store'), ['name' => 'De Vries & Zonen'])
-        ->assertRedirect();
-
-    $workspace = Workspace::where('name', 'De Vries & Zonen')->sole();
+    $workspace = app(CreateWorkspace::class)->handle($user, 'De Vries & Zonen');
 
     /*
      * All three or none. A workspace nobody is a member of cannot be opened,
@@ -71,9 +88,7 @@ it('makes the workspace, its owner and somewhere to talk in one go', function ()
 it('lands the maker inside the workspace they just made', function () {
     $user = User::factory()->create();
 
-    actingAs($user)->post(route('workspaces.store'), ['name' => 'Tweede Verdieping']);
-
-    $workspace = Workspace::where('name', 'Tweede Verdieping')->sole();
+    $workspace = app(CreateWorkspace::class)->handle($user, 'Tweede Verdieping');
 
     // chat.index rather than the channel directly: it already knows how to
     // pick the one to land in, and that is one decision rather than two.
@@ -83,20 +98,17 @@ it('lands the maker inside the workspace they just made', function () {
 });
 
 it('derives a readable address from the name', function () {
-    actingAs(User::factory()->create())
-        ->post(route('workspaces.store'), ['name' => 'De Vries & Zonen']);
+    $workspace = app(CreateWorkspace::class)
+        ->handle(User::factory()->create(), 'De Vries & Zonen');
 
-    expect(Workspace::where('name', 'De Vries & Zonen')->sole()->slug)
-        ->toBe('de-vries-zonen');
+    expect($workspace->slug)->toBe('de-vries-zonen');
 });
 
 it('lets two workspaces share a name without sharing an address', function () {
     Workspace::factory()->create(['slug' => 'de-bakkerij']);
 
-    actingAs(User::factory()->create())
-        ->post(route('workspaces.store'), ['name' => 'De Bakkerij']);
-
-    $second = Workspace::where('name', 'De Bakkerij')->sole();
+    $second = app(CreateWorkspace::class)
+        ->handle(User::factory()->create(), 'De Bakkerij');
 
     /*
      * The name goes through untouched and the address quietly gains a suffix.
@@ -108,40 +120,10 @@ it('lets two workspaces share a name without sharing an address', function () {
 });
 
 it('never hands out an address the router has spoken for', function () {
-    actingAs(User::factory()->create())
-        ->post(route('workspaces.store'), ['name' => 'Nieuw']);
+    $workspace = app(CreateWorkspace::class)
+        ->handle(User::factory()->create(), 'Settings');
 
-    // /app/nieuw is this very screen, and /app/settings is the settings shell.
-    // A workspace that claimed one would be a workspace nobody can open.
-    expect(Workspace::where('name', 'Nieuw')->sole()->slug)
-        ->not->toBeIn(Workspace::RESERVED_SLUGS);
-});
-
-it('asks for a name', function () {
-    actingAs(User::factory()->create())
-        ->post(route('workspaces.store'), ['name' => ''])
-        ->assertSessionHasErrors('name');
-
-    expect(Workspace::count())->toBe(0);
-});
-
-it('is not open to somebody who is not signed in', function () {
-    $this->post(route('workspaces.store'), ['name' => 'Van Buiten'])
-        ->assertRedirect(route('login'));
-
-    expect(Workspace::count())->toBe(0);
-});
-
-it('draws the form rather than falling back to an empty shell', function () {
-    // The page is mapped to the auth shell in app.tsx; a React error there
-    // would leave SSR quietly rendering nothing and the Inertia prop
-    // assertions above would still pass.
-    skipWithoutSsr();
-
-    $html = actingAs(User::factory()->create())
-        ->get(route('workspaces.create'))
-        ->getContent();
-
-    expect($html)->toContain('Maak je workspace')
-        ->and($html)->toContain('data-test="create-workspace-button"');
+    // /app/settings is the settings shell. A workspace that claimed it would
+    // be a workspace nobody can open.
+    expect($workspace->slug)->not->toBeIn(Workspace::RESERVED_SLUGS);
 });

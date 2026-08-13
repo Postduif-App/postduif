@@ -3,6 +3,7 @@ import {
     Archive,
     ArchiveRestore,
     BellOff,
+    Building2,
     ChevronDown,
     Hash,
     Headphones,
@@ -21,6 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
+import { SharedChannelsPanel } from '@/components/chat/shared-channels-panel';
 import {
     WorkspaceRail,
     WorkspaceToolLinks,
@@ -46,6 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { UserMenu } from '@/components/user-menu-content';
 import {
     setChannelMenuOpen,
     useChannelMenuOpen,
@@ -70,6 +73,7 @@ import type {
     ActiveThread,
     ArchivedChannel,
     ChannelSection as ChannelSectionRow,
+    ChannelShareInvitation,
     ChannelSummary,
     ChatWorkspace,
     WorkspaceOption,
@@ -214,6 +218,25 @@ function ChannelLink({
             )}
 
             {/*
+                Whose room this is, when it is not ours. Beside the name rather
+                than in the trailing group with the counts: those say how much is
+                waiting, and this says who you are talking to — which somebody
+                has to read before they type, not after.
+
+                An icon with a title rather than the workspace name spelled out.
+                A sidebar row is a row wide, and the name is on the header of the
+                channel itself the moment it is opened.
+            */}
+            {channel.sharedFrom && (
+                <Building2
+                    className="size-3 shrink-0 text-muted-foreground"
+                    aria-label={t('sidebar.channel.shared_from', {
+                        workspace: channel.sharedFrom,
+                    })}
+                />
+            )}
+
+            {/*
                 One trailing group rather than badges that each claim the right
                 edge: with two of them, whichever came first would push the other
                 out of place the moment it disappeared.
@@ -286,10 +309,17 @@ function WorkspaceMenu({
     workspace,
     workspaces,
     onInvite,
+    compact = false,
 }: {
     workspace: ChatWorkspace;
     workspaces: WorkspaceOption[];
     onInvite: () => void;
+    /**
+     * The badge on its own, for the rail standing without its column. The name
+     * beside it needs 16rem and the rail has 3.5 — and the badge is the half
+     * people recognise anyway, being a picture rather than a word.
+     */
+    compact?: boolean;
 }) {
     const { t } = useTranslate();
 
@@ -316,7 +346,14 @@ function WorkspaceMenu({
         !workspace.canManage &&
         elsewhere.length === 0
     ) {
-        return (
+        return compact ? (
+            <div
+                title={workspace.name}
+                className="flex size-10 items-center justify-center"
+            >
+                {badge}
+            </div>
+        ) : (
             <div className="flex items-center gap-2 px-2">
                 {badge}
                 <span className="truncate font-semibold">{workspace.name}</span>
@@ -326,12 +363,32 @@ function WorkspaceMenu({
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none">
+            <DropdownMenuTrigger
+                title={compact ? workspace.name : undefined}
+                className={cn(
+                    'flex items-center rounded-md hover:bg-sidebar-accent/50 focus-visible:ring-2 focus-visible:outline-none',
+                    compact
+                        ? 'size-10 justify-center'
+                        : 'w-full gap-2 px-2 py-1.5',
+                )}
+            >
                 {badge}
-                <span className="truncate font-semibold">{workspace.name}</span>
-                <ChevronDown className="ml-auto size-4 shrink-0 opacity-60" />
+                {!compact && (
+                    <>
+                        <span className="truncate font-semibold">
+                            {workspace.name}
+                        </span>
+                        <ChevronDown className="ml-auto size-4 shrink-0 opacity-60" />
+                    </>
+                )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent
+                align="start"
+                /* Beside the rail rather than under it: below the trigger there
+                   is a column's worth of icons this would cover. */
+                side={compact ? 'right' : 'bottom'}
+                className="w-56"
+            >
                 {workspace.canInvite && (
                     <DropdownMenuItem onSelect={onInvite}>
                         <UserPlus className="mr-2 size-4" />
@@ -837,7 +894,10 @@ export function ChannelSidebar({
      * way it used to be. The server counts it and keeps it moving over the
      * socket; the prop is the floor it falls back to on every page load.
      */
-    const { auth } = usePage<{ auth: Auth }>().props;
+    const { auth, channelShareInvitations = [] } = usePage<{
+        auth: Auth;
+        channelShareInvitations?: ChannelShareInvitation[];
+    }>().props;
 
     const inbox = useInboxActivity(auth.user.id, workspace.id, inboxUnread);
 
@@ -877,6 +937,15 @@ export function ChannelSidebar({
     useEffect(() => router.on('navigate', () => setChannelMenuOpen(false)), []);
 
     /**
+     * Whether this screen is the chat itself.
+     *
+     * Read off the open channel rather than passed in by every screen: a page
+     * either is a conversation or it is not, and the pages that are not already
+     * say so by handing this null.
+     */
+    const chatActive = activeChannelId !== null;
+
+    /**
      * What the rail and the menu both need to know. Built once and spread into
      * both, so the two can never disagree about what this workspace offers.
      */
@@ -885,6 +954,7 @@ export function ChannelSidebar({
         inboxTotal: inbox,
         hasTickets: channels.some((row) => row.hasTickets),
         hasTransfers: workspace.transfers !== null,
+        chatActive,
         mentionsActive,
         savedActive,
         transfersActive,
@@ -1090,6 +1160,20 @@ export function ChannelSidebar({
                 </div>
 
                 {/*
+                    Channels another organisation has offered this workspace,
+                    and the ones it already said yes to.
+
+                    Read off the page props rather than passed in: every screen
+                    that draws this sidebar would otherwise have to thread a
+                    prop through for something none of them know or care about,
+                    and the list is empty for all but a handful of people.
+                */}
+                <SharedChannelsPanel
+                    workspace={workspace}
+                    invitations={channelShareInvitations}
+                />
+
+                {/*
                     Last in the list, and only for whoever may take one back
                     out. An archived channel is meant to be out of the way, so
                     it sits below everything live rather than among it.
@@ -1153,11 +1237,43 @@ export function ChannelSidebar({
                 its width to a column of icons, and the menu already carries
                 every one of them by name.
             */}
-            <WorkspaceRail {...tools} />
+            <WorkspaceRail
+                {...tools}
+                /*
+                    Only while the column is away. The two of them are what
+                    that column carries above and below its list of channels,
+                    and hiding it would take the way out of this workspace and
+                    the way to your own settings with it — on every screen but
+                    the chat, which is most of them.
+                */
+                header={
+                    chatActive ? undefined : (
+                        <WorkspaceMenu
+                            compact
+                            workspaces={workspaces}
+                            workspace={workspace}
+                            onInvite={onInvitePeople}
+                        />
+                    )
+                }
+                footer={chatActive ? undefined : <UserMenu compact />}
+            />
 
-            <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-                {list()}
-            </aside>
+            {/*
+                The channels, on the screen that is about channels.
+
+                They used to stand beside the ticket list, the contracts and
+                the clock as well, where they were a column of somewhere-else:
+                16rem of names nobody on that screen had come to read, taken
+                off a table that wanted the width. The rail is what carries the
+                way back now — the chat has an entry of its own at the top of
+                it.
+            */}
+            {chatActive && (
+                <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+                    {list()}
+                </aside>
+            )}
 
             {/*
                 The same list on a screen with no room for it standing.

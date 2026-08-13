@@ -2,11 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Actions\Workflows\StartWorkflow;
 use App\Events\FormSubmitted;
-use App\Models\Form;
-use App\Models\FormSubmission;
 use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\Triggers\FormSubmittedTrigger;
 
 /**
@@ -17,52 +15,59 @@ use App\Workflows\Triggers\FormSubmittedTrigger;
  * about how often it runs. It still filters before it starts anything, for the
  * other reason that listener gives — a run written down and then found to be
  * about the wrong form is a row that never had a reason to exist.
+ *
+ * @extends StartsWorkflows<FormSubmitted>
  */
-class StartFormWorkflows
+class StartFormWorkflows extends StartsWorkflows
 {
-    public function __construct(private readonly StartWorkflow $startWorkflow) {}
-
     public function handle(FormSubmitted $event): void
     {
-        $submission = $event->submission;
-        $form = $submission->form;
-        $workspace = $form->workspace;
+        $this->start($event);
+    }
 
-        $workflows = Workflow::query()
-            ->listeningFor($workspace, FormSubmittedTrigger::key())
-            ->get();
+    protected function trigger(): string
+    {
+        return FormSubmittedTrigger::class;
+    }
 
-        foreach ($workflows as $workflow) {
-            /*
-             * Compared loosely and as strings because the id came out of a JSON
-             * column, where a ULID may have been saved with whatever the browser
-             * had in the box. The trigger requires a form, so an empty setting
-             * is a half-written workflow rather than "every form" — and it is
-             * skipped rather than run against all of them, which is the reading
-             * that could send one workspace's answers somewhere nobody chose.
-             */
-            $chosen = $workflow->triggerSetting('form_id');
-
-            if (blank($chosen) || (string) $chosen !== $form->id) {
-                continue;
-            }
-
-            $this->startWorkflow->handle($workflow, $this->triggerData($form, $submission));
-        }
+    /**
+     * @param  FormSubmitted  $event
+     */
+    protected function workspaceOf(object $event): ?Workspace
+    {
+        return $event->submission->form->workspace;
     }
 
     /**
      * What the trigger saw, exactly as FormSubmittedTrigger::provides()
      * describes it.
      *
+     * @param  FormSubmitted  $event
      * @return array{
      *     form: array{id: string, title: string},
      *     user: array{id: int|null, name: string},
      *     answers: array<string, string>,
-     * }
+     * }|null
      */
-    private function triggerData(Form $form, FormSubmission $submission): array
+    protected function contextFor(Workflow $workflow, object $event): ?array
     {
+        $submission = $event->submission;
+        $form = $submission->form;
+
+        /*
+         * Compared loosely and as strings because the id came out of a JSON
+         * column, where a ULID may have been saved with whatever the browser
+         * had in the box. The trigger requires a form, so an empty setting is a
+         * half-written workflow rather than "every form" — and it is skipped
+         * rather than run against all of them, which is the reading that could
+         * send one workspace's answers somewhere nobody chose.
+         */
+        $chosen = $workflow->triggerSetting('form_id');
+
+        if (blank($chosen) || (string) $chosen !== $form->id) {
+            return null;
+        }
+
         return [
             'form' => ['id' => $form->id, 'title' => $form->title],
 

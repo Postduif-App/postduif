@@ -25,6 +25,22 @@ return [
     'reaction_someone' => 'iemand anders',
     'reaction_others' => ':count anderen',
 
+    /*
+     * Herinneringen op een bericht. De keuzes zijn met opzet grof: wie een
+     * exacte tijd wil, plant een bericht in. Dit is voor "hier kom ik straks
+     * op terug".
+     */
+    'reminder' => [
+        'heading' => 'Herinner me',
+        'when' => [
+            '20m' => 'Over 20 minuten',
+            '1h' => 'Over een uur',
+            '3h' => 'Over drie uur',
+            'tomorrow' => 'Morgenochtend',
+            'next_week' => 'Volgende week maandag',
+        ],
+    ],
+
     'actions' => [
         'copy_text' => 'Tekst kopiëren',
         'copy_link' => 'Link naar dit bericht kopiëren',
@@ -32,6 +48,7 @@ return [
         'quote_key' => 'Citeren (R)',
         'ticket' => 'Ticket van dit bericht',
         'forward' => 'Doorsturen naar een ander kanaal',
+        'remind' => 'Herinner me hieraan',
         'save' => 'Bewaren voor later',
         'unsave' => 'Niet meer bewaren',
         'pin' => 'Vastpinnen in dit kanaal',

@@ -270,6 +270,27 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
     }
 
     /**
+     * Whether this member is in a particular workspace, by id.
+     *
+     * The mirror of Workspace::hasMember(), and here rather than only there
+     * because the caller that needed it has a workspace id and no workspace:
+     * a shared channel asks "is this person on the other side of the
+     * arrangement", and loading a whole workspace to answer yes or no would be
+     * a row fetched to be thrown away.
+     *
+     * Answered from the loaded relation when there is one, which is the case
+     * the sidebar hits — the alternative is a query for every channel drawn.
+     */
+    public function belongsToWorkspace(int $workspaceId): bool
+    {
+        if ($this->relationLoaded('workspaces')) {
+            return $this->workspaces->contains('id', $workspaceId);
+        }
+
+        return $this->workspaces()->whereKey($workspaceId)->exists();
+    }
+
+    /**
      * The workspaces this member belongs to that let AI clients in.
      *
      * One definition for all of the MCP tools, deliberately. Each of them

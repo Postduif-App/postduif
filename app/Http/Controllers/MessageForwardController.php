@@ -28,7 +28,7 @@ class MessageForwardController extends Controller
         Message $message,
         ForwardMessage $forwardMessage,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
         abort_unless($message->channel_id === $channel->id, 404);
 
         // A deleted message never gets this far: route binding leaves the

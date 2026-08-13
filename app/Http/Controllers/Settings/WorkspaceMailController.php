@@ -6,11 +6,14 @@ use App\Actions\Mail\SendTestMail;
 use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\MailTransport;
 use App\Enums\SmtpEncryption;
+use App\Features\Tickets as TicketsFeature;
 use App\Http\Controllers\Controller;
+use App\Models\Channel;
 use App\Models\WorkspaceMailSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -74,7 +77,43 @@ class WorkspaceMailController extends Controller
                 'has_lettermint_token' => filled($settings->lettermint_token),
                 'verified_at' => $settings->verified_at?->toIso8601String(),
                 'last_error' => $settings->last_error,
+
+                /*
+                 * The other direction. Not the token itself: it is shown once,
+                 * when it is made, and after that the screen only knows whether
+                 * there is one — the same rule the three secrets above follow.
+                 * The whole URL is sent rather than the path, because what
+                 * somebody does with it is paste it into a provider's
+                 * dashboard, and half an address is not pasteable.
+                 */
+                'has_inbound_token' => filled($settings->inbound_token),
+                'inbound_url' => $settings->inbound_token === null
+                    ? null
+                    : route('mail.inbound', ['token' => str_repeat('•', 16)]),
+                'inbound_channel_id' => $settings->inbound_channel_id,
+                'inbound_address' => $settings->inbound_address,
             ],
+
+            /*
+             * Channels that can actually hold a ticket, for the picker. A
+             * channel that keeps none would accept the setting and then drop
+             * every mail sent to it — see ReceiveInboundEmail, which checks the
+             * same thing again at delivery time because a channel can stop
+             * keeping tickets long after this was chosen.
+             */
+            'inboundChannels' => $workspace->hasFeature(TicketsFeature::class)
+                ? $workspace->channels()
+                    ->whereNull('archived_at')
+                    ->orderBy('name')
+                    ->get()
+                    ->filter(fn (Channel $channel): bool => $channel->hasTickets())
+                    ->map(fn (Channel $channel): array => [
+                        'id' => $channel->id,
+                        'name' => $channel->name,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             // Where the test message would go, said out loud on the button:
             // this is the address of whoever is looking, and nobody should have
             // to press it to find that out.
@@ -166,6 +205,75 @@ class WorkspaceMailController extends Controller
         $workspace->mailSettings()->save($settings);
 
         return back()->with('status', __('flashes.settings.mail_saved'));
+    }
+
+    /**
+     * Where mail sent to this workspace lands, and the secret that lets it in.
+     *
+     * Its own endpoint rather than more fields on update(). That one is a form
+     * about a transport, where every field is read together and a change to any
+     * of them un-answers the verification tick; this is a standing arrangement
+     * with a mail provider, and saving a channel here has nothing to say about
+     * whether sending still works.
+     *
+     * The token is minted on the first save and shown once. Re-saving the
+     * channel does not touch it — rolling it is the button below, deliberately
+     * separate, because it breaks a working delivery until somebody pastes the
+     * new URL at the provider.
+     */
+    public function inbound(Request $request): RedirectResponse
+    {
+        $workspace = $this->currentWorkspace($request);
+
+        $validated = $request->validate([
+            /*
+             * Checked against this workspace's own channels, not just against
+             * the table. Without the scope, a beheerder could point their
+             * letterbox at a channel in somebody else's workspace and have
+             * their customers' mail delivered there.
+             */
+            'inbound_channel_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('channels', 'id')->where('workspace_id', $workspace->id),
+            ],
+            'inbound_address' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $settings = $workspace->mailSettings()->firstOrNew();
+
+        $settings->fill($validated);
+
+        // Nothing arrives without one, so making it here saves a beheerder a
+        // second button they would have to know to press.
+        if ($settings->inbound_channel_id !== null && $settings->inbound_token === null) {
+            $settings->regenerateInboundToken();
+        }
+
+        $workspace->mailSettings()->save($settings);
+
+        return back()->with('status', __('flashes.settings.mail_saved'));
+    }
+
+    /**
+     * A new secret for the delivery URL, and the old one dead.
+     *
+     * Shown once, in the flash, because that is the only moment it exists
+     * anywhere a person can copy it from — the screen it returns to only ever
+     * learns that there is a token, never which.
+     */
+    public function regenerateInbound(Request $request): RedirectResponse
+    {
+        $workspace = $this->currentWorkspace($request);
+        $settings = $workspace->mailSettings()->firstOrNew();
+
+        $token = $settings->regenerateInboundToken();
+
+        $workspace->mailSettings()->save($settings);
+
+        Inertia::flash('inboundUrl', route('mail.inbound', ['token' => $token]));
+
+        return back();
     }
 
     /**

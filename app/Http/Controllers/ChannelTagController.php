@@ -23,7 +23,7 @@ class ChannelTagController extends Controller
         Channel $channel,
         SyncChannelTags $syncChannelTags,
     ): RedirectResponse {
-        abort_unless($channel->workspace_id === $workspace->id, 404);
+        $this->channelIsReachable($workspace, $channel);
 
         $syncChannelTags->handle($channel, $request->array('tags'));
 

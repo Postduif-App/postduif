@@ -33,9 +33,9 @@ class MembersRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Select::make('role')
+                Select::make('workspace_role_id')
                     ->label('Rol')
-                    ->options(SystemRole::class)
+                    ->options(fn (): array => $this->roleOptions())
                     ->selectablePlaceholder(false)
                     ->required(),
 
@@ -66,9 +66,15 @@ class MembersRelationManager extends RelationManager
                      * on the old string column: a workspace writes its own roles
                      * now, and "Leverancier" is not a case of that enum — it
                      * would throw rather than render.
+                     *
+                     * Off the membership each row was loaded through rather than
+                     * Workspace::roleFor(), which is a query per row and answers
+                     * from a per-instance cache — so the badge went on showing
+                     * the old role for the render straight after somebody
+                     * changed it.
                      */
-                    ->state(fn (User $record): string => $this->workspace()
-                        ->roleFor($record)->name ?? '—')
+                    ->state(fn (User $record): string => $record->membership
+                        ->workspaceRole?->name ?? '—')
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')
@@ -83,11 +89,7 @@ class MembersRelationManager extends RelationManager
                      * for the same reason as the column above — and filtering on
                      * the pointer, which is what the membership actually holds.
                      */
-                    ->options(fn (): array => $this->workspace()
-                        ->roles()
-                        ->inOrder()
-                        ->pluck('name', 'id')
-                        ->all())
+                    ->options(fn (): array => $this->roleOptions())
                     ->attribute('workspace_user.workspace_role_id'),
             ])
             ->headerActions([
@@ -96,10 +98,10 @@ class MembersRelationManager extends RelationManager
                     ->recordSelectSearchColumns(['name', 'username', 'email'])
                     ->schema(fn (AttachAction $action): array => [
                         $action->getRecordSelect(),
-                        Select::make('role')
+                        Select::make('workspace_role_id')
                             ->label('Rol')
-                            ->options(SystemRole::class)
-                            ->default(SystemRole::Member)
+                            ->options(fn (): array => $this->roleOptions())
+                            ->default(fn (): ?int => $this->defaultRoleId())
                             ->selectablePlaceholder(false)
                             ->required(),
                     ])
@@ -130,5 +132,33 @@ class MembersRelationManager extends RelationManager
     private function isOwner(User $user): bool
     {
         return $this->workspace()->owner_id === $user->id;
+    }
+
+    /**
+     * The roles this workspace wrote for itself, not the four the application
+     * ships with. A workspace may have renamed them or added its own, and a
+     * membership points at a row rather than at a name.
+     *
+     * @return array<int, string>
+     */
+    private function roleOptions(): array
+    {
+        return $this->workspace()
+            ->roles()
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * Where the role select starts: this workspace's member row. Looked up by
+     * key rather than by name for the same reason as above — the label is the
+     * workspace's to change, the key is not.
+     */
+    private function defaultRoleId(): ?int
+    {
+        return $this->workspace()
+            ->roles()
+            ->where('key', SystemRole::Member->value)
+            ->value('id');
     }
 }

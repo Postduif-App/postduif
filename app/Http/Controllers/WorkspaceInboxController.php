@@ -7,10 +7,12 @@ use App\Actions\Chat\PresentMessage;
 use App\Enums\InboxItemType;
 use App\Models\InboxItem;
 use App\Models\PollOption;
+use App\Models\Reminder;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -172,7 +174,64 @@ class WorkspaceInboxController extends Controller
                 ->map(fn (InboxItem $item): array => $this->present($item, $user))
                 ->values()
                 ->all(),
+            /*
+             * What this member has asked to be reminded of and has not been
+             * reminded of yet.
+             *
+             * Sent with every filter rather than only with the reminder one, so
+             * that the tab can decide where to draw it without a second
+             * request. It is a short list by nature — a reminder leaves it the
+             * moment it goes off — and for most people it is empty.
+             */
+            'pendingReminders' => $this->pendingReminders($user, $channels),
         ]);
+    }
+
+    /**
+     * Reminders still to come, soonest first.
+     *
+     * Scoped to the same channels the list above is, and for the same reason: a
+     * reminder set in a channel somebody has since been removed from would
+     * otherwise show them a line out of a conversation they can no longer open.
+     * The reminder itself is dropped when it goes off — see
+     * DeliverDueReminders, which asks the same question at delivery — so this
+     * is the screen agreeing with the sweep rather than a second rule.
+     *
+     * @param  Collection<int, int>  $channels
+     * @return array<int, array<string, mixed>>
+     */
+    private function pendingReminders(User $user, Collection $channels): array
+    {
+        return Reminder::query()
+            ->pendingFor($user)
+            ->whereIn('channel_id', $channels)
+            ->with(['message.author', 'channel'])
+            ->limit(self::LIMIT)
+            ->get()
+            // The message was withdrawn between setting the reminder and now.
+            // Nothing to point at, so nothing to draw.
+            ->filter(fn (Reminder $reminder): bool => $reminder->message !== null
+                && ! $reminder->message->isDeleted())
+            ->map(fn (Reminder $reminder): array => [
+                'remindAt' => $reminder->remind_at->toIso8601String(),
+                'note' => $reminder->note,
+                'channel' => [
+                    'id' => $reminder->channel_id,
+                    'label' => $reminder->channel->displayNameFor($user),
+                    'type' => $reminder->channel->type->value,
+                ],
+                /*
+                 * Through the same summary the rows above use, so a word
+                 * masked in the channel stays masked here and a bot line names
+                 * the bot. Spread first and then named over: its 'id' is the
+                 * message's, and this row is addressed by the reminder.
+                 */
+                ...$this->presentMessage->threadSummary($reminder->message),
+                'id' => $reminder->id,
+                'messageId' => $reminder->message_id,
+            ])
+            ->values()
+            ->all();
     }
 
     private function survives(InboxItem $item): bool

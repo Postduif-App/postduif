@@ -5,6 +5,7 @@ return [
 
     'rail' => [
         'channels' => 'Channels',
+        'chat' => 'Chat',
         'inbox' => 'Inbox',
         'board' => 'Board',
         'secrets' => 'Secrets',
@@ -24,8 +25,29 @@ return [
         'archived' => 'Archived',
     ],
 
+    /*
+     * Shared channels, seen from the side that was invited. Deliberately "of
+     * :workspace" rather than "shared with you": whoever is looking has to see
+     * at a glance that the room belongs to somebody else.
+     */
+    'shares' => [
+        'heading' => 'Shared channels',
+        'from' => 'Of :workspace',
+        'may_post' => 'You may take part here.',
+        'may_read' => 'You read along only.',
+        'accept' => 'Accept',
+        'decline' => 'Decline',
+        'add_colleagues' => 'Add colleagues',
+        'add_title' => 'Add colleagues',
+        'add_description' => 'Which of you takes part in :channel at :workspace? Only the people you tick here see the channel.',
+        'add_confirm' => 'Add',
+        'already_in' => 'already in',
+    ],
+
     'channel' => [
         'muted' => 'Notifications are off',
+        // A shared channel: which organisation the channel itself belongs to.
+        'shared_from' => 'Channel of :workspace',
         'huddling' => '{1}1 person is talking here|[2,*]:count people are talking here',
         'open_tickets' => '{1}1 open ticket|[2,*]:count open tickets',
         'threads_show' => 'Show threads in :channel',
