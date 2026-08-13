@@ -26,6 +26,19 @@ import { cn } from '@/lib/utils';
  *
  * new URL(..., import.meta.url) is what makes Vite notice it and emit it under
  * /build. A bare string would be a path that only exists in node_modules.
+ *
+ * EEN EIS AAN DE WEBSERVER, EN DIE IS AL EEN KEER GEMIST
+ * Vite houdt de extensie aan, dus dit bestand komt als .mjs op de schijf. Veel
+ * nginx-installaties hebben daar geen MIME-regel voor en serveren hem als
+ * application/octet-stream — en een browser weigert daar een module-worker uit
+ * te starten. Met X-Content-Type-Options: nosniff, dat deze applicatie terecht
+ * meestuurt, is er ook niets om op terug te vallen.
+ *
+ * Het scherm blijft dan leeg met "Loading Worker ... was blocked because of a
+ * disallowed MIME type". Op postduif.app is dat opgelost met een location-blok
+ * dat default_type text/javascript zet voor .mjs; let op dat een `types { }`-blok
+ * daar juist verkeerd is, want dat vervangt de geërfde MIME-map in plaats van
+ * hem aan te vullen.
  */
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
