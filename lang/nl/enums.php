@@ -113,6 +113,20 @@ return [
             'ContractProgress' => 'Contract',
         ],
     ],
+    'mail-transport' => [
+        'label' => [
+            'Default' => 'Via Postduif zelf',
+            'Smtp' => 'Eigen SMTP-server',
+            'Postmark' => 'Postmark',
+            'Lettermint' => 'Lettermint',
+        ],
+        'description' => [
+            'Default' => 'De mailserver van de applicatie. Je hoeft niets in te stellen en niets te onderhouden.',
+            'Smtp' => 'De gegevens van je eigen mailserver of die van je hostingpartij. Werkt overal, en is het traagst als die server ver weg staat.',
+            'Postmark' => 'Een verzenddienst voor transactionele mail. Je hebt een server token nodig uit je Postmark-account.',
+            'Lettermint' => 'Een Europese verzenddienst. Je hebt een projecttoken nodig uit je Lettermint-omgeving.',
+        ],
+    ],
     'member-panel-visibility' => [
         'label' => [
             'Off' => 'Uit',
@@ -128,6 +142,18 @@ return [
         'statement' => [
             'Drawn' => 'met de hand getekend',
             'Typed' => 'als getypte naam gezet',
+        ],
+    ],
+    'smtp-encryption' => [
+        'label' => [
+            'StartTls' => 'STARTTLS',
+            'Tls' => 'TLS (direct)',
+            'None' => 'Geen',
+        ],
+        'description' => [
+            'StartTls' => 'De verbinding begint open en gaat daarna op slot. Meestal poort 587 — dit is wat de meeste providers willen.',
+            'Tls' => 'Versleuteld vanaf het eerste teken. Meestal poort 465.',
+            'None' => 'Onversleuteld. Alleen voor een relay op je eigen netwerk: je wachtwoord gaat leesbaar over de lijn.',
         ],
     ],
     'ticket-priority' => [

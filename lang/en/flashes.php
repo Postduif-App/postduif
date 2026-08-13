@@ -104,6 +104,8 @@ return [
         'permissions_saved' => 'Permissions saved.',
         'notifications_saved' => 'Notifications saved.',
         'theme_saved' => 'Theme saved.',
+        'mail_saved' => 'Mail settings saved.',
+        'mail_test_sent' => 'Test message sent to :email.',
         'avatar_saved' => 'Photo saved.',
         'avatar_removed' => 'Photo removed.',
         'logo_saved' => 'Logo saved.',

@@ -27,4 +27,10 @@ return [
         'expires' => 'This link was made for you and expires on :date. After that the files are gone. Did this arrive unexpectedly? Then there is nothing you need to do.',
     ],
 
+    'test' => [
+        'subject' => 'Test message from :workspace',
+        'heading' => 'This works',
+        'intro' => 'This message was sent through the mail settings of **:workspace**. If it arrived, so will the rest.',
+        'sender' => 'Have a look at the sender above too: that is the address this workspace mails from from now on.',
+    ],
 ];

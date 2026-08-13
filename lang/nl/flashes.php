@@ -107,6 +107,8 @@ return [
         'permissions_saved' => 'Rechten opgeslagen.',
         'notifications_saved' => 'Notificaties opgeslagen.',
         'theme_saved' => 'Thema opgeslagen.',
+        'mail_saved' => 'Mailinstellingen opgeslagen.',
+        'mail_test_sent' => 'Testmail verstuurd naar :email.',
         'avatar_saved' => 'Foto opgeslagen.',
         'avatar_removed' => 'Foto verwijderd.',
         'logo_saved' => 'Logo opgeslagen.',

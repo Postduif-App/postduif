@@ -37,4 +37,10 @@ return [
         'expires' => 'Deze link is voor jou gemaakt en verloopt op :date. Daarna zijn de bestanden weg. Kreeg je dit onverwacht? Dan hoef je niets te doen.',
     ],
 
+    'test' => [
+        'subject' => 'Testbericht van :workspace',
+        'heading' => 'Dit werkt',
+        'intro' => 'Dit bericht is verstuurd via de mailinstellingen van **:workspace**. Komt het aan, dan komt de rest ook aan.',
+        'sender' => 'Kijk ook even naar de afzender hierboven: dat is het adres waarmee deze workspace voortaan mailt.',
+    ],
 ];

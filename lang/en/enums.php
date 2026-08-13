@@ -105,6 +105,20 @@ return [
             'ContractProgress' => 'Contract',
         ],
     ],
+    'mail-transport' => [
+        'label' => [
+            'Default' => 'Through Postduif itself',
+            'Smtp' => 'Your own SMTP server',
+            'Postmark' => 'Postmark',
+            'Lettermint' => 'Lettermint',
+        ],
+        'description' => [
+            'Default' => 'The application\'s mail server. Nothing to set up and nothing to maintain.',
+            'Smtp' => 'The details of your own mail server or your hosting party\'s. Works everywhere, and is slowest when that server is far away.',
+            'Postmark' => 'A sending service for transactional mail. You need a server token from your Postmark account.',
+            'Lettermint' => 'A European sending service. You need a project token from your Lettermint environment.',
+        ],
+    ],
     'member-panel-visibility' => [
         'label' => [
             'Off' => 'Off',
@@ -120,6 +134,18 @@ return [
         'statement' => [
             'Drawn' => 'drawn by hand',
             'Typed' => 'set as a typed name',
+        ],
+    ],
+    'smtp-encryption' => [
+        'label' => [
+            'StartTls' => 'STARTTLS',
+            'Tls' => 'TLS (direct)',
+            'None' => 'None',
+        ],
+        'description' => [
+            'StartTls' => 'The connection opens in the clear and is then locked. Usually port 587 — this is what most providers want.',
+            'Tls' => 'Encrypted from the first byte. Usually port 465.',
+            'None' => 'Unencrypted. Only for a relay on your own network: your password goes over the wire readable.',
         ],
     ],
     'ticket-priority' => [
