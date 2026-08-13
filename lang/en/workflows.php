@@ -438,6 +438,26 @@ return [
             'label' => 'Post a contract in a channel',
             'description' => "Puts the contract card in a channel, in the name of this workflow's owner.",
         ],
+        'add-contract-signer' => [
+            'label' => 'Add a signer',
+            'description' => 'Puts one more person on the contract, as long as it has not gone out yet.',
+            'name' => [
+                'label' => 'Name',
+                'hint' => 'May come from a variable, for example {{ trigger.answers.naam }}.',
+            ],
+            'email' => [
+                'label' => 'E-mail address',
+                'hint' => 'Where the request to sign is sent.',
+            ],
+        ],
+        'duplicate-contract' => [
+            'label' => 'Duplicate a contract',
+            'description' => 'Makes a fresh draft of the same document, without the original signers and signatures.',
+            'title' => [
+                'label' => 'Title of the copy',
+                'hint' => 'A contract is named once and never renamed, so give the copy a name of its own — Lease {{ trigger.answers.naam }}, for instance.',
+            ],
+        ],
         'cancel-contract' => [
             'label' => 'Withdraw a contract',
             'description' => 'Stops a contract that is out. The links keep working and say it was withdrawn.',
@@ -625,6 +645,10 @@ return [
         'bad_signer_email' => '":email" is not a usable e-mail address.',
         'no_signer_name' => 'No name was left for the signer.',
         'signer_is_sender' => 'That address already signed the template itself (:email).',
+        'signer_already_on' => ':email is already on this contract.',
+        'contract_already_sent' => '":title" has already gone out, so nobody can be added to it.',
+        'nothing_to_duplicate' => 'There is no document to copy from ":title".',
+        'no_contract_title' => 'Nothing was left of the title for the copy.',
         'nothing_to_render' => 'There is nothing to compose for ":title": the contract is not finished.',
         'no_channel_chosen' => 'This step was given no channel.',
         'channel_not_found' => 'That channel is gone, or this workflow\'s owner cannot reach it.',

@@ -455,6 +455,26 @@ return [
             'label' => 'Contract in een kanaal plaatsen',
             'description' => 'Plaatst de contractkaart in een kanaal, op naam van de eigenaar van deze workflow.',
         ],
+        'add-contract-signer' => [
+            'label' => 'Ondertekenaar toevoegen',
+            'description' => 'Zet er nog iemand op, zolang het contract nog niet verstuurd is.',
+            'name' => [
+                'label' => 'Naam',
+                'hint' => 'Mag uit een variabele komen, bijvoorbeeld {{ trigger.answers.naam }}.',
+            ],
+            'email' => [
+                'label' => 'E-mailadres',
+                'hint' => 'Waar de vraag om te tekenen naartoe gaat.',
+            ],
+        ],
+        'duplicate-contract' => [
+            'label' => 'Contract dupliceren',
+            'description' => 'Maakt een nieuw concept van hetzelfde document, zonder de ondertekenaars en handtekeningen van het origineel.',
+            'title' => [
+                'label' => 'Titel van de kopie',
+                'hint' => 'Een contract wordt maar één keer benoemd, dus geef de kopie een eigen naam — bijvoorbeeld Huurovereenkomst {{ trigger.answers.naam }}.',
+            ],
+        ],
         'cancel-contract' => [
             'label' => 'Contract intrekken',
             'description' => 'Zet een lopend contract stop. De links blijven werken en vertellen dat het ingetrokken is.',
@@ -647,6 +667,10 @@ return [
         'bad_signer_email' => '":email" is geen bruikbaar e-mailadres.',
         'no_signer_name' => 'Er bleef geen naam over voor de ondertekenaar.',
         'signer_is_sender' => 'Dat adres tekende het sjabloon zelf al (:email).',
+        'signer_already_on' => ':email staat al op dit contract.',
+        'contract_already_sent' => '":title" is al verstuurd, dus er kan niemand meer bij.',
+        'nothing_to_duplicate' => 'Van ":title" is geen document om te kopiëren.',
+        'no_contract_title' => 'Er bleef geen titel over voor de kopie.',
         'nothing_to_render' => 'Er valt niets samen te stellen voor ":title": het contract is nog niet afgerond.',
         'no_channel_chosen' => 'Deze stap heeft geen kanaal gekregen.',
         'channel_not_found' => 'Dat kanaal bestaat niet meer, of de eigenaar van deze workflow mag er niet bij.',

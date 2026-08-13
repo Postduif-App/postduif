@@ -12,6 +12,7 @@ use App\Support\Transcription\NullTranscriber;
 use App\Support\Transcription\Transcriber;
 use App\Support\Transcription\WhisperTranscriber;
 use App\Workflows\Actions\AddChannelMembers;
+use App\Workflows\Actions\AddContractSigner;
 use App\Workflows\Actions\AddReaction;
 use App\Workflows\Actions\AppendToDocument;
 use App\Workflows\Actions\ArchiveChannel;
@@ -27,6 +28,7 @@ use App\Workflows\Actions\CreatePoll;
 use App\Workflows\Actions\CreateSecretRequest;
 use App\Workflows\Actions\CreateTicket;
 use App\Workflows\Actions\Delay;
+use App\Workflows\Actions\DuplicateContract;
 use App\Workflows\Actions\ForwardMessage;
 use App\Workflows\Actions\GetChannelInfo;
 use App\Workflows\Actions\HttpRequest;
@@ -273,6 +275,8 @@ class AppServiceProvider extends ServiceProvider
                  * somebody, as opposed to the things it does to a message.
                  */
                 SendContractFromTemplate::class,
+                DuplicateContract::class,
+                AddContractSigner::class,
                 RemindContractSigners::class,
                 PostContractToChannel::class,
                 CancelContract::class,

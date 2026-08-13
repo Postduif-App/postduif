@@ -252,3 +252,131 @@ it('stops when the workspace has switched contracts off', function () {
     expect($run->status)->toBe(WorkflowRunStatus::Failed)
         ->and($run->failure_reason)->not->toBeEmpty();
 });
+
+/*
+ * A draft being built up out of what happens: the contract exists, and the
+ * second tenant is named by the form that came in afterwards.
+ */
+it('puts another signer on a draft, and keeps the one already there', function () {
+    [$author, $workspace, $workflow] = contractActionScene();
+
+    $draft = Contract::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $author->id,
+        'title' => 'Huurovereenkomst',
+        'status' => ContractStatus::Draft,
+    ]);
+
+    $first = ContractSigner::factory()->for($draft)->inPosition(0)->create([
+        'name' => 'Jan de Vries',
+        'email' => 'jan@klant.nl',
+    ]);
+
+    $run = runStep($workflow, 'add-contract-signer', [
+        'contract_id' => $draft->id,
+        'signer_name' => '{{ trigger.answers.naam }}',
+        'signer_email' => '{{ trigger.answers.email }}',
+    ], [
+        'trigger' => ['answers' => ['naam' => 'Marieke de Vries', 'email' => 'marieke@klant.nl']],
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($draft->signers()->orderBy('signing_order')->pluck('email')->all())
+        ->toBe(['jan@klant.nl', 'marieke@klant.nl'])
+        // The first signer keeps the link they were given: adding a name must
+        // not rotate a token somebody is holding.
+        ->and($first->fresh()->token)->toBe($first->token)
+        ->and(data_get($run->context, 'steps.0.signer.email'))->toBe('marieke@klant.nl');
+});
+
+it('adds nobody to a contract that has already gone out', function () {
+    [, , $workflow, $contract] = contractActionScene();
+
+    $run = runStep($workflow, 'add-contract-signer', [
+        'contract_id' => $contract->id,
+        'signer_name' => 'Marieke',
+        'signer_email' => 'marieke@klant.nl',
+    ]);
+
+    /*
+     * The boxes on a sent contract point at the people who were on it when it
+     * left, so a name appended now is a signature line nobody drew.
+     */
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('al verstuurd')
+        ->and($contract->signers()->count())->toBe(1);
+});
+
+it('refuses to add somebody who is already on the contract', function () {
+    [$author, $workspace, $workflow] = contractActionScene();
+
+    $draft = Contract::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $author->id,
+        'status' => ContractStatus::Draft,
+    ]);
+
+    ContractSigner::factory()->for($draft)->inPosition(0)->create(['email' => 'jan@klant.nl']);
+
+    $run = runStep($workflow, 'add-contract-signer', [
+        'contract_id' => $draft->id,
+        'signer_name' => 'Jan',
+        // The same address in different capitals is the same person, which is
+        // the rule everywhere else this application matches signers.
+        'signer_email' => 'JAN@klant.nl',
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('staat al')
+        ->and($draft->signers()->count())->toBe(1);
+});
+
+/*
+ * The monthly lease: the same document, for somebody new, with none of what
+ * happened to the original.
+ */
+it('duplicates a contract into a fresh draft with nobody on it', function () {
+    [, $workspace, $workflow, $contract, $signer] = contractActionScene();
+
+    $signer->forceFill(['signed_at' => now()])->save();
+    $contract->forceFill(['status' => ContractStatus::Completed, 'completed_at' => now()])->save();
+
+    $run = runStep($workflow, 'duplicate-contract', [
+        'contract_id' => $contract->id,
+        'title' => 'Offerte dakwerk {{ trigger.answers.naam }}',
+    ], [
+        'trigger' => ['answers' => ['naam' => 'Bakker']],
+    ]);
+
+    $copy = Contract::query()
+        ->where('workspace_id', $workspace->id)
+        ->where('title', 'Offerte dakwerk Bakker')
+        ->first();
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and($copy)->not->toBeNull()
+        ->and($copy->status)->toBe(ContractStatus::Draft)
+        // Nobody on it, and nothing of what the original went through: a
+        // signature carried across would be claiming somebody signed a document
+        // they have never seen.
+        ->and($copy->signers()->count())->toBe(0)
+        ->and($copy->completed_at)->toBeNull()
+        // And the original is left exactly as it was, which is the point of
+        // copying a completed contract rather than editing it.
+        ->and($contract->fresh()->status)->toBe(ContractStatus::Completed)
+        ->and(data_get($run->context, 'steps.0.contract.id'))->toBe($copy->id);
+});
+
+it('refuses to duplicate a contract into a title that came up empty', function () {
+    [, , $workflow, $contract] = contractActionScene();
+
+    $run = runStep($workflow, 'duplicate-contract', [
+        'contract_id' => $contract->id,
+        'title' => '{{ trigger.answers.naam }}',
+    ]);
+
+    // A copy named after a variable that held nothing would sit in the list
+    // beside the original with nothing to tell them apart.
+    expect($run->status)->toBe(WorkflowRunStatus::Failed)
+        ->and($run->failure_reason)->toContain('titel');
+});
