@@ -32,7 +32,7 @@ WORKDIR /app
 # freetype support. pcntl is what the queue worker and Reverb use to catch the
 # signal that tells them to stop; without it neither shuts down cleanly.
 #
-# No imagick and no ghostscript: the PDF and SVG image generators also need
+# Still no imagick: the PDF and SVG image generators inside it also need
 # spatie/pdf-to-image, which this app does not install, so they decline the file
 # instead of failing on it.
 RUN install-php-extensions \
@@ -45,6 +45,28 @@ RUN install-php-extensions \
         pdo_pgsql \
         redis \
         zip
+
+# Ghostscript, as a binary rather than through imagick.
+#
+# Every contract PDF is rewritten by it before it is stored: that is what strips
+# embedded JavaScript and attached files out of a document that is about to be
+# mailed to people outside the workspace, and what writes it back out as PDF 1.4
+# — the version the free FPDI parser can read, and so the version the signed
+# copy can be composed from. See App\Actions\Contracts\NormalisePdf.
+#
+# Without it the upload refuses every file. That is the deliberate failure
+# direction — better a refusal while the author is still standing there than a
+# contract that cannot be produced after somebody has signed it — but it does
+# mean the binary is not optional in any image that serves requests.
+#
+# In the `base` stage rather than in `production`, so the development image and
+# the queue worker have it too. It lands on /usr/bin/gs, which is on the PATH of
+# every process here; config/contracts.php falls back to a bare `gs` and finds
+# it. GHOSTSCRIPT_PATH is for hosts where that is not true — a Mac with Homebrew
+# and php-fpm, most obviously.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ghostscript \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/entrypoint.sh /usr/local/bin/app-entrypoint

@@ -62,6 +62,18 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      # Ghostscript, because the contract suite is not really testing anything
+      # without it: NormalisePdf shells out to it on every upload, and the tests
+      # that exercise that path skip themselves when the binary is missing. A
+      # green run would then be saying nothing about the half of the feature
+      # most likely to break on a server.
+      #
+      # Installed rather than assumed: the runner image happens to carry it
+      # today, and a green suite that quietly depends on that is exactly the
+      # kind of thing that goes red on an image update nobody here chose.
+      - name: Install Ghostscript
+        run: sudo apt-get install -y --no-install-recommends ghostscript
+
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
