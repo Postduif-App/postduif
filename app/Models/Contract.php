@@ -54,6 +54,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ *
+ * Only present on a query that asked for it — see the withCount in
+ * ContractController::index. Null everywhere else, which is why every reader
+ * treats it as a number that may not be there.
+ * @property-read int|null $signed_count
  */
 /*
  * The three stamps are fillable beside the columns somebody types into, and it

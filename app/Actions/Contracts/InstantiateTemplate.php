@@ -141,12 +141,12 @@ class InstantiateTemplate
         );
 
         if ($author === null) {
-            return array_values($recipients);
+            return $recipients;
         }
 
         return [
             ['name' => $author->name, 'email' => $author->email, 'user_id' => $author->user_id],
-            ...array_values($recipients),
+            ...$recipients,
         ];
     }
 

@@ -43,28 +43,66 @@ return [
          * stellen, en de broncode is waar dat te controleren valt.
          */
         'source' => 'Gratis en open source — broncode op GitHub ↗',
+
         /*
-         * Twee tellingen in één zin, dus twee sleutels: het aantal onderdelen
-         * telt mee voor het meervoud, "standaard uit" hangt aan een ander
-         * getal en zou in dezelfde regel het verkeerde meervoud krijgen.
+         * De vier getallen onder de hero, als eenheid onder een cijfer.
+         *
+         * Geen zinnen met :count erin: het getal staat er groot naast en
+         * herhalen zou het twee keer zeggen. Daarom ook geen meervoudsvormen —
+         * dit is een kolomkop en geen zin, en die verbuigt niet mee.
          */
-        'feature_count' => '{1} :count onderdeel|[0,*] :count onderdelen',
-        'opt_in_count' => '{1} :count standaard uit|[0,*] :count standaard uit',
+        'tally' => [
+            'features' => 'onderdelen',
+            'roles' => 'rollen om mee te beginnen',
+            'triggers' => 'aanleidingen',
+            'actions' => 'stappen',
+        ],
+
+        /*
+         * Het schetsje naast de kop. Verzonnen namen, en dat mogen ze ook zijn:
+         * dit is een tekening van het idee en geen schermafdruk.
+         */
+        'sketch' => [
+            'channel' => 'klant-vandenberg',
+            'guest' => '2 leden · 1 gast',
+            'who' => 'Marieke',
+            'time' => '09:14',
+            'message' => 'De export loopt sinds vanmorgen vast op de nieuwe koppeling.',
+            'ticket_label' => 'Ticket 124',
+            'ticket_status' => 'Open',
+            'ticket_title' => 'Export loopt vast',
+            'ticket_assignee' => 'Opgepakt door Sam',
+        ],
+
+        /*
+         * De drie kaarten boven de lijst. De namen en de omschrijvingen komen
+         * uit de featureklassen — zie BuildFeatureInventory::spotlight() — en
+         * alleen de zin eronder staat hier, want die is een oordeel: waarom dit
+         * het onderdeel is waar iemand voor komt. De sleutels zijn de sleutels
+         * van de onderdelen zelf, dus ze kunnen niet naar iets anders gaan
+         * wijzen zonder dat het onderdeel hernoemd wordt.
+         */
+        'spotlight' => [
+            'title' => 'Waar mensen voor blijven',
+            'lead' => 'Drie dingen die er in een gewone chat niet in zitten, en waarvoor je anders drie andere abonnementen had.',
+            'items' => [
+                'tickets' => 'Het gesprek loopt door, het werk blijft staan. Een bericht wordt met één klik een ticket in de lijst van het kanaal, met een status en iemand die het oppakt — en de discussie eronder blijft waar hij was.',
+                'transfers' => 'Zet bestanden klaar achter één link, ook voor iemand zonder account. Met een wachtwoord ervoor en een datum waarop de link niets meer opent, in plaats van een map die er over twee jaar nog staat.',
+                'contracts' => 'Een PDF met invulvakken de deur uit, en getekend weer terug. Iedere ontvanger krijgt zijn eigen link per mail, jij ziet wie er al geweest is, en het ondertekende document komt met het audit-blad eronder in de workspace terug.',
+            ],
+        ],
 
         'features' => [
             'title' => 'Wat er in zit',
             'lead' => 'Elk onderdeel hieronder staat als klasse in de code, met deze naam en deze omschrijving. Wat er niet in staat, staat er niet.',
-            'off_by_default' => 'STANDAARD UIT',
-        ],
-
-        'opt_in' => [
-            'title' => 'Jij zet het aan',
-            'lead' => 'Deze onderdelen staan uit tot iemand ze aanzet. Het zijn precies de onderdelen die iets buiten je workspace laten reiken.',
+            // Naast de kop van een groep, zodat de lijst te overzien is voor je
+            // hem leest. Het getal komt uit de inventaris, niet uit deze zin.
+            'group_count' => '{1} :count onderdeel|[0,*] :count onderdelen',
         ],
 
         'channels' => [
             'title' => 'Een kanaal naar de vorm van het gesprek',
-            'lead' => 'Een kanaal is niets dat je aanzet, dus het staat niet in de lijst hierboven — terwijl het wel is waar je de hele dag in zit. Dit zijn de knoppen eronder.',
+            'lead' => 'Een kanaal zet je niet aan, dus het staat niet in de lijst hierboven — terwijl je er de hele dag in zit. Dit zijn de knoppen eronder.',
             'layout' => 'Weergave',
             'posting' => 'Wie er post',
             'tickets' => 'Tickets',
@@ -73,28 +111,35 @@ return [
 
         'workflow' => [
             'title' => 'Dingen die je workspace zelf doet',
-            // De twee aantallen komen uit de registry, niet uit deze zin.
-            'lead' => 'Een workflow is één aanleiding en daarna een reeks stappen, met voorwaarden en splitsingen ertussen. :triggers aanleidingen en :actions stappen om uit te kiezen.',
-            'when' => 'Wanneer',
-            'then' => 'Wat er dan gebeurt',
+            'lead' => 'Eén aanleiding, daarna een reeks stappen, met voorwaarden en splitsingen ertussen. Dit is waar je uit kiest.',
+            // Als eenheid onder een getal, niet als kop boven een lijst.
+            'when' => 'aanleidingen',
+            'then' => 'stappen',
         ],
 
         'api' => [
             'title' => 'Voor je eigen script en je AI-client',
-            'lead' => 'Twee deuren, elk met hun eigen sleutel: een persoonlijk token voor je eigen script, OAuth voor een AI-client die zichzelf aanmeldt. Wat erachter zit is precies wat jij mag zien — elke aanroep loopt langs dezelfde regels als het scherm.',
+            'lead' => 'Een persoonlijk token voor je eigen script, OAuth voor een AI-client. Elke aanroep loopt langs dezelfde regels als het scherm: wat jij niet mag zien, geeft dit ook niet terug.',
             'endpoints' => 'De API',
-            'tools' => 'Wat een AI-client kan, na jouw toestemming',
-            'note' => 'Een AI-client meldt zich met OAuth aan en vraagt jou om toestemming; je ziet op een scherm van Postduif wat hij mag en trekt het met één klik weer in. En het staat per workspace standaard uit: zolang die schakelaar uit is, komt er langs deze kant niets naar binnen of naar buiten.',
+            'reference' => 'De hele referentie →',
+            'tools' => 'Wat een AI-client kan',
+            'note' => 'Na jouw toestemming, in te trekken met één klik, en per workspace standaard uit.',
         ],
 
         'roles' => [
             'title' => 'Wie wat mag',
-            'lead' => 'Vier rollen om mee te beginnen, en daarna maak je je eigen. Een rol is niet meer dan een naam en een setje rechten uit de lijst hieronder — een gast is er één van: iemand van buiten, die alleen de kanalen ziet waarvoor hij is uitgenodigd.',
+            'lead' => 'Vier rollen om mee te beginnen, en daarna maak je je eigen. Een rol is een naam met een setje rechten uit deze lijst — een gast is er één van, en ziet alleen de kanalen waarvoor hij is uitgenodigd.',
             'ability' => 'Recht',
             'browse' => 'De workspace zien',
-            'note' => 'Dit is waar een workspace mee begint, niet waar het bij blijft. De rollen staan in de workspace zelf: een beheerder hernoemt ze, vinkt rechten aan en uit, en maakt er zoveel bij als hij nodig heeft — een Leverancier, een Stagiair, een Boekhouder. De lijst met rechten ligt wél vast, want elk recht hier wordt ergens afgedwongen; eentje die je zelf kon verzinnen zou een vinkje zijn dat niets doet.',
-            'ceiling' => 'Eén regel houdt het dicht: niemand kan een recht uitdelen dat hij zelf niet heeft. Daarom begint de eigenaar met alles — een recht dat niemand had, zou nooit meer door iemand aangezet kunnen worden.',
-            'browse_note' => 'De bovenste rij is geen recht maar een eigenschap van de rol. Hij bepaalt niet wat je met de workspace mag doen, maar of die er voor jou is: wat een gast niet mag zien, bestaat voor hem niet — en dat is een vraag die in de database wordt gesteld, niet in een vinkje.',
+            /*
+             * Eén terzijde in plaats van drie. Wat eruit ging: de uitleg dat de
+             * bovenste rij een eigenschap van de rol is en geen recht, en dat
+             * niemand een recht kan uitdelen dat hij zelf niet heeft. Allebei
+             * waar en allebei nog nauwkeurig uitgelegd waar het telt — in de
+             * code en in het rollenscherm — maar geen van beide de reden dat
+             * iemand op deze pagina is.
+             */
+            'note' => 'Dit is waar een workspace mee begint, niet waar het bij blijft: een beheerder hernoemt de rollen, vinkt rechten aan en uit, en maakt er zoveel bij als hij nodig heeft. De lijst met rechten ligt wél vast, want elk recht hier wordt ergens afgedwongen.',
             'yes' => 'ja',
             'no' => 'nee',
         ],

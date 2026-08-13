@@ -6,6 +6,7 @@ use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowRunStatus;
 use App\Enums\WorkflowStepKind;
 use App\Features\Contracts;
+use App\Features\Tickets;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Form;
 use App\Models\FormField;
@@ -83,6 +84,37 @@ it('lists a workspace his workflows without drawing any of them', function () {
             ->has('triggers', count(app(WorkflowRegistry::class)->toArray($workspace)['triggers']))
             ->missing('catalogue')
         );
+});
+
+it('tells the list when each workflow last went off', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $ran = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $never = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $lately = now()->subHour();
+
+    WorkflowRun::factory()->for($ran)->create(['created_at' => now()->subDays(3)]);
+    WorkflowRun::factory()->for($ran)->create(['created_at' => $lately]);
+
+    // The newest of the two, not the last one written down: a run that was
+    // backfilled after the fact would otherwise read as the most recent.
+    $this->actingAs($admin)
+        ->get(route('workflows.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            // Newest first, so the one that has never run leads the list.
+            ->where('workflows.0.id', $never->id)
+            ->where('workflows.0.lastRunAt', null)
+            ->where('workflows.1.id', $ran->id)
+            ->where('workflows.1.lastRunAt', $lately->toIso8601String()));
 });
 
 it('shows a beheerder the builder with everything it can be built from', function () {
@@ -571,6 +603,160 @@ it('keeps one workspace out of another his run history', function () {
     $this->actingAs($admin)->get(route('workflows.runs', $theirs))->assertNotFound();
 });
 
+it('keeps an ordinary member out of the run history', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $member = User::factory()->create();
+    joinWorkspace($workspace, $member, SystemRole::Member);
+
+    /*
+     * The same door as the builder, and it has to be: a run holds the context
+     * it walked with — message text, people's names — so a screen that was
+     * merely harder to find would be handing that to anybody with the link.
+     */
+    $this->actingAs($member)->get(route('workflows.runs', $workflow))->assertForbidden();
+});
+
+it('says how many rows a loop walked, nought included', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $run = WorkflowRun::factory()->for($workflow)->create();
+
+    WorkflowStepRun::factory()->create([
+        'workflow_run_id' => $run->id,
+        'position' => 0,
+        'action_type' => WorkflowStepKind::Loop->value,
+        'result' => ['count' => 3],
+    ]);
+
+    /*
+     * A loop that found nothing is the case this line exists for: "nul" is the
+     * answer somebody is looking for when a loop appears to have done nothing,
+     * and a missing count would read as the loop never having run.
+     */
+    WorkflowStepRun::factory()->create([
+        'workflow_run_id' => $run->id,
+        'position' => 1,
+        'action_type' => WorkflowStepKind::Loop->value,
+        'result' => [],
+    ]);
+
+    // Not a loop, so the number means nothing and is not offered at all.
+    WorkflowStepRun::factory()->create([
+        'workflow_run_id' => $run->id,
+        'position' => 2,
+        'action_type' => 'add-reaction',
+        'result' => ['count' => 9],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.runs', $workflow))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('runs.data.0.steps.0.count', 3)
+            ->where('runs.data.0.steps.1.count', 0)
+            ->where('runs.data.0.steps.2.count', null)
+        );
+});
+
+it('names an action the register no longer knows by the key it was stored as', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $run = WorkflowRun::factory()->for($workflow)->create();
+
+    WorkflowStepRun::factory()->create([
+        'workflow_run_id' => $run->id,
+        'position' => 0,
+        'action_type' => 'stuur-een-duif',
+    ]);
+
+    /*
+     * An action taken out of the application since the run happened. The line
+     * still has to say which one it was: a history that quietly renamed the
+     * step to nothing would be worse than one that shows a key nobody
+     * recognises, because the key is at least searchable.
+     */
+    $this->actingAs($admin)
+        ->get(route('workflows.runs', $workflow))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('runs.data.0.steps.0.action', 'stuur-een-duif')
+        );
+});
+
+it('shows a waiting run the moment it gives up waiting', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $deadline = now()->addDays(3);
+
+    WorkflowRun::factory()->for($workflow)->waiting()->create([
+        'resume_at' => $deadline,
+    ]);
+
+    /*
+     * The one fact that makes a waiting run readable rather than worrying: a
+     * run that has sat there for a week looks stuck until the screen says when
+     * it stops sitting there.
+     */
+    $this->actingAs($admin)
+        ->get(route('workflows.runs', $workflow))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('runs.data.0.status', WorkflowRunStatus::Waiting->value)
+            ->where('runs.data.0.resumeAt', $deadline->toIso8601String())
+            ->where('runs.data.0.finishedAt', null)
+        );
+});
+
+it('puts the newest run first and pages the rest', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    // One more than a page holds, so both halves of the promise are exercised.
+    $runs = WorkflowRun::factory()->for($workflow)->count(26)->create();
+
+    $newest = $runs->last();
+
+    /*
+     * Newest first, because the question this screen answers is almost always
+     * about the run that just happened. Ordered by id rather than by a
+     * timestamp: runs created within the same second are ordinary on a queue,
+     * and a tie there would make the top of the list arbitrary.
+     */
+    $this->actingAs($admin)
+        ->get(route('workflows.runs', $workflow))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('runs.data.0.id', $newest->id)
+            ->has('runs.data', 25)
+            ->where('runs.total', 26)
+        );
+});
+
 it('clears out runs that have been finished long enough, and leaves waiting ones', function () {
     [$admin, $workspace] = workflowBeheerder();
 
@@ -797,4 +983,126 @@ it('hands the builder a fork as a shape rather than as rows', function () {
             // the condition editor offers.
             ->where('grammar.branches.then', 'Als het klopt')
         );
+});
+
+it('saves a loop with its body, numbered in reading order', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    Feature::for($workspace)->activate(Tickets::class);
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $channel = channelWithMember($workspace, $admin);
+
+    $this->actingAs($admin)
+        ->put(route('workflows.update', $workflow), [
+            'name' => 'Nachtploeg',
+            'trigger_type' => 'channel-join',
+            'trigger_config' => ['channel_id' => $channel->id],
+            'steps' => [
+                [
+                    'kind' => 'loop',
+                    'config' => ['source' => 'overdue-tickets'],
+                    'branches' => [
+                        'then' => [[
+                            'kind' => 'action',
+                            'action_type' => 'send-channel-message',
+                            'config' => [
+                                'channel_id' => $channel->id,
+                                'body' => 'Nog open: {{ item.ticket.title }}',
+                            ],
+                        ]],
+                        'else' => [],
+                    ],
+                ],
+                ['kind' => 'action', 'action_type' => 'add-reaction', 'config' => ['emoji' => '✅']],
+            ],
+        ])
+        ->assertRedirect();
+
+    $steps = $workflow->fresh()->steps;
+
+    $loop = $steps->firstWhere('kind', WorkflowStepKind::Loop);
+    $body = $steps->firstWhere('parent_step_id', $loop?->id);
+    $after = $steps->last();
+
+    expect($steps)->toHaveCount(3)
+        ->and($loop->position)->toBe(0)
+        // A loop's body is its then lane — the same place a fork keeps one, so
+        // nothing between the screen and the database learned a third shape.
+        ->and($body->position)->toBe(1)
+        ->and($body->branch)->toBe(WorkflowBranch::Then)
+        ->and($loop->setting('source'))->toBe('overdue-tickets')
+        // And what follows the loop hangs under nothing.
+        ->and($after->parent_step_id)->toBeNull()
+        ->and($after->position)->toBe(2);
+});
+
+it('refuses a loop with no list to walk', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $channel = channelWithMember($workspace, $admin);
+
+    // A loop with no source would walk nothing and read as though it walked
+    // something, which is the one way a loop can be quietly wrong.
+    $this->actingAs($admin)
+        ->put(route('workflows.update', $workflow), [
+            'name' => 'Nachtploeg',
+            'trigger_type' => 'channel-join',
+            'trigger_config' => ['channel_id' => $channel->id],
+            'steps' => [
+                ['kind' => 'loop', 'config' => [], 'branches' => ['then' => [], 'else' => []]],
+            ],
+        ])
+        ->assertSessionHasErrors('steps.0.config.source');
+});
+
+it('refuses a loop inside a lane', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $workflow = Workflow::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    $channel = channelWithMember($workspace, $admin);
+
+    /*
+     * A loop inside a loop is fifty rows times fifty rows, and a loop inside a
+     * fork's lane is a picture that stops being one. The runner and the storage
+     * would both take either.
+     */
+    $this->actingAs($admin)
+        ->put(route('workflows.update', $workflow), [
+            'name' => 'Splitsing',
+            'trigger_type' => 'channel-join',
+            'trigger_config' => ['channel_id' => $channel->id],
+            'steps' => [
+                [
+                    'kind' => 'branch',
+                    'condition' => [
+                        'match' => 'all',
+                        'otherwise' => 'skip',
+                        'rules' => [['path' => 'trigger.user.name', 'operator' => 'is-not-empty', 'value' => '']],
+                    ],
+                    'branches' => [
+                        'then' => [[
+                            'kind' => 'loop',
+                            'config' => ['source' => 'overdue-tickets'],
+                            'branches' => ['then' => [], 'else' => []],
+                        ]],
+                        'else' => [],
+                    ],
+                ],
+            ],
+        ])
+        ->assertSessionHasErrors('steps.0.branches.then.0.kind');
 });

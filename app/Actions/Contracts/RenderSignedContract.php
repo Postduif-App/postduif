@@ -76,7 +76,30 @@ class RenderSignedContract
 
         for ($page = 1; $page <= $pageCount; $page++) {
             $template = $pdf->importPage($page);
-            $size = $pdf->getTemplateSize($template);
+            $measured = $pdf->getTemplateSize($template);
+
+            /*
+             * False rather than a size means FPDI could not measure the page.
+             * Refused here rather than carried on with, because every box on
+             * this page is placed as a fraction of its width and height — a
+             * page we cannot measure is one we would stamp signatures onto at
+             * coordinates that mean nothing.
+             */
+            if (! is_array($measured)) {
+                throw new SigningRefused('A page of the source document could not be measured.');
+            }
+
+            /*
+             * Read into the three keys this class actually uses. FPDI documents
+             * the return as "array or false" and fills it with numeric aliases
+             * beside the named keys, so the shape drawField relies on is
+             * established here rather than assumed page after page.
+             */
+            $size = [
+                'width' => (float) $measured['width'],
+                'height' => (float) $measured['height'],
+                'orientation' => (string) $measured['orientation'],
+            ];
 
             $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
             $pdf->useTemplate($template);
@@ -370,7 +393,7 @@ class RenderSignedContract
         $pdf->Ln(3);
 
         $this->auditLine($pdf, __('contracts.audit.document'), $contract->title);
-        $this->auditLine($pdf, __('contracts.audit.sent_by'), $contract->author?->name ?? $contract->workspace->name);
+        $this->auditLine($pdf, __('contracts.audit.sent_by'), $contract->author->name ?? $contract->workspace->name);
         $this->auditLine($pdf, __('contracts.audit.completed_at'), $contract->completed_at?->format('d-m-Y H:i') ?? '—');
 
         /*

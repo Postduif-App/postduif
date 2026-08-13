@@ -4,13 +4,11 @@ use App\Actions\Contracts\NormalisePdf;
 use App\Actions\Contracts\PdfRefused;
 use App\Enums\ContractStatus;
 use App\Enums\SystemRole;
-use App\Features\Contracts as ContractsFeature;
 use App\Models\Contract;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -23,28 +21,6 @@ use function Pest\Laravel\actingAs;
  * tekenen" beside it, which is about the most trusting frame of mind anybody
  * opens a document in.
  */
-
-/**
- * A workspace that has switched contracts on, and somebody in it who may send
- * them.
- *
- * The feature is activated by hand rather than left to the factory, and that is
- * the point of it: contracts are off until a workspace says otherwise, so every
- * test that wants one has to say so too.
- *
- * @return array{0: User, 1: Workspace}
- */
-function contractSenderInWorkspace(SystemRole $role = SystemRole::Admin): array
-{
-    Storage::fake('local');
-
-    $user = User::factory()->create();
-    $workspace = workspaceWithMember($user, $role);
-
-    Feature::for($workspace)->activate(ContractsFeature::class);
-
-    return [$user, $workspace];
-}
 
 /**
  * Nothing in this suite means anything without the rewriter.

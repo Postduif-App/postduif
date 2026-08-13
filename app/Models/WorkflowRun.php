@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed> $context
  * @property int $resume_position
  * @property list<int>|null $resume_plan
+ * @property array<string, mixed>|null $awaiting
  * @property Carbon|null $resume_at
  * @property Carbon|null $finished_at
  * @property string|null $failure_reason
@@ -53,6 +54,7 @@ class WorkflowRun extends Model
             'context' => 'array',
             'resume_position' => 'integer',
             'resume_plan' => 'array',
+            'awaiting' => 'array',
             'resume_at' => 'datetime',
             'finished_at' => 'datetime',
         ];
@@ -99,6 +101,12 @@ class WorkflowRun extends Model
     /**
      * The runs whose waiting is over.
      *
+     * Only the clock is read here, including for the runs that are waiting for
+     * a happening as well: an await always carries a deadline, and this is what
+     * makes it give up and go down the other lane. A run woken by the event
+     * itself never reaches this scope — the resumer has already taken it out of
+     * Waiting by then.
+     *
      * @param  Builder<$this>  $query
      */
     public function scopeDue(Builder $query): void
@@ -106,5 +114,17 @@ class WorkflowRun extends Model
         $query->where('status', WorkflowRunStatus::Waiting)
             ->whereNotNull('resume_at')
             ->where('resume_at', '<=', now());
+    }
+
+    /**
+     * The runs holding their breath for one particular happening.
+     *
+     * @param  Builder<$this>  $query
+     */
+    public function scopeAwaiting(Builder $query, string $event, string $record): void
+    {
+        $query->where('status', WorkflowRunStatus::Waiting)
+            ->where('awaiting->event', $event)
+            ->where('awaiting->record', $record);
     }
 }

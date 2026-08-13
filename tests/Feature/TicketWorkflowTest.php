@@ -384,3 +384,31 @@ it('says so rather than putting a blank line on a ticket', function () {
     expect($run->status)->toBe(WorkflowRunStatus::Failed)
         ->and($ticket->comments()->count())->toBe(0);
 });
+
+it('reads a ticket again after a wait, so a condition compares against today', function () {
+    [$member, $workspace, , $ticket] = ticketWorkflowScene();
+
+    $workflow = Workflow::factory()->enabled()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $member->id,
+    ]);
+
+    // The deadline had not passed when the workflow was set off.
+    $ticket->forceFill(['due_at' => now()->addHour()])->save();
+
+    $before = ['trigger' => ['ticket' => ['id' => $ticket->id, 'is_overdue' => false]]];
+
+    $this->travel(2)->hours();
+
+    $run = runStep($workflow, 'read-ticket', ['ticket_id' => $ticket->id], $before);
+
+    /*
+     * This is the whole story: is_overdue is worked out against now(), so the
+     * step says yes where the trigger's copy still says no — and it says it
+     * under a path spelled the same way, so the condition after it reads the
+     * way anybody would expect.
+     */
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and(data_get($run->context, 'steps.0.ticket.is_overdue'))->toBeTrue()
+        ->and(data_get($run->context, 'trigger.ticket.is_overdue'))->toBeFalse();
+});

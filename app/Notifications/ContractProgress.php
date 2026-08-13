@@ -121,11 +121,11 @@ class ContractProgress extends Notification implements SendsPushover, ShouldQueu
     {
         return match ($this->kind) {
             ContractProgressKind::Signed => __('notifications.contract.subject_signed', [
-                'name' => $this->signer?->name ?? '',
+                'name' => $this->signer->name ?? '',
                 'title' => $this->contract->title,
             ]),
             ContractProgressKind::Declined => __('notifications.contract.subject_declined', [
-                'name' => $this->signer?->name ?? '',
+                'name' => $this->signer->name ?? '',
                 'title' => $this->contract->title,
             ]),
             ContractProgressKind::Completed => __('notifications.contract.subject_completed', [
@@ -138,11 +138,11 @@ class ContractProgress extends Notification implements SendsPushover, ShouldQueu
     {
         return match ($this->kind) {
             ContractProgressKind::Signed => trans_choice('notifications.contract.body_signed', $this->outstanding(), [
-                'name' => $this->signer?->name ?? '',
+                'name' => $this->signer->name ?? '',
                 'title' => $this->contract->title,
             ]),
             ContractProgressKind::Declined => __('notifications.contract.body_declined', [
-                'name' => $this->signer?->name ?? '',
+                'name' => $this->signer->name ?? '',
                 'title' => $this->contract->title,
             ]),
             ContractProgressKind::Completed => __('notifications.contract.body_completed', [

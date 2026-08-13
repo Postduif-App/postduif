@@ -55,10 +55,7 @@ class InviteLinkController extends Controller
             'channel_ids' => [
                 'array',
                 'max:50',
-                Rule::requiredIf(fn (): bool => Role::query()
-                    ->whereKey($request->input('role'))
-                    ->where('workspace_id', $workspace->id)
-                    ->value('is_external') ?? false),
+                Rule::requiredIf(fn (): bool => $this->rolePointsOutside($request->input('role'), $workspace)),
             ],
             'channel_ids.*' => ['integer'],
 
@@ -86,6 +83,27 @@ class InviteLinkController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.invitation.link_created')]);
 
         return back();
+    }
+
+    /**
+     * Whether the role that was asked for is one for people from outside.
+     *
+     * Guarded on the value being a number at all: this runs while the rules are
+     * being built, so before 'role' has been held to being an integer. A word
+     * arriving here would otherwise be handed to the database as a key and take
+     * the request down with a type error, where a validation message was the
+     * answer that was wanted.
+     */
+    private function rolePointsOutside(mixed $role, Workspace $workspace): bool
+    {
+        if (! is_numeric($role)) {
+            return false;
+        }
+
+        return (bool) Role::query()
+            ->whereKey((int) $role)
+            ->where('workspace_id', $workspace->id)
+            ->value('is_external');
     }
 
     /**

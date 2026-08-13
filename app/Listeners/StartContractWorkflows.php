@@ -14,6 +14,7 @@ use App\Events\ContractSigned;
 use App\Models\Contract;
 use App\Models\ContractSigner;
 use App\Models\Workflow;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\Triggers\ContractCancelledTrigger;
 use App\Workflows\Triggers\ContractCompletedTrigger;
 use App\Workflows\Triggers\ContractDeclinedTrigger;
@@ -115,6 +116,10 @@ class StartContractWorkflows
             fn (Workflow $workflow): ?array => $this->matches($workflow, $contract)
                 ? $this->context($contract, $signer)
                 : null,
+            // The same payload once more, unfiltered: a run that is waiting for
+            // this contract has to recognise itself in it, and the closure
+            // above answers a different question — see StartMatchingWorkflows.
+            $this->context($contract, $signer),
         );
     }
 
@@ -178,84 +183,45 @@ class StartContractWorkflows
     /**
      * What the trigger saw, exactly as the ContractTrigger family promises it.
      *
-     * The counts and the days are worked out here rather than left to the
-     * condition, and that is the half of this class that earns its keep: a
-     * condition can compare a number but cannot produce one. "Verloopt binnen
-     * drie dagen" and "meer dan de helft heeft getekend" only exist because
-     * these lines do.
+     * The contract half lives in RecordSnapshot, which the read-contract step
+     * reads from too — the counts and the days it works out are the half of
+     * this that earns its keep, because a condition can compare a number but
+     * cannot produce one, and after a Delay it has to be today's number rather
+     * than the trigger's.
+     *
+     * The signer stays here: it belongs to the happening, not to the contract.
+     * Only three of the eight events have one at all.
      *
      * @return array<string, mixed>
      */
     private function context(Contract $contract, ?ContractSigner $signer): array
     {
+        $snapshot = RecordSnapshot::contract($contract);
+
+        if ($signer === null) {
+            return $snapshot;
+        }
+
         $signed = $contract->signers->filter(fn (ContractSigner $one): bool => $one->hasSigned())->count();
         $declined = $contract->signers->filter(fn (ContractSigner $one): bool => $one->hasDeclined())->count();
 
         return [
-            'contract' => [
-                'id' => $contract->id,
-                'title' => $contract->title,
-                'status' => $contract->status->value,
-                'url' => route('chat.contracts.show', [$contract->workspace, $contract]),
-                'expires_at' => $contract->expires_at?->toDateString(),
+            ...$snapshot,
+            'signer' => [
+                'id' => $signer->id,
+                'name' => $signer->name,
+                'email' => $signer->email,
+                'order' => $signer->signing_order,
                 /*
-                 * Null rather than a number when there is no deadline, so a
-                 * condition asking "binnen drie dagen" says no for a contract
-                 * that can never run out — where a 0 or a 999 would both be a
-                 * lie in one direction or the other.
-                 *
-                 * Whole days and never negative: a contract that ran out
-                 * yesterday is at nought, which is what "nog nul dagen" means
-                 * to whoever reads it.
+                 * No account behind them means somebody from outside, which is
+                 * the condition people reach for first: a customer and a
+                 * colleague do not want the same message.
                  */
-                'days_until_expiry' => $contract->expires_at === null
-                    ? null
-                    : max(0, (int) now()->startOfDay()->diffInDays($contract->expires_at->startOfDay(), false)),
-                'page_count' => $contract->page_count,
-                'signer_count' => $contract->signers->count(),
-                'signed_count' => $signed,
-                'declined_count' => $declined,
-                'remaining' => $contract->signers->count() - $signed - $declined,
-
-                // The names in one string, for a message that wants to say who
-                // it is about without a step per person.
-                'signers' => $contract->signers->pluck('name')->implode(', '),
-                'download_url' => $contract->status->isEvidence()
-                    ? route('chat.contracts.download', [$contract->workspace, $contract])
-                    : null,
-            ],
-            'author' => [
-                'id' => $contract->created_by,
-                'name' => $contract->author?->name,
-            ],
-            /*
-             * The channel news about this contract is posted in, which is
-             * usually where a workflow wants to answer as well — and empty for
-             * a contract that has none, so a step pointed at
-             * {{ trigger.channel.id }} fails visibly rather than posting
-             * somewhere nobody chose.
-             */
-            'channel' => [
-                'id' => $contract->notify_channel_id,
-                'name' => $contract->notifyChannel?->name,
-            ],
-            ...$signer === null ? [] : [
-                'signer' => [
-                    'id' => $signer->id,
-                    'name' => $signer->name,
-                    'email' => $signer->email,
-                    'order' => $signer->signing_order,
-                    /*
-                     * No account behind them means somebody from outside, which
-                     * is the condition people reach for first: a customer and a
-                     * colleague do not want the same message.
-                     */
-                    'is_external' => $signer->user_id === null,
-                    'is_last' => $signed + $declined === $contract->signers->count(),
-                    'signature_method' => $signer->signature_method?->value,
-                    'decline_reason' => $signer->decline_reason,
-                    'opened_at' => $signer->opened_at?->toIso8601String(),
-                ],
+                'is_external' => $signer->user_id === null,
+                'is_last' => $signed + $declined === $contract->signers->count(),
+                'signature_method' => $signer->signature_method?->value,
+                'decline_reason' => $signer->decline_reason,
+                'opened_at' => $signer->opened_at?->toIso8601String(),
             ],
         ];
     }

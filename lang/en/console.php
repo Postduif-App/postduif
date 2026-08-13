@@ -8,6 +8,8 @@ return [
     'documents_pruned' => '{1}1 document removed for good.|[2,*]:count documents removed for good.',
     'contracts_expired' => '{0}No contracts expired.|{1}1 contract marked expired.|[2,*]:count contracts marked expired.',
     'contracts_pruned' => '{0}No contracts cleared.|{1}1 contract cleared.|[2,*]:count contracts cleared.',
+    'polls_nothing_settled' => 'No poll has just run out.',
+    'polls_settled' => '{1}1 expired poll announced.|[2,*]:count expired polls announced.',
     'contracts_check_missing' => 'Ghostscript cannot be started through :binary. Without this binary the contract upload refuses every file.',
     'contracts_check_hint' => 'Install ghostscript and set GHOSTSCRIPT_PATH in .env to the full path — the PATH of php-fpm is not the PATH of your shell.',
     'contracts_check_failed' => 'The sample PDF did not get through: :reason',

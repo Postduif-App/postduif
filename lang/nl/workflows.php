@@ -153,6 +153,26 @@ return [
             'description' => 'Loopt zodra iemand een document uit het kanaal haalt. Het document blijft bewaard, alleen niet meer zichtbaar.',
         ],
 
+        'share' => [
+            'id' => 'Het nummer van de deling',
+            'can_post' => 'Of de gast mag meepraten',
+            'guest_id' => 'Het nummer van de andere workspace',
+            'guest_name' => 'De naam van de andere workspace',
+            'revoked_now' => 'Of deze stap de deling heeft ingetrokken',
+        ],
+        'await' => [
+            'happened' => 'Of de gebeurtenis er was voordat de tijd om was',
+            'event' => 'Waarop gewacht werd',
+            'record' => 'Over welk record gewacht werd',
+        ],
+        'list' => [
+            'index' => 'De hoeveelste rij dit is, vanaf 1',
+            'user_id' => 'Het nummer van de collega',
+            'user_name' => 'De naam van de collega',
+            'shift_id' => 'Het nummer van de dienst',
+            'shift_started_at' => 'Wanneer de dienst begon',
+            'shift_hours' => 'Hoeveel hele uren de dienst al loopt',
+        ],
         'poll' => [
             'channel' => [
                 'label' => 'In welk kanaal',
@@ -169,7 +189,7 @@ return [
         ],
         'poll-closed' => [
             'label' => 'Als een poll gesloten wordt',
-            'description' => 'Loopt als iemand een poll stopzet. Een poll die vanzelf verloopt geeft geen signaal.',
+            'description' => 'Loopt zodra een poll geen stemmen meer aanneemt: iemand zet hem stop, of de einddatum is voorbij.',
         ],
 
         'channel-share-offered' => [
@@ -508,6 +528,8 @@ return [
             'document' => 'Welk document',
             'document_hint' => 'Leeg laten betekent: het document waar de trigger over ging.',
             'poll' => 'Welke poll',
+            'share' => 'Welke deling',
+            'share_hint' => 'Leeg laten betekent de deling waar deze workflow over gaat.',
             'poll_hint' => 'Leeg laten betekent: de poll waar de trigger over ging.',
             'added' => 'Of er echt iemand is toegevoegd',
             'thread' => [
@@ -575,6 +597,68 @@ return [
         'get-channel-info' => [
             'label' => 'Kanaalgegevens ophalen',
             'description' => 'Verandert niets, maar zet naam, onderwerp en ledenaantal klaar voor een volgende stap.',
+        ],
+        /*
+         * De vier die alleen kijken. De hint zegt waaróm ze bestaan, want dat
+         * is niet vanzelfsprekend: de context van een run is een momentopname,
+         * en na een Delay staan de cijfers van de trigger stil.
+         */
+        'read-ticket' => [
+            'label' => 'Ticket opnieuw lezen',
+            'description' => 'Verandert niets, maar zet de huidige status, prioriteit en einddatum klaar voor een volgende stap.',
+        ],
+        'read-contract' => [
+            'label' => 'Contract opnieuw lezen',
+            'description' => 'Verandert niets, maar zet klaar hoeveel er inmiddels getekend hebben en hoeveel dagen er nog over zijn.',
+        ],
+        'read-document' => [
+            'label' => 'Document opnieuw lezen',
+            'description' => 'Verandert niets, maar zet de huidige titel en het nummer klaar voor een volgende stap.',
+        ],
+        'read-poll' => [
+            'label' => 'Poll opnieuw lezen',
+            'description' => 'Verandert niets, maar zet de stand van nu klaar: hoeveel stemmen er zijn en welk antwoord voorligt.',
+        ],
+        /*
+         * Een kanaal openstellen voor een andere workspace, en weer sluiten.
+         *
+         * De andere workspace wordt met haar slug aangewezen, in een gewoon
+         * tekstveld — hetzelfde als de knop in het paneel vraagt. Er wordt
+         * niets verleend: de andere kant moet nog ja zeggen.
+         */
+        'share-channel' => [
+            'label' => 'Kanaal delen met een workspace',
+            'description' => 'Biedt dit kanaal aan een andere workspace aan. Die moet het aanbod nog accepteren voordat er iemand meeleest.',
+            'workspace' => [
+                'label' => 'Welke workspace',
+                'hint' => 'De slug van de andere workspace, of een variabele waar die in staat.',
+            ],
+            'can_post' => [
+                'label' => 'Wat mogen ze',
+                'hint' => 'Laat je dit leeg, dan mogen ze meepraten.',
+                'yes' => 'Meelezen en meepraten',
+                'no' => 'Alleen meelezen',
+            ],
+        ],
+        'revoke-channel-share' => [
+            'label' => 'Deling met een workspace intrekken',
+            'description' => 'Beëindigt de deling en haalt iedereen uit het kanaal die er alleen via die deling in zat. Wat er gezegd is blijft staan.',
+        ],
+        'wait-for-event' => [
+            'label' => 'Wachten op een gebeurtenis',
+            'description' => 'Houdt de workflow stil tot dit gebeurt, of tot de tijd om is. Wat het werd, staat daarna in {{ steps.N.happened }}.',
+            'event' => [
+                'label' => 'Waarop wachten',
+                'hint' => 'Alleen gebeurtenissen die over één record gaan: wachten op iets zonder record is niet te herkennen als het gebeurt.',
+            ],
+            'minutes' => [
+                'label' => 'Hoogstens hoeveel minuten',
+                'hint' => 'Er is altijd een uiterste termijn. Loopt die af, dan gaat de workflow verder met happened op onwaar.',
+            ],
+            'record' => [
+                'label' => 'Over welk record',
+                'hint' => 'Leeg laten betekent het record waar deze workflow mee begon. Anders een variabele, bijvoorbeeld {{ steps.1.contract.id }}.',
+            ],
         ],
         'archive-channel' => [
             'label' => 'Kanaal archiveren',
@@ -677,6 +761,17 @@ return [
         'no_message' => 'Deze stap gaat over een bericht, maar er is er geen.',
         'message_not_found' => 'Dat bericht bestaat niet meer.',
         'no_person_chosen' => 'Deze stap heeft geen persoon gekregen.',
+        'record_feature_off' => ':what is niet aangezet in deze workspace.',
+        'shared_channels_off' => 'Gedeelde kanalen staan uit in deze workspace.',
+        'not_our_channel' => 'Dit kanaal is niet van deze workspace, dus het kan hier niet verder gedeeld worden.',
+        'may_not_share_channel' => 'De eigenaar van deze workflow mag dit kanaal niet delen.',
+        'may_not_sever_share' => 'De eigenaar van deze workflow mag deze deling niet intrekken.',
+        'no_workspace_named' => 'Er is geen workspace aangewezen om mee te delen.',
+        'workspace_not_found' => 'Er is geen workspace met de slug :slug.',
+        'no_event_chosen' => 'Er is niet gekozen waarop gewacht moet worden.',
+        'no_record_to_await' => 'Deze stap wacht op :what, maar er is er geen aangewezen en de trigger bracht er ook geen mee.',
+        'no_list_chosen' => 'Deze lus heeft geen lijst om over te lopen.',
+        'list_feature_off' => ':what kan niet doorlopen worden: dat onderdeel staat uit in deze workspace.',
         'no_record' => 'Deze stap gaat over :what, maar er is er geen aangewezen en de trigger bracht er ook geen mee.',
         'record_not_found' => 'Dat is geen :what van deze workspace, of de eigenaar van deze workflow mag er niet bij.',
         'person_not_found' => 'Die persoon zit niet meer in deze workspace.',

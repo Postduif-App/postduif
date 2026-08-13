@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property bool $allows_multiple
  * @property Carbon|null $closes_at
  * @property Carbon|null $closed_at
+ * @property Carbon|null $settled_at
  * @property Carbon|null $created_at
  */
 #[Fillable(['workspace_id', 'channel_id', 'created_by', 'question', 'allows_multiple', 'closes_at'])]
@@ -42,6 +43,7 @@ class Poll extends Model
             'allows_multiple' => 'boolean',
             'closes_at' => 'datetime',
             'closed_at' => 'datetime',
+            'settled_at' => 'datetime',
         ];
     }
 
@@ -90,6 +92,11 @@ class Poll extends Model
      * Two ways to be shut and both are checked here, but they are stored apart
      * so the card can say which it was: a poll somebody closed reads
      * differently from one whose moment simply passed.
+     *
+     * Still compared here rather than read off settled_at, and that is the
+     * point of keeping them apart: SettlePolls only announces the deadline, it
+     * does not enforce it. A poll that ran out a second ago has run out,
+     * whether or not the sweep has been round since.
      */
     public function isClosed(): bool
     {

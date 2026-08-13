@@ -104,6 +104,26 @@ return [
             'Expired' => 'De einddatum is voorbij zonder dat iedereen tekende.',
         ],
     ],
+    /*
+     * De koppen boven de featurelijst op de publieke pagina. Alleen daar
+     * gelezen: een beheerder ziet de features in de volgorde van
+     * WorkspaceFeature::ALL en heeft geen kopjes nodig, een bezoeker die de
+     * lijst voor het eerst ziet wel.
+     */
+    'feature-group' => [
+        'description' => [
+            'Conversation' => 'Wat er in en om een bericht kan, boven op de kanalen en threads waar iedereen de dag in zit.',
+            'Work' => 'Wat er blijft liggen, wat er wordt vastgelegd en wat er wordt bijgehouden — naast het gesprek waar het uit voortkwam.',
+            'Outside' => 'Voor iedereen die geen collega is: een klant, een leverancier, iemand die één keer iets moet tekenen of ophalen.',
+            'Automation' => 'Wat er gebeurt zonder dat er iemand op iets drukt, en waar andere systemen aan mogen kloppen.',
+        ],
+        'label' => [
+            'Conversation' => 'Het gesprek',
+            'Work' => 'Het werk dat eruit volgt',
+            'Outside' => 'Mensen van buiten',
+            'Automation' => 'Automatisch en gekoppeld',
+        ],
+    ],
     'inbox-item-type' => [
         'label' => [
             'Mention' => 'Genoemd',
@@ -256,6 +276,16 @@ return [
             'Stop' => 'stop de hele workflow',
         ],
     ],
+    'workflow-list-source' => [
+        'label' => [
+            'RunningShifts' => 'Diensten die nog lopen',
+            'OverdueTickets' => 'Tickets over de einddatum',
+            'OpenTickets' => 'Tickets die nog open staan',
+            'OutstandingContracts' => 'Contracten die nog niet terug zijn',
+            'OpenPolls' => 'Polls die nog stemmen aannemen',
+        ],
+    ],
+
     'workflow-record-type' => [
         'label' => [
             'Ticket' => 'ticket',
@@ -263,6 +293,7 @@ return [
             'ContractTemplate' => 'sjabloon',
             'Document' => 'document',
             'Poll' => 'poll',
+            'ChannelShare' => 'gedeeld kanaal',
         ],
     ],
     'workflow-run-status' => [
@@ -278,6 +309,7 @@ return [
         'label' => [
             'Action' => 'Stap',
             'Branch' => 'Splitsing',
+            'Loop' => 'Lus',
         ],
     ],
     'workflow-step-status' => [
@@ -299,6 +331,7 @@ return [
             'CreateForms' => 'Formulieren maken',
             'ShareFormsPublicly' => 'Formulieren buiten de workspace delen',
             'SeeHours' => 'Uren van collega\'s inzien',
+            'ManageFeatures' => 'Onderdelen aan- en uitzetten',
             'DeleteBotMessages' => 'Berichten van bots verwijderen',
             'SendContracts' => 'Contracten laten ondertekenen',
             'DeleteSignedContracts' => 'Getekende contracten verwijderen',
@@ -315,6 +348,7 @@ return [
             'ShareFormsPublicly' => 'Een formulier achter een link zetten die ook zonder account werkt. Wie dit heeft, laat mensen van buiten in deze workspace schrijven.',
             'DeleteBotMessages' => 'Berichten weghalen die door een webhook of een workflow geplaatst zijn. Gaat niet over wat mensen zelf schrijven — dat blijft van henzelf. Wie een kanaal beheert kon dit al voor dat kanaal.',
             'SeeHours' => 'Zien hoeveel uur collega\'s deze week geklokt hebben en wie er nu ingeklokt staat. Iedereen ziet sowieso zijn eigen uren; dit gaat over die van een ander.',
+            'ManageFeatures' => 'Bepalen welke onderdelen deze workspace heeft — documenten, contracten, tijdregistratie. Uitzetten haalt een onderdeel voor iedereen tegelijk weg; wat er al in staat blijft bewaard, maar is voor niemand meer te openen.',
             'SendContracts' => 'Een PDF met invulvakken naar mensen sturen om te laten tekenen, ook buiten de workspace. Het document gaat met de naam van deze workspace de deur uit en komt terug als bewijsstuk.',
             'DeleteSignedContracts' => 'Een contract weggooien waar iedereen al onder heeft getekend, inclusief het getekende PDF en de bijlage met wie wanneer tekende. Dat is niet terug te draaien en de ondertekenaars horen er niets van. Zonder dit recht kun je alleen opruimen wat nooit is afgerond.',
         ],

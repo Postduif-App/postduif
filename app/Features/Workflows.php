@@ -2,6 +2,8 @@
 
 namespace App\Features;
 
+use App\Enums\FeatureGroup;
+
 class Workflows extends WorkspaceFeature
 {
     public static function label(): string
@@ -26,5 +28,10 @@ class Workflows extends WorkspaceFeature
     public static function default(): bool
     {
         return false;
+    }
+
+    public static function group(): FeatureGroup
+    {
+        return FeatureGroup::Automation;
     }
 }

@@ -165,6 +165,17 @@ enum SystemRole: string implements HasLabel
             WorkspaceAbility::SeeHours => false,
 
             /*
+             * Nobody below the owner, and for a heavier reason than SeeHours:
+             * this is not about what somebody may read but about what the
+             * workspace *is*. Switching a feature off takes it away from
+             * everybody at once, the owner included, and hands whoever holds
+             * this right a way to make the place unrecognisable in one screen.
+             * An administrator runs the workspace as it was decided; deciding
+             * that is the owner's, until they say otherwise.
+             */
+            WorkspaceAbility::ManageFeatures => false,
+
+            /*
              * With the people who run the workspace, beside ShareFormsPublicly
              * and for a heavier version of the same reason.
              *

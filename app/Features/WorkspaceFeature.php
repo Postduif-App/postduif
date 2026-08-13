@@ -2,6 +2,7 @@
 
 namespace App\Features;
 
+use App\Enums\FeatureGroup;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
 
@@ -84,6 +85,16 @@ abstract class WorkspaceFeature
 
     /** What a workspace loses by switching it off. */
     abstract public static function description(): string;
+
+    /**
+     * What this one is about, for a reader meeting the list for the first time.
+     *
+     * Abstract rather than defaulted, and that is the whole point: the public
+     * page groups the features by this, and a default would let a new feature
+     * quietly land in whatever bucket the default named. Here, a class that
+     * forgets to answer does not compile.
+     */
+    abstract public static function group(): FeatureGroup;
 
     /**
      * What holds for a workspace that never said anything about this feature.

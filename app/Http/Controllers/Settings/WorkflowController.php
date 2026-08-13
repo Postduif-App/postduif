@@ -9,6 +9,7 @@ use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowConditionMatch;
 use App\Enums\WorkflowConditionOperator;
 use App\Enums\WorkflowConditionOutcome;
+use App\Enums\WorkflowListSource;
 use App\Enums\WorkflowRecordType;
 use App\Enums\WorkflowStepKind;
 use App\Http\Controllers\Controller;
@@ -26,6 +27,7 @@ use App\Workflows\WorkflowTrigger;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -76,6 +78,19 @@ class WorkflowController extends Controller
              */
             'workflows' => $workspace->workflows()
                 ->withCount('steps')
+                /*
+                 * When it last went off, as one subquery beside the list rather
+                 * than a question per row. A run's created_at is the moment the
+                 * trigger fired — the table already carries an index on
+                 * (workflow_id, created_at), which is exactly this lookup.
+                 *
+                 * Note that runs are pruned after a fortnight, so an empty
+                 * column means "not lately" rather than "never" for a workflow
+                 * that has been around longer than that. Which is the same
+                 * thing the history screen says, and better than a stamp that
+                 * quietly outlives the run it came from.
+                 */
+                ->withMax('runs as last_run_at', 'created_at')
                 ->with('owner:id,name')
                 ->latest('id')
                 ->get()
@@ -87,6 +102,12 @@ class WorkflowController extends Controller
                     'enabled' => $workflow->isEnabled(),
                     'owner' => $workflow->owner?->name,
                     'stepCount' => $workflow->steps_count,
+                    // Parsed here rather than cast on the model: an aggregate
+                    // alias is not a column, so it arrives as the driver's own
+                    // string unless somebody says otherwise.
+                    'lastRunAt' => $workflow->last_run_at === null
+                        ? null
+                        : Carbon::parse($workflow->last_run_at)->toIso8601String(),
                 ])
                 ->all(),
 
@@ -147,6 +168,14 @@ class WorkflowController extends Controller
                 'matches' => WorkflowConditionMatch::options(),
                 'outcomes' => WorkflowConditionOutcome::options(),
                 'branches' => WorkflowBranch::options(),
+
+                /*
+                 * The lists a loop may walk. Beside the lanes rather than in
+                 * the register with the actions, because a loop is not an
+                 * action — it arranges other steps, the way a fork does, and
+                 * what it needs told is which pile of things to walk.
+                 */
+                'lists' => WorkflowListSource::options(),
             ],
 
             /*
@@ -507,11 +536,15 @@ class WorkflowController extends Controller
      * same steps the top of the workflow does, and three copies of these rules
      * would be three places for them to drift apart.
      *
-     * A lane holds no forks — `forks: false`. The runner would walk a fork
-     * inside a lane perfectly well, and the storage has no opinion either; what
-     * cannot take it is the reading. Two levels of lanes in one column stops
-     * being a picture of anything, and the way to say the third thing is a
-     * second fork below the first.
+     * A lane holds neither forks nor loops — `forks: false`. The runner would
+     * walk either inside a lane perfectly well, and the storage has no opinion;
+     * what cannot take it is the reading. Two levels of lanes in one column
+     * stops being a picture of anything, and the way to say the third thing is
+     * a second fork below the first.
+     *
+     * For a loop the same rule has teeth of its own: a loop inside a loop is
+     * fifty rows times fifty rows, which is not a shape anybody drew on purpose
+     * on a screen this size.
      *
      * @return array<string, list<mixed>>
      */
@@ -537,6 +570,16 @@ class WorkflowController extends Controller
                 Rule::in(array_keys($registry->actions())),
             ],
             "{$prefix}.*.config" => ['array'],
+            /*
+             * Which list a loop walks. Only ever on a loop, and required there:
+             * a loop with no source is a step that would walk nothing and read
+             * as though it walked something.
+             */
+            "{$prefix}.*.config.source" => [
+                'exclude_unless:'.$prefix.'.*.kind,'.WorkflowStepKind::Loop->value,
+                'required',
+                Rule::enum(WorkflowListSource::class),
+            ],
             "{$prefix}.*.condition" => ['nullable', 'array'],
             "{$prefix}.*.condition.match" => ['required_with:'.$prefix.'.*.condition', Rule::enum(WorkflowConditionMatch::class)],
             "{$prefix}.*.condition.otherwise" => ['required_with:'.$prefix.'.*.condition', Rule::enum(WorkflowConditionOutcome::class)],
@@ -598,19 +641,27 @@ class WorkflowController extends Controller
                 'kind' => $kind,
                 'parent_step_id' => $parent?->id,
                 'branch' => $branch,
-                // A fork does nothing, and the column is the register's word for
-                // what a step does. Its own name is the honest thing to put there.
-                'action_type' => $kind === WorkflowStepKind::Branch
-                    ? WorkflowStepKind::Branch->value
-                    : $step['action_type'],
+                /*
+                 * A fork does nothing and neither does a loop, and the column is
+                 * the register's word for what a step does. Their own names are
+                 * the honest thing to put there.
+                 */
+                'action_type' => $kind->isAction()
+                    ? $step['action_type']
+                    : $kind->value,
                 'config' => $step['config'] ?? [],
                 'condition' => $step['condition'] ?? null,
             ]);
 
-            if ($kind !== WorkflowStepKind::Branch) {
+            if ($kind->isAction()) {
                 continue;
             }
 
+            /*
+             * Both arranging kinds keep their children in the same place, so
+             * this loop needs no idea which of the two it is writing. A loop
+             * simply has nothing in its else lane — see WorkflowStepKind.
+             */
             foreach (WorkflowBranch::cases() as $lane) {
                 $position = $this->writeSteps(
                     $workflow,
@@ -778,12 +829,14 @@ class WorkflowController extends Controller
             'actionType' => $step->action_type,
             'config' => (object) $step->config,
             'condition' => $step->condition,
-            'branches' => $step->isBranch()
-                ? [
+            'branches' => $step->kind->isAction()
+                ? null
+                : [
+                    // A loop's body is its then lane, and its else lane is
+                    // always empty — the builder draws one where there is one.
                     'then' => $this->presentSteps($this->laneOf($all, $step, WorkflowBranch::Then), $all),
                     'else' => $this->presentSteps($this->laneOf($all, $step, WorkflowBranch::Else), $all),
-                ]
-                : null,
+                ],
         ])->all());
     }
 

@@ -16,6 +16,8 @@ return [
     'documents_pruned' => '{1}1 document definitief verwijderd.|[2,*]:count documenten definitief verwijderd.',
     'contracts_expired' => '{0}Geen enkel contract verlopen.|{1}1 contract op verlopen gezet.|[2,*]:count contracten op verlopen gezet.',
     'contracts_pruned' => '{0}Geen contracten opgeruimd.|{1}1 contract opgeruimd.|[2,*]:count contracten opgeruimd.',
+    'polls_nothing_settled' => 'Geen poll die net verlopen is.',
+    'polls_settled' => '{1}1 verlopen poll gemeld.|[2,*]:count verlopen polls gemeld.',
     'contracts_check_missing' => 'Ghostscript is niet te starten via :binary. Zonder deze binary weigert de contract-upload elk bestand.',
     'contracts_check_hint' => 'Installeer ghostscript en zet GHOSTSCRIPT_PATH in .env op het volledige pad — het PATH van php-fpm is niet dat van je shell.',
     'contracts_check_failed' => 'De proef-PDF kwam er niet doorheen: :reason',

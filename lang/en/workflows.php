@@ -141,6 +141,26 @@ return [
             'description' => 'Runs the moment somebody takes a document out of the channel. It is kept, just no longer shown.',
         ],
 
+        'share' => [
+            'id' => 'The number of the share',
+            'can_post' => 'Whether the guest may join in',
+            'guest_id' => 'The number of the other workspace',
+            'guest_name' => 'The name of the other workspace',
+            'revoked_now' => 'Whether this step ended the share',
+        ],
+        'await' => [
+            'happened' => 'Whether the happening arrived before the time was up',
+            'event' => 'What was waited for',
+            'record' => 'Which record was waited on',
+        ],
+        'list' => [
+            'index' => 'Which row this is, counting from 1',
+            'user_id' => 'The number of the colleague',
+            'user_name' => 'The name of the colleague',
+            'shift_id' => 'The number of the shift',
+            'shift_started_at' => 'When the shift began',
+            'shift_hours' => 'How many whole hours the shift has been running',
+        ],
         'poll' => [
             'channel' => [
                 'label' => 'In which channel',
@@ -157,7 +177,7 @@ return [
         ],
         'poll-closed' => [
             'label' => 'When a poll is closed',
-            'description' => 'Runs when somebody stops a poll. A poll that runs out by itself gives no signal.',
+            'description' => 'Runs when a poll stops taking votes: somebody pressed stop, or its own deadline passed.',
         ],
 
         'channel-share-offered' => [
@@ -491,6 +511,8 @@ return [
             'document' => 'Which document',
             'document_hint' => 'Leave empty for the document the trigger was about.',
             'poll' => 'Which poll',
+            'share' => 'Which share',
+            'share_hint' => 'Leaving this empty means the share this workflow is about.',
             'poll_hint' => 'Leave empty for the poll the trigger was about.',
             'added' => 'Whether somebody was actually added',
             'thread' => [
@@ -558,6 +580,68 @@ return [
         'get-channel-info' => [
             'label' => 'Get channel details',
             'description' => 'Changes nothing, but makes the name, topic and member count available to a later step.',
+        ],
+        /*
+         * The four that only look. The description says why they exist, which
+         * is not obvious: a run's context is a photograph, and after a Delay the
+         * trigger's numbers have stopped moving.
+         */
+        'read-ticket' => [
+            'label' => 'Read a ticket again',
+            'description' => 'Changes nothing, but makes the current status, priority and due date available to a later step.',
+        ],
+        'read-contract' => [
+            'label' => 'Read a contract again',
+            'description' => 'Changes nothing, but makes it available how many have signed by now and how many days are left.',
+        ],
+        'read-document' => [
+            'label' => 'Read a document again',
+            'description' => 'Changes nothing, but makes the current title and number available to a later step.',
+        ],
+        'read-poll' => [
+            'label' => 'Read a poll again',
+            'description' => 'Changes nothing, but makes the tally as it stands available: how many votes, and which answer is ahead.',
+        ],
+        /*
+         * Opening a channel to another workspace, and closing it again.
+         *
+         * The other workspace is named by its slug, in a plain text field — the
+         * same thing the button in the panel asks for. Nothing is granted: the
+         * other side still has to say yes.
+         */
+        'share-channel' => [
+            'label' => 'Share a channel with a workspace',
+            'description' => 'Offers this channel to another workspace. They still have to accept before anybody reads along.',
+            'workspace' => [
+                'label' => 'Which workspace',
+                'hint' => 'The slug of the other workspace, or a variable holding it.',
+            ],
+            'can_post' => [
+                'label' => 'What they may do',
+                'hint' => 'Leave this alone and they may join in.',
+                'yes' => 'Read and write',
+                'no' => 'Read only',
+            ],
+        ],
+        'revoke-channel-share' => [
+            'label' => 'End a share with a workspace',
+            'description' => 'Ends the arrangement and takes out everybody who was only in the channel through it. What was said stays.',
+        ],
+        'wait-for-event' => [
+            'label' => 'Wait for something to happen',
+            'description' => 'Holds the workflow until this happens, or until the time is up. Which of the two ends up in {{ steps.N.happened }}.',
+            'event' => [
+                'label' => 'What to wait for',
+                'hint' => 'Only happenings about a single record: waiting for something with no record cannot be recognised when it arrives.',
+            ],
+            'minutes' => [
+                'label' => 'At most how many minutes',
+                'hint' => 'There is always a deadline. When it passes the workflow carries on with happened set to false.',
+            ],
+            'record' => [
+                'label' => 'About which record',
+                'hint' => 'Leave empty for the record this workflow started from. Otherwise a variable, for example {{ steps.1.contract.id }}.',
+            ],
         ],
         'archive-channel' => [
             'label' => 'Archive a channel',
@@ -655,6 +739,17 @@ return [
         'no_message' => 'This step is about a message, but there is none.',
         'message_not_found' => 'That message is gone.',
         'no_person_chosen' => 'This step was given no person.',
+        'record_feature_off' => ':what is not switched on in this workspace.',
+        'shared_channels_off' => 'Shared channels are switched off in this workspace.',
+        'not_our_channel' => 'This channel does not belong to this workspace, so it cannot be shared on from here.',
+        'may_not_share_channel' => 'The owner of this workflow may not share this channel.',
+        'may_not_sever_share' => 'The owner of this workflow may not end this share.',
+        'no_workspace_named' => 'No workspace was named to share with.',
+        'workspace_not_found' => 'There is no workspace with the slug :slug.',
+        'no_event_chosen' => 'Nothing was chosen to wait for.',
+        'no_record_to_await' => 'This step waits for :what, but none was named and the trigger brought none either.',
+        'no_list_chosen' => 'This loop has no list to walk.',
+        'list_feature_off' => ':what cannot be walked: that part of the workspace is switched off.',
         'no_record' => 'This step is about :what, but none was named and the trigger brought none either.',
         'record_not_found' => 'That is not a :what of this workspace, or the owner of this workflow may not see it.',
         'person_not_found' => 'That person is no longer in this workspace.',

@@ -2,8 +2,10 @@
 
 namespace App\Workflows\Triggers;
 
+use App\Enums\WorkflowRecordType;
 use App\Features\Documents;
 use App\Models\Workspace;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -41,11 +43,7 @@ abstract class DocumentTrigger extends WorkflowTrigger
     protected static function documentProvides(): array
     {
         return [
-            'document.id' => __('workflows.provides.document.id'),
-            'document.number' => __('workflows.provides.document.number'),
-            'document.title' => __('workflows.provides.document.title'),
-            'channel.id' => __('workflows.provides.channel.id'),
-            'channel.name' => __('workflows.provides.channel.name'),
+            ...RecordSnapshot::paths(WorkflowRecordType::Document),
             'actor.id' => __('workflows.provides.document.actor_id'),
             'actor.name' => __('workflows.provides.document.actor_name'),
         ];

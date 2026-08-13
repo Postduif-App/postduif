@@ -120,8 +120,8 @@ class DeliverContractWebhookJob implements ShouldQueue
             return;
         }
 
-        $url = $webhook?->url ?? $contract->callback_url;
-        $secret = $webhook?->secret ?? $contract->callback_secret;
+        $url = $webhook->url ?? $contract->callback_url;
+        $secret = $webhook->secret ?? $contract->callback_secret;
 
         if ($url === null || $secret === null) {
             return;

@@ -300,7 +300,10 @@ class ContractController extends Controller
      * belonging to nobody while one too many hands a stranger somebody else's.
      *
      * @param  array<int, array<string, mixed>>  $recipients
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>> Renumbered from zero by the
+     *                                    array_values below, which is what
+     *                                    makes the position in this list the
+     *                                    signing order downstream.
      */
     private function checkedRecipients(Contract $template, array $recipients): array
     {

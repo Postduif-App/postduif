@@ -752,6 +752,15 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 Route::post('c/{channel}/huddle/{huddle}/recording/announce', [HuddleRecordingController::class, 'announce'])
                     ->scopeBindings()
                     ->name('huddles.recording.announce');
+                /*
+                 * And taking the notice down. A DELETE on the announcement
+                 * rather than a flag on the upload: a browser that stops
+                 * recording and then fails to send the file has still stopped,
+                 * and the indicator has to go out either way.
+                 */
+                Route::delete('c/{channel}/huddle/{huddle}/recording/announce', [HuddleRecordingController::class, 'stopped'])
+                    ->scopeBindings()
+                    ->name('huddles.recording.stopped');
                 Route::post('c/{channel}/huddle/{huddle}/recording', [HuddleRecordingController::class, 'store'])
                     ->scopeBindings()
                     ->name('huddles.recording.store');

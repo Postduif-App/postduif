@@ -9,6 +9,7 @@ use App\Events\PollVoteCast;
 use App\Models\Poll;
 use App\Models\User;
 use App\Models\Workflow;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\Triggers\PollClosedTrigger;
 use App\Workflows\Triggers\PollCreatedTrigger;
 use App\Workflows\Triggers\PollVotedTrigger;
@@ -83,6 +84,7 @@ class StartPollWorkflows
             $poll->channel?->workspace,
             $trigger,
             fn (Workflow $workflow): ?array => $this->matches($workflow, $poll) ? $context : null,
+            $context,
         );
     }
 
@@ -99,35 +101,14 @@ class StartPollWorkflows
     /**
      * The tally, as PollTrigger::pollProvides describes it.
      *
-     * leading_option is the one in front and nothing about ties: two answers on
-     * four votes each will name one of them, and which one is the order the
-     * options were written in. Saying "gelijkspel" would be a fourth path
-     * nobody asked for; a workflow that cares can compare top_votes against
-     * vote_count itself.
+     * Worked out in RecordSnapshot, which the read-poll step reads from too:
+     * the numbers move while a workflow is waiting, and a step that re-reads a
+     * poll is only useful if it spells them the same way the trigger did.
      *
      * @return array<string, mixed>
      */
     private function context(Poll $poll): array
     {
-        $leader = $poll->options->sortByDesc('votes_count')->first();
-
-        return [
-            'poll' => [
-                'id' => $poll->id,
-                'question' => $poll->question,
-                'url' => route('chat.polls.show', [$poll->workspace, $poll]),
-                'option_count' => $poll->options->count(),
-                'vote_count' => $poll->options->sum('votes_count'),
-                // How many people answered, which on a multiple-choice poll is
-                // not how many votes were cast — see Poll::voterCount.
-                'voter_count' => $poll->voterCount(),
-                'leading_option' => $leader?->label,
-                'top_votes' => $leader === null ? 0 : $leader->votes_count,
-                'is_closed' => $poll->isClosed(),
-                'closes_at' => $poll->closes_at?->toIso8601String(),
-            ],
-            'asker' => ['id' => $poll->created_by, 'name' => $poll->asker?->name],
-            'channel' => ['id' => $poll->channel_id, 'name' => $poll->channel?->name],
-        ];
+        return RecordSnapshot::poll($poll);
     }
 }

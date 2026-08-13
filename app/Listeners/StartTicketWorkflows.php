@@ -11,6 +11,7 @@ use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\User;
 use App\Models\Workflow;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\Triggers\TicketChangedTrigger;
 use App\Workflows\Triggers\TicketCommentedTrigger;
 use App\Workflows\Triggers\TicketCreatedTrigger;
@@ -122,6 +123,7 @@ class StartTicketWorkflows
             fn (Workflow $workflow): ?array => $this->matches($workflow, $ticket, $choice)
                 ? $context
                 : null,
+            $context,
         );
     }
 
@@ -218,38 +220,22 @@ class StartTicketWorkflows
     }
 
     /**
-     * What every ticket trigger promises, as TicketTrigger::ticketProvides
-     * describes it.
+     * What every ticket trigger promises, plus whoever did it.
      *
-     * hours_open and is_overdue are worked out here for the reason the whole
-     * epic keeps running into: a condition can compare a number but cannot
-     * produce one.
+     * The ticket half lives in RecordSnapshot, which the read-ticket step reads
+     * from too: a step that re-reads a ticket after a Delay is only useful if
+     * it hands back the same paths under a different prefix, and two spellings
+     * of "what a ticket is" would drift apart the first time one grew a column.
+     *
+     * The actor stays here, because it belongs to the happening rather than to
+     * the ticket — a step re-reading one has nobody to name.
      *
      * @return array<string, mixed>
      */
     private function context(Ticket $ticket, ?User $actor): array
     {
         return [
-            'ticket' => [
-                'id' => $ticket->id,
-                'number' => $ticket->number,
-                'title' => $ticket->title,
-                'body' => $ticket->body,
-                'status' => $ticket->status->value,
-                'priority' => $ticket->priority->value,
-                'due_at' => $ticket->due_at?->toIso8601String(),
-                // Whole hours: a condition comparing against 24 should not have
-                // to reason about minutes.
-                'hours_open' => (int) $ticket->created_at?->diffInHours(now()),
-                'is_overdue' => $ticket->due_at !== null && $ticket->due_at->isPast(),
-                'has_assignee' => $ticket->assigned_to !== null,
-                // Whether anybody has answered the person who raised it, which
-                // is the number a customer channel is actually judged on.
-                'answered' => $ticket->first_responded_at !== null,
-            ],
-            'assignee' => ['id' => $ticket->assigned_to, 'name' => $ticket->assignee?->name],
-            'reporter' => ['id' => $ticket->opened_by, 'name' => $ticket->openedByName()],
-            'channel' => ['id' => $ticket->channel_id, 'name' => $ticket->channel?->name],
+            ...RecordSnapshot::ticket($ticket),
             /*
              * Empty for the scheduler and for mail from outside. Left empty
              * rather than filled with a stand-in, so a half-written sentence

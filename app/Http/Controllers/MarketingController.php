@@ -24,6 +24,21 @@ class MarketingController extends Controller
     {
         return Inertia::render('marketing/home', [
             'features' => $inventory->handle(),
+
+            /*
+             * De koppen waaronder die lijst uiteenvalt, en de drie die er
+             * bovenuit steken. Achttien gelijke kaartjes zijn achttien keer
+             * hetzelfde gewicht, en een lezer die niet weet waar hij voor komt
+             * haakt af voor hij bij het onderdeel is waarvoor hij bleef.
+             *
+             * Twee props naast de lijst en niet één genest antwoord: de
+             * volgorde van de features is een keuze van de applicatie en blijft
+             * die van WorkspaceFeature::ALL, terwijl de indeling en de nadruk
+             * van deze pagina zijn.
+             */
+            'featureGroups' => $inventory->featureGroups(),
+            'spotlight' => $inventory->spotlight(),
+
             'roles' => $inventory->roles(),
 
             /*

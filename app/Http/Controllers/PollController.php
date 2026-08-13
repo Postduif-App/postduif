@@ -120,9 +120,9 @@ class PollController extends Controller
 
             /*
              * Inside the if, so pressing stop on a poll that is already stopped
-             * announces nothing. Only this way of closing is announced — a poll
-             * whose deadline simply passes has nothing running at that moment
-             * to say so; see the event.
+             * announces nothing. The other way of ending — the deadline going
+             * by — announces itself from SettlePolls, which is careful not to
+             * say it twice about a poll that was stopped by hand first.
              */
             PollClosed::dispatch($poll->id);
         }
@@ -154,6 +154,12 @@ class PollController extends Controller
         $poll->forceFill([
             'closed_at' => null,
             'closes_at' => $poll->closes_at?->isPast() ? null : $poll->closes_at,
+            /*
+             * And the sweep's note that this ending was dealt with, because it
+             * has just been undone. A deadline still ahead of us is left in
+             * place above, so it can arrive — and be announced — a second time.
+             */
+            'settled_at' => null,
         ])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.poll.reopened')]);

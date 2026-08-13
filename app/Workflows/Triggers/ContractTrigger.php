@@ -2,8 +2,10 @@
 
 namespace App\Workflows\Triggers;
 
+use App\Enums\WorkflowRecordType;
 use App\Features\Contracts;
 use App\Models\Workspace;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -74,24 +76,7 @@ abstract class ContractTrigger extends WorkflowTrigger
      */
     protected static function contractProvides(): array
     {
-        return [
-            'contract.id' => __('workflows.provides.contract.id'),
-            'contract.title' => __('workflows.provides.contract.title'),
-            'contract.status' => __('workflows.provides.contract.status'),
-            'contract.url' => __('workflows.provides.contract.url'),
-            'contract.expires_at' => __('workflows.provides.contract.expires_at'),
-            'contract.days_until_expiry' => __('workflows.provides.contract.days_until_expiry'),
-            'contract.page_count' => __('workflows.provides.contract.page_count'),
-            'contract.signer_count' => __('workflows.provides.contract.signer_count'),
-            'contract.signed_count' => __('workflows.provides.contract.signed_count'),
-            'contract.declined_count' => __('workflows.provides.contract.declined_count'),
-            'contract.remaining' => __('workflows.provides.contract.remaining'),
-            'contract.signers' => __('workflows.provides.contract.signers'),
-            'author.id' => __('workflows.provides.contract.author_id'),
-            'author.name' => __('workflows.provides.contract.author_name'),
-            'channel.id' => __('workflows.provides.contract.channel_id'),
-            'channel.name' => __('workflows.provides.contract.channel_name'),
-        ];
+        return RecordSnapshot::paths(WorkflowRecordType::Contract);
     }
 
     /**

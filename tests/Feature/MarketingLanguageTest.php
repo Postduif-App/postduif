@@ -64,13 +64,15 @@ it('translates the homepage itself, not just the shell around it', function () {
         ->getContent();
 
     expect($html)->toContain('The conversation and the work in one place')
-        // A section head, a card label and the roles table: three different
-        // kinds of copy, so a extraction that missed one shows up here.
+        // A section head, a heading read off an enum, and the roles table:
+        // three different kinds of copy, so an extraction that missed one shows
+        // up here. The middle one is the interesting case — it is translated
+        // where the enum lives rather than in the marketing file.
         ->toContain('What is in it')
-        ->toContain('OFF BY DEFAULT')
+        ->toContain('People from outside')
         ->toContain('Who may do what')
         ->and($html)->not->toContain('Wat er in zit')
-        ->and($html)->not->toContain('STANDAARD UIT');
+        ->and($html)->not->toContain('Mensen van buiten');
 });
 
 it('counts the features in Dutch', function () {

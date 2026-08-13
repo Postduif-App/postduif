@@ -2,8 +2,10 @@
 
 namespace App\Workflows\Triggers;
 
+use App\Enums\WorkflowRecordType;
 use App\Features\Polls;
 use App\Models\Workspace;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -39,28 +41,7 @@ abstract class PollTrigger extends WorkflowTrigger
     /** @return array<string, string> */
     protected static function pollProvides(): array
     {
-        return [
-            'poll.id' => __('workflows.provides.poll.id'),
-            'poll.question' => __('workflows.provides.poll.question'),
-            'poll.url' => __('workflows.provides.poll.url'),
-            'poll.option_count' => __('workflows.provides.poll.option_count'),
-            'poll.vote_count' => __('workflows.provides.poll.vote_count'),
-            'poll.voter_count' => __('workflows.provides.poll.voter_count'),
-            /*
-             * The one in front and how many it has. Two paths rather than a
-             * list, because what a workflow says out loud is nearly always
-             * "X ligt voor met Y" — and because a condition can compare
-             * top_votes and cannot compare a list.
-             */
-            'poll.leading_option' => __('workflows.provides.poll.leading_option'),
-            'poll.top_votes' => __('workflows.provides.poll.top_votes'),
-            'poll.is_closed' => __('workflows.provides.poll.is_closed'),
-            'poll.closes_at' => __('workflows.provides.poll.closes_at'),
-            'asker.id' => __('workflows.provides.poll.asker_id'),
-            'asker.name' => __('workflows.provides.poll.asker_name'),
-            'channel.id' => __('workflows.provides.channel.id'),
-            'channel.name' => __('workflows.provides.channel.name'),
-        ];
+        return RecordSnapshot::paths(WorkflowRecordType::Poll);
     }
 
     public static function availableFor(Workspace $workspace): bool

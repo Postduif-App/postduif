@@ -213,7 +213,7 @@ class WorkspaceMailTemplateController extends Controller
 
                 preg_match_all('/\{\{\s*([^{}]+?)\s*\}\}/u', $text, $matches);
 
-                foreach ($matches[1] ?? [] as $name) {
+                foreach ($matches[1] as $name) {
                     $placeholder = MailPlaceholder::matching($name);
 
                     if ($placeholder === null || $kind->allows($placeholder)) {
@@ -233,7 +233,7 @@ class WorkspaceMailTemplateController extends Controller
     /** @return list<array<string, mixed>> */
     private function kinds(): array
     {
-        return collect(MailTemplateKind::cases())
+        return array_values(collect(MailTemplateKind::cases())
             ->map(fn (MailTemplateKind $kind): array => [
                 'value' => $kind->value,
                 'label' => $kind->label(),
@@ -247,7 +247,7 @@ class WorkspaceMailTemplateController extends Controller
                         'label' => $placeholder->label(),
                         'hint' => $placeholder->hint(),
                     ])->values()->all(),
-            ])->values()->all();
+            ])->all());
     }
 
     /**
@@ -260,11 +260,11 @@ class WorkspaceMailTemplateController extends Controller
      */
     private function locales(): array
     {
-        return collect(HandleLocale::SUPPORTED)
+        return array_values(collect(HandleLocale::SUPPORTED)
             ->map(fn (string $locale): array => [
                 'value' => $locale,
-                'label' => __('mail_templates.language_name.'.$locale),
-            ])->values()->all();
+                'label' => (string) __('mail_templates.language_name.'.$locale),
+            ])->all());
     }
 
     /**
@@ -342,8 +342,8 @@ class WorkspaceMailTemplateController extends Controller
             'workspace' => (string) __('mail_templates.sample.workspace', [], $locale),
             'title' => (string) __('mail_templates.sample.title', [], $locale),
             'message' => (string) __('mail_templates.sample.message', [], $locale),
-            'expires' => now()->addDays(14)->locale($locale)->translatedFormat(__('mail.format.date', [], $locale)),
-            'signed_at' => now()->locale($locale)->translatedFormat(__('mail.format.date_time', [], $locale)),
+            'expires' => now()->addDays(14)->settings(['locale' => $locale])->translatedFormat(__('mail.format.date', [], $locale)),
+            'signed_at' => now()->settings(['locale' => $locale])->translatedFormat(__('mail.format.date_time', [], $locale)),
         ];
     }
 

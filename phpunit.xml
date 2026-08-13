@@ -28,6 +28,13 @@
              scheduled commands. Mirrors the .env default. -->
         <env name="APP_LOCALE" value="nl" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <!--
+            De uitgave met de publieke site, want de suite test het hele product
+            en de landingspagina hoort daarbij. Dat het buiten de tests uit staat
+            is een aparte belofte, en die wordt in PlatformEditionTest expliciet
+            nagegaan in plaats van hier stilzwijgend aangenomen.
+        -->
+        <env name="PLATFORM_EDITION" value="hosted" force="true"/>
         <env name="BCRYPT_ROUNDS" value="4" force="true"/>
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>

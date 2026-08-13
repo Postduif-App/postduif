@@ -2,8 +2,10 @@
 
 namespace App\Workflows\Triggers;
 
+use App\Enums\WorkflowRecordType;
 use App\Features\Tickets;
 use App\Models\Workspace;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -54,25 +56,7 @@ abstract class TicketTrigger extends WorkflowTrigger
      */
     protected static function ticketProvides(): array
     {
-        return [
-            'ticket.id' => __('workflows.provides.ticket.id'),
-            'ticket.number' => __('workflows.provides.ticket.number'),
-            'ticket.title' => __('workflows.provides.ticket.title'),
-            'ticket.body' => __('workflows.provides.ticket.body'),
-            'ticket.status' => __('workflows.provides.ticket.status'),
-            'ticket.priority' => __('workflows.provides.ticket.priority'),
-            'ticket.due_at' => __('workflows.provides.ticket.due_at'),
-            'ticket.hours_open' => __('workflows.provides.ticket.hours_open'),
-            'ticket.is_overdue' => __('workflows.provides.ticket.is_overdue'),
-            'ticket.has_assignee' => __('workflows.provides.ticket.has_assignee'),
-            'ticket.answered' => __('workflows.provides.ticket.answered'),
-            'assignee.id' => __('workflows.provides.ticket.assignee_id'),
-            'assignee.name' => __('workflows.provides.ticket.assignee_name'),
-            'reporter.id' => __('workflows.provides.ticket.reporter_id'),
-            'reporter.name' => __('workflows.provides.ticket.reporter_name'),
-            'channel.id' => __('workflows.provides.channel.id'),
-            'channel.name' => __('workflows.provides.channel.name'),
-        ];
+        return RecordSnapshot::paths(WorkflowRecordType::Ticket);
     }
 
     /**

@@ -11,6 +11,12 @@
 return [
     'recording' => [
         'started' => ':name is dit gesprek gaan opnemen.',
+        /*
+         * Eén opnemer tegelijk. Niet omdat twee opnames technisch stuk zouden
+         * gaan, maar omdat de melding een naam noemt: "Sanne neemt op" terwijl
+         * Joost ook opneemt is een melding die stilletjes niet klopt.
+         */
+        'already' => 'Er wordt al opgenomen in dit gesprek.',
     ],
 
     'transcription' => [

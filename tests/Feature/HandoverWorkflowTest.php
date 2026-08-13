@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Chat\ForwardMessage;
 use App\Actions\Chat\SendMessage;
 use App\Actions\Secrets\CreateSecretRequest;
 use App\Actions\Transfers\ClaimDownload;
@@ -173,8 +174,12 @@ it('refuses a board notice with nothing in it', function () {
 /**
  * Forwarding keeps who wrote it, which is the difference from writing a new
  * message with the same words in it.
+ *
+ * Who put it there is another matter: the workflow did, so the message is the
+ * bot's and not the owner's. Both halves are asserted here, because they are
+ * easy to confuse and only one of them is about attribution.
  */
-it('forwards the message the trigger was about', function () {
+it('forwards the message the trigger was about, signed by the workflow', function () {
     [$member, $workspace, $channel] = handoverScene();
 
     $elsewhere = channelWithMember($workspace, $member);
@@ -185,7 +190,9 @@ it('forwards the message the trigger was about', function () {
         body: 'De lift doet het niet.',
     );
 
-    $run = runStep(handoverWorkflow($workspace, $member), 'forward-message', [
+    $workflow = handoverWorkflow($workspace, $member);
+
+    $run = runStep($workflow, 'forward-message', [
         'channel_id' => $elsewhere->id,
         'note' => 'Ter info:',
     ], ['trigger' => ['message' => ['id' => $original->id]]]);
@@ -195,13 +202,43 @@ it('forwards the message the trigger was about', function () {
     expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
         ->and($forwarded->body)->toContain('De lift doet het niet.')
         ->and($forwarded->body)->toContain('Ter info:')
+        ->and($forwarded->user_id)->toBeNull()
+        ->and($forwarded->bot_name)->toBe($workflow->botName())
+        ->and($forwarded->workflow_id)->toBe($workflow->id)
+        // The original author still travels with it — that is what a forward is.
+        ->and($forwarded->forwarded_from)->not->toBeNull()
         ->and(data_get($run->context, 'steps.0.channel.id'))->toBe($elsewhere->id);
+});
+
+/**
+ * The same message forwarded by a person, which must stay theirs. The bot rule
+ * is about workflows, not about the action it happens to share.
+ */
+it('leaves a forward somebody makes themselves in their own name', function () {
+    [$member, $workspace, $channel] = handoverScene();
+
+    $elsewhere = channelWithMember($workspace, $member);
+
+    $original = app(SendMessage::class)->handle(
+        channel: $channel,
+        author: $member,
+        body: 'De lift doet het niet.',
+    );
+
+    app(ForwardMessage::class)->handle($original, $elsewhere, $member);
+
+    $forwarded = Message::query()->where('channel_id', $elsewhere->id)->latest('id')->firstOrFail();
+
+    expect($forwarded->user_id)->toBe($member->id)
+        ->and($forwarded->bot_name)->toBeNull();
 });
 
 it('asks for credentials and hands over the link, never the answers', function () {
     [$member, $workspace, $channel] = handoverScene();
 
-    $run = runStep(handoverWorkflow($workspace, $member), 'create-secret-request', [
+    $workflow = handoverWorkflow($workspace, $member);
+
+    $run = runStep($workflow, 'create-secret-request', [
         'channel_id' => $channel->id,
         'title' => 'Toegang voor {{ trigger.klant }}',
         'keys' => ['Gebruikersnaam', 'Wachtwoord', 'Tweestapscode'],
@@ -209,12 +246,18 @@ it('asks for credentials and hands over the link, never the answers', function (
     ], ['trigger' => ['klant' => 'Jansen']]);
 
     $request = SecretRequest::query()->firstOrFail();
+    $announcement = Message::query()->where('channel_id', $channel->id)->latest('id')->firstOrFail();
 
     expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
         ->and($request->title)->toBe('Toegang voor Jansen')
         ->and($request->keys()->count())->toBe(3)
         ->and($request->expires_at->toDateString())->toBe(now()->addDays(7)->toDateString())
-        ->and(data_get($run->context, 'steps.0.request.url'))->toContain((string) $request->id);
+        ->and(data_get($run->context, 'steps.0.request.url'))->toContain((string) $request->id)
+        // The request is the owner's, because somebody has to read the answers.
+        // The message asking for them is the bot's.
+        ->and($request->created_by)->toBe($member->id)
+        ->and($announcement->user_id)->toBeNull()
+        ->and($announcement->bot_name)->toBe($workflow->botName());
 });
 
 it('refuses a request with nothing to ask for', function () {

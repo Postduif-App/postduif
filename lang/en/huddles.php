@@ -12,6 +12,12 @@
 return [
     'recording' => [
         'started' => ':name has started recording this conversation.',
+        /*
+         * One recorder at a time. Not because two recordings would break
+         * anything, but because the notice names a person: "Sanne is recording"
+         * while Joost is recording too is a notice that is quietly wrong.
+         */
+        'already' => 'This conversation is already being recorded.',
     ],
 
     'transcription' => [

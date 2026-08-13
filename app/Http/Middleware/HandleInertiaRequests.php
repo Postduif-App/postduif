@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Actions\Workspace\BuildThemeStyles;
 use App\Enums\Availability;
+use App\Enums\PlatformEdition;
 use App\Enums\WorkspaceAbility;
 use App\Enums\WorkspaceFont;
 use App\Features\Contracts as ContractsFeature;
@@ -99,6 +100,14 @@ class HandleInertiaRequests extends Middleware
             // Whether the sign-up page is answering, so the login screen knows
             // not to offer a way to a door that is shut.
             'registrationOpen' => (bool) config('auth.registration_open'),
+
+            /*
+             * Of de publieke site hier bestaat. Gedeeld en niet per pagina
+             * meegegeven, want de shell om de API-pagina heeft het antwoord
+             * nodig: het woordmerk daar wijst naar / en dat adres stuurt op een
+             * zelfgehoste installatie door naar het inlogscherm.
+             */
+            'marketingSite' => PlatformEdition::current()->showsMarketingSite(),
             'auth' => [
                 'user' => $user,
                 /*
@@ -120,6 +129,13 @@ class HandleInertiaRequests extends Middleware
                 // refuses to open.
                 'canManageWorkspace' => $role?->allows(WorkspaceAbility::ManageWorkspace) ?? false,
                 'canInviteToWorkspace' => $role?->allows(WorkspaceAbility::InviteMembers) ?? false,
+                /*
+                 * Whether the features screen is theirs to open. Its own flag
+                 * rather than folded into canManageWorkspace, because it is the
+                 * one workspace screen an administrator does not get with the
+                 * job — see WorkspaceAbility::ManageFeatures.
+                 */
+                'canManageFeatures' => $role?->allows(WorkspaceAbility::ManageFeatures) ?? false,
                 /*
                  * Whether this workspace has workflows at all, so the settings
                  * navigation can leave the link out rather than offer a screen

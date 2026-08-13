@@ -501,6 +501,14 @@ export interface Huddle {
     id: number;
     channelId: number;
     live: boolean;
+    /**
+     * Who is recording, while somebody is, and null the rest of the time.
+     *
+     * The live half of the notice. The message in the channel says a recording
+     * happened; this says one is happening, which is the only version that can
+     * still change somebody's mind about what they say next.
+     */
+    recordingBy: { id: number; name: string | null } | null;
     participants: { id: number; name: string | null }[];
 }
 

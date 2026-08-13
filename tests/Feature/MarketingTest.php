@@ -1,12 +1,15 @@
 <?php
 
+use App\Actions\Marketing\BuildFeatureInventory;
 use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
+use App\Enums\FeatureGroup;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
 use App\Features\Forms;
+use App\Features\Tickets;
 use App\Features\Transfers;
 use App\Features\WorkspaceFeature;
 use App\Models\User;
@@ -222,4 +225,62 @@ it('shows what a personal token opens, as the router has it', function () {
     $tools = collect($response->viewData('page')['props']['token']['tools'])->pluck('name');
 
     expect($tools)->toHaveCount(4);
+});
+
+/**
+ * Achttien onderdelen achter elkaar zijn achttien even zware kaartjes, en een
+ * bezoeker die niet weet wat hij zoekt haakt bij de zesde af. De indeling hangt
+ * daarom aan de featureklasse zelf: group() is abstract, dus een nieuw
+ * onderdeel valt altijd ergens onder in plaats van stilletjes buiten de pagina.
+ */
+it('says what every feature is about, so the page can group them', function () {
+    $response = get(route('home'))->assertOk();
+
+    $groups = collect($response->viewData('page')['props']['featureGroups'])
+        ->pluck('value');
+
+    expect($groups)->toHaveCount(count(FeatureGroup::cases()));
+
+    $features = collect($response->viewData('page')['props']['features']);
+
+    /*
+     * Elk onderdeel valt onder een groep die de pagina ook tekent. Zonder deze
+     * assertie is een feature met een groep die er niet meer is een kaartje dat
+     * nergens verschijnt — en dat is precies het soort verdwijning dat niemand
+     * opmerkt, want de pagina blijft het doen.
+     */
+    expect($features->pluck('group')->unique()->diff($groups))->toBeEmpty();
+
+    // En geen enkele groep is leeg, want dan stond er een kop op de pagina met
+    // niets eronder.
+    expect($groups->diff($features->pluck('group')->unique()))->toBeEmpty();
+});
+
+/**
+ * De drie die de pagina groot uitlicht. Naam en omschrijving komen uit de
+ * featureklasse zoals overal; alleen de zin eronder is met de hand geschreven,
+ * want die is een oordeel — zie BuildFeatureInventory::SPOTLIGHT.
+ */
+it('leads with three features, in the words the application uses for them', function () {
+    $spotlight = collect(get(route('home'))->assertOk()->viewData('page')['props']['spotlight']);
+
+    expect($spotlight)->toHaveCount(count(BuildFeatureInventory::SPOTLIGHT))
+        ->and($spotlight->pluck('key'))->toContain(Tickets::key())
+        ->and($spotlight->firstWhere('key', Tickets::key())['label'])->toBe(Tickets::label());
+
+    /*
+     * En elke uitgelichte zin is er ook echt een. Een ontbrekende vertaalregel
+     * geeft de sleutel terug in plaats van te breken, dus zonder deze assertie
+     * zou er "marketing.home.spotlight.items.tickets" op de voorpagina kunnen
+     * staan zonder dat één test iets zegt.
+     */
+    $spotlight->each(function (array $item) {
+        expect($item['pitch'])->not->toContain('marketing.home.spotlight');
+    });
+
+    // Uitgelicht betekent niet weggelaten: de lijst eronder blijft compleet, en
+    // dat is wat de belofte "wat er niet in staat, staat er niet" waard maakt.
+    $features = collect(get(route('home'))->viewData('page')['props']['features'])->pluck('key');
+
+    expect($features)->toContain(...$spotlight->pluck('key')->all());
 });

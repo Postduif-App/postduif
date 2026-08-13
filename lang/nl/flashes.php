@@ -150,6 +150,7 @@ return [
     'settings' => [
         'saved' => 'Instellingen opgeslagen.',
         'permissions_saved' => 'Rechten opgeslagen.',
+        'features_saved' => 'Onderdelen opgeslagen.',
         'notifications_saved' => 'Notificaties opgeslagen.',
         'theme_saved' => 'Thema opgeslagen.',
         'mail_saved' => 'Mailinstellingen opgeslagen.',

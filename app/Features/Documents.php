@@ -2,6 +2,8 @@
 
 namespace App\Features;
 
+use App\Enums\FeatureGroup;
+
 class Documents extends WorkspaceFeature
 {
     public static function label(): string
@@ -12,5 +14,10 @@ class Documents extends WorkspaceFeature
     public static function description(): string
     {
         return __('features.documents.description');
+    }
+
+    public static function group(): FeatureGroup
+    {
+        return FeatureGroup::Work;
     }
 }

@@ -3,39 +3,13 @@
 use App\Actions\SharedChannels\AddSharedChannelMembers;
 use App\Actions\SharedChannels\RevokeChannelShare;
 use App\Enums\ChannelType;
-use App\Enums\SystemRole;
-use App\Features\SharedChannels;
 use App\Models\Channel;
 use App\Models\ChannelShare;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
-
-/**
- * Two workspaces that both offer shared channels, and a channel in the first.
- *
- * Both sides switched on by hand rather than by the factory, for the same
- * reason the transfer fixture does it: the feature ships off, and a fixture
- * that quietly turned it on would hide the day somebody changes that default.
- *
- * @return array{0: User, 1: Workspace, 2: Channel, 3: User, 4: Workspace}
- */
-function sharedChannelFixture(): array
-{
-    $host = User::factory()->create();
-    $hostWorkspace = workspaceWithMember($host, SystemRole::Admin);
-
-    $guest = User::factory()->create();
-    $guestWorkspace = workspaceWithMember($guest, SystemRole::Admin);
-
-    Feature::for($hostWorkspace)->activate(SharedChannels::class);
-    Feature::for($guestWorkspace)->activate(SharedChannels::class);
-
-    return [$host, $hostWorkspace, channelWithMember($hostWorkspace, $host), $guest, $guestWorkspace];
-}
 
 it('offers a channel to another workspace without granting anything yet', function () {
     [$host, $hostWorkspace, $channel, $guest, $guestWorkspace] = sharedChannelFixture();

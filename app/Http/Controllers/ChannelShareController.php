@@ -273,14 +273,8 @@ class ChannelShareController extends Controller
      */
     private function maySever(User $user, Workspace $workspace, ChannelShare $share): bool
     {
-        if ($share->workspace_id === $workspace->id) {
-            return $user->can('manage', $workspace);
-        }
-
-        if ($share->channel->workspace_id === $workspace->id) {
-            return $user->can('manageSettings', $share->channel);
-        }
-
-        return false;
+        // The rule itself lives in ChannelSharePolicy, because a workflow step
+        // asks the same question and has no URL to work the answer out from.
+        return $user->can('sever', [$share, $workspace]);
     }
 }

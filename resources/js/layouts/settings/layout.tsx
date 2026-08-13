@@ -26,6 +26,7 @@ import { edit as editWorkspace } from '@/routes/workspace';
 import { index as workspaceChannels } from '@/routes/workspace/channels';
 import { index as contractWebhooks } from '@/routes/workspace/contract-webhooks';
 import { index as workspaceEmoji } from '@/routes/workspace/emoji';
+import { edit as editWorkspaceFeatures } from '@/routes/workspace/features';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
 import { edit as editWorkspaceMail } from '@/routes/workspace/mail';
 import { edit as editWorkspaceMailTexts } from '@/routes/workspace/mail-texts';
@@ -150,6 +151,20 @@ export default function SettingsLayout({
                             },
                         ]
                       : []),
+              ]
+            : []),
+        /*
+         * Outside the canManageWorkspace block, unlike everything above it: an
+         * owner holds this right and an administrator does not, unless the
+         * owner handed it over. Beside the invitations link for the same reason
+         * — a screen somebody may open without running the whole workspace.
+         */
+        ...(auth.canManageFeatures
+            ? [
+                  {
+                      title: t('settings.nav.features'),
+                      href: editWorkspaceFeatures(),
+                  },
               ]
             : []),
         ...(auth.canInviteToWorkspace

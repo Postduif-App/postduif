@@ -12,6 +12,7 @@ import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, resend } from '@/routes/chat/invitations';
+import type { ChatWorkspace } from '@/types/chat';
 
 interface PendingInvitation {
     id: number;
@@ -33,6 +34,8 @@ interface InvitationsProps {
     inviteLinks: InviteLink[];
     /** Non-DM, unarchived channels a link may be pointed at. */
     channels: InvitableChannel[];
+    /** The roles this member may hand out, by their own ids. */
+    roles: ChatWorkspace['invitableRoles'];
 }
 
 export default function WorkspaceInvitations({
@@ -42,6 +45,7 @@ export default function WorkspaceInvitations({
     inviteLinksEnabled,
     inviteLinks,
     channels,
+    roles,
 }: InvitationsProps) {
     const { t } = useTranslate();
     const formats = useFormats();
@@ -177,6 +181,7 @@ export default function WorkspaceInvitations({
                         workspaceSlug={workspaceSlug}
                         links={inviteLinks}
                         channels={channels}
+                        roles={roles}
                     />
                 </SettingsSection>
             )}

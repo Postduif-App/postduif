@@ -147,6 +147,7 @@ return [
     'settings' => [
         'saved' => 'Settings saved.',
         'permissions_saved' => 'Permissions saved.',
+        'features_saved' => 'Features saved.',
         'notifications_saved' => 'Notifications saved.',
         'theme_saved' => 'Theme saved.',
         'mail_saved' => 'Mail settings saved.',

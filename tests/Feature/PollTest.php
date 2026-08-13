@@ -1,7 +1,9 @@
 <?php
 
+use App\Actions\Polls\SettlePolls;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\SystemRole;
+use App\Events\PollClosed;
 use App\Features\Polls;
 use App\Models\Channel;
 use App\Models\Message;
@@ -10,6 +12,7 @@ use App\Models\PollOption;
 use App\Models\PollVote;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Event;
 use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
@@ -322,6 +325,93 @@ it('keeps a deadline that has not passed', function () {
     expect($poll->refresh())
         ->closes_at->not->toBeNull()
         ->isClosed()->toBeFalse();
+});
+
+/*
+ * A poll that runs out on its own.
+ *
+ * Nothing used to run when closes_at passed — the deadline was compared where
+ * the poll was read — so half of all endings were silent to anything hanging
+ * off them. SettlePolls is what notices now.
+ */
+
+it('announces a poll whose own deadline has passed, once', function () {
+    Event::fake([PollClosed::class]);
+
+    [$user, $workspace, $channel] = pollChannel();
+    $poll = Poll::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $user->id,
+        'closes_at' => now()->subHour(),
+    ]);
+
+    expect(app(SettlePolls::class)->handle())->toBe(1)
+        ->and($poll->refresh()->settled_at)->not->toBeNull()
+        // And not stamped as stopped by hand: that distinction is what the card
+        // in the channel reads, and reopen() undoes the two separately.
+        ->and($poll->closed_at)->toBeNull();
+
+    // The sweep runs every minute. Announcing the same ending sixty times an
+    // hour for the rest of the poll's life is what settled_at prevents.
+    expect(app(SettlePolls::class)->handle())->toBe(0);
+
+    Event::assertDispatchedTimes(PollClosed::class, 1);
+});
+
+it('leaves a poll whose deadline is still ahead alone', function () {
+    [$user, $workspace, $channel] = pollChannel();
+    $poll = Poll::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $user->id,
+        'closes_at' => now()->addDay(),
+    ]);
+
+    expect(app(SettlePolls::class)->handle())->toBe(0)
+        ->and($poll->refresh()->settled_at)->toBeNull();
+});
+
+it('does not announce the ending twice for a poll somebody had already stopped', function () {
+    Event::fake([PollClosed::class]);
+
+    [$user, $workspace, $channel] = pollChannel();
+    $poll = Poll::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $user->id,
+        'closes_at' => now()->subHour(),
+        'closed_at' => now()->subHours(2),
+    ]);
+
+    // Pressing stop already said this poll was over. The deadline arriving
+    // afterwards closed nothing that was still open.
+    expect(app(SettlePolls::class)->handle())->toBe(0)
+        ->and($poll->refresh()->settled_at)->not->toBeNull();
+
+    Event::assertNotDispatched(PollClosed::class);
+});
+
+it('lets a reopened poll run out and be announced again', function () {
+    [$user, $workspace, $channel] = pollChannel();
+    $poll = Poll::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'created_by' => $user->id,
+        'closes_at' => now()->addMinutes(5),
+    ]);
+
+    app(SettlePolls::class)->handle();
+
+    $this->travel(10)->minutes();
+
+    expect(app(SettlePolls::class)->handle())->toBe(1);
+
+    actingAs($user)->post(route('chat.polls.reopen', [$workspace, $poll]));
+
+    // Reopening undoes the ending, so the note that it was dealt with has to go
+    // with it — otherwise a second deadline could never be announced.
+    expect($poll->refresh()->settled_at)->toBeNull();
 });
 
 /** Reopening is not a reset: answers given in good faith stay. */

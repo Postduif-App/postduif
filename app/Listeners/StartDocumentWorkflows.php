@@ -8,6 +8,7 @@ use App\Events\DocumentDeleted;
 use App\Models\Document;
 use App\Models\User;
 use App\Models\Workflow;
+use App\Workflows\RecordSnapshot;
 use App\Workflows\Triggers\DocumentCreatedTrigger;
 use App\Workflows\Triggers\DocumentDeletedTrigger;
 use App\Workflows\WorkflowTrigger;
@@ -55,6 +56,7 @@ class StartDocumentWorkflows
             fn (Workflow $workflow): ?array => $this->matches($workflow, $document)
                 ? $this->context($document, $actor)
                 : null,
+            $this->context($document, $actor),
         );
     }
 
@@ -69,23 +71,15 @@ class StartDocumentWorkflows
     }
 
     /**
+     * The document half comes from RecordSnapshot, which read-document reads
+     * from too; the actor belongs to the happening and stays here.
+     *
      * @return array<string, mixed>
      */
     private function context(Document $document, ?User $actor): array
     {
         return [
-            /*
-             * No url. A document is a tab inside a channel rather than a page
-             * of its own, so there is no address to hand anybody — the number
-             * and the channel are how people refer to one, and that is what a
-             * message written by a workflow can say.
-             */
-            'document' => [
-                'id' => $document->id,
-                'number' => $document->number,
-                'title' => $document->title,
-            ],
-            'channel' => ['id' => $document->channel_id, 'name' => $document->channel->name],
+            ...RecordSnapshot::document($document),
             'actor' => ['id' => $actor?->id, 'name' => $actor?->name],
         ];
     }

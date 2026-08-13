@@ -583,12 +583,19 @@ class ChatController extends Controller
             return null;
         }
 
-        $huddle = $channel->huddles()->live()->with('present.user:id,name')->first();
+        $huddle = $channel->huddles()->live()
+            ->with(['present.user:id,name', 'recorder:id,name'])
+            ->first();
 
         return $huddle === null ? null : [
             'id' => $huddle->id,
             'channelId' => $huddle->channel_id,
             'live' => true,
+            // Somebody walking in halfway through learns it here rather than
+            // from the broadcast they were not subscribed to yet.
+            'recordingBy' => $huddle->isBeingRecorded()
+                ? ['id' => $huddle->recording_by, 'name' => $huddle->recorder?->name]
+                : null,
             'participants' => $huddle->present
                 ->map(fn (HuddleParticipant $participant): array => [
                     'id' => $participant->user_id,

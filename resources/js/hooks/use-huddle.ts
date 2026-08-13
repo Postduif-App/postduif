@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useHuddleRecording } from '@/hooks/use-huddle-recording';
+import type { HuddleRecordingControls } from '@/hooks/use-huddle-recording';
 import { useHuddleSignals } from '@/hooks/use-huddle-signals';
 import { mutatingHeaders } from '@/lib/csrf';
 import type { HuddleSignal } from '@/lib/huddle-signalling';
@@ -61,6 +63,16 @@ export interface HuddleControls {
     toggleCamera: () => void;
     /** Speak through another microphone, or look through another camera. */
     switchDevice: (kind: 'audio' | 'video', deviceId: string) => void;
+    /** Recording this huddle from this browser: the button's half of it. */
+    recording: HuddleRecordingControls;
+    /**
+     * Who is recording, as the server last said, and null when nobody is.
+     *
+     * Everybody in the huddle reads the same value, including the person doing
+     * it — the indicator is one fact about the room rather than one thing the
+     * recorder sees and another everybody else does.
+     */
+    recordingBy: Huddle['recordingBy'];
 }
 
 /**
@@ -169,6 +181,22 @@ export function useHuddle(
         [workspace.slug, channelId],
     );
 
+    /*
+     * Recording lives in its own hook but is fed from here, because this is
+     * where the audio is. Every stream that arrives or is swapped is handed to
+     * it under a name, whether or not anything is being recorded — the mixer is
+     * only built when somebody presses the button, and it needs the room as it
+     * stands at that moment rather than only what happens next.
+     */
+    const recording = useHuddleRecording(target, huddle?.id ?? null);
+    /*
+     * Pulled apart because the callbacks below depend on them. All three are
+     * stable, unlike the object holding them, which is rebuilt whenever the
+     * recording state changes — and teardown is used as an unmount cleanup, so
+     * an identity that moved would tear the huddle down mid-conversation.
+     */
+    const { attach, detach, stop: stopRecording } = recording;
+
     /**
      * Take everything down.
      *
@@ -176,14 +204,24 @@ export function useHuddle(
      * closed connection is a no-op, and the maps are emptied as they go.
      */
     const teardown = useCallback(() => {
+        /*
+         * The recorder first, and stopped rather than abandoned: whatever was
+         * captured up to this moment is a real fragment of a real conversation,
+         * and the upload it triggers is what keeps it. See useHuddleRecording,
+         * which takes the notice down as part of the same gesture.
+         */
+        stopRecording();
+
         peers.current.forEach((peer) => peer.close());
         peers.current.clear();
 
-        speakers.current.forEach((audio) => {
+        speakers.current.forEach((audio, id) => {
             audio.srcObject = null;
             audio.remove();
+            detach(String(id));
         });
         speakers.current.clear();
+        detach('self');
 
         // The track has to be stopped, not just dropped: an open microphone is
         // a recording light that stays on after somebody left the huddle.
@@ -197,7 +235,7 @@ export function useHuddle(
         videoSenders.current.clear();
         audioSenders.current.clear();
         setOwnCamera(null);
-    }, []);
+    }, [detach, stopRecording]);
 
     useEffect(() => teardown, [teardown]);
 
@@ -337,13 +375,23 @@ export function useHuddle(
                 }
 
                 audio.srcObject = stream;
+
+                /*
+                 * And the same stream into the mix. The <audio> above is what
+                 * this browser hears; this is what a recording would contain,
+                 * and they have to be fed from the same place — a mesh has no
+                 * server holding the conversation, so somebody who arrives
+                 * halfway through a recording has to be added to it as they
+                 * arrive or they are simply missing from the file.
+                 */
+                attach(String(id), stream);
             };
 
             peers.current.set(id, peer);
 
             return peer;
         },
-        [currentUserId, iceServers],
+        [currentUserId, iceServers, attach],
     );
 
     const { send } = useHuddleSignals(
@@ -467,6 +515,9 @@ export function useHuddle(
                 peers.current.delete(id);
                 speakers.current.get(id)?.remove();
                 speakers.current.delete(id);
+                // Out of the mix as well, or a recording that outlives them
+                // keeps a dead source node wired to the destination.
+                detach(String(id));
                 videoSenders.current.delete(id);
                 audioSenders.current.delete(id);
                 setCameras((current) => {
@@ -481,7 +532,7 @@ export function useHuddle(
                 });
             }
         });
-    }, [state, participants, currentUserId, peerFor]);
+    }, [state, participants, currentUserId, peerFor, detach]);
 
     const join = useCallback(() => {
         if (state === 'joining' || state === 'in') {
@@ -506,6 +557,14 @@ export function useHuddle(
                 microphone.current = await navigator.mediaDevices.getUserMedia({
                     audio: true,
                 });
+
+                /*
+                 * Into the mix straight away. A recording that contained
+                 * everybody except the person who made it is the one mistake
+                 * this is easy to make and impossible to notice until you play
+                 * it back.
+                 */
+                attach('self', microphone.current);
             } catch {
                 // Refused, or no microphone at all. Either way there is nothing
                 // to join with.
@@ -528,7 +587,7 @@ export function useHuddle(
                 },
             );
         })();
-    }, [state, participants.length, inside, target, teardown]);
+    }, [state, participants.length, inside, target, teardown, attach]);
 
     const leave = useCallback(() => {
         teardown();
@@ -753,6 +812,13 @@ export function useHuddle(
 
                 if (kind === 'audio') {
                     microphone.current = stream;
+                    /*
+                     * The mix follows the microphone. Without this a recording
+                     * running while somebody swapped headsets would carry on
+                     * with the old device's stream, which the line below is
+                     * about to stop — so it would simply go quiet.
+                     */
+                    attach('self', stream);
                 } else {
                     camcorder.current = stream;
                     setOwnCamera(stream);
@@ -761,7 +827,7 @@ export function useHuddle(
                 previous?.getTracks().forEach((old) => old.stop());
             })();
         },
-        [muted],
+        [muted, attach],
     );
 
     const toggleMute = useCallback(() => {
@@ -795,5 +861,7 @@ export function useHuddle(
         toggleMute,
         toggleCamera,
         switchDevice,
+        recording,
+        recordingBy: huddle?.recordingBy ?? null,
     };
 }

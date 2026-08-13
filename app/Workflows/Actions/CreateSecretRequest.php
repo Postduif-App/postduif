@@ -114,6 +114,7 @@ class CreateSecretRequest extends WorkflowAction
             title: $title,
             keys: $keys,
             validForDays: $this->days($context),
+            workflow: $context->workflow,
         );
 
         return [

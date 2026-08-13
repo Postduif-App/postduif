@@ -5,6 +5,7 @@ use App\Actions\Documents\DeleteDocument;
 use App\Actions\Documents\UpdateDocument;
 use App\Actions\Polls\CastVote;
 use App\Actions\Polls\CreatePoll;
+use App\Actions\Polls\SettlePolls;
 use App\Enums\ChannelDocumentPolicy;
 use App\Enums\SystemRole;
 use App\Enums\WorkflowRunStatus;
@@ -13,6 +14,7 @@ use App\Features\Polls;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Channel;
 use App\Models\Document;
+use App\Models\Message;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\User;
@@ -304,10 +306,41 @@ it('runs when somebody stops a poll, from the button or from a step', function (
         ->and(data_get($again->context, 'steps.0.closed'))->toBeFalse();
 });
 
+it('runs when a poll reaches its own deadline, with nobody having pressed anything', function () {
+    [$member, $workspace, $channel] = documentPollScene();
+    $workflow = listeningFor($member, $channel, 'poll-closed');
+
+    $poll = app(CreatePoll::class)->handle(
+        $channel,
+        $member,
+        'Kantoor of thuis?',
+        ['Kantoor', 'Thuis'],
+        closesInHours: 1,
+    );
+
+    // Before the moment: nothing has happened, and nothing should have run.
+    app(SettlePolls::class)->handle();
+
+    expect(runOf($workflow))->toBeNull();
+
+    $this->travel(2)->hours();
+
+    app(SettlePolls::class)->handle();
+
+    // This was the half that used to be missing: a deadline is compared where
+    // the poll is read, so until the sweep existed a poll that ran out at
+    // midnight had been closed since midnight without anything running.
+    expect(runOf($workflow))->not->toBeNull()
+        ->and($poll->fresh()->closed_at)->toBeNull()
+        ->and($poll->fresh()->settled_at)->not->toBeNull();
+});
+
 it('starts a poll from a step, with the answers written into it', function () {
     [$member, $workspace, $channel] = documentPollScene();
 
-    $run = runStep(stepperWorkflow($workspace, $member), 'create-poll', [
+    $workflow = stepperWorkflow($workspace, $member);
+
+    $run = runStep($workflow, 'create-poll', [
         'channel_id' => $channel->id,
         'question' => 'Wie is er maandag op kantoor?',
         'options' => ['Ik', 'Niet ik'],
@@ -315,12 +348,29 @@ it('starts a poll from a step, with the answers written into it', function () {
     ]);
 
     $poll = Poll::query()->where('channel_id', $channel->id)->firstOrFail();
+    $announcement = Message::query()->where('channel_id', $channel->id)->latest('id')->firstOrFail();
 
     expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
         ->and($poll->question)->toBe('Wie is er maandag op kantoor?')
         ->and($poll->options()->pluck('label')->all())->toBe(['Ik', 'Niet ik'])
         ->and($poll->closes_at)->not->toBeNull()
-        ->and($poll->allows_multiple)->toBeFalse();
+        ->and($poll->allows_multiple)->toBeFalse()
+        // The question is put by the bot. The poll itself stays the owner's,
+        // because a poll needs somebody who may close it.
+        ->and($poll->created_by)->toBe($member->id)
+        ->and($announcement->user_id)->toBeNull()
+        ->and($announcement->bot_name)->toBe($workflow->botName());
+});
+
+it('leaves a poll somebody starts themselves in their own name', function () {
+    [$member, $workspace, $channel] = documentPollScene();
+
+    app(CreatePoll::class)->handle($channel, $member, 'Wat vinden we?', ['Ja', 'Nee']);
+
+    $announcement = Message::query()->where('channel_id', $channel->id)->latest('id')->firstOrFail();
+
+    expect($announcement->user_id)->toBe($member->id)
+        ->and($announcement->bot_name)->toBeNull();
 });
 
 it('refuses a poll with only one answer', function () {
@@ -367,4 +417,40 @@ it('counts what a multiple-choice poll means by an answer', function () {
     // Two votes, one voter — which is the number anybody actually means.
     expect(data_get(runOf($workflow)->context, 'trigger.poll.vote_count'))->toBe(2)
         ->and(data_get(runOf($workflow)->context, 'trigger.poll.voter_count'))->toBe(1);
+});
+
+it('reads a poll again, so the tally is the one at the moment of the step', function () {
+    [$member, $workspace, $channel] = documentPollScene();
+
+    $poll = app(CreatePoll::class)->handle($channel, $member, 'Kantoor of thuis?', ['Kantoor', 'Thuis']);
+    $option = $poll->options()->where('label', 'Thuis')->firstOrFail();
+
+    // What the trigger saw when the poll was still empty.
+    $before = ['trigger' => ['poll' => ['id' => $poll->id, 'top_votes' => 0]]];
+
+    app(CastVote::class)->handle($poll, $option, $member);
+
+    $run = runStep(stepperWorkflow($workspace, $member), 'read-poll', ['poll_id' => $poll->id], $before);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and(data_get($run->context, 'steps.0.poll.leading_option'))->toBe('Thuis')
+        ->and(data_get($run->context, 'steps.0.poll.top_votes'))->toBe(1)
+        ->and(data_get($run->context, 'steps.0.poll.voter_count'))->toBe(1)
+        ->and(data_get($run->context, 'trigger.poll.top_votes'))->toBe(0);
+});
+
+it('reads a document again, and gives back the name it has now', function () {
+    [$member, $workspace, $channel] = documentPollScene();
+
+    $document = app(CreateDocument::class)->handle($channel, $member, 'Projectnotities');
+
+    $document->forceFill(['title' => 'Projectnotities 2027'])->save();
+
+    $run = runStep(stepperWorkflow($workspace, $member), 'read-document', [
+        'document_id' => $document->id,
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and(data_get($run->context, 'steps.0.document.title'))->toBe('Projectnotities 2027')
+        ->and(data_get($run->context, 'steps.0.channel.id'))->toBe($channel->id);
 });

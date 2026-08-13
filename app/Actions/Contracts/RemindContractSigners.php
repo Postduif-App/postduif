@@ -50,7 +50,7 @@ class RemindContractSigners
             return 0;
         }
 
-        $this->send->invite($contract, $due->all());
+        $this->send->invite($contract, array_values($due->all()));
 
         /*
          * Stamped after the mail rather than before.

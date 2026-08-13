@@ -126,7 +126,8 @@ export default function WorkspaceMailTemplates({
      */
     const errorFor = (field: FieldName): string | undefined => {
         const index =
-            kinds.findIndex((option) => option.value === kind) * locales.length +
+            kinds.findIndex((option) => option.value === kind) *
+                locales.length +
             locales.findIndex((option) => option.value === locale);
 
         return errors[`templates.${index}.${field}`];

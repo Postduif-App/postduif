@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Chat\SendMessage;
+use App\Actions\Huddles\SweepStaleHuddles;
 use App\Enums\ChannelType;
 use App\Features\Huddles as HuddlesFeature;
 use App\Jobs\TranscribeHuddleRecording;
@@ -67,6 +68,91 @@ it('tells the channel that recording has started, before anything is recorded', 
         ->and(Message::query()->sole()->bot_name)->toBe('Huddles');
 });
 
+it('marks the huddle as being recorded, so everybody in it can see so', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]))
+        ->assertRedirect();
+
+    // The message in the channel says a recording happened; this says one is
+    // happening — which is the only version that can still change what somebody
+    // says next.
+    expect($huddle->fresh()->recording_by)->toBe($user->id)
+        ->and($huddle->fresh()->isBeingRecorded())->toBeTrue();
+});
+
+it('says it once, however often a browser announces', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]))
+        ->assertRedirect();
+
+    // A browser that reconnects and announces again would otherwise read as a
+    // second recording.
+    expect(Message::query()->count())->toBe(1);
+});
+
+it('refuses a second recorder while one is already going', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    $other = User::factory()->create();
+    joinWorkspace($workspace, $other);
+    $channel->members()->attach($other->id, ['joined_at' => now()]);
+    $huddle->participants()->create(['user_id' => $other->id, 'joined_at' => now()]);
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    // Two recordings would work on the wire; the notice names one person, and
+    // a second recording nobody was told about is what the notice exists for.
+    actingAs($other)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]))
+        ->assertStatus(409);
+
+    expect($huddle->fresh()->recording_by)->toBe($user->id);
+});
+
+it('refuses to announce for somebody who is not in the room', function () {
+    [, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    $bystander = User::factory()->create();
+    joinWorkspace($workspace, $bystander);
+    $channel->members()->attach($bystander->id, ['joined_at' => now()]);
+
+    // The notice names them, and a name in that sentence has to belong to
+    // somebody the others can actually hear.
+    actingAs($bystander)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]))
+        ->assertForbidden();
+
+    expect($huddle->fresh()->isBeingRecorded())->toBeFalse();
+});
+
+it('takes the notice down when the browser says it has stopped', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    // Its own call rather than something the upload does: a browser that stops
+    // and then fails to send the file has still stopped.
+    actingAs($user)->delete(route('chat.huddles.recording.stopped', [$workspace, $channel, $huddle]))
+        ->assertRedirect();
+
+    expect($huddle->fresh()->isBeingRecorded())->toBeFalse();
+});
+
+it('leaves somebody else\'s notice alone', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    $other = User::factory()->create();
+    joinWorkspace($workspace, $other);
+    $channel->members()->attach($other->id, ['joined_at' => now()]);
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    actingAs($other)->delete(route('chat.huddles.recording.stopped', [$workspace, $channel, $huddle]));
+
+    expect($huddle->fresh()->recording_by)->toBe($user->id);
+});
+
 it('takes the audio and queues the transcription', function () {
     Queue::fake();
 
@@ -87,6 +173,62 @@ it('takes the audio and queues the transcription', function () {
         ->and($recording->isTranscribed())->toBeFalse();
 
     Queue::assertPushed(TranscribeHuddleRecording::class);
+});
+
+it('puts the notice out when the file arrives', function () {
+    Queue::fake();
+
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    actingAs($user)->post(route('chat.huddles.recording.store', [$workspace, $channel, $huddle]), [
+        'audio' => recordedAudio(),
+    ])->assertRedirect();
+
+    // A browser that got this far should not need a second round trip to stop
+    // telling the channel it is recording.
+    expect($huddle->fresh()->isBeingRecorded())->toBeFalse();
+});
+
+it('stops recording when the recorder walks out', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    actingAs($user)->delete(route('chat.huddles.destroy', [$workspace, $channel, $huddle]))
+        ->assertRedirect();
+
+    // Their browser held the only copy of the mix, so nothing is being recorded
+    // the moment they are out of the room.
+    expect($huddle->fresh()->isBeingRecorded())->toBeFalse();
+});
+
+it('stops recording for a recorder whose browser simply went quiet', function () {
+    [$user, $workspace, $channel, $huddle] = huddleRecordingFixture();
+
+    $other = User::factory()->create();
+    joinWorkspace($workspace, $other);
+    $channel->members()->attach($other->id, ['joined_at' => now()]);
+    $huddle->participants()->create([
+        'user_id' => $other->id,
+        'joined_at' => now(),
+        'last_seen_at' => now(),
+    ]);
+
+    actingAs($user)->post(route('chat.huddles.recording.announce', [$workspace, $channel, $huddle]));
+
+    // The recorder crashed; the other person is still talking. Without the
+    // sweeper the indicator would stay lit for a recording that stopped when
+    // the laptop did.
+    $huddle->present()->where('user_id', $user->id)->update([
+        'last_seen_at' => now()->subSeconds(SweepStaleHuddles::AFTER_SECONDS + 10),
+    ]);
+
+    (new SweepStaleHuddles)->handle();
+
+    expect($huddle->fresh()->isBeingRecorded())->toBeFalse()
+        ->and($huddle->fresh()->isLive())->toBeTrue();
 });
 
 it('refuses a recording from somebody who was not in the huddle', function () {

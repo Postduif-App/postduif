@@ -19,6 +19,7 @@ import {
     ACTION_GLYPHS,
     FALLBACK_GLYPH,
     FORK_GLYPH,
+    LOOP_GLYPH,
     TRIGGER_GLYPH,
     TRIGGER_GLYPHS,
     WorkflowNode,
@@ -117,15 +118,36 @@ type Lane = 'then' | 'else';
 const LANES: Lane[] = ['then', 'else'];
 
 /**
+ * A loop's one lane.
+ *
+ * Its body is kept under `then` so that nothing between here and the database
+ * needed a third idea of what hangs under a step — see WorkflowStepKind, which
+ * makes the same point from the other end.
+ */
+const LOOP_LANES: Lane[] = ['then'];
+
+/**
+ * How many rows a loop walks at most.
+ *
+ * Said on the screen rather than discovered when a workflow quietly does half
+ * of what somebody expected. Kept in step with WorkflowListSource::MAX_ITEMS by
+ * hand, which is the one duplication here worth its keep: sending a number to
+ * the browser so that a sentence can contain it is a round trip for a constant.
+ */
+const LOOP_MAX = 50;
+
+/**
  * One block, of either kind.
  *
  * A fork carries no configuration and no action: what it has is a condition and
- * two lanes. Both kinds are the same type rather than a union, because every
- * helper here walks a mixed list of them and a union would mean narrowing at
- * every step of that walk to say something that the `kind` already says.
+ * two lanes. A loop carries no action either — what it has is a list to walk and
+ * one lane, kept under `then` because that is where the server keeps it too.
+ * All three kinds are the same type rather than a union, because every helper
+ * here walks a mixed list of them and a union would mean narrowing at every
+ * step of that walk to say something that the `kind` already says.
  */
 interface Step {
-    kind: 'action' | 'branch';
+    kind: 'action' | 'branch' | 'loop';
     actionType: string;
     config: Record<string, Setting>;
     condition: Condition | null;
@@ -133,7 +155,7 @@ interface Step {
 }
 
 interface SavedStep {
-    kind?: 'action' | 'branch';
+    kind?: 'action' | 'branch' | 'loop';
     actionType: string;
     config: Record<string, Setting>;
     condition: SavedCondition;
@@ -177,6 +199,8 @@ interface Grammar {
     matches: Record<string, string>;
     outcomes: Record<string, string>;
     branches: Record<string, string>;
+    /** The lists a loop may walk, and what one row of each holds. */
+    lists: Record<string, { label: string; provides: Record<string, string> }>;
 }
 
 interface OperatorGroup {
@@ -398,7 +422,9 @@ function inScopeFor(
             const step = list[index];
             const numbered = numbering.find((one) => one.step === step);
 
-            if (step.kind === 'action' && numbered) {
+            // A loop is not an action, but it does leave something behind —
+            // {{ steps.N.count }} — so it belongs in the variable picker.
+            if (step.kind !== 'branch' && numbered) {
                 seen.push({ step, position: numbered.position });
             }
         }
@@ -432,13 +458,15 @@ function readStep(saved: SavedStep): Step {
         actionType: saved.actionType,
         config: saved.config,
         condition: readCondition(saved.condition),
+        // A loop keeps its body in `then` and leaves `else` empty, so both
+        // arranging kinds read back through exactly this branch.
         branches:
-            kind === 'branch'
-                ? {
+            kind === 'action'
+                ? null
+                : {
                       then: (saved.branches?.then ?? []).map(readStep),
                       else: (saved.branches?.else ?? []).map(readStep),
-                  }
-                : null,
+                  },
     };
 }
 
@@ -500,6 +528,37 @@ function askedBy(
 }
 
 /**
+ * The loops this address sits inside, outermost first.
+ *
+ * Walked the same way inScopeFor walks — a pair of path parts per level — but
+ * looking at the block the path descends *into* rather than the ones before it.
+ * That block is the fork or the loop this one hangs under, and only a loop puts
+ * anything of its own in scope.
+ */
+function loopsAround(steps: Step[], path: Path): Step[] {
+    const found: Step[] = [];
+
+    let list = steps;
+
+    for (let part = 0; part < path.length; part += 2) {
+        const step = list[path[part] as number];
+        const lane = path[part + 1] as Lane | undefined;
+
+        if (lane === undefined || step === undefined) {
+            break;
+        }
+
+        if (step.kind === 'loop') {
+            found.push(step);
+        }
+
+        list = step.branches?.[lane] ?? [];
+    }
+
+    return found;
+}
+
+/**
  * Every path a block at this address may read, with what it holds.
  *
  * The trigger's own, plus whatever each block that is certain to have run
@@ -514,8 +573,23 @@ function variablesFor(
     payload: Record<string, Setting> | null,
     samples: Samples,
     answers: { key: string; label: string }[] = [],
+    lists: Grammar['lists'] = {},
+    within: Step[] = [],
 ): { path: string; what: string }[] {
     const found: { path: string; what: string }[] = [];
+
+    /*
+     * The row, for a block inside a loop. Offered only there: {{ item.* }} is
+     * put back to nothing on the way out of a loop, so a step after one that
+     * read it would be reading a row that is no longer the subject.
+     */
+    for (const loop of within) {
+        const list = lists[String(loop.config.source ?? '')];
+
+        for (const [path, what] of Object.entries(list?.provides ?? {})) {
+            found.push({ path, what });
+        }
+    }
 
     for (const [path, what] of Object.entries(trigger?.provides ?? {})) {
         found.push({ path: `trigger.${path}`, what });
@@ -547,6 +621,19 @@ function variablesFor(
     }
 
     for (const { step, position } of inScope) {
+        /*
+         * A loop is not in the register — it does nothing — but it leaves a
+         * count behind, which is what a message after one says out loud.
+         */
+        if (step.kind === 'loop') {
+            found.push({
+                path: `steps.${position}.count`,
+                what: lists[String(step.config.source ?? '')]?.label ?? '',
+            });
+
+            continue;
+        }
+
         const action = actions.find((one) => one.key === step.actionType);
 
         for (const [path, what] of Object.entries(action?.provides ?? {})) {
@@ -1094,6 +1181,13 @@ function Blocks({
                     (one) => one.key === step.actionType,
                 );
                 const fork = step.kind === 'branch';
+                const loop = step.kind === 'loop';
+                /*
+                 * The two that arrange rather than do. They draw the same way
+                 * apart from how many lanes hang under them, which is the whole
+                 * of the difference on this screen.
+                 */
+                const arranges = fork || loop;
 
                 return (
                     <div key={index}>
@@ -1115,10 +1209,12 @@ function Blocks({
                             glyph={
                                 fork
                                     ? FORK_GLYPH
-                                    : (ACTION_GLYPHS[step.actionType] ??
-                                      FALLBACK_GLYPH)
+                                    : loop
+                                      ? LOOP_GLYPH
+                                      : (ACTION_GLYPHS[step.actionType] ??
+                                        FALLBACK_GLYPH)
                             }
-                            kind={fork ? 'fork' : 'action'}
+                            kind={arranges ? 'fork' : 'action'}
                             number={
                                 numbering.find((one) => one.step === step)
                                     ?.position
@@ -1126,19 +1222,29 @@ function Blocks({
                             label={
                                 fork
                                     ? t('settings.workflows.branch')
-                                    : (action?.label ?? step.actionType)
+                                    : loop
+                                      ? t('settings.workflows.loop')
+                                      : (action?.label ?? step.actionType)
                             }
                             summary={
                                 fork
                                     ? null
-                                    : (summarise(
-                                          action,
-                                          step.config,
-                                          channels,
-                                          members,
-                                          forms,
-                                          records,
-                                      ) ?? t('settings.workflows.unconfigured'))
+                                    : loop
+                                      ? // Which pile it walks, which is the one
+                                        // thing worth reading off a loop block.
+                                        (grammar.lists[
+                                            String(step.config.source ?? '')
+                                        ]?.label ??
+                                        t('settings.workflows.unconfigured'))
+                                      : (summarise(
+                                            action,
+                                            step.config,
+                                            channels,
+                                            members,
+                                            forms,
+                                            records,
+                                        ) ??
+                                        t('settings.workflows.unconfigured'))
                             }
                             selected={
                                 selected.kind === 'step' &&
@@ -1181,14 +1287,23 @@ function Blocks({
                             }
                         />
 
-                        {fork &&
-                            LANES.map((lane) => (
+                        {arranges &&
+                            /*
+                             * One lane for a loop, two for a fork. Same drawing
+                             * either way — a loop's body is a lane that runs
+                             * more than once, which is not something the picture
+                             * can show and does not need to: the block above it
+                             * says "voor elk".
+                             */
+                            (loop ? LOOP_LANES : LANES).map((lane) => (
                                 <div
                                     key={lane}
                                     className="mt-1 ml-4 border-l-2 pl-3"
                                 >
                                     <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                                        {grammar.branches[lane] ?? lane}
+                                        {loop
+                                            ? t('settings.workflows.loop_body')
+                                            : (grammar.branches[lane] ?? lane)}
                                     </span>
 
                                     <Blocks
@@ -1552,6 +1667,34 @@ export default function WorkflowEdit({
     };
 
     const insertAt = (path: Path, kind: Step['kind']) => {
+        if (kind === 'loop') {
+            const fresh: Step = {
+                kind,
+                actionType: 'loop',
+                /*
+                 * The first list, rather than none. A loop with no source
+                 * cannot be saved — the server refuses it — and arriving
+                 * already refused is a worse way to meet a new block than
+                 * arriving with a sensible answer to change.
+                 */
+                config: { source: Object.keys(grammar.lists)[0] ?? '' },
+                condition: null,
+                branches: { then: [], else: [] },
+            };
+
+            setSteps((current) =>
+                rewrite(current, path, (list, at) => [
+                    ...list.slice(0, at),
+                    fresh,
+                    ...list.slice(at),
+                ]),
+            );
+
+            setSelected({ kind: 'step', path });
+
+            return;
+        }
+
         const fresh: Step =
             kind === 'branch'
                 ? {
@@ -1832,6 +1975,23 @@ export default function WorkflowEdit({
                                     <FORK_GLYPH className="size-4" />
                                     {t('settings.workflows.add_branch')}
                                 </Button>
+
+                                {/*
+                                    Only at the top, on the same reasoning as
+                                    the fork: a loop inside a lane is a shape the
+                                    server refuses, and a loop inside a loop is
+                                    fifty rows times fifty rows.
+                                */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        insertAt([steps.length], 'loop')
+                                    }
+                                >
+                                    <LOOP_GLYPH className="size-4" />
+                                    {t('settings.workflows.add_loop')}
+                                </Button>
                             </div>
 
                             {steps.length === 0 && (
@@ -1975,6 +2135,8 @@ export default function WorkflowEdit({
                                         workflow.webhookPayload,
                                         samples,
                                         askedBy(forms, triggerConfig),
+                                        grammar.lists,
+                                        loopsAround(steps, selected.path),
                                     )}
                                     catalogue={catalogue}
                                     grammar={grammar}
@@ -2039,6 +2201,63 @@ function StepPanel({
     const action = catalogue.actions.find((one) => one.key === step.actionType);
 
     const id = path.join('-');
+
+    if (step.kind === 'loop') {
+        return (
+            <>
+                <div className="grid gap-1">
+                    <Label htmlFor={`source-${id}`}>
+                        {t('settings.workflows.loop')} · {number}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                        {t('settings.workflows.loop_hint')}
+                    </p>
+                </div>
+
+                <div className="grid gap-1">
+                    <Label htmlFor={`source-${id}`}>
+                        {t('settings.workflows.loop_source')}
+                    </Label>
+
+                    <select
+                        id={`source-${id}`}
+                        value={String(step.config.source ?? '')}
+                        onChange={(event) =>
+                            onChange({
+                                config: {
+                                    ...step.config,
+                                    source: event.target.value,
+                                },
+                            })
+                        }
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                        {Object.entries(grammar.lists).map(([key, list]) => (
+                            <option key={key} value={key}>
+                                {list.label}
+                            </option>
+                        ))}
+                    </select>
+
+                    <p className="text-xs text-muted-foreground">
+                        {t('settings.workflows.loop_max', { count: LOOP_MAX })}
+                    </p>
+                </div>
+
+                {/*
+                    A loop takes an ordinary condition, unlike a fork: "loop over
+                    de openstaande tickets, maar alleen op maandag" is a guard on
+                    the block rather than the question the block asks.
+                */}
+                <ConditionEditor
+                    condition={step.condition}
+                    variables={variables}
+                    grammar={grammar}
+                    onChange={(condition) => onChange({ condition })}
+                />
+            </>
+        );
+    }
 
     if (step.kind === 'branch') {
         return (

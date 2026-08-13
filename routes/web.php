@@ -27,7 +27,16 @@ use Illuminate\Support\Facades\Route;
  * marketing layout that reached for either would work for the developer who is
  * always logged in and break for everybody else.
  */
-Route::get('/', [MarketingController::class, 'home'])->name('home');
+/*
+ * Alleen op de gehoste uitgave. Een zelfgehoste installatie is het product en
+ * verkoopt het niet, dus daar is dit adres de voordeur van de app zelf: zie
+ * EnsureMarketingSiteIsShown, dat de bezoeker doorstuurt naar zijn workspace of
+ * naar het inlogscherm in plaats van een landingspagina te tonen die het bedrijf
+ * dat hem draait nooit gevraagd heeft.
+ */
+Route::get('/', [MarketingController::class, 'home'])
+    ->middleware('marketing.site')
+    ->name('home');
 
 /**
  * Setting up a platform that has never been set up.

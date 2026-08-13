@@ -35,18 +35,25 @@ use App\Workflows\Actions\HttpRequest;
 use App\Workflows\Actions\PinMessage;
 use App\Workflows\Actions\PostContractToChannel;
 use App\Workflows\Actions\PostToBoard;
+use App\Workflows\Actions\ReadContract;
+use App\Workflows\Actions\ReadDocument;
+use App\Workflows\Actions\ReadPoll;
+use App\Workflows\Actions\ReadTicket;
 use App\Workflows\Actions\RemindContractSigners;
 use App\Workflows\Actions\RemoveReaction;
 use App\Workflows\Actions\ReplyInThread;
 use App\Workflows\Actions\RetryContractRender;
+use App\Workflows\Actions\RevokeChannelShare;
 use App\Workflows\Actions\SendChannelMessage;
 use App\Workflows\Actions\SendContractFromTemplate;
 use App\Workflows\Actions\SendDirectMessage;
 use App\Workflows\Actions\SendSignedContract;
+use App\Workflows\Actions\ShareChannel;
 use App\Workflows\Actions\SummariseHours;
 use App\Workflows\Actions\UnarchiveChannel;
 use App\Workflows\Actions\UnpinMessage;
 use App\Workflows\Actions\UpdateTicket;
+use App\Workflows\Actions\WaitForEvent;
 use App\Workflows\Triggers\ButtonTrigger;
 use App\Workflows\Triggers\ChannelJoinTrigger;
 use App\Workflows\Triggers\ChannelShareAnsweredTrigger;
@@ -288,11 +295,40 @@ class AppServiceProvider extends ServiceProvider
                 UnpinMessage::class,
                 CreateChannel::class,
                 AddChannelMembers::class,
+                /*
+                 * Opening a channel to another organisation, and closing it
+                 * again. Beside creating one and letting people in, because
+                 * that is the same question one step larger: who is in this
+                 * room. The triggers for both have been there all along — a
+                 * workspace could hang a workflow off an offer being answered
+                 * and then do nothing about it.
+                 */
+                ShareChannel::class,
+                RevokeChannelShare::class,
                 GetChannelInfo::class,
+                /*
+                 * The four that only look, beside the channel one that already
+                 * did. They are here rather than with the records they read
+                 * because they belong together: what somebody is looking for is
+                 * "hoe staat het er nu voor", and finding that answer split
+                 * across four places in the list would be finding it four
+                 * times.
+                 */
+                ReadTicket::class,
+                ReadContract::class,
+                ReadDocument::class,
+                ReadPoll::class,
                 HttpRequest::class,
                 ArchiveChannel::class,
                 UnarchiveChannel::class,
                 Delay::class,
+                /*
+                 * Beside the delay, because they are the same gesture asked two
+                 * ways: one waits for the clock, the other for something to
+                 * happen — with the clock as its fallback. Somebody looking for
+                 * "wacht even" should find both in one place.
+                 */
+                WaitForEvent::class,
             ],
         ));
     }

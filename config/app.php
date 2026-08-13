@@ -17,6 +17,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Edition
+    |--------------------------------------------------------------------------
+    |
+    | Which edition of Postduif this installation is: "hosted" for the one that
+    | also sells the product, "self-hosted" for everybody else. It decides
+    | whether the public marketing site is served at all — see
+    | App\Enums\PlatformEdition, which reads this value and treats anything it
+    | does not recognise as self-hosted.
+    |
+    | Self-hosted is the default on purpose. Somebody putting this on their own
+    | server should not find they have published a landing page advertising
+    | their own chat, complete with a sign-up button.
+    |
+    */
+
+    'edition' => env('PLATFORM_EDITION', 'self-hosted'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

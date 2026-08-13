@@ -87,7 +87,7 @@ class PostContractToChannel extends WorkflowAction
             ]));
         }
 
-        $message = $this->post->handle($contract, $channel, $poster);
+        $message = $this->post->handle($contract, $channel, $poster, $context->workflow);
 
         return [
             ...$this->describe($contract),

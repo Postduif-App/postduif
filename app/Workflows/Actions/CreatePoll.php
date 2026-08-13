@@ -130,6 +130,7 @@ class CreatePoll extends WorkflowAction
             options: $options,
             allowsMultiple: $context->setting('allows_multiple') === 'yes',
             closesInHours: $this->closesInHours($context),
+            workflow: $context->workflow,
         );
 
         return [

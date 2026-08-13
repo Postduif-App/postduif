@@ -91,7 +91,7 @@ class ContractTemplateResource extends JsonResource
             ->reject(fn (ContractField $field): bool => $field->type->isDrawn())
             ->groupBy(fn (ContractField $field): int => $field->signerIndex());
 
-        return collect(range(0, $this->resource->required_signers - 1))
+        return array_values(collect(range(0, $this->resource->required_signers - 1))
             ->map(fn (int $recipient): array => [
                 'recipient' => $recipient,
                 'fields' => $fields->get($recipient + $offset, collect())
@@ -104,6 +104,6 @@ class ContractTemplateResource extends JsonResource
                     ->values()
                     ->all(),
             ])
-            ->all();
+            ->all());
     }
 }

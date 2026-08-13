@@ -21,6 +21,16 @@ class LeaveHuddle
         DB::transaction(function () use ($huddle, $user): void {
             $huddle->present()->where('user_id', $user->id)->update(['left_at' => now()]);
 
+            /*
+             * Whoever was recording has taken the recording with them. Their
+             * browser held the only copy of the mix, so the moment they are out
+             * of the room nothing is being recorded any more — and the notice
+             * has to go out with them rather than wait for the sweeper.
+             */
+            if ($huddle->recording_by === $user->id) {
+                $huddle->stopRecording();
+            }
+
             if ($huddle->present()->count() === 0 && $huddle->isLive()) {
                 $huddle->forceFill(['ended_at' => now()])->save();
             }

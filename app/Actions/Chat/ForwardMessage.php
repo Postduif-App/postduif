@@ -5,6 +5,7 @@ namespace App\Actions\Chat;
 use App\Models\Channel;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Workflow;
 
 class ForwardMessage
 {
@@ -28,21 +29,29 @@ class ForwardMessage
      * message's route, which is scoped to a channel the reader may not be in —
      * and taking the original message back would take the forward's files with
      * it. Own copy, own message, own permission check.
+     *
+     * @param  Workflow|null  $workflow  The workflow doing the forwarding, where
+     *                                   one is. Then the forwarder is still who
+     *                                   the rights belong to, but the message is
+     *                                   signed by the bot: nobody decided this
+     *                                   belonged here, a rule did.
      */
     public function handle(
         Message $message,
         Channel $target,
         User $forwarder,
         ?string $note = null,
+        ?Workflow $workflow = null,
     ): Message {
         $body = trim($note ?? '') === ''
             ? $message->body
             : trim($note)."\n\n".$message->body;
 
-        $forwarded = $this->sendMessage->handle(
+        $forwarded = $this->sendMessage->fromMemberOrWorkflow(
             channel: $target,
-            author: $forwarder,
+            member: $forwarder,
             body: $body,
+            workflow: $workflow,
         );
 
         /*

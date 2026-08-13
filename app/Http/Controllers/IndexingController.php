@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PlatformEdition;
 use Illuminate\Http\Response;
 
 /**
@@ -51,6 +52,21 @@ class IndexingController extends Controller
 
     public function robots(): Response
     {
+        /*
+         * Een zelfgehoste installatie hoort in het geheel niet gevonden te
+         * worden. Daar bestaat de publieke site niet — zie
+         * EnsureMarketingSiteIsShown — en wat er dan nog aan adressen over is,
+         * is de chat van één bedrijf. Geen sitemap erbij: er valt niets te
+         * crawlen, en een lege sitemap noemen is een uitnodiging om te kijken.
+         */
+        if (! PlatformEdition::current()->showsMarketingSite()) {
+            return response(
+                "User-agent: *\nDisallow: /\n",
+                200,
+                ['Content-Type' => 'text/plain; charset=UTF-8'],
+            );
+        }
+
         $closed = collect(self::CLOSED)
             ->map(fn (string $path): string => 'Disallow: '.$path)
             ->implode("\n");
@@ -68,7 +84,18 @@ class IndexingController extends Controller
 
     public function sitemap(): Response
     {
-        $urls = collect(self::PUBLIC_PAGES)
+        /*
+         * Leeg op een zelfgehoste installatie, en niet 404: het adres staat in
+         * geen enkele robots.txt meer, maar wie het toch opvraagt hoort een
+         * geldig antwoord te krijgen dat niets prijsgeeft. De API-pagina staat
+         * er dan ook niet in — die blijft bereikbaar voor wie hem nodig heeft,
+         * maar hij hoeft niet in een zoekmachine te staan.
+         */
+        $pages = PlatformEdition::current()->showsMarketingSite()
+            ? self::PUBLIC_PAGES
+            : [];
+
+        $urls = collect($pages)
             ->map(fn (string $name): string => '    <url><loc>'.e(route($name)).'</loc></url>')
             ->implode("\n");
 

@@ -3,12 +3,14 @@
 namespace App\Enums;
 
 use App\Models\Channel;
+use App\Models\ChannelShare;
 use App\Models\Contract;
 use App\Models\Document;
 use App\Models\Poll;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -56,6 +58,17 @@ enum WorkflowRecordType: string
     case Poll = 'poll';
 
     /**
+     * A channel this workspace has opened to another, or been let into.
+     *
+     * Valued 'share' rather than 'channel-share' so that the trigger path it
+     * derives lands on trigger.share.id — which is where the three
+     * shared-channel triggers already put it. A record type whose default path
+     * misses the payload by one word is a field that quietly never finds
+     * anything.
+     */
+    case ChannelShare = 'share';
+
+    /**
      * How many the picker offers.
      *
      * A workspace has hundreds of tickets and a dropdown is not a search, so
@@ -73,6 +86,7 @@ enum WorkflowRecordType: string
             self::ContractTemplate => __('enums.workflow-record-type.label.ContractTemplate'),
             self::Document => __('enums.workflow-record-type.label.Document'),
             self::Poll => __('enums.workflow-record-type.label.Poll'),
+            self::ChannelShare => __('enums.workflow-record-type.label.ChannelShare'),
         };
     }
 
@@ -144,6 +158,24 @@ enum WorkflowRecordType: string
 
             self::Poll => Poll::query()
                 ->where('workspace_id', $workspace->id)
+                ->whereKey($id)
+                ->first(),
+
+            /*
+             * Either side of the arrangement, unlike every other type here,
+             * which asks a single workspace_id. A share belongs to two
+             * workspaces by definition — the guest by its own column, the host
+             * through the channel — and both of them may end it, so a lookup
+             * that knew only one side would refuse half the legitimate cases.
+             *
+             * Which of the two this workspace is still decides what it may do:
+             * see ChannelSharePolicy::sever, asked by the step that acts.
+             */
+            self::ChannelShare => ChannelShare::query()
+                ->where(fn (Builder $query) => $query
+                    ->where('workspace_id', $workspace->id)
+                    ->orWhereHas('channel', fn (Builder $channel) => $channel
+                        ->where('workspace_id', $workspace->id)))
                 ->whereKey($id)
                 ->first(),
         };
@@ -223,6 +255,31 @@ enum WorkflowRecordType: string
                 ->get()
                 ->mapWithKeys(fn (Poll $poll): array => [
                     (string) $poll->getKey() => $poll->question,
+                ])
+                ->all(),
+
+            /*
+             * Named from both ends — "#kanaal ↔ Bakker BV" — because "welke
+             * deling" is a question about a pair, and a list of workspace names
+             * alone would leave somebody guessing which of three channels it
+             * refers to.
+             *
+             * The live ones only. A revoked arrangement is the one thing a step
+             * pointed at a share can do nothing about, and offering it is
+             * offering a choice that fails.
+             */
+            self::ChannelShare => ChannelShare::query()
+                ->whereNull('revoked_at')
+                ->where(fn (Builder $query) => $query
+                    ->where('workspace_id', $workspace->id)
+                    ->orWhereHas('channel', fn (Builder $channel) => $channel
+                        ->where('workspace_id', $workspace->id)))
+                ->with(['channel:id,name', 'workspace:id,name'])
+                ->latest('id')
+                ->limit(self::MAX_OPTIONS)
+                ->get()
+                ->mapWithKeys(fn (ChannelShare $share): array => [
+                    (string) $share->getKey() => "#{$share->channel?->name} ↔ {$share->workspace?->name}",
                 ])
                 ->all(),
         };

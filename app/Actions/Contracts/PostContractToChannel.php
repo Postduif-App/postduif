@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\Contract;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Workflow;
 
 /**
  * Put a contract in a channel.
@@ -29,15 +30,27 @@ class PostContractToChannel
 {
     public function __construct(private readonly SendMessage $sendMessage) {}
 
-    public function handle(Contract $contract, Channel $channel, User $poster): Message
-    {
-        return $this->sendMessage->handle(
+    /**
+     * @param  Workflow|null  $workflow  The workflow putting it there, where one
+     *                                   is. The poster still decides whether it
+     *                                   may be posted at all; the bot's name is
+     *                                   what goes on the message, because nobody
+     *                                   walked into this channel to share it.
+     */
+    public function handle(
+        Contract $contract,
+        Channel $channel,
+        User $poster,
+        ?Workflow $workflow = null,
+    ): Message {
+        return $this->sendMessage->fromMemberOrWorkflow(
             channel: $channel,
-            author: $poster,
+            member: $poster,
             body: trim($contract->title.' '.route('chat.contracts.show', [
                 $channel->workspace->slug,
                 $contract->id,
             ])),
+            workflow: $workflow,
         );
     }
 }

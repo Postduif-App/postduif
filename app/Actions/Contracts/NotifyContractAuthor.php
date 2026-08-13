@@ -151,11 +151,11 @@ class NotifyContractAuthor
     {
         $line = match ($kind) {
             ContractProgressKind::Signed => __('contracts.chat.signed', [
-                'name' => $signer?->name ?? '',
+                'name' => $signer->name ?? '',
                 'title' => $contract->title,
             ]),
             ContractProgressKind::Declined => __('contracts.chat.declined', [
-                'name' => $signer?->name ?? '',
+                'name' => $signer->name ?? '',
                 'title' => $contract->title,
             ]),
             ContractProgressKind::Completed => trans_choice(

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Chat\SendMessage;
+use App\Events\HuddleUpdated;
 use App\Jobs\TranscribeHuddleRecording;
 use App\Models\Channel;
 use App\Models\Huddle;
@@ -52,11 +53,81 @@ class HuddleRecordingController extends Controller
         $this->authorize('join', [Huddle::class, $channel]);
         abort_unless($huddle->channel_id === $channel->id, 404);
 
+        /*
+         * Only somebody who is in the room may say it is being recorded. The
+         * notice names them, and a name in that sentence has to belong to
+         * somebody the others can actually hear.
+         */
+        abort_unless($this->isPresent($huddle, $request->user()->id), 403);
+
+        /*
+         * One recorder at a time. Not because two would break anything on the
+         * wire — each browser mixes its own copy — but because the indicator
+         * names a person, and a notice that can only name one of two people
+         * recording is a notice that is quietly wrong.
+         */
+        abort_if(
+            $huddle->isBeingRecorded() && $huddle->recording_by !== $request->user()->id,
+            409,
+            __('huddles.recording.already'),
+        );
+
+        /*
+         * Nothing to say twice. A browser that reconnects and announces again
+         * would otherwise post the same sentence into the channel a second
+         * time, which reads as a second recording.
+         */
+        if ($huddle->isBeingRecorded()) {
+            return back();
+        }
+
+        $huddle->forceFill([
+            'recording_by' => $request->user()->id,
+            'recording_started_at' => now(),
+        ])->save();
+
         $sendMessage->fromSystem(
             $channel,
             __('huddles.recording.started', ['name' => $request->user()->name]),
             self::BOT_NAME,
         );
+
+        /*
+         * And the live half of the notice: everybody already in the huddle sees
+         * the indicator come on without waiting for a page to be fetched again.
+         */
+        HuddleUpdated::dispatch($huddle);
+
+        return back();
+    }
+
+    /**
+     * Take the notice down again.
+     *
+     * Its own call rather than something the upload does, because the upload is
+     * not guaranteed to happen: a browser that stops recording and then fails
+     * to send the file has still stopped recording, and leaving the indicator
+     * lit would tell the channel a lie in the one direction that matters.
+     *
+     * Only the person who started it, and silently fine if somebody else
+     * already cleared it — the recorder leaving does the same thing.
+     */
+    public function stopped(
+        Request $request,
+        Workspace $workspace,
+        Channel $channel,
+        Huddle $huddle,
+    ): RedirectResponse {
+        $this->channelIsReachable($workspace, $channel);
+        abort_unless($huddle->channel_id === $channel->id, 404);
+
+        if ($huddle->recording_by !== $request->user()->id) {
+            return back();
+        }
+
+        $huddle->stopRecording();
+
+        HuddleUpdated::dispatch($huddle);
 
         return back();
     }
@@ -82,6 +153,18 @@ class HuddleRecordingController extends Controller
             $huddle->participants()->where('user_id', $request->user()->id)->exists(),
             403,
         );
+
+        /*
+         * The file arriving is proof that this browser has stopped, so the
+         * notice comes down here too. Not instead of stopped() above — an
+         * upload that never arrives has to clear it as well — but a browser
+         * that got this far should not need a second round trip to be honest.
+         */
+        if ($huddle->recording_by === $request->user()->id) {
+            $huddle->stopRecording();
+
+            HuddleUpdated::dispatch($huddle);
+        }
 
         $validated = $request->validate([
             'audio' => ['required', 'file', 'mimetypes:audio/webm,audio/ogg,audio/mpeg,audio/mp4,video/webm', 'max:'.self::MAX_KILOBYTES],
@@ -135,5 +218,11 @@ class HuddleRecordingController extends Controller
         abort_if($media === null, 404);
 
         return $media->toResponse($request);
+    }
+
+    /** Whether this member is in the huddle now, rather than was at some point. */
+    private function isPresent(Huddle $huddle, int $userId): bool
+    {
+        return $huddle->present()->where('user_id', $userId)->exists();
     }
 }

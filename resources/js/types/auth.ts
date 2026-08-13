@@ -44,6 +44,12 @@ export type Auth = {
     canManageWorkspace: boolean;
     /** Whether they may bring people in, which is a separate screen. */
     canInviteToWorkspace: boolean;
+    /**
+     * Whether they may switch parts of the product on and off. The one
+     * workspace screen managing the place does not come with: it is seeded to
+     * the owner alone.
+     */
+    canManageFeatures: boolean;
     /** Whether the settings navigation should offer the workflow builder. */
     canManageWorkflows: boolean;
     /** The same, for the outgoing webhooks a workspace sets on its contracts. */

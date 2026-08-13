@@ -27,14 +27,18 @@ use App\Workflows\WorkflowTrigger;
  */
 class StartMatchingWorkflows
 {
-    public function __construct(private readonly StartWorkflow $startWorkflow) {}
+    public function __construct(
+        private readonly StartWorkflow $startWorkflow,
+        private readonly ResumeAwaitingWorkflows $resumeAwaiting,
+    ) {}
 
     /**
      * @param  Workspace|null  $workspace  Null when the happening cannot say whose it was — a channel whose workspace has gone, in the window between a delete and the queue catching up. Nothing to start, and nothing worth throwing over.
      * @param  class-string<WorkflowTrigger>  $trigger
      * @param  callable(Workflow): (array<string, mixed>|null)  $contextFor  What the trigger saw, or null when this workflow was not waiting for this.
+     * @param  array<string, mixed>|null  $happening  The same payload, as one thing rather than per workflow — what a run that is *waiting* for this needs to recognise itself in. Null where a happening carries no record anybody could sensibly wait for.
      */
-    public function handle(?Workspace $workspace, string $trigger, callable $contextFor): void
+    public function handle(?Workspace $workspace, string $trigger, callable $contextFor, ?array $happening = null): void
     {
         if ($workspace === null) {
             return;
@@ -71,6 +75,21 @@ class StartMatchingWorkflows
             }
 
             $this->startWorkflow->handle($workflow, $context);
+        }
+
+        /*
+         * And the runs that were already going and stopped here to wait for
+         * exactly this. Last, after the new ones are away, because the two are
+         * independent and a workflow that both listens for a happening and
+         * waits for it should see them in that order.
+         *
+         * Deliberately not behind the trigger's availableFor() check above —
+         * it is, because it sits inside the same method, and that is right: a
+         * workspace that switched contracts off has no business waking contract
+         * workflows either.
+         */
+        if ($happening !== null) {
+            $this->resumeAwaiting->handle($workspace, $trigger::key(), $happening);
         }
     }
 }

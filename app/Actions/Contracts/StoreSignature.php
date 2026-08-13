@@ -115,10 +115,12 @@ class StoreSignature
     {
         $signer->contract->loadMissing('fields');
 
-        return $signer->contract->fields
-            ->filter(fn (ContractField $field): bool => $field->type === $type
-                && $field->belongsToSigner($signer))
-            ->pluck('id')
-            ->all();
+        return array_values(
+            $signer->contract->fields
+                ->filter(fn (ContractField $field): bool => $field->type === $type
+                    && $field->belongsToSigner($signer))
+                ->map(fn (ContractField $field): int => $field->id)
+                ->all()
+        );
     }
 }

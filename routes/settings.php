@@ -13,6 +13,7 @@ use App\Http\Controllers\Settings\WorkflowController;
 use App\Http\Controllers\Settings\WorkflowRunController;
 use App\Http\Controllers\Settings\WorkspaceChannelController;
 use App\Http\Controllers\Settings\WorkspaceController;
+use App\Http\Controllers\Settings\WorkspaceFeatureController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
 use App\Http\Controllers\Settings\WorkspaceMailController;
 use App\Http\Controllers\Settings\WorkspaceMailTemplateController;
@@ -96,6 +97,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.permissions.edit');
     Route::patch('app/settings/workspace/permissions', [WorkspacePermissionController::class, 'update'])
         ->name('workspace.permissions.update');
+
+    /*
+     * Which parts of the product this workspace has at all. Its own screen and
+     * its own right — see WorkspacePolicy::manageFeatures, which is seeded to
+     * the owner and nobody else: everything else on these pages is a setting
+     * within a feature, this decides whether the feature is there.
+     */
+    Route::get('app/settings/workspace/features', [WorkspaceFeatureController::class, 'edit'])
+        ->name('workspace.features.edit');
+    Route::patch('app/settings/workspace/features', [WorkspaceFeatureController::class, 'update'])
+        ->name('workspace.features.update');
 
     /*
      * The roles a workspace writes for itself. Its own screen rather than a

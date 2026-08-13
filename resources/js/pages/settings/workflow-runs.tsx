@@ -7,6 +7,7 @@ import {
     ACTION_GLYPHS,
     FALLBACK_GLYPH,
     FORK_GLYPH,
+    LOOP_GLYPH,
     WorkflowNode,
 } from '@/components/workflow-node';
 import { useTranslate } from '@/hooks/use-translate';
@@ -20,6 +21,8 @@ interface StepRun {
     /** Which lane this step stood in, when it stood in one. */
     branch: 'then' | 'else' | null;
     branchLabel: string | null;
+    /** How many rows a loop walked; null on every other kind of block. */
+    count: number | null;
     /** For a fork: the lane it sent the run down. */
     lane: string | null;
     status: 'succeeded' | 'skipped' | 'failed';
@@ -74,7 +77,7 @@ function when(iso: string | null): string {
 }
 
 function RunRow({ run }: { run: Run }) {
-    const { t } = useTranslate();
+    const { t, tChoice } = useTranslate();
     const [open, setOpen] = useState(false);
 
     return (
@@ -120,6 +123,7 @@ function RunRow({ run }: { run: Run }) {
                     <div className="max-w-md">
                         {run.steps.map((step, index) => {
                             const fork = step.actionType === 'branch';
+                            const loop = step.actionType === 'loop';
                             const before = run.steps[index - 1];
 
                             return (
@@ -149,18 +153,30 @@ function RunRow({ run }: { run: Run }) {
                                         glyph={
                                             fork
                                                 ? FORK_GLYPH
-                                                : (ACTION_GLYPHS[
-                                                      step.actionType
-                                                  ] ?? FALLBACK_GLYPH)
+                                                : loop
+                                                  ? LOOP_GLYPH
+                                                  : (ACTION_GLYPHS[
+                                                        step.actionType
+                                                    ] ?? FALLBACK_GLYPH)
                                         }
-                                        kind={fork ? 'fork' : 'action'}
+                                        kind={fork || loop ? 'fork' : 'action'}
                                         number={step.position}
                                         label={step.action}
                                         summary={
                                             step.failureReason ??
                                             // A fork's line is worth reading
-                                            // only for which way it went.
+                                            // only for which way it went, and a
+                                            // loop's for how many rows it found
+                                            // — "nul" is what somebody is
+                                            // looking for when a loop appears to
+                                            // have done nothing.
                                             (fork ? step.lane : null) ??
+                                            (loop && step.count !== null
+                                                ? tChoice(
+                                                      'settings.workflow_runs.rows',
+                                                      step.count,
+                                                  )
+                                                : null) ??
                                             step.statusLabel
                                         }
                                         tone={BLOCK_TONE[step.status]}

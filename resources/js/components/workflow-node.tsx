@@ -10,6 +10,7 @@ import {
     MessagesSquare,
     Pin,
     PinOff,
+    Repeat,
     Send,
     Smile,
     SmilePlus,
@@ -66,6 +67,15 @@ export const FALLBACK_GLYPH = Sparkles;
 export const TRIGGER_GLYPH = Zap;
 
 export const FORK_GLYPH = Split;
+
+/**
+ * A loop.
+ *
+ * Drawn as a fork is drawn — same shape of block, same tone — because on the
+ * canvas they are the same sort of thing: neither does anything, both arrange
+ * what hangs under them. What tells them apart is the word on the block.
+ */
+export const LOOP_GLYPH = Repeat;
 
 /** What a block is: the trigger, a fork, or one of the things in between. */
 export type NodeKind = 'trigger' | 'fork' | 'action';

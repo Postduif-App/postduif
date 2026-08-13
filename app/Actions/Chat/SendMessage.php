@@ -124,6 +124,36 @@ class SendMessage
     }
 
     /**
+     * Post as the member, unless a workflow is doing it in their name.
+     *
+     * The one question every announcing action has to answer: a poll, a
+     * contract, a secret request and a forward are all somebody saying
+     * something in a channel, right up until a workflow is what set them off.
+     * Then the rights are still the owner's — that is settled long before this
+     * — but the name on the message must not be, because a colleague appearing
+     * to say something they never said is not a thing to leave to whoever reads
+     * carefully.
+     *
+     * Answered here rather than four times over, so an announcing action added
+     * next year cannot be the one that forgot.
+     *
+     * @param  Workflow|null  $workflow  The workflow this is running inside, or
+     *                                   null for a person doing it themselves.
+     */
+    public function fromMemberOrWorkflow(
+        Channel $channel,
+        User $member,
+        string $body,
+        ?Workflow $workflow = null,
+    ): Message {
+        if ($workflow === null) {
+            return $this->handle($channel, $member, $body);
+        }
+
+        return $this->fromSystem($channel, $body, $workflow->botName(), workflow: $workflow);
+    }
+
+    /**
      * @param  array<string, mixed>  $author  The columns identifying the sender:
      *                                        either a user_id, or a webhook_id
      *                                        plus the bot name.

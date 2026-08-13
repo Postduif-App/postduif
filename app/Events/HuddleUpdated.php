@@ -57,6 +57,19 @@ class HuddleUpdated implements ShouldBroadcast
             'id' => $this->huddle->id,
             'channelId' => $this->huddle->channel_id,
             'live' => $this->huddle->isLive(),
+            /*
+             * Who is recording, while somebody is. Carried here rather than
+             * left to the message in the channel because the two answer
+             * different questions: the message says it happened, this says it
+             * is happening — and an indicator that only appeared after a page
+             * reload would be a notice given too late to matter.
+             */
+            'recordingBy' => $this->huddle->isBeingRecorded()
+                ? [
+                    'id' => $this->huddle->recording_by,
+                    'name' => $this->huddle->recorder?->name,
+                ]
+                : null,
             'participants' => $this->huddle
                 ->present()
                 ->with('user:id,name')

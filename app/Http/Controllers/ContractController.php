@@ -485,11 +485,13 @@ class ContractController extends Controller
 
         $this->authorize('view', $contract);
 
+        $request->validate([
+            'channel_id' => ['required', 'integer'],
+        ]);
+
         $channel = Channel::query()
             ->where('workspace_id', $workspace->id)
-            ->findOrFail($request->validate([
-                'channel_id' => ['required', 'integer'],
-            ])['channel_id']);
+            ->findOrFail($request->integer('channel_id'));
 
         $this->authorize('post', $channel);
 
@@ -1095,10 +1097,10 @@ class ContractController extends Controller
     private function parties(Contract $contract): array
     {
         if (! $contract->isTemplate()) {
-            return $contract->signers->map(fn (ContractSigner $signer): array => [
+            return array_values($contract->signers->map(fn (ContractSigner $signer): array => [
                 'index' => $signer->signing_order,
                 'name' => $signer->name,
-            ])->all();
+            ])->all());
         }
 
         $signsAlong = $contract->templateSigner() !== null;

@@ -8,6 +8,7 @@ use App\Models\Channel;
 use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\User;
+use App\Models\Workflow;
 use Illuminate\Support\Facades\DB;
 
 class CreatePoll
@@ -29,6 +30,12 @@ class CreatePoll
      *                                   that stays open until somebody closes it. Hours rather than a
      *                                   moment, as CreateTransfer takes days: what the asker is deciding
      *                                   is how long the channel gets, not a date on a calendar.
+     * @param  Workflow|null  $workflow  The workflow asking, where one is. The
+     *                                   poll stays the asker's — somebody has to
+     *                                   own it, and a workflow is not somebody —
+     *                                   but the message announcing it is signed
+     *                                   by the bot, because the channel is being
+     *                                   asked by a rule and not by a colleague.
      */
     public function handle(
         Channel $channel,
@@ -37,6 +44,7 @@ class CreatePoll
         array $options,
         bool $allowsMultiple = false,
         ?int $closesInHours = null,
+        ?Workflow $workflow = null,
     ): Poll {
         $poll = DB::transaction(function () use (
             $channel,
@@ -68,10 +76,11 @@ class CreatePoll
             return $poll;
         });
 
-        $this->sendMessage->handle(
+        $this->sendMessage->fromMemberOrWorkflow(
             channel: $channel,
-            author: $asker,
+            member: $asker,
             body: trim($question.' '.route('chat.polls.show', [$channel->workspace->slug, $poll->id])),
+            workflow: $workflow,
         );
 
         /*

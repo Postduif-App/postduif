@@ -97,12 +97,12 @@ class ContractRequestMail extends Mailable
                  * whoever sent it — that is why created_by is nullOnDelete — so
                  * this is an ordinary case rather than an edge one.
                  */
-                'sender' => $contract->author?->name ?? $contract->workspace->name,
+                'sender' => $contract->author->name ?? $contract->workspace->name,
                 'workspace' => $contract->workspace->name,
                 // The title the author typed is theirs and stays as typed.
                 'title' => $contract->title,
                 'message' => $contract->message,
-                'expires' => $contract->expires_at?->locale($locale)->translatedFormat(__('mail.format.date', [], $locale)),
+                'expires' => $contract->expires_at?->settings(['locale' => $locale])->translatedFormat(__('mail.format.date', [], $locale)),
             ],
             $locale,
         );

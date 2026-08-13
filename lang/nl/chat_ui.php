@@ -167,6 +167,23 @@ return [
         'shrink' => 'Kleiner',
         'too_many_cameras' => 'Met meer dan :count camera\'s wordt het zwaar voor de browsers.',
         'full' => 'Een huddle gaat tot :count mensen.',
+
+        /*
+         * Opnemen. De melding staat er bewust in de tegenwoordige tijd en met
+         * een naam erbij: "er wordt opgenomen" laat in het midden door wie, en
+         * dat is juist het enige wat iemand op dat moment wil weten.
+         *
+         * "Je neemt op" is een aparte zin en niet dezelfde met je eigen naam
+         * erin — je eigen naam teruglezen terwijl je de knop net ingedrukt hebt
+         * leest als een mededeling over iemand anders.
+         */
+        'record' => 'Opnemen',
+        'record_stop' => 'Opname stoppen',
+        'recording_by' => ':name neemt dit gesprek op',
+        'recording_you' => 'Je neemt dit gesprek op',
+        'recording_saving' => 'Opname wordt bewaard…',
+        'recording_failed' => 'De opname is niet gelukt.',
+        'record_unsupported' => 'Deze browser kan niet opnemen.',
     ],
 
     'payload' => [

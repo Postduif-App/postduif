@@ -19,11 +19,12 @@ use App\Models\Contract;
  * an action that remembers what it did last is a shared thing pretending to be
  * a step, and would answer about the wrong contract the moment two calls
  * overlap on a queue.
- *
- * @param  array<int, int>  $fields  Template field id to the id of its copy.
  */
 readonly class TemplateInstance
 {
+    /**
+     * @param  array<int, int>  $fields  Template field id to the id of its copy.
+     */
     public function __construct(
         public Contract $contract,
         public array $fields,

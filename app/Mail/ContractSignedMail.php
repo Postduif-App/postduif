@@ -88,10 +88,10 @@ class ContractSignedMail extends Mailable
                  * created_by is nullOnDelete — and a blank would show up most
                  * often on the oldest contracts.
                  */
-                'sender' => $contract->author?->name ?? $contract->workspace->name,
+                'sender' => $contract->author->name ?? $contract->workspace->name,
                 'workspace' => $contract->workspace->name,
                 'title' => $contract->title,
-                'signed_at' => $this->signer->signed_at?->locale($locale)->translatedFormat(__('mail.format.date_time', [], $locale)),
+                'signed_at' => $this->signer->signed_at?->settings(['locale' => $locale])->translatedFormat(__('mail.format.date_time', [], $locale)),
             ],
             $locale,
         );

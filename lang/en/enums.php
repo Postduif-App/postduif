@@ -96,6 +96,20 @@ return [
             'Expired' => 'The deadline passed without everybody signing.',
         ],
     ],
+    'feature-group' => [
+        'description' => [
+            'Conversation' => 'What a message can carry, on top of the channels and threads everybody spends the day in.',
+            'Work' => 'What is left over, what gets recorded and what gets kept — beside the conversation it came out of.',
+            'Outside' => 'For everybody who is not a colleague: a customer, a supplier, somebody who has to sign or collect one thing once.',
+            'Automation' => 'What happens without anybody pressing anything, and where other systems may knock.',
+        ],
+        'label' => [
+            'Conversation' => 'The conversation',
+            'Work' => 'The work that follows',
+            'Outside' => 'People from outside',
+            'Automation' => 'Automatic and connected',
+        ],
+    ],
     'inbox-item-type' => [
         'label' => [
             'Mention' => 'Mentioned',
@@ -248,6 +262,16 @@ return [
             'Stop' => 'stop the whole workflow',
         ],
     ],
+    'workflow-list-source' => [
+        'label' => [
+            'RunningShifts' => 'Shifts still running',
+            'OverdueTickets' => 'Tickets past their due date',
+            'OpenTickets' => 'Tickets still open',
+            'OutstandingContracts' => 'Contracts still out',
+            'OpenPolls' => 'Polls still taking votes',
+        ],
+    ],
+
     'workflow-record-type' => [
         'label' => [
             'Ticket' => 'ticket',
@@ -255,6 +279,7 @@ return [
             'ContractTemplate' => 'template',
             'Document' => 'document',
             'Poll' => 'poll',
+            'ChannelShare' => 'shared channel',
         ],
     ],
     'workflow-run-status' => [
@@ -270,6 +295,7 @@ return [
         'label' => [
             'Action' => 'Step',
             'Branch' => 'Fork',
+            'Loop' => 'Loop',
         ],
     ],
     'workflow-step-status' => [
@@ -291,6 +317,7 @@ return [
             'CreateForms' => 'Make forms',
             'ShareFormsPublicly' => 'Share forms outside the workspace',
             'SeeHours' => "See colleagues' hours",
+            'ManageFeatures' => 'Switch parts of the product on and off',
             'DeleteBotMessages' => 'Delete messages from bots',
             'SendContracts' => 'Have contracts signed',
             'DeleteSignedContracts' => 'Delete signed contracts',
@@ -307,6 +334,7 @@ return [
             'ShareFormsPublicly' => 'Put a form behind a link that works without an account. Whoever holds this lets people from outside write into this workspace.',
             'DeleteBotMessages' => 'Remove messages posted by a webhook or a workflow. Not about what people write themselves — those stay their own. Whoever manages a channel could already do this for that channel.',
             'SeeHours' => 'See how many hours colleagues clocked this week and who is clocked in right now. Everybody sees their own hours regardless; this is about somebody else\'s.',
+            'ManageFeatures' => 'Decide which parts this workspace has — documents, contracts, time tracking. Switching one off takes it away from everybody at once; what is already in there is kept, but nobody can open it any more.',
             'SendContracts' => 'Send a PDF with fields on it to people to be signed, outside the workspace too. The document goes out under this workspace\'s name and comes back as evidence.',
             'DeleteSignedContracts' => 'Throw away a contract everybody has already signed, including the signed PDF and the page recording who signed when. It cannot be undone and the signers are not told. Without this right you can only clear away what was never completed.',
         ],

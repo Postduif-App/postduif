@@ -12,6 +12,7 @@ use App\Features\Documents as DocumentsFeature;
 use App\Features\Forms;
 use App\Features\Huddles as HuddlesFeature;
 use App\Features\SecretRequests;
+use App\Features\SharedChannels;
 use App\Features\Timeclock;
 use App\Features\Transfers;
 use App\Features\Workflows as WorkflowsFeature;
@@ -854,4 +855,53 @@ function sendableContract(array $state = []): array
         ->toMediaCollection(Contract::SOURCE);
 
     return [$author, $workspace, $contract];
+}
+
+/**
+ * A workspace that has switched contracts on, and somebody in it who may send
+ * them.
+ *
+ * The feature is activated by hand rather than left to the factory, and that is
+ * the point of it: contracts are off until a workspace says otherwise, so every
+ * test that wants one has to say so too.
+ *
+ * Here for the same reason as sendableContract() above: a second suite borrows
+ * it, and under the parallel runner that only works when both files happen to
+ * land in the same process.
+ *
+ * @return array{0: User, 1: Workspace}
+ */
+function contractSenderInWorkspace(SystemRole $role = SystemRole::Admin): array
+{
+    Storage::fake('local');
+
+    $user = User::factory()->create();
+    $workspace = workspaceWithMember($user, $role);
+
+    Feature::for($workspace)->activate(ContractsFeature::class);
+
+    return [$user, $workspace];
+}
+
+/**
+ * Two workspaces that both offer shared channels, and a channel in the first.
+ *
+ * Both sides switched on by hand rather than by the factory, for the same
+ * reason the transfer fixture does it: the feature ships off, and a fixture
+ * that quietly turned it on would hide the day somebody changes that default.
+ *
+ * @return array{0: User, 1: Workspace, 2: Channel, 3: User, 4: Workspace}
+ */
+function sharedChannelFixture(): array
+{
+    $host = User::factory()->create();
+    $hostWorkspace = workspaceWithMember($host, SystemRole::Admin);
+
+    $guest = User::factory()->create();
+    $guestWorkspace = workspaceWithMember($guest, SystemRole::Admin);
+
+    Feature::for($hostWorkspace)->activate(SharedChannels::class);
+    Feature::for($guestWorkspace)->activate(SharedChannels::class);
+
+    return [$host, $hostWorkspace, channelWithMember($hostWorkspace, $host), $guest, $guestWorkspace];
 }

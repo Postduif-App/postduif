@@ -2,6 +2,8 @@
 
 namespace App\Features;
 
+use App\Enums\FeatureGroup;
+
 class Polls extends WorkspaceFeature
 {
     public static function label(): string
@@ -21,4 +23,9 @@ class Polls extends WorkspaceFeature
      * neither: it is a message with buttons on it, and it belongs to the
      * product a workspace signed up for.
      */
+
+    public static function group(): FeatureGroup
+    {
+        return FeatureGroup::Conversation;
+    }
 }

@@ -24,6 +24,7 @@ import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { destroy, store } from '@/routes/chat/invite-links';
+import type { ChatWorkspace } from '@/types/chat';
 import type { TranslationKey } from '@/types/translations';
 
 /** A channel a link may be pointed at. */
@@ -48,29 +49,6 @@ export interface InviteLink {
     state: 'usable' | 'expired' | 'revoked' | 'exhausted';
     channels: string[];
 }
-
-/*
- * The wording of these three lists is looked up rather than written down: a
- * module constant is built before anything renders, so it cannot call the hook
- * that knows which language the reader asked for. Keys survive that; words do
- * not.
- */
-const ROLES: {
-    value: 'guest' | 'member';
-    label: TranslationKey;
-    hint: TranslationKey;
-}[] = [
-    {
-        value: 'member',
-        label: 'panels.invites.role_member',
-        hint: 'panels.invites.role_member_hint',
-    },
-    {
-        value: 'guest',
-        label: 'panels.invites.role_guest',
-        hint: 'panels.invites.role_guest_hint',
-    },
-];
 
 /**
  * How long a new link stays good for. Days rather than a date: what you are
@@ -126,15 +104,27 @@ export function InviteLinksSection({
     workspaceSlug,
     links,
     channels,
+    roles,
 }: {
     workspaceSlug: string;
     links: InviteLink[];
     channels: InvitableChannel[];
+    /** The roles this member may hand out — a workspace writes its own. */
+    roles: ChatWorkspace['invitableRoles'];
 }) {
     const formats = useFormats();
     const { t } = useTranslate();
 
-    const [role, setRole] = useState<'guest' | 'member'>('member');
+    /*
+     * The role is posted by its own id, so the form cannot name one in advance.
+     * It opens on the first role that is not from outside — a link you hand
+     * around inside the company is the common case — and otherwise on the first
+     * there is.
+     */
+    const [role, setRole] = useState<number>(
+        () => (roles.find((one) => !one.isExternal) ?? roles[0])?.id ?? 0,
+    );
+    const chosen = roles.find((one) => one.id === role);
     const [picked, setPicked] = useState<number[]>([]);
 
     /*
@@ -169,7 +159,9 @@ export function InviteLinksSection({
                             React state so the list can be shown for a guest and
                             hidden for a member without losing it.
                         */}
-                        {role === 'guest' &&
+                        <input type="hidden" name="role" value={role} />
+
+                        {chosen?.isExternal &&
                             picked.map((id) => (
                                 <input
                                     key={id}
@@ -183,34 +175,44 @@ export function InviteLinksSection({
                             <legend className="mb-2 text-sm font-medium">
                                 {t('panels.invites.role_legend')}
                             </legend>
-                            {ROLES.map((option) => (
+                            {roles.map((option) => (
                                 <label
-                                    key={option.value}
+                                    key={option.id}
                                     className={cn(
                                         'flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors',
-                                        role === option.value
+                                        role === option.id
                                             ? 'border-primary/50 bg-primary/5'
                                             : 'hover:bg-muted/50',
                                     )}
                                 >
                                     <input
                                         type="radio"
-                                        name="role"
-                                        value={option.value}
-                                        checked={role === option.value}
-                                        onChange={() => setRole(option.value)}
+                                        name="role-choice"
+                                        value={option.id}
+                                        checked={role === option.id}
+                                        onChange={() => setRole(option.id)}
                                         className="mt-0.5"
                                     />
+                                    {/*
+                                        The role's own name, with the one line
+                                        the application can say for certain
+                                        about a role it did not name: whether
+                                        the person is coming in from outside.
+                                    */}
                                     <ChoiceText
-                                        title={t(option.label)}
-                                        hint={t(option.hint)}
+                                        title={option.name}
+                                        hint={t(
+                                            option.isExternal
+                                                ? 'panels.invites.role_guest_hint'
+                                                : 'panels.invites.role_member_hint',
+                                        )}
                                     />
                                 </label>
                             ))}
                             <InputError message={errors.role} />
                         </fieldset>
 
-                        {role === 'guest' && (
+                        {chosen?.isExternal && (
                             <fieldset className="grid gap-2">
                                 <legend className="mb-2 text-sm font-medium">
                                     {t('panels.invites.channels_legend')}

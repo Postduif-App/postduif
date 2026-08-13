@@ -70,7 +70,7 @@ class WorkspacesRelationManager extends RelationManager
                      * pointer, and the name lives on the role it points at.
                      */
                     ->state(fn (Workspace $record): string => $record->membership
-                        ->workspaceRole?->name ?? '—')
+                        ->workspaceRole->name ?? '—')
                     ->badge(),
 
                 TextColumn::make('membership.joined_at')

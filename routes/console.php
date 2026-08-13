@@ -210,6 +210,24 @@ Schedule::command('huddles:sweep')
     ->everyMinute()
     ->withoutOverlapping();
 
+/**
+ * Every minute, and for a reason the interval itself has to honour: the card in
+ * the channel flips to "verlopen" the second the deadline passes, because it
+ * compares the date where it is read. A workflow that heard about it an hour
+ * later would be acting on an ending everybody else watched happen.
+ *
+ * Cheap when there is nothing to do — one indexed query on
+ * (settled_at, closes_at), and for nearly every poll ever asked the answer is
+ * "no deadline" or "long since dealt with".
+ *
+ * withoutOverlapping beside the stamp: the sweep marks the whole set settled
+ * before announcing any of it, so a second run finds nothing to announce twice
+ * either way.
+ */
+Schedule::command('polls:settle')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 Schedule::command('chat:prune-notices')
     ->dailyAt('04:50')
     ->withoutOverlapping();

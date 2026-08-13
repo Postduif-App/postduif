@@ -107,13 +107,29 @@ function BrandButton({
  * and auth.workspace are both null. Here that is the normal case.
  */
 export default function MarketingLayout({ children }: PropsWithChildren) {
-    const { auth, registrationOpen, locale } = usePage<{
+    const { auth, registrationOpen, locale, marketingSite } = usePage<{
         auth: Auth;
         registrationOpen: boolean;
         locale: string;
+        marketingSite: boolean;
     }>().props;
 
     const { t } = useTranslate();
+
+    /*
+        Waar het woordmerk heen wijst.
+
+        Op een zelfgehoste installatie bestaat de landingspagina niet — / stuurt
+        daar door naar de app of het inlogscherm, zie EnsureMarketingSiteIsShown
+        — terwijl deze shell er nog wel staat: de API-pagina blijft bereikbaar,
+        want die beschrijft de installatie zelf en niet het product. Het logo
+        naar / laten wijzen zou daar een omweg langs een redirect zijn.
+    */
+    const homeHref = marketingSite
+        ? '/'
+        : auth.user
+          ? openApp.url()
+          : login().url;
 
     return (
         <div className="postduif flex min-h-screen flex-col">
@@ -130,7 +146,7 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
                     pushes the narrowest phones into a horizontal scroll.
                 */}
                 <nav className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-5 sm:px-12">
-                    <Link href="/" className="pd-plain">
+                    <Link href={homeHref} className="pd-plain">
                         <Wordmark />
                     </Link>
 

@@ -4,6 +4,7 @@ use App\Http\Middleware\AuthenticateApiToken;
 use App\Http\Middleware\EnsureAccountIsNotSuspended;
 use App\Http\Middleware\EnsureFeatureIsActive;
 use App\Http\Middleware\EnsureInstallationIsPending;
+use App\Http\Middleware\EnsureMarketingSiteIsShown;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleLocale;
@@ -55,6 +56,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // has been set up. On the routes rather than in the controller: the
             // POST needs the same door as the GET.
             'install.pending' => EnsureInstallationIsPending::class,
+            /*
+             * De publieke site, die alleen op de gehoste uitgave bestaat. Ook
+             * hier op de route: het is geen keuze over wat een pagina toont
+             * maar over of dit adres hier iets voorstelt.
+             */
+            'marketing.site' => EnsureMarketingSiteIsShown::class,
             /*
              * The same middleware the MCP server uses. Reused rather than
              * copied: it resolves a personal token to its member and stamps

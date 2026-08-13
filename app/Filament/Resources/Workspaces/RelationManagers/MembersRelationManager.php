@@ -74,7 +74,7 @@ class MembersRelationManager extends RelationManager
                      * changed it.
                      */
                     ->state(fn (User $record): string => $record->membership
-                        ->workspaceRole?->name ?? '—')
+                        ->workspaceRole->name ?? '—')
                     ->badge(),
 
                 TextColumn::make('pivot.joined_at')

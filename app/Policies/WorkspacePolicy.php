@@ -295,6 +295,26 @@ class WorkspacePolicy
     }
 
     /**
+     * Whether this member may decide which parts of the product this workspace
+     * offers at all.
+     *
+     * Its own right rather than manage(), and the one place in this file where
+     * that distinction is about scale rather than about subject matter. Every
+     * other setting a beheerder changes lives inside a feature; this decides
+     * whether the feature is there. Switching one off makes the documents, the
+     * contracts or the uren unreachable for everybody at once — see
+     * EnsureFeatureIsActive, which then answers 404 for all of them.
+     *
+     * Seeded to the owner and nobody else. An administrator can be given it,
+     * but only by somebody who already holds it: see
+     * WorkspaceRoleController::guardAgainstReachingUp.
+     */
+    public function manageFeatures(User $user, Workspace $workspace): bool
+    {
+        return $workspace->allows($user, WorkspaceAbility::ManageFeatures);
+    }
+
+    /**
      * Whether this member may change somebody's standing, their own included.
      *
      * Nobody may touch somebody whose role stands above their own — see

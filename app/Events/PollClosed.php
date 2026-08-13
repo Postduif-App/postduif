@@ -5,19 +5,19 @@ namespace App\Events;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * Somebody stopped a poll.
+ * A poll stopped taking votes.
  *
- * Somebody, and that is the whole of what this covers today. A poll can be shut
- * in two ways — closed_at, which is a person pressing stop, and closes_at,
- * which is a moment passing — and only the first of them happens *at* a moment
- * anything could hang off. Nothing sweeps the second: the deadline is compared
- * when the poll is read, so a poll that ran out at midnight has been closed
- * since midnight without anything having run.
+ * Either way it can happen: somebody pressed stop, or its own moment passed.
+ * The two are stored apart — closed_at against closes_at — because the card in
+ * the channel reads differently for them and PollController::reopen undoes them
+ * separately, but a poll that has finished has finished, and a workflow waiting
+ * for the tally has no business caring which of the two it was.
  *
- * That gap is written up rather than papered over. Stamping closed_at from a
- * sweep would fire this event but would also destroy the distinction the card
- * relies on — "iemand stopte dit" reads differently in a channel from "de tijd
- * was om", and PollController keeps them apart on purpose.
+ * The second kind used to be silent, and that was the awkward half: a deadline
+ * is compared where the poll is read, so a poll that ran out at midnight was
+ * closed from midnight without anything having run to say so. SettlePolls is
+ * what runs now — a sweep that stamps settled_at and dispatches this, without
+ * touching closed_at and without pretending anybody pressed anything.
  */
 class PollClosed
 {

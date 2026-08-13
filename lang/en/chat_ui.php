@@ -147,6 +147,23 @@ return [
         'shrink' => 'Shrink',
         'too_many_cameras' => 'Past :count cameras this gets heavy for the browsers.',
         'full' => 'A huddle holds up to :count people.',
+
+        /*
+         * Recording. The notice is in the present tense and names somebody on
+         * purpose: "this is being recorded" leaves out by whom, which is the
+         * one thing anybody actually wants to know at that moment.
+         *
+         * "You are recording" is its own sentence rather than the same one with
+         * your name in it — reading your own name back a second after pressing
+         * the button reads as a message about somebody else.
+         */
+        'record' => 'Record',
+        'record_stop' => 'Stop recording',
+        'recording_by' => ':name is recording this conversation',
+        'recording_you' => 'You are recording this conversation',
+        'recording_saving' => 'Saving the recording…',
+        'recording_failed' => 'The recording did not work.',
+        'record_unsupported' => 'This browser cannot record.',
     ],
 
     'payload' => [

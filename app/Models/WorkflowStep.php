@@ -99,6 +99,27 @@ class WorkflowStep extends Model
         return $this->kind === WorkflowStepKind::Branch;
     }
 
+    public function isLoop(): bool
+    {
+        return $this->kind === WorkflowStepKind::Loop;
+    }
+
+    /**
+     * The steps a loop runs, once per row.
+     *
+     * Kept in the `then` lane, which is not a compromise so much as the point:
+     * a fork's lane and a loop's body are the same thing to everything except
+     * the runner — the same rows, the same request shape, the same counting
+     * towards the workflow's ceiling. A second column for a second kind of
+     * child would have been a second thing to keep in step.
+     *
+     * @return Collection<int, WorkflowStep>
+     */
+    public function body()
+    {
+        return $this->lane(WorkflowBranch::Then);
+    }
+
     /**
      * The steps at the top of a workflow: the ones that hang under no fork.
      *

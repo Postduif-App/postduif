@@ -127,7 +127,7 @@ class AddContractSigner extends WorkflowAction
      */
     private function existing(Contract $contract): array
     {
-        return $contract->signers()
+        return array_values($contract->signers()
             ->orderBy('signing_order')
             ->get()
             ->map(fn (ContractSigner $signer): array => [
@@ -135,7 +135,7 @@ class AddContractSigner extends WorkflowAction
                 'email' => $signer->email,
                 'user_id' => $signer->user_id,
             ])
-            ->all();
+            ->all());
     }
 
     /**

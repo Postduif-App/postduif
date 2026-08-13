@@ -36,6 +36,11 @@ use Illuminate\Support\Str;
  * @property int|null $created_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ *
+ * The timestamp of the newest run, and only on a query that asked for it — see
+ * the withMax in WorkflowController::index. A raw column value rather than a
+ * cast one, because an aggregate arrives outside the model's casts.
+ * @property-read string|null $last_run_at
  */
 #[Fillable(['workspace_id', 'name', 'description', 'bot_name', 'trigger_type', 'trigger_config', 'created_by'])]
 class Workflow extends Model

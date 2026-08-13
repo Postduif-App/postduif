@@ -77,6 +77,7 @@ class StartChannelShareWorkflows
             $guest ? $share->workspace : $share->channel->workspace,
             $trigger,
             fn (Workflow $workflow): ?array => $this->matches($workflow, $answer) ? $context : null,
+            $context,
         );
     }
 

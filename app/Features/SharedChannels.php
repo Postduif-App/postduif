@@ -2,6 +2,8 @@
 
 namespace App\Features;
 
+use App\Enums\FeatureGroup;
+
 class SharedChannels extends WorkspaceFeature
 {
     public static function label(): string
@@ -31,5 +33,10 @@ class SharedChannels extends WorkspaceFeature
     public static function default(): bool
     {
         return false;
+    }
+
+    public static function group(): FeatureGroup
+    {
+        return FeatureGroup::Outside;
     }
 }

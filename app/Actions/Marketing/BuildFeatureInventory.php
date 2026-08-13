@@ -6,8 +6,12 @@ use App\Enums\ChannelDocumentPolicy;
 use App\Enums\ChannelLayout;
 use App\Enums\ChannelPostingPolicy;
 use App\Enums\ChannelTicketPolicy;
+use App\Enums\FeatureGroup;
 use App\Enums\SystemRole;
 use App\Enums\WorkspaceAbility;
+use App\Features\Contracts;
+use App\Features\Tickets;
+use App\Features\Transfers;
 use App\Features\WorkspaceFeature;
 use App\Mcp\Servers\ChatServer;
 use App\Workflows\WorkflowRegistry;
@@ -17,6 +21,27 @@ use ReflectionProperty;
 
 class BuildFeatureInventory
 {
+    /**
+     * De drie die boven aan de pagina groot worden uitgelicht.
+     *
+     * Een oordeel, en het enige oordeel in deze klasse: dit zijn de onderdelen
+     * waar iemand voor komt, en de rest van de lijst is wat hij erbij krijgt.
+     * Ze staan hier als klassenaam en niet als sleutel, zodat een onderdeel dat
+     * uit de applicatie verdwijnt deze pagina hard breekt in plaats van een
+     * kaartje te tonen dat nergens meer over gaat.
+     *
+     * Tickets en bestanden versturen omdat de kop van de pagina ze belooft;
+     * contracten omdat het het enige onderdeel is dat een klant iets laat doen
+     * wat anders een aparte dienst en een aparte rekening was.
+     *
+     * @var array<int, class-string<WorkspaceFeature>>
+     */
+    public const SPOTLIGHT = [
+        Tickets::class,
+        Transfers::class,
+        Contracts::class,
+    ];
+
     /**
      * What this application can actually do, taken from the application.
      *
@@ -40,15 +65,71 @@ class BuildFeatureInventory
             'label' => $feature::label(),
             'description' => $feature::description(),
             /*
-             * Worth saying out loud on a public page rather than hiding: three
-             * of these start switched off, and each one is off because it lets
-             * something reach past the workspace — an AI client reading along,
-             * a download link for the outside world, a store of other people's
-             * passwords. "You decide, and nothing is decided for you" is a
-             * stronger claim than any of the features individually.
+             * Waar het over gaat, zodat de pagina de lijst kan indelen zonder
+             * hem zelf te ordenen. Op de klasse en niet hier, want een lijstje
+             * hier zou een nieuw onderdeel stilzwijgend overslaan; group() is
+             * abstract, dus een klasse die niets zegt bestaat niet.
+             */
+            'group' => $feature::group()->value,
+            /*
+             * Of het aanstaat bij een verse workspace. Onderdeel van de
+             * inventaris omdat het een feit over het onderdeel is, maar de
+             * landingspagina tekent het niet meer: voor iemand die nog niet
+             * weet wát het is, is "en dit staat standaard uit" een antwoord op
+             * een vraag die hij niet stelt. Het staat waar het telt — in het
+             * scherm waar een beheerder de schakelaar ziet.
              */
             'onByDefault' => $feature::default(),
         ], WorkspaceFeature::ALL);
+    }
+
+    /**
+     * De koppen waaronder de lijst hierboven uiteenvalt, in leesvolgorde.
+     *
+     * Een aparte prop en geen genest antwoord: de features zelf staan in de
+     * volgorde van WorkspaceFeature::ALL en dat moet zo blijven — die volgorde
+     * is een keuze van de applicatie — terwijl de pagina ze per groep tekent.
+     * Twee lijsten die elkaar via een sleutel vinden houden allebei hun eigen
+     * bron, en geen van beide hoeft de ander te herhalen.
+     *
+     * Elke case komt terug, ook een groep waar (nog) niets in valt. De pagina
+     * beslist wat ze met een lege groep doet; hier iets weglaten zou betekenen
+     * dat deze klasse een presentatiekeuze maakt.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public function featureGroups(): array
+    {
+        return array_map(fn (FeatureGroup $group): array => [
+            'value' => $group->value,
+            'label' => $group->label(),
+            'description' => $group->description(),
+        ], FeatureGroup::cases());
+    }
+
+    /**
+     * De drie uitgelichte onderdelen, met de zin die er alleen op deze pagina bij staat.
+     *
+     * Hier wordt de regel van deze klasse één keer bewust omgebogen: naam en
+     * omschrijving komen uit de featureklasse zoals overal, maar de zin die
+     * zegt waaróm dit het onderdeel is waar iemand voor komt, is een oordeel en
+     * staat in de marketing.php van elke taal. Zie de klassendocblock: toon is
+     * mensenwerk.
+     *
+     * De sleutel van het onderdeel is ook de sleutel van die zin, dus een
+     * hernoemd onderdeel laat zijn eigen regel achter in plaats van die van een
+     * ander te pakken.
+     *
+     * @return array<int, array<string, string>>
+     */
+    public function spotlight(): array
+    {
+        return array_map(fn (string $feature): array => [
+            'key' => $feature::key(),
+            'label' => $feature::label(),
+            'description' => $feature::description(),
+            'pitch' => (string) __('marketing.home.spotlight.items.'.$feature::key()),
+        ], self::SPOTLIGHT);
     }
 
     /**

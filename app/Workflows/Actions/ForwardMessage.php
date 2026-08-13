@@ -16,8 +16,12 @@ use RuntimeException;
  *
  * Not the same as writing a new message with the text in it, which is why this
  * exists beside send-channel-message: what lands keeps its attribution, so the
- * channel sees who originally said it rather than a quote from a bot. For "meld
- * elke storingsmelding ook in #directie" that difference is the whole point.
+ * channel sees who originally said it rather than a bare quote. For "meld elke
+ * storingsmelding ook in #directie" that difference is the whole point.
+ *
+ * Placed by the bot, though, not by the owner. Who said it first is what a
+ * forward carries; who put it here is the workflow, and signing that with a
+ * colleague's name would say they read this and decided it belonged.
  *
  * The message comes from the trigger unless a step names another — the
  * convention every message action here follows.
@@ -97,6 +101,7 @@ class ForwardMessage extends WorkflowAction
             $channel,
             $forwarder,
             $note === '' ? null : $note,
+            $context->workflow,
         );
 
         return [

@@ -13,6 +13,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\Workflow;
 use App\Models\Workspace;
+use App\Workflows\Actions\ReadContract;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -115,9 +116,13 @@ it('puts the contract card in a channel', function () {
         'channel_id' => $channel->id,
     ]);
 
+    $card = Message::query()->where('channel_id', $channel->id)->sole();
+
     expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
-        ->and(Message::query()->where('channel_id', $channel->id)->count())->toBe(1)
-        ->and(data_get($run->context, 'steps.0.message.id'))->not->toBeNull();
+        ->and(data_get($run->context, 'steps.0.message.id'))->not->toBeNull()
+        // Signed by the workflow: nobody walked into this channel to share it.
+        ->and($card->user_id)->toBeNull()
+        ->and($card->bot_name)->toBe($workflow->botName());
 });
 
 /**
@@ -379,4 +384,88 @@ it('refuses to duplicate a contract into a title that came up empty', function (
     // beside the original with nothing to tell them apart.
     expect($run->status)->toBe(WorkflowRunStatus::Failed)
         ->and($run->failure_reason)->toContain('titel');
+});
+
+/*
+ * Reading a record again.
+ *
+ * The answer to what made a Delay misleading: a run's context is a photograph
+ * of what the trigger saw, so a condition written after a wait was comparing
+ * against numbers from before it.
+ */
+
+it('reads a contract again and hands back the state of now, not of the trigger', function () {
+    [, , $workflow, $contract, $signer] = contractActionScene();
+
+    // What the trigger saw: nobody had signed.
+    $before = ['trigger' => ['contract' => ['id' => $contract->id, 'signed_count' => 0]]];
+
+    $signer->forceFill(['signed_at' => now()])->save();
+
+    $run = runStep($workflow, 'read-contract', ['contract_id' => $contract->id], $before);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        // The step's own numbers moved…
+        ->and(data_get($run->context, 'steps.0.contract.signed_count'))->toBe(1)
+        ->and(data_get($run->context, 'steps.0.contract.remaining'))->toBe(0)
+        ->and(data_get($run->context, 'steps.0.contract.title'))->toBe('Offerte dakwerk')
+        // …while what the trigger saw is left exactly as it was, which is what
+        // makes the run readable afterwards.
+        ->and(data_get($run->context, 'trigger.contract.signed_count'))->toBe(0);
+});
+
+it('reads the contract the trigger was about when no contract is named', function () {
+    [, , $workflow, $contract] = contractActionScene();
+
+    // An empty field means the record the workflow was set off by — the same
+    // convention every other record step runs on.
+    $run = runStep($workflow, 'read-contract', [], [
+        'trigger' => ['contract' => ['id' => $contract->id]],
+    ]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Succeeded)
+        ->and(data_get($run->context, 'steps.0.contract.id'))->toBe($contract->id)
+        ->and(data_get($run->context, 'steps.0.author.name'))->not->toBeNull();
+});
+
+it('spells a re-read contract exactly the way the trigger spells one', function () {
+    [, , $workflow, $contract] = contractActionScene();
+
+    $run = runStep($workflow, 'read-contract', ['contract_id' => $contract->id]);
+
+    /*
+     * The property the whole step rests on. A builder who knows
+     * {{ trigger.contract.signed_count }} knows {{ steps.0.contract.* }} too,
+     * and a path that existed in one and not the other would be a condition
+     * that silently compares against nothing.
+     */
+    $promised = array_keys(ReadContract::provides());
+    $delivered = data_get($run->context, 'steps.0');
+
+    foreach ($promised as $path) {
+        expect(data_get($delivered, $path, '__missing__'))->not->toBe('__missing__', $path);
+    }
+});
+
+it('will not read a contract from another workspace', function () {
+    [, , $workflow] = contractActionScene();
+
+    $elsewhere = Workspace::factory()->create();
+    $theirs = Contract::factory()->sent()->create(['workspace_id' => $elsewhere->id]);
+
+    $run = runStep($workflow, 'read-contract', ['contract_id' => $theirs->id]);
+
+    // Looking is still reaching: a step that could read across the boundary
+    // would be a way to copy another workspace's titles into a message.
+    expect($run->status)->toBe(WorkflowRunStatus::Failed);
+});
+
+it('stops reading contracts when the workspace has switched them off', function () {
+    [, $workspace, $workflow, $contract] = contractActionScene();
+
+    Feature::for($workspace)->deactivate(Contracts::class);
+
+    $run = runStep($workflow, 'read-contract', ['contract_id' => $contract->id]);
+
+    expect($run->status)->toBe(WorkflowRunStatus::Failed);
 });

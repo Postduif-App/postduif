@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Channel;
 use App\Models\Invitation;
 use App\Models\InviteLink;
+use App\Models\Role;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -65,7 +66,34 @@ class WorkspaceInvitationController extends Controller
                 ? $this->linksFor($workspace)
                 : [],
             'channels' => $this->invitableChannels($workspace),
+            'roles' => $this->grantableRoles($request, $workspace),
         ]);
+    }
+
+    /**
+     * The roles this member may hand out, in the same shape the chat shell uses.
+     *
+     * A workspace writes its own roles, so the form cannot name them in advance
+     * — and the endpoint wants the role's own id, not a word. Filtered by the
+     * same policy the endpoint applies afterwards, so the form never offers a
+     * role that would then be refused.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function grantableRoles(Request $request, Workspace $workspace): array
+    {
+        $user = $request->user();
+
+        return $workspace->roles()
+            ->get()
+            ->filter(fn (Role $role): bool => $user->can('grantRole', [$workspace, $role]))
+            ->map(fn (Role $role): array => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'isExternal' => $role->is_external,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

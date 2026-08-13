@@ -79,6 +79,14 @@ class WorkflowRunController extends Controller
                     'branch' => $step->branch?->value,
                     'branchLabel' => $step->branch?->label(),
                     'lane' => WorkflowBranch::tryFrom((string) data_get($step->result, 'lane'))?->label(),
+                    /*
+                     * How many rows a loop walked, which is the one thing worth
+                     * reading off its line — "nul" is the answer somebody is
+                     * looking for when a loop appears to have done nothing.
+                     */
+                    'count' => $step->action_type === WorkflowStepKind::Loop->value
+                        ? (int) data_get($step->result, 'count', 0)
+                        : null,
 
                     'status' => $step->status->value,
                     'statusLabel' => $step->status->label(),
@@ -107,12 +115,14 @@ class WorkflowRunController extends Controller
     private function actionLabel(WorkflowRegistry $registry, string $key): string
     {
         /*
-         * A fork is not in the register — it does nothing, so there is nothing
-         * to register — but it does write a line, and that line has to say what
-         * it is rather than repeat the word in the column.
+         * Neither a fork nor a loop is in the register — they do nothing, so
+         * there is nothing to register — but both write a line, and that line
+         * has to say what it is rather than repeat the word in the column.
          */
-        if ($key === WorkflowStepKind::Branch->value) {
-            return WorkflowStepKind::Branch->label();
+        $kind = WorkflowStepKind::tryFrom($key);
+
+        if ($kind !== null && ! $kind->isAction()) {
+            return $kind->label();
         }
 
         $action = $registry->action($key);

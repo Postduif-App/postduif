@@ -54,7 +54,9 @@ class SaveContractSigners
 
             $kept = [];
 
-            foreach (array_values($signers) as $order => $row) {
+            // The key is the signing order, which is why the parameter is typed
+            // as a list: the caller's ordering is the contract's ordering.
+            foreach ($signers as $order => $row) {
                 $address = mb_strtolower(trim($row['email']));
 
                 /*

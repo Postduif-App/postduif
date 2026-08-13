@@ -47,6 +47,7 @@ return [
         'api_tokens' => 'API-tokens',
         'general' => 'Algemeen',
         'permissions' => 'Rechten',
+        'features' => 'Onderdelen',
         'roles' => 'Rollen',
         'emoji' => 'Emoji',
         'theme' => 'Thema',
@@ -346,6 +347,21 @@ return [
         'last_error' => 'De laatste poging ging mis:',
     ],
 
+    /*
+     * De pagina waar de eigenaar bepaalt welke onderdelen deze workspace heeft.
+     * De namen en omschrijvingen van de onderdelen zelf staan niet hier maar in
+     * features.php — die leest ook het adminpaneel en de publieke pagina, en
+     * één onderdeel dat op drie plekken anders heet is precies wat dat bestand
+     * voorkomt.
+     */
+    'features' => [
+        'head' => 'Workspace — onderdelen',
+        'title' => 'Onderdelen',
+        'description' => 'Wat :workspace aanbiedt',
+        'warning' => 'Uitzetten laat bestaande gegevens staan: een uitgezet onderdeel is onbereikbaar, niet weg. Voor iedereen tegelijk, jou inbegrepen — wie een link probeert, krijgt een 404.',
+        'off_by_default' => 'Standaard uit',
+    ],
+
     'permissions' => [
         'head' => 'Workspace — rechten',
         'title' => 'Rechten',
@@ -357,17 +373,21 @@ return [
         'attachments' => 'Bestanden delen in gesprekken',
         'attachments_toggle' => 'Leden mogen bestanden meesturen met een bericht',
         'attachment_types' => 'Welke bestandstypes zijn toegestaan?',
-        'max_attachment' => 'Maximale bestandsgrootte (MB)',
+        'max_attachment' => 'Maximale bestandsgrootte',
         'max_attachment_hint' => 'Tussen 1 en 200 MB. Wat de server zelf aankan kan lager liggen; dan wint die.',
         'link_previews' => 'Voorbeeld bij gedeelde links',
         'link_previews_toggle' => 'Haal titel en afbeelding op bij een gedeelde link',
         'link_previews_hint' => 'Let op wat dit betekent: onze server opent de link zelf. Dat is zichtbaar aan de andere kant — met ons adres en het moment. Voor een link uit een privékanaal deelt niemand dat bewust, en daarom staat dit standaard uit.',
         'transfers' => 'Bestanden versturen via een link',
         'transfers_hint' => 'Wat hier klaargezet wordt, is te downloaden door iedereen die de link heeft — ook buiten deze workspace. Daarom heeft elke link een houdbaarheidsdatum: die is niet optioneel, en hieronder staat hoe ver vooruit hij mag liggen.',
-        'max_transfer' => 'Maximale grootte per verzending (MB)',
+        'max_transfer' => 'Maximale grootte per verzending',
         'max_transfer_hint' => 'Tussen 1 en 10240 MB (10 GB), voor alle bestanden samen.',
-        'transfer_days' => 'Een link blijft maximaal geldig (dagen)',
+        'transfer_days' => 'Een link blijft maximaal geldig',
         'transfer_days_hint' => 'Tussen 1 en 90 dagen. Na afloop verdwijnen de bestanden, en daarmee ook de opslag die ze innamen.',
+        // De eenheid staat naast het invoerveld in plaats van in het label:
+        // achteraan een lang label verdween hij tussen haakjes.
+        'unit_mb' => 'MB',
+        'unit_days' => 'dagen',
         'blocked_words' => 'Verboden woorden',
         'blocked_words_hint' => 'Deze woorden worden weggestreept zodra iemand ze gebruikt — in berichten, op het prikbord en op tickets. Het bericht zelf blijft staan: je ziet dat er iets gezegd is, niet wat. Wegstrepen gebeurt bij het lezen, niet bij het versturen, dus een woord dat je hier vandaag toevoegt verdwijnt ook uit alles wat er al staat.',
         'blocked_words_label' => 'Voeg een woord toe',
@@ -471,11 +491,29 @@ return [
         'back' => 'Terug naar de workflows',
         'branch' => 'Splitsing',
         'add_branch' => 'Splitsing',
+        'loop' => 'Voor elk',
+        'loop_hint' => 'Loopt de stappen hieronder één keer per rij. Wat de rij is, staat in {{ item.* }} — en {{ steps.N.count }} zegt hoeveel het er waren.',
+        'loop_source' => 'Welke lijst',
+        'loop_body' => 'Doe dit per rij',
+        'add_loop' => 'Lus erbij',
+        'loop_max' => 'Hoogstens :count rijen per keer.',
         'branch_hint' => 'Klopt het, dan loopt de bovenste baan. Zo niet, dan de onderste. Daarna gaat de workflow gewoon verder.',
         'step_count' => '{0}nog geen stappen|{1}1 stap|[2,*]:count stappen',
+        'column_name' => 'Workflow',
+        'column_trigger' => 'Wanneer',
+        'column_steps' => 'Stappen',
+        'column_last_run' => 'Laatst gelopen',
+        'column_state' => 'Aan',
+        'column_actions' => 'Acties',
+        // Runs worden na twee weken opgeruimd, dus dit is "niet recent" en niet
+        // per se "nog nooit" — vandaar geen harde "nooit".
+        'never_run' => 'Niet recent',
+        'trigger_search' => 'Zoek een trigger…',
+        'trigger_no_match' => 'Geen trigger die daarop lijkt.',
     ],
 
     'workflow_runs' => [
+        'rows' => '{0}geen rijen|{1}1 rij|[2,*]:count rijen',
         'back' => 'Terug naar de workflows',
         'description' => 'Elke keer dat deze workflow gelopen heeft, en wat er per stap gebeurde.',
         'none_yet' => 'Deze workflow heeft nog niet gelopen.',

@@ -17,10 +17,12 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $channel_id
  * @property int|null $started_by
+ * @property int|null $recording_by
+ * @property Carbon|null $recording_started_at
  * @property Carbon|null $ended_at
  * @property Carbon|null $created_at
  */
-#[Fillable(['channel_id', 'started_by', 'ended_at'])]
+#[Fillable(['channel_id', 'started_by', 'recording_by', 'recording_started_at', 'ended_at'])]
 class Huddle extends Model
 {
     /** @use HasFactory<HuddleFactory> */
@@ -29,7 +31,10 @@ class Huddle extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['ended_at' => 'datetime'];
+        return [
+            'ended_at' => 'datetime',
+            'recording_started_at' => 'datetime',
+        ];
     }
 
     /** @return BelongsTo<Channel, $this> */
@@ -42,6 +47,16 @@ class Huddle extends Model
     public function starter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'started_by');
+    }
+
+    /**
+     * Whose browser is recording it, while one is.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function recorder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recording_by');
     }
 
     /**
@@ -67,6 +82,28 @@ class Huddle extends Model
     public function isLive(): bool
     {
         return $this->ended_at === null;
+    }
+
+    public function isBeingRecorded(): bool
+    {
+        return $this->recording_by !== null;
+    }
+
+    /**
+     * Take the recording notice down.
+     *
+     * Here rather than spelled out in three places, because it is called from
+     * three: the browser saying it has stopped, the recorder leaving, and the
+     * sweeper finding a huddle nobody is in. Silent when nothing was going on,
+     * which is what lets every one of those call it without asking first.
+     */
+    public function stopRecording(): void
+    {
+        if (! $this->isBeingRecorded()) {
+            return;
+        }
+
+        $this->forceFill(['recording_by' => null, 'recording_started_at' => null])->save();
     }
 
     /**

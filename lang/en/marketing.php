@@ -43,28 +43,66 @@ return [
          * the button, and the source is where that can be checked.
          */
         'source' => 'Free and open source — source on GitHub ↗',
+
         /*
-         * Two counts in one sentence, so two keys: the number of features
-         * decides one plural, and "off by default" hangs off a different
-         * number that would take the wrong one in the same line.
+         * The four numbers under the hero, as a unit under a figure.
+         *
+         * No sentences with :count in them: the number is right there beside it
+         * and repeating it would say it twice. Hence no plural forms either —
+         * this is a column heading, not a sentence, and headings do not inflect.
          */
-        'feature_count' => '{1} :count feature|[0,*] :count features',
-        'opt_in_count' => '{1} :count off by default|[0,*] :count off by default',
+        'tally' => [
+            'features' => 'features',
+            'roles' => 'roles to start with',
+            'triggers' => 'triggers',
+            'actions' => 'steps',
+        ],
+
+        /*
+         * The sketch beside the headline. Made-up names, and they may look it:
+         * this is a drawing of the idea, not a screenshot.
+         */
+        'sketch' => [
+            'channel' => 'client-vandenberg',
+            'guest' => '2 members · 1 guest',
+            'who' => 'Marieke',
+            'time' => '09:14',
+            'message' => 'The export has been stuck on the new integration since this morning.',
+            'ticket_label' => 'Ticket 124',
+            'ticket_status' => 'Open',
+            'ticket_title' => 'Export is stuck',
+            'ticket_assignee' => 'Picked up by Sam',
+        ],
+
+        /*
+         * The three cards above the list. Their names and descriptions come off
+         * the feature classes — see BuildFeatureInventory::spotlight() — and
+         * only the sentence underneath lives here, because that one is a
+         * judgement: why this is the feature somebody came for. The keys are
+         * the features' own keys, so they cannot come to point at something
+         * else without the feature itself being renamed.
+         */
+        'spotlight' => [
+            'title' => 'What people stay for',
+            'lead' => 'Three things an ordinary chat app does not have, and which otherwise cost you three more subscriptions.',
+            'items' => [
+                'tickets' => 'The conversation moves on; the work stays put. One click turns a message into a ticket in the channel\'s own list, with a status and somebody who picked it up — and the discussion underneath stays where it was.',
+                'transfers' => 'Put files behind a single link, for somebody with no account too. With a password in front of it and a date after which the link opens nothing, instead of a folder still sitting there two years later.',
+                'contracts' => 'A PDF with fields goes out and comes back signed. Every recipient gets their own link by email, you see who has been, and the signed document lands back in the workspace with the audit sheet behind it.',
+            ],
+        ],
 
         'features' => [
             'title' => 'What is in it',
             'lead' => 'Every feature below exists as a class in the code, under this name and with this description. What is not listed is not there.',
-            'off_by_default' => 'OFF BY DEFAULT',
-        ],
-
-        'opt_in' => [
-            'title' => 'You switch it on',
-            'lead' => 'These stay off until somebody turns them on. They are precisely the ones that let something reach beyond your workspace.',
+            // Beside a group's heading, so the list can be taken in before it
+            // is read. The number comes from the inventory, not from this line.
+            'group_count' => '{1} :count feature|[0,*] :count features',
         ],
 
         'channels' => [
             'title' => 'A channel shaped like the conversation',
-            'lead' => 'A channel is not something you switch on, so it is not in the list above — even though it is where you spend the whole day. These are the knobs underneath it.',
+            'lead' => 'You do not switch a channel on, so it is not in the list above — even though it is where you spend the whole day. These are the knobs underneath it.',
             'layout' => 'Layout',
             'posting' => 'Who posts',
             'tickets' => 'Tickets',
@@ -73,28 +111,34 @@ return [
 
         'workflow' => [
             'title' => 'Things your workspace does by itself',
-            // The two counts come from the registry, not from this sentence.
-            'lead' => 'A workflow is one trigger followed by a run of steps, with conditions and branches in between. :triggers triggers and :actions steps to choose from.',
-            'when' => 'When',
-            'then' => 'What happens next',
+            'lead' => 'One trigger, then a run of steps, with conditions and branches in between. This is what you pick from.',
+            // A unit under a figure, not a heading over a list.
+            'when' => 'triggers',
+            'then' => 'steps',
         ],
 
         'api' => [
             'title' => 'For your own script and your AI client',
-            'lead' => 'Two doors, each with its own key: a personal token for your own script, OAuth for an AI client that signs itself up. What is behind them is exactly what you are allowed to see — every call goes through the same rules as the screen.',
+            'lead' => 'A personal token for your own script, OAuth for an AI client. Every call goes through the same rules as the screen: what you may not see, this does not return either.',
             'endpoints' => 'The API',
-            'tools' => 'What an AI client can do, once you allow it',
-            'note' => 'An AI client signs in with OAuth and asks your permission; you see on a Postduif screen what it may do, and withdraw it again in one click. And it is off per workspace by default: while that switch is off, nothing comes in or goes out this way.',
+            'reference' => 'The full reference →',
+            'tools' => 'What an AI client can do',
+            'note' => 'Once you allow it, withdrawn again in one click, and off per workspace by default.',
         ],
 
         'roles' => [
             'title' => 'Who may do what',
-            'lead' => 'Four roles to start with, and after that you make your own. A role is no more than a name and a handful of rights from the list below — a guest is one of them: somebody from outside, who sees only the channels they were invited to.',
+            'lead' => 'Four roles to start with, and after that you make your own. A role is a name with a handful of rights from this list — a guest is one of them, and sees only the channels they were invited to.',
             'ability' => 'Right',
             'browse' => 'See the workspace',
-            'note' => 'This is where a workspace begins, not where it stays. The roles live in the workspace itself: an administrator renames them, ticks rights on and off, and adds as many as they need — a Supplier, an Intern, a Bookkeeper. The list of rights is fixed, though, because every right here is enforced somewhere; one you could invent yourself would be a tickbox that does nothing.',
-            'ceiling' => 'One rule keeps it closed: nobody can hand out a right they do not hold themselves. That is why the owner starts with everything — a right nobody held could never be switched on by anyone again.',
-            'browse_note' => 'The top row is not a right but a property of the role. It decides not what you may do with the workspace but whether it is there for you at all: what a guest may not see does not exist for them — and that is a question asked in the database, not in a tickbox.',
+            /*
+             * One aside instead of three. What went: the explanation that the
+             * top row is a property of the role rather than a right, and that
+             * nobody can hand out a right they do not hold themselves. Both
+             * true and both still spelled out where it counts — in the code and
+             * in the roles screen — but neither is why anybody is on this page.
+             */
+            'note' => 'This is where a workspace begins, not where it stays: an administrator renames the roles, ticks rights on and off, and adds as many as they need. The list of rights is fixed, though, because every right here is enforced somewhere.',
             'yes' => 'yes',
             'no' => 'no',
         ],

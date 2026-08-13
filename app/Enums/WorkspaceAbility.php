@@ -88,6 +88,22 @@ enum WorkspaceAbility: string
     case SeeHours = 'see-hours';
 
     /**
+     * Deciding which parts of the product this workspace offers at all.
+     *
+     * Not part of ManageWorkspace, and the widest right in this catalogue after
+     * it. Everything else a beheerder changes is a setting *within* a feature —
+     * how large an attachment may be, which words are refused, who may invite.
+     * This one decides whether the feature exists: switching it off takes the
+     * documents, the contracts or the uren out of reach for everybody at once,
+     * and the data stays behind a door nobody in the workspace can open.
+     *
+     * Off for every seeded role but the owner, for the reason SeeHours is: it
+     * is handed out on purpose or not at all. Somebody hired to run the day to
+     * day is not thereby the person who decides what the workspace is.
+     */
+    case ManageFeatures = 'manage-features';
+
+    /**
      * Taking down what an integration said.
      *
      * A message from a bot is nobody's own words, so the rule that carries
@@ -115,6 +131,7 @@ enum WorkspaceAbility: string
             self::ManageWorkflows => __('enums.workspace-ability.label.ManageWorkflows'),
             self::CreateForms => __('enums.workspace-ability.label.CreateForms'),
             self::SeeHours => __('enums.workspace-ability.label.SeeHours'),
+            self::ManageFeatures => __('enums.workspace-ability.label.ManageFeatures'),
             self::DeleteBotMessages => __('enums.workspace-ability.label.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.label.ShareFormsPublicly'),
             self::SendContracts => __('enums.workspace-ability.label.SendContracts'),
@@ -141,6 +158,7 @@ enum WorkspaceAbility: string
             self::ManageWorkflows => __('enums.workspace-ability.description.ManageWorkflows'),
             self::CreateForms => __('enums.workspace-ability.description.CreateForms'),
             self::SeeHours => __('enums.workspace-ability.description.SeeHours'),
+            self::ManageFeatures => __('enums.workspace-ability.description.ManageFeatures'),
             self::DeleteBotMessages => __('enums.workspace-ability.description.DeleteBotMessages'),
             self::ShareFormsPublicly => __('enums.workspace-ability.description.ShareFormsPublicly'),
             self::SendContracts => __('enums.workspace-ability.description.SendContracts'),

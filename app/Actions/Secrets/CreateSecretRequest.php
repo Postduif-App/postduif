@@ -7,6 +7,7 @@ use App\Models\Channel;
 use App\Models\SecretRequest;
 use App\Models\SecretRequestKey;
 use App\Models\User;
+use App\Models\Workflow;
 use Illuminate\Support\Facades\DB;
 
 class CreateSecretRequest
@@ -27,6 +28,11 @@ class CreateSecretRequest
      * @param  array<int, string>  $keys  The names being asked for, in order.
      * @param  bool  $burnAfterReading  Whether each value goes the moment the
      *                                  requester has read it.
+     * @param  Workflow|null  $workflow  The workflow asking, where one is. The
+     *                                   request stays the requester's — the
+     *                                   answers are for a person to read — but
+     *                                   the message announcing it is signed by
+     *                                   the bot.
      */
     public function handle(
         Channel $channel,
@@ -36,6 +42,7 @@ class CreateSecretRequest
         int $validForDays,
         ?string $description = null,
         bool $burnAfterReading = false,
+        ?Workflow $workflow = null,
     ): SecretRequest {
         $request = DB::transaction(function () use (
             $channel,
@@ -76,10 +83,11 @@ class CreateSecretRequest
          * draws — so nothing here has to be a special kind of message, and a
          * link somebody pastes by hand works just as well.
          */
-        $this->sendMessage->handle(
+        $this->sendMessage->fromMemberOrWorkflow(
             channel: $channel,
-            author: $requester,
+            member: $requester,
             body: trim($title.' '.route('secrets.show', $request->id)),
+            workflow: $workflow,
         );
 
         return $request;

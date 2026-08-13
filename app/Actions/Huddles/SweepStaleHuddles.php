@@ -5,6 +5,7 @@ namespace App\Actions\Huddles;
 use App\Events\HuddleUpdated;
 use App\Models\Huddle;
 use App\Models\HuddleParticipant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -40,6 +41,29 @@ class SweepStaleHuddles
                 ->whereNull('left_at')
                 ->where('last_seen_at', '<', now()->subSeconds(self::AFTER_SECONDS))
                 ->update(['left_at' => now()]);
+
+            /*
+             * A recording whose recorder has gone quiet is over, whatever the
+             * huddle does next. The browser holding the microphone is the only
+             * one that could have stopped it politely, and by definition it did
+             * not — so the indicator would otherwise stay lit for a
+             * conversation that is no longer being recorded at all.
+             */
+            $abandoned = Huddle::query()
+                ->live()
+                ->whereNotNull('recording_by')
+                // Only the ones still going: a huddle nobody is left in is
+                // closed a few lines down, and that broadcast says everything
+                // this one would.
+                ->whereHas('present')
+                ->whereDoesntHave('present', fn (Builder $query) => $query
+                    ->whereColumn('huddle_participants.user_id', 'huddles.recording_by'))
+                ->get();
+
+            foreach ($abandoned as $huddle) {
+                $huddle->stopRecording();
+                HuddleUpdated::dispatch($huddle);
+            }
 
             /*
              * Then the huddles nobody is left in. Asked as its own query rather

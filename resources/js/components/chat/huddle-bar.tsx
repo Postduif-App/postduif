@@ -1,10 +1,12 @@
 import {
+    Circle,
     Headphones,
     Maximize2,
     Mic,
     MicOff,
     Minimize2,
     PhoneOff,
+    Square,
     Video,
     VideoOff,
 } from 'lucide-react';
@@ -65,6 +67,8 @@ export function HuddleBar({
         toggleMute,
         toggleCamera,
         switchDevice,
+        recording,
+        recordingBy,
     } = controls;
 
     /*
@@ -153,6 +157,33 @@ export function HuddleBar({
                     </p>
                 )}
 
+                {/*
+                    That this is being recorded, while it is.
+
+                    Beside the names rather than in the row of buttons: it is
+                    not a control, it is a fact about the room — and it is drawn
+                    for everybody who can see the bar, not only for the people
+                    in the huddle. Somebody deciding whether to walk in has more
+                    use for it than anybody already inside.
+
+                    The dot pulses because a still red dot is indistinguishable
+                    from a decoration, and this is the one thing here that has
+                    to be noticed without being looked for.
+                */}
+                {recordingBy && (
+                    <span className="flex shrink-0 items-center gap-1.5 font-medium text-destructive">
+                        <Circle
+                            className="size-2.5 animate-pulse fill-current"
+                            aria-hidden="true"
+                        />
+                        {recordingBy.id === currentUserId
+                            ? t('chat_ui.huddle.recording_you')
+                            : t('chat_ui.huddle.recording_by', {
+                                  name: recordingBy.name ?? '',
+                              })}
+                    </span>
+                )}
+
                 <div className="ml-auto flex shrink-0 items-center gap-1.5">
                     {cameraRefused && (
                         <span className="text-destructive">
@@ -171,6 +202,24 @@ export function HuddleBar({
                             {t('chat_ui.huddle.full', {
                                 count: MAX_PARTICIPANTS,
                             })}
+                        </span>
+                    )}
+
+                    {/*
+                        The upload, and the way it can go wrong. Only the person
+                        who recorded sees either: everybody else was told that a
+                        recording was made, and whether it travelled is between
+                        this browser and the server.
+                    */}
+                    {recording.state === 'saving' && (
+                        <span className="text-muted-foreground">
+                            {t('chat_ui.huddle.recording_saving')}
+                        </span>
+                    )}
+
+                    {recording.state === 'failed' && (
+                        <span className="text-destructive">
+                            {t('chat_ui.huddle.recording_failed')}
                         </span>
                     )}
 
@@ -255,6 +304,52 @@ export function HuddleBar({
                                 devices={devices.cameras}
                                 onChoose={(id) => switchDevice('video', id)}
                             />
+
+                            {/*
+                                Recording, which is the one button here that
+                                does something to everybody else in the room.
+
+                                Not offered while somebody else is recording:
+                                the mesh would happily carry two, but the notice
+                                in the channel names one person, and a second
+                                recording nobody was told about is exactly the
+                                thing the notice exists to prevent.
+                            */}
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className={cn(
+                                    'h-7 gap-1.5',
+                                    recording.state === 'recording' &&
+                                        'border-destructive/40 text-destructive hover:text-destructive',
+                                )}
+                                onClick={
+                                    recording.state === 'recording'
+                                        ? recording.stop
+                                        : recording.start
+                                }
+                                aria-pressed={recording.state === 'recording'}
+                                disabled={
+                                    !recording.supported ||
+                                    recording.state === 'saving' ||
+                                    (recordingBy !== null &&
+                                        recordingBy.id !== currentUserId)
+                                }
+                                title={
+                                    recording.supported
+                                        ? undefined
+                                        : t('chat_ui.huddle.record_unsupported')
+                                }
+                            >
+                                {recording.state === 'recording' ? (
+                                    <Square className="size-3.5 fill-current" />
+                                ) : (
+                                    <Circle className="size-3.5" />
+                                )}
+                                {recording.state === 'recording'
+                                    ? t('chat_ui.huddle.record_stop')
+                                    : t('chat_ui.huddle.record')}
+                            </Button>
 
                             {/*
                                 Room to actually look at somebody. Beside the

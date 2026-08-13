@@ -105,6 +105,22 @@ it('drops channels that are not this workspace to hand out', function () {
     expect(InviteLink::sole()->channels->pluck('id')->all())->toBe([$channel->id]);
 });
 
+/*
+ * A role is asked for by id, but the rule that decides whether channels are
+ * required looks the role up while the rules are still being built — before
+ * anything has held 'role' to being a number. A word arriving there used to
+ * reach the database as a key and take the request down with it.
+ */
+it('answers a role that is not an id with a validation error', function () {
+    [$owner, $workspace] = workspaceHandingOutLinks();
+
+    actingAs($owner)
+        ->post(route('chat.invite-links.store', $workspace), ['role' => 'member'])
+        ->assertSessionHasErrors('role');
+
+    expect(InviteLink::count())->toBe(0);
+});
+
 it('refuses somebody who may not invite', function () {
     [, $workspace] = workspaceHandingOutLinks();
 

@@ -208,7 +208,6 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
-                    number="01"
                     title={t('marketing.docs.auth.title')}
                     lead={t('marketing.docs.auth.lead')}
                 />
@@ -233,7 +232,6 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
 
             <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                 <SectionHead
-                    number="02"
                     title={t('marketing.docs.token.title')}
                     lead={t('marketing.docs.token.lead')}
                 />
@@ -254,7 +252,6 @@ export default function MarketingDocs({ endpoints, limits, tools }: DocsProps) {
             {contractEndpoints.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
-                        number="03"
                         title={t('marketing.docs.contracts.title')}
                         lead={t('marketing.docs.contracts.lead')}
                     />
@@ -322,7 +319,6 @@ if (! hash_equals($expected, $request->header('X-Postduif-Signature'))) {
             {webhookEndpoints.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
-                        number="04"
                         title={t('marketing.docs.webhooks.title')}
                         lead={t('marketing.docs.webhooks.lead')}
                     />
@@ -342,7 +338,6 @@ if (! hash_equals($expected, $request->header('X-Postduif-Signature'))) {
             {tools.length > 0 && (
                 <div className="mx-auto max-w-[1120px] px-6 pt-24 sm:px-12">
                     <SectionHead
-                        number="05"
                         title={t('marketing.docs.ai.title')}
                         lead={t('marketing.docs.ai.lead')}
                     />

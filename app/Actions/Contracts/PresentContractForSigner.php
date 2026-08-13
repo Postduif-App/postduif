@@ -95,7 +95,7 @@ class PresentContractForSigner
                     : $this->markUrl($signer, ContractFieldType::Initials),
             ],
 
-            'fields' => $mine->values()->map(function (ContractField $field) use ($answered): array {
+            'fields' => array_values($mine->values()->map(function (ContractField $field) use ($answered): array {
                 $value = $answered[$field->id] ?? null;
 
                 return [
@@ -123,7 +123,7 @@ class PresentContractForSigner
                     'value' => $value?->value,
                     'filled' => $value?->filled_at !== null,
                 ];
-            })->all(),
+            })->all()),
 
             /*
              * What the people before this person already put down.
