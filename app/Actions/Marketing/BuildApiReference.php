@@ -71,7 +71,7 @@ class BuildApiReference
         ],
         'api.v1.contracts.store' => [
             'auth' => 'contract-token',
-            'params' => ['template_id', 'recipients', 'title', 'message', 'valid_for_days', 'callback_url', 'callback_secret'],
+            'params' => ['template_id', 'recipients', 'title', 'message', 'locale', 'valid_for_days', 'callback_url', 'callback_secret'],
             'returns' => 'id, title, status, signedCopy, signers, expiresAt, completedAt',
         ],
         'api.v1.contracts.index' => [

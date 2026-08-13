@@ -60,6 +60,13 @@ class ContractApiResource extends JsonResource
                 ->values()
                 ->all(),
 
+            /*
+             * The language its mail goes out in, resolved rather than raw: a
+             * caller asking "what did this contract end up asking in" wants the
+             * answer, not the null that means "whatever the sender reads".
+             */
+            'locale' => $this->resource->mailLocale(),
+
             'expiresAt' => $this->resource->expires_at?->toIso8601String(),
             'completedAt' => $this->resource->completed_at?->toIso8601String(),
             'createdAt' => $this->resource->created_at?->toIso8601String(),

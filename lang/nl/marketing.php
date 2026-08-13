@@ -184,6 +184,7 @@ return [
                 'recipients' => ['rule' => 'verplicht, precies requiredSigners', 'about' => 'Lijst van {name, email}, in de volgorde waarin de vakken zijn getekend; optioneel values met veld-id → waarde'],
                 'title' => ['rule' => 'optioneel, max 200', 'about' => 'Anders de titel van het sjabloon'],
                 'message' => ['rule' => 'optioneel, max 2000', 'about' => 'Het zinnetje in de uitnodigingsmail; staat nooit op de PDF'],
+                'locale' => ['rule' => 'optioneel, nl of en', 'about' => 'De taal van de uitnodiging, de herinnering en de ondertekende kopie. Anders de taal van het account achter het token'],
                 'valid_for_days' => ['rule' => 'optioneel, 1–365', 'about' => 'Geteld vanaf nu; daarna opent de link niets meer'],
                 'callback_url' => ['rule' => 'optioneel, https', 'about' => 'Hier wordt gemeld dat er getekend, geweigerd of afgerond is — alleen voor dit contract'],
                 'callback_secret' => ['rule' => 'optioneel, min 16', 'about' => 'Waarmee X-Postduif-Signature wordt gezet. Laat je hem weg, dan krijg je er één terug in het antwoord — dat is de enige keer dat je hem ziet. Zonder callback_url heeft hij geen betekenis'],

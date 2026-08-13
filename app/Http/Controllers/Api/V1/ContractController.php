@@ -9,6 +9,7 @@ use App\Actions\Contracts\SendContract;
 use App\Enums\ContractStatus;
 use App\Http\Controllers\Api\V1\Concerns\ResolvesTokenWorkspace;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\HandleLocale;
 use App\Http\Resources\ContractApiResource;
 use App\Models\Contract;
 use App\Models\ContractField;
@@ -82,6 +83,20 @@ class ContractController extends Controller
 
             'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:365'],
 
+            /*
+             * The language every mail about this contract goes out in. Worth a
+             * field of its own here and nowhere else: from the screen, the
+             * author is the reader's correspondent and their language is the
+             * best guess there is, while over the API the author is the account
+             * behind the token — so a rental company sending on behalf of a
+             * German customer could otherwise only ask in Dutch.
+             *
+             * Checked against what this application actually has translations
+             * for. A tag we cannot render would fall back silently, which is
+             * the one answer worse than refusing it.
+             */
+            'locale' => ['nullable', 'string', Rule::in(HandleLocale::SUPPORTED)],
+
             'recipients' => ['required', 'array', 'min:1', 'max:'.self::MAX_RECIPIENTS],
             'recipients.*.name' => ['required', 'string', 'max:255'],
             'recipients.*.email' => ['required', 'string', 'email', 'max:255'],
@@ -126,6 +141,13 @@ class ContractController extends Controller
 
             if (($validated['message'] ?? null) !== null) {
                 $contract->update(['message' => $validated['message']]);
+            }
+
+            // Written onto the contract rather than carried into the send: the
+            // reminder and the signed copy leave long after this request is
+            // over, and all three have to read the same answer.
+            if (($validated['locale'] ?? null) !== null) {
+                $contract->update(['mail_locale' => $validated['locale']]);
             }
 
             if ($callback !== []) {

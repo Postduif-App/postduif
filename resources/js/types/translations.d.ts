@@ -1528,6 +1528,8 @@ export type TranslationKey =
     | 'marketing.api.api_v1_contracts_store.params.callback_secret.rule'
     | 'marketing.api.api_v1_contracts_store.params.callback_url.about'
     | 'marketing.api.api_v1_contracts_store.params.callback_url.rule'
+    | 'marketing.api.api_v1_contracts_store.params.locale.about'
+    | 'marketing.api.api_v1_contracts_store.params.locale.rule'
     | 'marketing.api.api_v1_contracts_store.params.message.about'
     | 'marketing.api.api_v1_contracts_store.params.message.rule'
     | 'marketing.api.api_v1_contracts_store.params.recipients.about'

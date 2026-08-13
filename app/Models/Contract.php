@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ContractStatus;
+use App\Http\Middleware\HandleLocale;
 use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,6 +39,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int|null $created_by
  * @property string $title
  * @property string|null $message
+ * @property string|null $mail_locale
  * @property int|null $notify_channel_id
  * @property string|null $callback_url
  * @property string|null $callback_secret
@@ -68,7 +70,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * builds a contract from an array in one go.
  */
 #[Fillable([
-    'workspace_id', 'created_by', 'title', 'message', 'notify_channel_id', 'status', 'page_count',
+    'workspace_id', 'created_by', 'title', 'message', 'mail_locale', 'notify_channel_id', 'status', 'page_count',
     'source_hash', 'expires_at', 'completed_at', 'cancelled_at', 'render_failed_at',
     'is_template', 'required_signers', 'callback_url', 'callback_secret',
 ])]
@@ -199,11 +201,22 @@ class Contract extends Model implements HasMedia
      * scheduler; both run in the configured default, so without this the same
      * contract would ask in one language and confirm in another.
      *
-     * Falls back to the application default when the author is gone — a
-     * contract outlives whoever sent it, see created_by — or never chose.
+     * What the contract itself says comes first, and only the API ever sets it:
+     * the account behind a token is whoever integrated, not whoever is going to
+     * read the mail, so a rental company sending on behalf of a German customer
+     * has to be able to say so. Written down rather than passed in, because the
+     * reminder and the signed copy leave long after that request is over.
+     *
+     * Falls back to the author, and then to the application default when the
+     * author is gone — a contract outlives whoever sent it, see created_by — or
+     * never chose.
      */
     public function mailLocale(): string
     {
+        if (in_array($this->mail_locale, HandleLocale::SUPPORTED, true)) {
+            return $this->mail_locale;
+        }
+
         return $this->author?->preferredLocale() ?? (string) config('app.locale');
     }
 

@@ -184,6 +184,7 @@ return [
                 'recipients' => ['rule' => 'required, exactly requiredSigners', 'about' => 'A list of {name, email} in the order the fields were drawn; optionally values with field id → value'],
                 'title' => ['rule' => 'optional, max 200', 'about' => 'Otherwise the template\'s own title'],
                 'message' => ['rule' => 'optional, max 2000', 'about' => 'The line in the invitation mail; never printed on the PDF'],
+                'locale' => ['rule' => 'optional, nl or en', 'about' => 'The language of the invitation, the reminder and the signed copy. Otherwise the language of the account behind the token'],
                 'valid_for_days' => ['rule' => 'optional, 1–365', 'about' => 'Counted from now; after that the link opens nothing'],
                 'callback_url' => ['rule' => 'optional, https', 'about' => 'Where signing, refusal and completion are reported — for this contract only'],
                 'callback_secret' => ['rule' => 'optional, min 16', 'about' => 'What X-Postduif-Signature is taken with. Leave it out and one comes back in the response — the only time you see it. Without a callback_url it means nothing'],

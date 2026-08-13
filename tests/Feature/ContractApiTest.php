@@ -474,3 +474,69 @@ it('hands over the signed document once it exists', function () {
         ->assertOk()
         ->assertHeader('X-Content-Type-Options', 'nosniff');
 });
+
+/*
+ * The language question, which only exists over the API. From the screen the
+ * author is the reader's correspondent and their language is the best guess
+ * there is; here the author is the account behind the token, so a rental
+ * company mailing a German customer could otherwise only ask in Dutch.
+ */
+it('sends a contract in the language the call asked for, and keeps asking in it', function () {
+    [, $sender, $template, $token] = contractApiSetup();
+
+    // The account behind the token reads Dutch. What the customer reads is a
+    // different question, and it is the one this field answers.
+    $sender->forceFill(['locale' => 'nl'])->save();
+
+    $response = $this->withHeaders(bearer($token))
+        ->postJson(route('api.v1.contracts.store'), [
+            'template_id' => $template->id,
+            'locale' => 'en',
+            'recipients' => [['name' => 'Anna de Vries', 'email' => 'anna@example.com']],
+        ])
+        ->assertCreated();
+
+    $contract = Contract::query()->whereKey($response->json('data.id'))->firstOrFail();
+
+    /*
+     * Written down rather than used and forgotten. The invitation leaves now,
+     * the reminder from the scheduler and the signed copy from a queued job —
+     * three moments with no reader behind them, and all three read this.
+     */
+    expect($contract->mail_locale)->toBe('en')
+        ->and($contract->mailLocale())->toBe('en');
+
+    Mail::assertSent(ContractRequestMail::class, fn (ContractRequestMail $mail): bool => $mail->locale === 'en');
+});
+
+it('refuses a language it has no translations for', function () {
+    [, , $template, $token] = contractApiSetup();
+
+    $this->withHeaders(bearer($token))
+        ->postJson(route('api.v1.contracts.store'), [
+            'template_id' => $template->id,
+            'locale' => 'de',
+            'recipients' => [['name' => 'Anna de Vries', 'email' => 'anna@example.com']],
+        ])
+        ->assertJsonValidationErrors('locale');
+});
+
+it('falls back to the language of whoever sent it when the call says nothing', function () {
+    [, $sender, $template, $token] = contractApiSetup();
+
+    $sender->forceFill(['locale' => 'en'])->save();
+
+    $response = $this->withHeaders(bearer($token))
+        ->postJson(route('api.v1.contracts.store'), [
+            'template_id' => $template->id,
+            'recipients' => [['name' => 'Anna de Vries', 'email' => 'anna@example.com']],
+        ])
+        ->assertCreated();
+
+    $contract = Contract::query()->whereKey($response->json('data.id'))->firstOrFail();
+
+    // Which is what every contract sent from the screen still means, and what
+    // every row written before this column existed meant.
+    expect($contract->mail_locale)->toBeNull()
+        ->and($contract->mailLocale())->toBe('en');
+});
