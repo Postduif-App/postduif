@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Timeclock;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -82,8 +82,8 @@ class TimeclockTrigger extends WorkflowTrigger
      * The same answer the webhook and form triggers give, for the same reason:
      * a trigger that can never fire is worse than one that is not offered.
      */
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Timeclock::class) ?? false;
+        return $workspace->hasFeature(Timeclock::class);
     }
 }

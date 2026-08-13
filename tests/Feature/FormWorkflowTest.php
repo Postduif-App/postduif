@@ -213,11 +213,11 @@ it('is only offered where forms are switched on', function () {
     [$owner, , , $workspace, $channel] = formWorkflowScene();
     $workflow = formWorkflow($owner, $channel, null);
 
-    expect(FormSubmittedTrigger::availableFor($workflow))->toBeTrue();
+    expect(FormSubmittedTrigger::availableFor($workspace))->toBeTrue();
 
     Feature::for($workspace)->deactivate(Forms::class);
 
-    expect(FormSubmittedTrigger::availableFor($workflow->fresh()))->toBeFalse();
+    expect(FormSubmittedTrigger::availableFor($workspace->fresh()))->toBeFalse();
 });
 
 it('promises the answers as one word, because the keys belong to the form', function () {

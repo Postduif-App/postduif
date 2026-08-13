@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Forms;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -86,8 +86,8 @@ class FormSubmittedTrigger extends WorkflowTrigger
      * workspace that has switched forms off has no forms to point this at, and
      * a trigger offering an empty picker is worse than one that is not there.
      */
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Forms::class) ?? false;
+        return $workspace->hasFeature(Forms::class);
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Documents;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -51,8 +51,8 @@ abstract class DocumentTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Documents::class) ?? false;
+        return $workspace->hasFeature(Documents::class);
     }
 }

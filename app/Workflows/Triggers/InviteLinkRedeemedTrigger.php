@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\InviteLinks;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -59,8 +59,8 @@ class InviteLinkRedeemedTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(InviteLinks::class) ?? false;
+        return $workspace->hasFeature(InviteLinks::class);
     }
 }

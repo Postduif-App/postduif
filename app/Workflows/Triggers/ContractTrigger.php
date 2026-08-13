@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Contracts;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -122,8 +122,8 @@ abstract class ContractTrigger extends WorkflowTrigger
      * The same answer the form and timeclock triggers give: a trigger that can
      * never fire is worse than one that is not offered.
      */
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Contracts::class) ?? false;
+        return $workspace->hasFeature(Contracts::class);
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Transfers;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowTrigger;
 
 /**
@@ -51,8 +51,8 @@ class TransferDownloadedTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Transfers::class) ?? false;
+        return $workspace->hasFeature(Transfers::class);
     }
 }

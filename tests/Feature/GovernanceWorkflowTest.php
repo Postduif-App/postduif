@@ -147,7 +147,7 @@ it('stays out of a workspace that does not do shared channels', function () {
     expect(watcherRun($onGuest))->toBeNull()
         // And the trigger would refuse it too, which is the guard that matters
         // for a workspace that switches the feature off after the offer.
-        ->and(ChannelShareOfferedTrigger::availableFor($onGuest->refresh()))->toBeFalse();
+        ->and(ChannelShareOfferedTrigger::availableFor($guestSpace->refresh()))->toBeFalse();
 });
 
 /*

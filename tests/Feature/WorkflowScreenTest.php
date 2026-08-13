@@ -5,6 +5,7 @@ use App\Enums\SystemRole;
 use App\Enums\WorkflowBranch;
 use App\Enums\WorkflowRunStatus;
 use App\Enums\WorkflowStepKind;
+use App\Features\Contracts;
 use App\Features\Workflows as WorkflowsFeature;
 use App\Models\Form;
 use App\Models\FormField;
@@ -14,6 +15,7 @@ use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\WorkflowStepRun;
 use App\Workflows\WorkflowRegistry;
+use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
 
 it('hands the builder the questions a form asks, under the keys they arrive as', function () {
@@ -71,11 +73,14 @@ it('lists a workspace his workflows without drawing any of them', function () {
             // count, and sending every step of every workflow to it is a page
             // that gets slower each time somebody writes another one.
             ->missing('workflows.0.steps')
-            // Only the triggers, because the only thing built here is a new
-            // workflow's first question. Counted against the register rather
-            // than against a number: a screen that has to be edited every time
-            // an action is written is a screen whose test says nothing.
-            ->has('triggers', count(app(WorkflowRegistry::class)->triggers()))
+            /*
+             * Only the triggers, because the only thing built here is a new
+             * workflow's first question. Counted against what this workspace is
+             * offered rather than against a number: a screen whose test has to
+             * be edited every time a trigger is written is a test that says
+             * nothing.
+             */
+            ->has('triggers', count(app(WorkflowRegistry::class)->toArray($workspace)['triggers']))
             ->missing('catalogue')
         );
 });
@@ -95,7 +100,7 @@ it('shows a beheerder the builder with everything it can be built from', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workflow-edit')
-            ->has('catalogue.triggers', count($registry->triggers()))
+            ->has('catalogue.triggers', count($registry->toArray($workspace)['triggers']))
             ->has('catalogue.actions', count($registry->actions()))
             // The operators come down grouped, with whether each of them has a
             // right-hand side at all. Both were written out in the screen until
@@ -111,6 +116,99 @@ it('shows a beheerder the builder with everything it can be built from', functio
             // And the pickers, which only this screen has any use for.
             ->has('channels')
             ->has('members')
+        );
+});
+
+/*
+ * Everything the catalogue hands over is complete enough to draw. A count says
+ * nothing about that: a trigger registered without a description or without
+ * fields would keep every count right and leave a blank half-form on screen.
+ */
+it('describes every trigger and action it offers well enough to draw', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    $catalogue = app(WorkflowRegistry::class)->toArray($workspace);
+
+    foreach ([...$catalogue['triggers'], ...$catalogue['actions']] as $item) {
+        expect($item['key'])->toBeString()->not->toBe('')
+            ->and($item['label'])->toBeString()->not->toBe('')
+            ->and($item['description'])->toBeString()->not->toBe('')
+            ->and($item['fields'])->toBeArray()
+            ->and($item['provides'])->toBeArray();
+
+        foreach ($item['fields'] as $field) {
+            // The control the builder has to draw, and whether a variable may
+            // go in it. Both come from here and from nowhere else.
+            expect($field['key'])->toBeString()->not->toBe('')
+                ->and($field['label'])->toBeString()->not->toBe('')
+                ->and($field['type'])->toBeString()->not->toBe('')
+                ->and($field['acceptsVariables'])->toBeBool();
+        }
+    }
+});
+
+/*
+ * And a trigger this workspace could never use is not offered at all. Somebody
+ * picking "contract getekend" where no signatures are asked for saves a
+ * workflow, switches it on, and waits for something that has nothing to listen
+ * to — the listener asks the same question before it starts anything.
+ */
+it('leaves out the triggers this workspace has switched off', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    Feature::for($workspace)->deactivate(Contracts::class);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('triggers', fn (Collection $triggers): bool => $triggers
+                ->pluck('key')
+                ->doesntContain('contract-signed'))
+        );
+
+    Feature::for($workspace)->activate(Contracts::class);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('triggers', fn (Collection $triggers): bool => $triggers
+                ->pluck('key')
+                ->contains('contract-signed'))
+        );
+});
+
+/*
+ * Its own trigger is the exception, and it has to be: a workflow written while
+ * contracts were on is still pointed at one. Drop it from the picker and the
+ * browser falls back to whatever sits at the top, so opening the workflow and
+ * pressing save would quietly point it somewhere else.
+ */
+it('keeps a workflow his own trigger in the picker after the feature goes off', function () {
+    [$admin, $workspace] = workflowBeheerder();
+
+    Feature::for($workspace)->activate(Contracts::class);
+
+    $workflow = Workflow::factory()->triggeredBy('contract-signed', [])->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $admin->id,
+    ]);
+
+    Feature::for($workspace)->deactivate(Contracts::class);
+
+    $this->actingAs($admin)
+        ->get(route('workflows.edit', $workflow))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('catalogue.triggers', fn (Collection $triggers): bool => $triggers
+                ->pluck('key')
+                ->contains('contract-signed'))
+            // The other seven are gone all the same: this is one workflow's
+            // exception, not the feature coming back.
+            ->where('catalogue.triggers', fn (Collection $triggers): bool => $triggers
+                ->pluck('key')
+                ->doesntContain('contract-declined'))
         );
 });
 

@@ -231,7 +231,7 @@ it('stays out of a workspace that has switched contracts off', function () {
     ContractSent::dispatch($contract->id);
 
     expect(contractRunOf($workflow))->toBeNull()
-        ->and(ContractSentTrigger::availableFor($workflow->fresh()))->toBeFalse();
+        ->and(ContractSentTrigger::availableFor($workspace->fresh()))->toBeFalse();
 });
 
 it('says nothing about a contract that has since been deleted', function () {

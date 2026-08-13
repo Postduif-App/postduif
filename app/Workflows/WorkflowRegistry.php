@@ -2,6 +2,7 @@
 
 namespace App\Workflows;
 
+use App\Models\Workspace;
 use InvalidArgumentException;
 
 /**
@@ -114,10 +115,38 @@ class WorkflowRegistry
     /**
      * What the builder is handed: every trigger and action with its fields.
      *
+     * A workspace narrows the triggers to the ones it could actually use. A
+     * trigger that can never fire here is worse than one that is not offered:
+     * somebody picks "contract getekend" in a workspace that asks for no
+     * signatures, saves it, switches it on, and waits for a workflow that has
+     * nothing to listen to. The listener asks this same question before it
+     * starts anything — see StartMatchingWorkflows — so leaving the workspace
+     * out only ever means offering a choice the runner will decline.
+     *
+     * Left out entirely, the catalogue is everything there is, which is what a
+     * test about the register itself wants.
+     *
+     * $keep is the one exception, and the builder is why it exists. A workflow
+     * written while contracts were on is still pointed at a contract trigger
+     * after they are switched off; drop it from the list and the picker falls
+     * back to whatever sits at the top, so opening that workflow and pressing
+     * save would quietly point it somewhere else. Its own trigger stays in the
+     * list — visibly the odd one out, since nothing else offers it — and
+     * changing it away is then somebody's decision rather than a side effect.
+     *
+     * @param  string|null  $keep  A trigger key to offer whether or not the workspace could pick it today.
      * @return array{triggers: list<array<string, mixed>>, actions: list<array<string, mixed>>}
      */
-    public function toArray(): array
+    public function toArray(?Workspace $workspace = null, ?string $keep = null): array
     {
+        $triggers = $workspace === null
+            ? $this->triggers
+            : array_filter(
+                $this->triggers,
+                fn (string $trigger, string $key): bool => $key === $keep || $trigger::availableFor($workspace),
+                ARRAY_FILTER_USE_BOTH,
+            );
+
         return [
             'triggers' => array_values(array_map(fn (string $trigger): array => [
                 'key' => $trigger::key(),
@@ -125,7 +154,7 @@ class WorkflowRegistry
                 'description' => $trigger::description(),
                 'fields' => array_map(fn (WorkflowField $field): array => $field->toArray(), $trigger::fields()),
                 'provides' => $trigger::provides(),
-            ], $this->triggers)),
+            ], $triggers)),
             'actions' => array_values(array_map(fn (string $action): array => [
                 'key' => $action::key(),
                 'label' => $action::label(),

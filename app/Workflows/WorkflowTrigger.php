@@ -2,7 +2,7 @@
 
 namespace App\Workflows;
 
-use App\Models\Workflow;
+use App\Models\Workspace;
 use Illuminate\Support\Str;
 
 /**
@@ -72,7 +72,7 @@ abstract class WorkflowTrigger
      * webhook trigger, which has no business existing in a workspace that has
      * switched webhooks off, feature flag on workflows or not.
      */
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
         return true;
     }

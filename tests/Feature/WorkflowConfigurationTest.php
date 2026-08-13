@@ -4,6 +4,7 @@ use App\Enums\ChannelTicketPolicy;
 use App\Enums\WorkflowRecordType;
 use App\Enums\WorkflowRunStatus;
 use App\Features\Tickets;
+use App\Features\Timeclock;
 use App\Models\Channel;
 use App\Models\Ticket;
 use App\Models\User;
@@ -207,12 +208,30 @@ it('refuses a variable in a field that cannot resolve one', function () {
 });
 
 it('refuses a choice that is not on the list', function () {
-    [$admin, , $workflow] = configurationScene();
+    [$admin, $workspace, $workflow] = configurationScene();
+
+    // The clock has to be on, or the request would refuse the trigger itself
+    // and the choice inside it would never be looked at.
+    Feature::for($workspace)->activate(Timeclock::class);
 
     saveWorkflow($admin, $workflow, [
         'trigger_type' => 'timeclock',
         'trigger_config' => ['direction' => 'sideways'],
     ])->assertSessionHasErrors('trigger_config.direction');
+});
+
+/*
+ * The builder leaves these out of the picker, and a list that is only enforced
+ * in the browser is not a list — a saved workflow pointed at a trigger this
+ * workspace has switched off is one that waits forever.
+ */
+it('refuses a trigger this workspace has switched off', function () {
+    [$admin, , $workflow] = configurationScene();
+
+    saveWorkflow($admin, $workflow, [
+        'trigger_type' => 'contract-signed',
+        'trigger_config' => [],
+    ])->assertSessionHasErrors('trigger_type');
 });
 
 it('refuses a record from another workspace, and keeps its own', function () {

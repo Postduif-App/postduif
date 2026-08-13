@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Webhooks;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowTrigger;
 
 /**
@@ -35,9 +35,9 @@ class WebhookTrigger extends WorkflowTrigger
      * door with a different sign on it. Switching workflows on is not a way to
      * reopen it.
      */
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Webhooks::class) ?? false;
+        return $workspace->hasFeature(Webhooks::class);
     }
 
     /** @return array<string, string> */

@@ -40,20 +40,24 @@ class StartMatchingWorkflows
             return;
         }
 
+        /*
+         * The feature check that used to live only in the builder, which a
+         * listener never passes through: a workspace that has switched
+         * contracts off should not have contract workflows going off in it.
+         *
+         * Asked once, of the workspace, rather than per workflow — availability
+         * is a property of the workspace and every workflow found below belongs
+         * to this one.
+         */
+        if (! $trigger::availableFor($workspace)) {
+            return;
+        }
+
         $workflows = Workflow::query()
             ->listeningFor($workspace, $trigger::key())
             ->get();
 
         foreach ($workflows as $workflow) {
-            /*
-             * The feature check that used to live only in the builder, which a
-             * listener never passes through: a workspace that has switched
-             * contracts off should not have contract workflows going off in it.
-             */
-            if (! $trigger::availableFor($workflow)) {
-                continue;
-            }
-
             $context = $contextFor($workflow);
 
             /*

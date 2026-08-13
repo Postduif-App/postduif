@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\SharedChannels;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowTrigger;
 
 /**
@@ -38,8 +38,8 @@ abstract class ChannelShareTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(SharedChannels::class) ?? false;
+        return $workspace->hasFeature(SharedChannels::class);
     }
 }

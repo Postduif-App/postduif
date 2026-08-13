@@ -2,7 +2,6 @@
 
 use App\Enums\WorkflowFieldType;
 use App\Features\Webhooks;
-use App\Models\Workflow;
 use App\Models\Workspace;
 use App\Workflows\Triggers\MessageKeywordTrigger;
 use App\Workflows\Triggers\ReactionTrigger;
@@ -193,15 +192,14 @@ it('keeps the two people in a reaction apart', function () {
 
 it('lets every trigger be used, except the webhook one where webhooks are off', function () {
     $workspace = Workspace::factory()->create();
-    $workflow = Workflow::factory()->create(['workspace_id' => $workspace->id]);
 
-    expect(WebhookTrigger::availableFor($workflow))->toBeTrue()
-        ->and(MessageKeywordTrigger::availableFor($workflow))->toBeTrue();
+    expect(WebhookTrigger::availableFor($workspace))->toBeTrue()
+        ->and(MessageKeywordTrigger::availableFor($workspace))->toBeTrue();
 
     Feature::for($workspace)->deactivate(Webhooks::class);
 
-    expect(WebhookTrigger::availableFor($workflow->fresh()))->toBeFalse()
-        ->and(MessageKeywordTrigger::availableFor($workflow->fresh()))->toBeTrue();
+    expect(WebhookTrigger::availableFor($workspace->fresh()))->toBeFalse()
+        ->and(MessageKeywordTrigger::availableFor($workspace->fresh()))->toBeTrue();
 });
 
 it('hands the builder every trigger with its fields and its variables', function () {

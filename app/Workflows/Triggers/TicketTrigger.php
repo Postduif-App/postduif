@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Tickets;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -94,8 +94,8 @@ abstract class TicketTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Tickets::class) ?? false;
+        return $workspace->hasFeature(Tickets::class);
     }
 }

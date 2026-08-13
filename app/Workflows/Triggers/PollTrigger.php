@@ -3,7 +3,7 @@
 namespace App\Workflows\Triggers;
 
 use App\Features\Polls;
-use App\Models\Workflow;
+use App\Models\Workspace;
 use App\Workflows\WorkflowField;
 use App\Workflows\WorkflowTrigger;
 
@@ -63,8 +63,8 @@ abstract class PollTrigger extends WorkflowTrigger
         ];
     }
 
-    public static function availableFor(Workflow $workflow): bool
+    public static function availableFor(Workspace $workspace): bool
     {
-        return $workflow->workspace?->hasFeature(Polls::class) ?? false;
+        return $workspace->hasFeature(Polls::class);
     }
 }

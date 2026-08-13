@@ -120,9 +120,9 @@ it('does not offer the trigger in a workspace without a clock', function () {
         'created_by' => $owner->id,
     ]);
 
-    expect(TimeclockTrigger::availableFor($workflow))->toBeFalse();
+    expect(TimeclockTrigger::availableFor($workspace))->toBeFalse();
 
     Feature::for($workspace)->activate(TimeclockFeature::class);
 
-    expect(TimeclockTrigger::availableFor($workflow->refresh()))->toBeTrue();
+    expect(TimeclockTrigger::availableFor($workspace->refresh()))->toBeTrue();
 });

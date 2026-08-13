@@ -16,6 +16,7 @@ use App\Models\Form;
 use App\Models\FormField;
 use App\Models\Workflow;
 use App\Models\WorkflowStep;
+use App\Models\Workspace;
 use App\Workflows\Actions\HttpRequest;
 use App\Workflows\Triggers\SlashCommandTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
@@ -94,7 +95,7 @@ class WorkflowController extends Controller
              * a new workflow's first question. The actions belong to the builder
              * and travel with it — see edit().
              */
-            'triggers' => $registry->toArray()['triggers'],
+            'triggers' => $registry->toArray($workspace)['triggers'],
         ]);
     }
 
@@ -123,7 +124,7 @@ class WorkflowController extends Controller
              * that has to wait for a round trip before it can draw the second
              * half of a form is a builder that feels broken.
              */
-            'catalogue' => $registry->toArray(),
+            'catalogue' => $registry->toArray($workspace, $workflow->trigger_type),
 
             /*
              * The condition's own vocabulary, from the enums rather than from a
@@ -282,7 +283,13 @@ class WorkflowController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'description' => ['nullable', 'string', 'max:200'],
-            'trigger_type' => ['required', 'string', Rule::in(array_keys($registry->triggers()))],
+            /*
+             * The triggers this workspace was offered, not every trigger there
+             * is. The builder already leaves out the ones a workspace cannot
+             * use, and a list that is only enforced in the browser is not a
+             * list.
+             */
+            'trigger_type' => ['required', 'string', Rule::in($this->offeredTriggers($registry, $workspace))],
         ]);
 
         $workflow = $workspace->workflows()->create([
@@ -332,7 +339,15 @@ class WorkflowController extends Controller
              * spaces into null by the time this is read.
              */
             'bot_name' => ['nullable', 'string', 'max:80'],
-            'trigger_type' => ['required', 'string', Rule::in(array_keys($registry->triggers()))],
+            /*
+             * Its own trigger included, whether or not the workspace could pick
+             * it today: a workflow written before contracts were switched off
+             * must still be savable without being pointed somewhere else. See
+             * WorkflowRegistry::toArray().
+             */
+            'trigger_type' => ['required', 'string', Rule::in(
+                $this->offeredTriggers($registry, $workflow->workspace, $workflow->trigger_type),
+            )],
             'trigger_config' => ['array'],
             'steps' => ['array', 'max:'.self::MAX_STEPS],
 
@@ -449,6 +464,20 @@ class WorkflowController extends Controller
          * just gone.
          */
         return to_route('workflows.index');
+    }
+
+    /**
+     * The trigger keys this workspace is actually offered.
+     *
+     * Read back out of the catalogue rather than filtered a second time here,
+     * so the list the builder draws and the list the request accepts can only
+     * ever be the same list.
+     *
+     * @return list<string>
+     */
+    private function offeredTriggers(WorkflowRegistry $registry, ?Workspace $workspace, ?string $keep = null): array
+    {
+        return array_column($registry->toArray($workspace, $keep)['triggers'], 'key');
     }
 
     /**
