@@ -25,7 +25,10 @@ use RuntimeException;
  */
 class SendContract
 {
-    public function __construct(private ResolveWorkspaceMailer $resolveMailer) {}
+    public function __construct(
+        private ResolveWorkspaceMailer $resolveMailer,
+        private SaveContractSigners $saveSigners,
+    ) {}
 
     /**
      * @param  list<array{name: string, email: string, user_id?: int|null}>  $signers
@@ -54,29 +57,18 @@ class SendContract
 
         DB::transaction(function () use ($contract, $signers, $validForDays, $notifyChannelId): void {
             /*
-             * The signers are replaced rather than added to.
+             * The list is written by the same action the author has been
+             * saving it with all along — see SaveContractSigners, which also
+             * explains why a name that is already on the list keeps its row
+             * and its token, and how the boxes follow the person they were
+             * drawn for when the order changes.
              *
-             * This runs on a draft — the policy sees to that — so there is
-             * nobody holding a link yet and nothing to invalidate. Replacing
-             * makes the screen honest: the list somebody edited is the list
-             * that gets invited, including the address they removed.
-             *
-             * Deleted one at a time rather than in a mass delete: a signer
-             * carries media, and a query builder delete fires no events. The
-             * same trap Contract::booted spells out.
+             * Sending does not get its own version of that: the list somebody
+             * laid the contract out against has to be the list that gets
+             * invited, or the boxes and the people would part company at the
+             * last possible moment.
              */
-            $contract->signers()->each(fn (ContractSigner $signer) => $signer->delete());
-
-            foreach (array_values($signers) as $order => $signer) {
-                ContractSigner::create([
-                    'contract_id' => $contract->id,
-                    'user_id' => $signer['user_id'] ?? null,
-                    'name' => trim($signer['name']),
-                    'email' => trim($signer['email']),
-                    'token' => ContractSigner::freshToken(),
-                    'signing_order' => $order,
-                ]);
-            }
+            $this->saveSigners->handle($contract, $signers);
 
             $contract->update([
                 'status' => ContractStatus::Sent,

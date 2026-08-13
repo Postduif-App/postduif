@@ -21,7 +21,7 @@ import { useTranslate } from '@/hooks/use-translate';
 import { placeBox, pointerFraction, roundBox } from '@/lib/contract-fields';
 import type { FieldBox, RenderedPage } from '@/lib/contract-fields';
 import { cn } from '@/lib/utils';
-import { fields as saveFields } from '@/routes/chat/contracts';
+import { fields as saveFields, show } from '@/routes/chat/contracts';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -455,6 +455,46 @@ export default function ContractEdit({
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        {/*
+                            Who the boxes can be handed to, and a way to go and
+                            say so when nobody has been named yet.
+
+                            Here rather than only in the box's own panel,
+                            because the question it answers comes up before any
+                            box is selected: somebody laying out a contract for
+                            two parties has to know that "in te vullen door"
+                            exists at all, and that it is empty until the list
+                            is written on the contract page.
+                        */}
+                        <div className="space-y-2 border-t pt-4">
+                            <h2 className="text-xs font-semibold text-muted-foreground uppercase">
+                                {t('contracts.editor.signers')}
+                            </h2>
+
+                            {contract.signers.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                    {t('contracts.editor.no_signers')}{' '}
+                                    <Link
+                                        href={show.url({
+                                            workspace: workspaceSlug,
+                                            contract: contract.id,
+                                        })}
+                                        className="underline underline-offset-2 hover:text-foreground"
+                                    >
+                                        {t('contracts.editor.name_signers')}
+                                    </Link>
+                                </p>
+                            ) : (
+                                <ol className="space-y-1 text-xs text-muted-foreground">
+                                    {contract.signers.map((signer) => (
+                                        <li key={signer.index}>
+                                            {signer.index + 1}. {signer.name}
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
                         </div>
 
                         {chosen !== undefined && selected !== null && (

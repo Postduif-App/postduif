@@ -9,6 +9,7 @@ use App\Actions\Contracts\PdfRefused;
 use App\Actions\Contracts\PostContractToChannel;
 use App\Actions\Contracts\RemindContractSigners;
 use App\Actions\Contracts\SaveContractFields;
+use App\Actions\Contracts\SaveContractSigners;
 use App\Actions\Contracts\SendContract;
 use App\Actions\Contracts\SigningRefused;
 use App\Enums\ContractFieldType;
@@ -281,12 +282,21 @@ class ContractController extends Controller
             ->get()
             ->first(fn (ContractSigner $signer): bool => $signer->canStillSign());
 
-        if ($mine !== null) {
-            /*
-             * Their own token, not the contract's id. There is no other way in:
-             * the signing page has no notion of a session, because most people
-             * who reach it have no account.
-             */
+        /*
+         * Somebody who is only a signer goes straight to their own page.
+         *
+         * Their own token, not the contract's id. There is no other way in:
+         * the signing page has no notion of a session, because most people who
+         * reach it have no account.
+         *
+         * Whoever may also manage the contract does not get bounced, and that
+         * exception exists for one case: an author who put themselves on the
+         * list. Sending them to their signing page would be taking away the
+         * screen that can remind and withdraw until they have signed — from the
+         * one person who is most likely to need it. They get the way to their
+         * own page as a link instead, below.
+         */
+        if ($mine !== null && $user->cannot('view', $contract)) {
             return redirect()->route('contracts.sign.show', $mine->token);
         }
 
@@ -321,6 +331,17 @@ class ContractController extends Controller
                  */
                 'signedCopyState' => $contract->signedCopyState(),
 
+                /*
+                 * The way to this person's own signing page, when they are on
+                 * the list themselves and have not answered yet.
+                 *
+                 * An author who ticked "ik onderteken zelf ook" is the case
+                 * this is for. Their token is in it, which is why it is only
+                 * ever built for the person it belongs to — see the redirect
+                 * above for the other half of the same decision.
+                 */
+                'mySignUrl' => $mine?->signUrl(),
+
                 'sourceUrl' => route('chat.contracts.source', [$workspace, $contract]),
                 'downloadUrl' => $contract->signedCopy() === null
                     ? null
@@ -335,6 +356,14 @@ class ContractController extends Controller
                 'signers' => $contract->signers->map(fn (ContractSigner $signer): array => [
                     'name' => $signer->name,
                     'email' => $signer->email,
+
+                    /*
+                     * Carried so that the form can hand the same list back
+                     * unchanged. Losing it on the way through the screen would
+                     * quietly turn a colleague into an outsider — the id is
+                     * what makes the DM about this contract possible.
+                     */
+                    'userId' => $signer->user_id,
                     'openedAt' => $signer->opened_at?->toIso8601String(),
                     'signedAt' => $signer->signed_at?->toIso8601String(),
                     'declinedAt' => $signer->declined_at?->toIso8601String(),
@@ -533,6 +562,104 @@ class ContractController extends Controller
     }
 
     /**
+     * Write down who is going to sign, without asking any of them yet.
+     *
+     * Its own endpoint because of the order the work is done in. The boxes on a
+     * contract belong to people, and the editor cannot offer "wie vult dit in"
+     * against a list that does not exist yet — so the list is written first,
+     * and only then does signer_index turn from a number into a name.
+     *
+     * The same rules as sending, minus the deadline and the channel: those are
+     * decisions about the invitation rather than about who is on it, and there
+     * is no invitation yet.
+     */
+    public function updateSigners(
+        Request $request,
+        Workspace $workspace,
+        Contract $contract,
+        SaveContractSigners $saveSigners,
+    ): RedirectResponse {
+        abort_unless($contract->workspace_id === $workspace->id, 404);
+
+        /*
+         * update rather than a right of its own, and it carries the same two
+         * refusals sending does: a contract that is no longer outstanding, and
+         * one somebody has already signed. Renaming a signer after they signed
+         * would rewrite who agreed to what.
+         */
+        $this->authorize('update', $contract);
+
+        $signers = $this->validatedSigners($request, $workspace);
+
+        if ($signers instanceof RedirectResponse) {
+            return $signers;
+        }
+
+        $saveSigners->handle($contract, $signers);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => trans_choice('flashes.contract.signers_saved', count($signers)),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * The list of people, checked.
+     *
+     * Shared by saving and sending because they are the same list read twice —
+     * a rule that held for one and not the other would mean a contract could be
+     * laid out against a list it can never be sent to.
+     *
+     * Hands back a redirect rather than throwing for the one refusal that is
+     * not a per-field rule: see below.
+     *
+     * @return list<array{name: string, email: string, user_id?: int|null}>|RedirectResponse
+     */
+    private function validatedSigners(Request $request, Workspace $workspace): array|RedirectResponse
+    {
+        $data = $request->validate([
+            'signers' => ['required', 'array', 'min:1', 'max:'.self::MAX_SIGNERS],
+            'signers.*.name' => ['required', 'string', 'max:120'],
+            'signers.*.email' => ['required', 'email', 'max:255'],
+
+            /*
+             * A colleague picked from the workspace rather than an address
+             * typed in. Scoped to this workspace in the rule itself: an id from
+             * somewhere else must not be storable, and a validator is the only
+             * place that refusal reads as a validation error rather than a 403.
+             *
+             * Null is the ordinary case rather than the exception. Most people
+             * asked to sign a contract are customers who have no account here
+             * and never will — the token in their link is the whole of their
+             * permission, which is why the signing pages sit outside auth.
+             */
+            'signers.*.user_id' => [
+                'nullable',
+                Rule::exists('workspace_user', 'user_id')->where('workspace_id', $workspace->id),
+            ],
+        ]);
+
+        /*
+         * The same address twice is two links to one inbox — and two rows
+         * claiming to be the person who signed. Refused here rather than left
+         * to the unique index, so it reads as a mistake somebody can correct
+         * instead of as a database error.
+         */
+        $addresses = array_map(
+            fn (array $signer): string => mb_strtolower(trim($signer['email'])),
+            $data['signers'],
+        );
+
+        if (count(array_unique($addresses)) !== count($addresses)) {
+            return back()->withErrors(['signers' => __('contracts.send.duplicate_address')]);
+        }
+
+        return array_values($data['signers']);
+    }
+
+    /**
      * Name the people and put it in the post.
      *
      * The step that turns a draft into something the outside world is holding.
@@ -557,22 +684,13 @@ class ContractController extends Controller
          */
         $this->authorize('update', $contract);
 
+        $signers = $this->validatedSigners($request, $workspace);
+
+        if ($signers instanceof RedirectResponse) {
+            return $signers;
+        }
+
         $data = $request->validate([
-            'signers' => ['required', 'array', 'min:1', 'max:'.self::MAX_SIGNERS],
-            'signers.*.name' => ['required', 'string', 'max:120'],
-            'signers.*.email' => ['required', 'email', 'max:255'],
-
-            /*
-             * A colleague picked from the workspace rather than an address
-             * typed in. Scoped to this workspace in the rule itself: an id from
-             * somewhere else must not be storable, and a validator is the only
-             * place that refusal reads as a validation error rather than a 403.
-             */
-            'signers.*.user_id' => [
-                'nullable',
-                Rule::exists('workspace_user', 'user_id')->where('workspace_id', $workspace->id),
-            ],
-
             'valid_for_days' => ['nullable', 'integer', 'min:1', 'max:365'],
 
             /*
@@ -587,33 +705,18 @@ class ContractController extends Controller
             ],
         ]);
 
-        /*
-         * The same address twice is two links to one inbox — and two rows
-         * claiming to be the person who signed. Refused here rather than left
-         * to the unique index, so it reads as a mistake somebody can correct
-         * instead of as a database error.
-         */
-        $addresses = array_map(
-            fn (array $signer): string => mb_strtolower(trim($signer['email'])),
-            $data['signers'],
-        );
-
-        if (count(array_unique($addresses)) !== count($addresses)) {
-            return back()->withErrors(['signers' => __('contracts.send.duplicate_address')]);
-        }
-
         abort_unless($contract->hasSource(), 404);
 
         $sendContract->handle(
             contract: $contract,
-            signers: $data['signers'],
+            signers: $signers,
             validForDays: $data['valid_for_days'] ?? null,
             notifyChannelId: $data['notify_channel_id'] ?? null,
         );
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => trans_choice('flashes.contract.sent', count($data['signers'])),
+            'message' => trans_choice('flashes.contract.sent', count($signers)),
         ]);
 
         return back();

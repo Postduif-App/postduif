@@ -320,6 +320,18 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                     ->name('contracts.fields');
 
                 /*
+                 * Who is going to sign, written down before anybody is asked.
+                 *
+                 * Apart from sending on purpose, and it is the step that makes
+                 * the editor usable for a contract with two parties: a box is
+                 * assigned to a person, and until the people have names the
+                 * choice is between numbers. Unthrottled, unlike sending —
+                 * nothing here leaves the building.
+                 */
+                Route::put('contracten/{contract}/ondertekenaars', [ContractController::class, 'updateSigners'])
+                    ->name('contracts.signers');
+
+                /*
                  * Naming the people and putting it in the post. A POST rather
                  * than a flag on the save above: laying out the boxes is a
                  * thing you do half a dozen times, and handing the document to

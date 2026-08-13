@@ -59,6 +59,7 @@ return [
         'cancelled' => 'Contract withdrawn. The links no longer work.',
         'posted' => 'Contract posted in the channel.',
         'retrying' => 'We are trying to compose the signed copy again.',
+        'signers_saved' => '{1}Signer saved. Choose in the editor who fills in each field.|[2,*]:count signers saved. Choose in the editor who fills in each field.',
         'sent' => '{1}Contract sent to 1 person.|[2,*]Contract sent to :count people.',
         'reminded' => '{1}Reminder sent to 1 person.|[2,*]Reminder sent to :count people.',
         'nobody_to_remind' => 'Nobody to remind: everybody has signed, or was already nudged today.',

@@ -59,6 +59,7 @@ return [
         'cancelled' => 'Contract ingetrokken. De links werken niet meer.',
         'posted' => 'Contract in het kanaal geplaatst.',
         'retrying' => 'We proberen de ondertekende versie opnieuw samen te stellen.',
+        'signers_saved' => '{1}Ondertekenaar opgeslagen. Kies in de editor per vak wie het invult.|[2,*]:count ondertekenaars opgeslagen. Kies in de editor per vak wie het invult.',
         'sent' => '{1}Contract verstuurd naar 1 persoon.|[2,*]Contract verstuurd naar :count mensen.',
         'reminded' => '{1}Herinnering verstuurd naar 1 persoon.|[2,*]Herinnering verstuurd naar :count mensen.',
         'nobody_to_remind' => 'Niemand om te herinneren: iedereen heeft getekend, of is vandaag al gemaand.',

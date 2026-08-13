@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     Ban,
@@ -14,6 +14,7 @@ import {
     RefreshCw,
     Send,
     Share2,
+    Users,
     X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -26,6 +27,7 @@ import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dialog';
 import { SearchDialog } from '@/components/chat/search-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserMenu } from '@/components/user-menu-content';
@@ -41,7 +43,9 @@ import {
     retry,
     send as sendContract,
     show,
+    signers as signersOf,
 } from '@/routes/chat/contracts';
+import type { Auth } from '@/types/auth';
 import type {
     ActiveThread,
     ArchivedChannel,
@@ -58,6 +62,8 @@ type SignerState = 'signed' | 'declined' | 'opened' | 'waiting';
 interface SignerRow {
     name: string;
     email: string;
+    /** Set when they were picked from the workspace rather than typed in. */
+    userId: number | null;
     openedAt: string | null;
     signedAt: string | null;
     declinedAt: string | null;
@@ -84,6 +90,8 @@ interface ContractDetail {
     signedCopyState: 'ready' | 'failed' | 'pending' | 'none';
     sourceUrl: string;
     downloadUrl: string | null;
+    /** Where the viewer signs, when they are on the list themselves. */
+    mySignUrl: string | null;
     signers: SignerRow[];
 }
 
@@ -334,9 +342,30 @@ export default function ContractShow({
                             </dl>
                         </section>
 
+                        {/*
+                            The author who put themselves on the list. They are
+                            not redirected here the way an ordinary signer is —
+                            that would take the screen that can remind and
+                            withdraw away from the person most likely to need it
+                            — so the way to their own page is a link.
+                        */}
+                        {contract.mySignUrl !== null && (
+                            <a
+                                href={contract.mySignUrl}
+                                className={cn(
+                                    buttonVariants({ size: 'sm' }),
+                                    'w-fit',
+                                )}
+                            >
+                                <Pencil className="size-4" />
+                                {t('contracts.detail.sign_yourself')}
+                            </a>
+                        )}
+
                         {can.send && (
                             <SendPanel
                                 contractId={contract.id}
+                                saved={contract.signers}
                                 members={members}
                                 channels={channels.filter(
                                     (row) => row.type !== 'dm',
@@ -508,7 +537,13 @@ export default function ContractShow({
 }
 
 /**
- * Naming the people and putting it in the post.
+ * Naming the people, and then putting it in the post.
+ *
+ * Two steps in one panel, and the order between them is the point. The boxes on
+ * the document belong to people — "hier tekent de verhuurder, daar de huurder"
+ * — so the list is written and saved first, and only then can the editor offer
+ * a name beside each box instead of a number. Saving asks nobody anything; it
+ * can be done, undone and done again.
  *
  * Only ever shown for a draft, because sending is the step that hands the
  * document to the outside world and there is no second chance at it: the way to
@@ -517,20 +552,30 @@ export default function ContractShow({
  */
 function SendPanel({
     contractId,
+    saved,
     members,
     channels,
     workspaceSlug,
 }: {
     contractId: string;
+    /** Whoever has already been written down, so the form picks up where it left off. */
+    saved: SignerRow[];
     members: { id: number; name: string; email: string }[];
     channels: ChannelSummary[];
     workspaceSlug: string;
 }) {
     const { t } = useTranslate();
+    const { auth } = usePage<{ auth: Auth }>().props;
 
-    const [signers, setSigners] = useState<SignerDraft[]>([
-        { name: '', email: '', userId: null },
-    ]);
+    const [signers, setSigners] = useState<SignerDraft[]>(() =>
+        saved.length > 0
+            ? saved.map((row) => ({
+                  name: row.name,
+                  email: row.email,
+                  userId: row.userId,
+              }))
+            : [{ name: '', email: '', userId: null }],
+    );
     const [validForDays, setValidForDays] = useState('14');
     const [notifyChannelId, setNotifyChannelId] = useState('');
     const [busy, setBusy] = useState(false);
@@ -542,9 +587,82 @@ function SendPanel({
             ),
         );
 
+    const sameAddress = (one: string, other: string) =>
+        one.trim().toLowerCase() === other.trim().toLowerCase();
+
+    /*
+     * Whether the author is on their own list, read off the list rather than
+     * held beside it. A separate boolean would be a second answer to a question
+     * the rows already answer — and the two would drift the moment somebody
+     * typed their own address into a row by hand.
+     */
+    const signingTooAt = signers.findIndex((row) =>
+        sameAddress(row.email, auth.user.email),
+    );
+
+    const signingToo = signingTooAt !== -1;
+
+    /**
+     * Put the author at the head of the queue, or take them out again.
+     *
+     * First rather than appended, and that is worth being firm about: the boxes
+     * are drawn against positions, and "de eerste ondertekenaar ben ik" is a
+     * rule somebody can hold in their head while laying out a document. Landing
+     * halfway down a list of five would not be.
+     */
+    const toggleSigningToo = (wanted: boolean) =>
+        setSigners((current) => {
+            const others = current.filter(
+                (row) => !sameAddress(row.email, auth.user.email),
+            );
+
+            if (!wanted) {
+                return others.length > 0
+                    ? others
+                    : [{ name: '', email: '', userId: null }];
+            }
+
+            return [
+                {
+                    name: auth.user.name,
+                    email: auth.user.email,
+                    userId: auth.user.id,
+                },
+                // An untouched blank row would become "vul eerst dit in" the
+                // moment somebody ticks the box, which is not what they asked
+                // for — they said they are signing, not that they are done.
+                ...others.filter(
+                    (row) => row.name.trim() !== '' || row.email.trim() !== '',
+                ),
+            ];
+        });
+
     const ready = signers.every(
         (row) => row.name.trim() !== '' && row.email.trim() !== '',
     );
+
+    const payload = () =>
+        signers.map((row) => ({
+            name: row.name,
+            email: row.email,
+            user_id: row.userId,
+        }));
+
+    /**
+     * Write the list down without asking anybody anything.
+     *
+     * The step that makes a two-party contract layout possible at all: until
+     * these rows exist, the editor has nothing to put in "in te vullen door".
+     */
+    const saveSigners = () => {
+        setBusy(true);
+
+        router.put(
+            signersOf.url({ workspace: workspaceSlug, contract: contractId }),
+            { signers: payload() } as unknown as Record<string, never>,
+            { preserveScroll: true, onFinish: () => setBusy(false) },
+        );
+    };
 
     const submit = () => {
         setBusy(true);
@@ -555,11 +673,7 @@ function SendPanel({
                 contract: contractId,
             }),
             {
-                signers: signers.map((row) => ({
-                    name: row.name,
-                    email: row.email,
-                    user_id: row.userId,
-                })),
+                signers: payload(),
                 valid_for_days:
                     validForDays === '' ? null : Number(validForDays),
                 notify_channel_id:
@@ -575,6 +689,21 @@ function SendPanel({
                 {t('contracts.send.title')}
             </h2>
 
+            <label className="flex items-start gap-2 text-sm">
+                <Checkbox
+                    checked={signingToo}
+                    onCheckedChange={(checked) =>
+                        toggleSigningToo(checked === true)
+                    }
+                />
+                <span>
+                    {t('contracts.send.sign_myself')}
+                    <span className="block text-xs text-muted-foreground">
+                        {t('contracts.send.sign_myself_hint')}
+                    </span>
+                </span>
+            </label>
+
             {signers.map((row, index) => (
                 <div key={index} className="flex items-end gap-2">
                     <div className="grid flex-1 gap-1">
@@ -583,6 +712,11 @@ function SendPanel({
                             className="text-xs"
                         >
                             {t('contracts.send.name')}
+                            {index === signingTooAt && (
+                                <span className="ml-1 text-muted-foreground">
+                                    {t('contracts.send.you')}
+                                </span>
+                            )}
                         </Label>
                         <Input
                             id={`signer-name-${index}`}
@@ -736,7 +870,28 @@ function SendPanel({
                 </div>
             </div>
 
-            <div className="flex justify-end">
+            {/*
+                Saving beside sending rather than instead of it. Somebody
+                sending to one person never needs the left-hand button; somebody
+                laying out a contract for two parties needs it before they can
+                draw the second signature box at all — which is what the hint
+                below it says, because a button whose point is invisible is a
+                button nobody presses.
+            */}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+                <p className="mr-auto text-xs text-muted-foreground">
+                    {t('contracts.send.save_hint')}
+                </p>
+
+                <Button
+                    variant="outline"
+                    onClick={saveSigners}
+                    disabled={busy || !ready}
+                >
+                    <Users className="size-4" />
+                    {t('contracts.send.save_signers')}
+                </Button>
+
                 <Button onClick={submit} disabled={busy || !ready}>
                     <Send className="size-4" />
                     {t('contracts.send.submit')}
