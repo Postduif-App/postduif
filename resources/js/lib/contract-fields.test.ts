@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    applyGesture,
     MIN_SIZE,
     moveBox,
     placeBox,
@@ -227,5 +228,45 @@ describe('roundBox', () => {
 
         expect(tidied.x).toBe(0.12345678);
         expect(tidied.y).toBe(0.87654321);
+    });
+});
+
+describe('applyGesture', () => {
+    /*
+     * The regression this exists for. The corner handles sit inside the box, so
+     * for a while both had a drag handler and both ran for every movement: the
+     * resize happened and the move overwrote it, and every attempt to resize a
+     * field silently moved it instead.
+     *
+     * One function that is told what it is dragging cannot do half of each.
+     */
+    it('resizes when a corner was grabbed', () => {
+        const resized = applyGesture(box(), 'se', 60, 84.8, page);
+
+        expect(resized.width).toBeCloseTo(0.35, 10);
+        expect(resized.height).toBeCloseTo(0.2, 10);
+        // And the box did not travel.
+        expect(resized.x).toBe(0.2);
+        expect(resized.y).toBe(0.3);
+    });
+
+    it('moves when the box itself was grabbed', () => {
+        const moved = applyGesture(box(), 'move', 60, 84.8, page);
+
+        expect(moved.x).toBeCloseTo(0.3, 10);
+        expect(moved.y).toBeCloseTo(0.4, 10);
+        // And the box did not change size.
+        expect(moved.width).toBe(0.25);
+        expect(moved.height).toBe(0.1);
+    });
+
+    it('agrees with the two functions it stands in front of', () => {
+        expect(applyGesture(box(), 'move', 40, 20, page)).toEqual(
+            moveBox(box(), 40, 20, page),
+        );
+
+        expect(applyGesture(box(), 'nw', 40, 20, page)).toEqual(
+            resizeBox(box(), 'nw', 40, 20, page),
+        );
     });
 });

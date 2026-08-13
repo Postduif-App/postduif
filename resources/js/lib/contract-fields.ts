@@ -206,6 +206,38 @@ function withMinimumSize(
 }
 
 /**
+ * What a gesture is doing to a box.
+ *
+ * 'move' for a drag anywhere on the box itself; a corner for a drag that
+ * started on one of its handles.
+ */
+export type GestureMode = 'move' | ResizeHandle;
+
+/**
+ * Apply a pointer movement to a box, according to what is being dragged.
+ *
+ * One function rather than the caller choosing between moveBox and resizeBox,
+ * and it is here rather than in the component because of how it went wrong the
+ * first time: the corner handles sit inside the box, so both had a drag handler
+ * and both ran for every movement — the resize happened and the move
+ * immediately overwrote it. Every attempt to resize a field silently moved it.
+ *
+ * With the decision in one place there is one handler, and it cannot be half
+ * applied.
+ */
+export function applyGesture(
+    box: FieldBox,
+    mode: GestureMode,
+    deltaX: number,
+    deltaY: number,
+    page: RenderedPage,
+): FieldBox {
+    return mode === 'move'
+        ? moveBox(box, deltaX, deltaY, page)
+        : resizeBox(box, mode, deltaX, deltaY, page);
+}
+
+/**
  * Put a new box down where somebody clicked, at its type's usual size.
  *
  * The click is the centre rather than the corner, because that is where the eye

@@ -2,9 +2,10 @@ import { X } from 'lucide-react';
 import { useRef } from 'react';
 
 import { useTranslate } from '@/hooks/use-translate';
-import { moveBox, resizeBox, toPixels } from '@/lib/contract-fields';
+import { applyGesture, toPixels } from '@/lib/contract-fields';
 import type {
     FieldBox,
+    GestureMode,
     RenderedPage,
     ResizeHandle,
 } from '@/lib/contract-fields';
@@ -53,7 +54,8 @@ export function ContractFieldBox({
     const { t } = useTranslate();
 
     /*
-     * Where the pointer was last seen, and the box as it stood then.
+     * The gesture in flight: where the pointer started, the box as it stood
+     * then, and which of the five things is being dragged.
      *
      * A ref rather than state, because it changes on every pointermove and
      * re-rendering for it would drop frames on a long drag. The box in here is
@@ -61,13 +63,32 @@ export function ContractFieldBox({
      * lose the movements React has not committed yet, which shows up as a box
      * that lags behind the pointer and then snaps.
      */
-    const gesture = useRef<{ x: number; y: number; box: FieldBox } | null>(
-        null,
-    );
+    const gesture = useRef<{
+        x: number;
+        y: number;
+        box: FieldBox;
+        mode: GestureMode;
+    } | null>(null);
+
+    /*
+     * Which corner was pressed, waiting for the box's own handler to pick it up.
+     *
+     * This exists because the handles sit *inside* the box, so a press on one
+     * reaches the handle first and the box a moment later, on the way up. The
+     * handle writes down which corner it was; the box reads it and starts the
+     * gesture.
+     *
+     * The alternative — a second pointermove handler on the handle — is what
+     * this replaced, and it silently did not work: both handlers fired for
+     * every move, the corner's resize ran first, and the box's move overwrote
+     * it. Every attempt to resize simply moved the box instead. One handler
+     * that knows what it is dragging cannot fail that way.
+     */
+    const pressed = useRef<ResizeHandle | null>(null);
 
     const pixels = toPixels(draft, page);
 
-    const begin = (event: React.PointerEvent, box: FieldBox) => {
+    const begin = (event: React.PointerEvent) => {
         // Stop the click reaching the page underneath, which would put a new
         // box down on top of the one being dragged.
         event.stopPropagation();
@@ -78,23 +99,33 @@ export function ContractFieldBox({
 
         onSelect();
 
+        /*
+         * Captured on the box rather than on the corner, so every move for the
+         * rest of this gesture is delivered here — including the ones that
+         * happen after the pointer has left a handle two millimetres wide,
+         * which is most of them.
+         */
         event.currentTarget.setPointerCapture(event.pointerId);
-        gesture.current = { x: event.clientX, y: event.clientY, box };
+
+        gesture.current = {
+            x: event.clientX,
+            y: event.clientY,
+            box: draft,
+            mode: pressed.current ?? 'move',
+        };
+
+        pressed.current = null;
     };
 
-    const drag = (
-        event: React.PointerEvent,
-        apply: (box: FieldBox, dx: number, dy: number) => FieldBox,
-    ) => {
+    const drag = (event: React.PointerEvent) => {
         if (gesture.current === null) {
             return;
         }
 
-        const next = apply(
-            gesture.current.box,
-            event.clientX - gesture.current.x,
-            event.clientY - gesture.current.y,
-        );
+        const { x, y, box, mode } = gesture.current;
+
+        const deltaX = event.clientX - x;
+        const deltaY = event.clientY - y;
 
         /*
          * The gesture keeps its original anchor and the *whole* movement is
@@ -103,11 +134,12 @@ export function ContractFieldBox({
          * into the edge of the page and back out, and a step-based box would
          * have lost everything it was clamped by on the way in.
          */
-        onChange(next);
+        onChange(applyGesture(box, mode, deltaX, deltaY, page));
     };
 
     const end = (event: React.PointerEvent) => {
         gesture.current = null;
+        pressed.current = null;
 
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
@@ -121,14 +153,17 @@ export function ContractFieldBox({
             aria-label={draft.label}
             data-testid="contract-field-box"
             data-field-type={draft.type}
-            onPointerDown={(event) => begin(event, draft)}
-            onPointerMove={(event) =>
-                drag(event, (box, dx, dy) => moveBox(box, dx, dy, page))
-            }
+            onPointerDown={begin}
+            onPointerMove={drag}
             onPointerUp={end}
             onPointerCancel={end}
             className={cn(
-                'absolute rounded-sm border-2 text-[10px] leading-tight select-none',
+                /*
+                 * touch-none is what makes any of this work on a tablet:
+                 * without it the browser reads the first movement as a scroll
+                 * and takes the pointer away mid-drag.
+                 */
+                'absolute touch-none rounded-sm border-2 text-[10px] leading-tight select-none',
                 disabled ? 'cursor-default' : 'cursor-move',
                 selected
                     ? 'border-primary bg-primary/15'
@@ -158,16 +193,27 @@ export function ContractFieldBox({
                             <span
                                 key={handle}
                                 data-testid={`contract-field-handle-${handle}`}
-                                onPointerDown={(event) => begin(event, draft)}
-                                onPointerMove={(event) =>
-                                    drag(event, (box, dx, dy) =>
-                                        resizeBox(box, handle, dx, dy, page),
-                                    )
-                                }
-                                onPointerUp={end}
-                                onPointerCancel={end}
+                                /*
+                                    Only says which corner it is. The press then
+                                    carries on up to the box, which starts the
+                                    gesture and handles every move — see the
+                                    note on `pressed` above for why this is not
+                                    a second drag handler.
+                                */
+                                onPointerDown={() => {
+                                    pressed.current = handle;
+                                }}
                                 className={cn(
+                                    /*
+                                        A dot of ten pixels with a hit area of
+                                        twenty-four around it. The dot is what
+                                        you aim at; the padding is what a finger
+                                        actually lands on, and without it these
+                                        are unusable on the tablets people lay
+                                        contracts out on.
+                                    */
                                     'absolute size-2.5 rounded-full border border-background bg-primary',
+                                    'before:absolute before:-inset-2 before:content-[""]',
                                     handle === 'nw' &&
                                         '-top-1.5 -left-1.5 cursor-nwse-resize',
                                     handle === 'ne' &&
