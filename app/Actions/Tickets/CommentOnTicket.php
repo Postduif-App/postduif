@@ -2,6 +2,7 @@
 
 namespace App\Actions\Tickets;
 
+use App\Actions\Mail\ReplyToTicketSender;
 use App\Events\TicketCommented;
 use App\Events\TicketUpdated;
 use App\Models\Ticket;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class CommentOnTicket
 {
+    public function __construct(private readonly ReplyToTicketSender $replyToSender) {}
+
     /**
      * Say something on a ticket.
      *
@@ -29,7 +32,7 @@ class CommentOnTicket
         string $body,
         array $attachments = [],
     ): TicketComment {
-        return DB::transaction(function () use ($ticket, $author, $body, $attachments): TicketComment {
+        $comment = DB::transaction(function () use ($ticket, $author, $body, $attachments): TicketComment {
             $comment = TicketComment::create([
                 'ticket_id' => $ticket->id,
                 'user_id' => $author->id,
@@ -67,6 +70,21 @@ class CommentOnTicket
 
             return $comment;
         });
+
+        /*
+         * And out of the building, for a ticket that came in by mail. After the
+         * transaction rather than inside it: a mail cannot be rolled back, and
+         * one sent for a comment that then failed to save is an answer the
+         * board has no record of. The action decides for itself whether there
+         * is anybody to write to — see ReplyToTicketSender.
+         *
+         * Attachments stay behind for now. What goes out is what was typed; a
+         * file lives on the ticket, where whoever wrote in can be pointed at
+         * it.
+         */
+        $this->replyToSender->handle($comment->setRelation('ticket', $ticket));
+
+        return $comment;
     }
 
     /**

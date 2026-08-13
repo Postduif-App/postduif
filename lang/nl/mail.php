@@ -20,6 +20,18 @@ return [
         'no_subject' => 'Bericht zonder onderwerp',
     ],
 
+    /*
+     * En de andere kant op: wat een collega op het ticket schrijft, terug naar
+     * degene die de mail stuurde. Geen sjabloon dat een workspace kan
+     * herschrijven — de tekst is wat de collega typte, en dit zijn alleen de
+     * regels eromheen.
+     */
+    'ticket_reply' => [
+        'subject' => 'Re: [#:number] :title',
+        'signed' => ':name — :workspace',
+        'footer' => 'Antwoord gerust op deze mail; je reactie komt bij ticket #:number te staan.',
+    ],
+
     'closing' => 'Groeten,',
 
     /*

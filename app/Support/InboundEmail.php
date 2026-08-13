@@ -147,14 +147,60 @@ class InboundEmail
      */
     private static function references(array $payload): array
     {
+        $named = self::namedHeaders($payload);
+
         $raw = implode(' ', array_filter([
             (string) (self::pick($payload, ['headers.in-reply-to', 'InReplyTo', 'in_reply_to']) ?? ''),
             (string) (self::pick($payload, ['headers.references', 'References', 'references']) ?? ''),
+            $named['in-reply-to'] ?? '',
+            $named['references'] ?? '',
         ]));
 
         preg_match_all('/<([^<>]+)>/', $raw, $matches);
 
         return array_values(array_unique($matches[1]));
+    }
+
+    /**
+     * The headers a provider sends as a list rather than as a map.
+     *
+     * Postmark's shape, and the reason this exists: it posts
+     * Headers: [{Name: 'References', Value: '<...>'}] and no References key of
+     * its own, so the whole message-id fallback above was reading nothing for
+     * the provider it was written against. Only felt once a mail went back out
+     * with an id worth quoting — before that, every reply carried the +t tag
+     * and never reached the fallback.
+     *
+     * Lowercased, because a header name is case-insensitive and the two
+     * providers that send them this way disagree about the capitals.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    private static function namedHeaders(array $payload): array
+    {
+        $headers = data_get($payload, 'Headers', data_get($payload, 'headers'));
+
+        if (! is_array($headers)) {
+            return [];
+        }
+
+        $named = [];
+
+        foreach ($headers as $header) {
+            if (! is_array($header)) {
+                continue;
+            }
+
+            $name = data_get($header, 'Name', data_get($header, 'name'));
+            $value = data_get($header, 'Value', data_get($header, 'value'));
+
+            if (is_string($name) && is_string($value)) {
+                $named[Str::lower($name)] = $value;
+            }
+        }
+
+        return $named;
     }
 
     /**

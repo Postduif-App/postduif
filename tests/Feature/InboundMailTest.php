@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\Tickets\CommentOnTicket;
 use App\Enums\ChannelTicketPolicy;
 use App\Enums\SystemRole;
 use App\Enums\TicketStatus;
 use App\Features\Tickets as TicketsFeature;
+use App\Mail\TicketReplyMail;
 use App\Models\Channel;
 use App\Models\Ticket;
 use App\Models\TicketComment;
@@ -11,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMailSettings;
 use App\Support\InboundEmail;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
@@ -253,4 +256,96 @@ it('refuses a channel from another workspace as the letterbox', function () {
     actingAs($user)->patch(route('workspace.mail.inbound'), [
         'inbound_channel_id' => $elsewhere->id,
     ])->assertSessionHasErrors('inbound_channel_id');
+});
+
+/*
+ * The way back. Everything above is post coming in; a workspace that can only
+ * receive is a one-way street — the person who wrote in sees nothing of what
+ * was answered and writes again to ask.
+ */
+it('mails a colleague his answer back to whoever wrote in', function () {
+    Mail::fake();
+
+    [$user, , , $settings] = inboundMailFixture();
+
+    postJson(route('mail.inbound', $settings->inbound_token), postmarkDelivery())->assertOk();
+
+    $ticket = Ticket::query()->sole();
+
+    $comment = app(CommentOnTicket::class)->handle($ticket, $user, 'Zet hem eens uit en aan.');
+
+    Mail::assertSent(TicketReplyMail::class, function (TicketReplyMail $mail) use ($ticket, $comment): bool {
+        return $mail->hasTo('klant@example.test')
+            // The tagged address, which is the one thing every mail client
+            // copies back without understanding it.
+            && $mail->replyAddress === "support+t{$ticket->number}@acme.test"
+            // And the id this mail went out under, kept on the comment so a
+            // reply quoting it finds the ticket again.
+            && $mail->messageId === $comment->fresh()->mail_message_id;
+    });
+});
+
+it('finds the ticket back from a reply that only quotes the message id', function () {
+    Mail::fake();
+
+    [$user, , , $settings] = inboundMailFixture();
+
+    postJson(route('mail.inbound', $settings->inbound_token), postmarkDelivery())->assertOk();
+
+    $ticket = Ticket::query()->sole();
+    $comment = app(CommentOnTicket::class)->handle($ticket, $user, 'Zet hem eens uit en aan.');
+
+    /*
+     * Answered to the plain address rather than to the tagged one — what
+     * happens the moment somebody forwards the mail and a colleague replies
+     * from their own client. The tag is gone; the References header is not.
+     */
+    postJson(route('mail.inbound', $settings->inbound_token), postmarkDelivery([
+        'ToFull' => [['Email' => 'support@acme.test']],
+        'Subject' => 'Re: De printer doet het niet',
+        'TextBody' => 'Dat werkte, dank!',
+        'MessageID' => 'zzz-999@example.test',
+        'Headers' => [[
+            'Name' => 'References',
+            'Value' => '<'.$comment->fresh()->mail_message_id.'>',
+        ]],
+    ]))->assertOk();
+
+    expect(TicketComment::query()->where('ticket_id', $ticket->id)->count())->toBe(2);
+});
+
+it('says nothing back for a ticket that was raised on the board', function () {
+    Mail::fake();
+
+    [$user, $workspace, $channel] = inboundMailFixture();
+
+    $ticket = Ticket::factory()->create([
+        'workspace_id' => $workspace->id,
+        'channel_id' => $channel->id,
+        'opened_by' => $user->id,
+    ]);
+
+    app(CommentOnTicket::class)->handle($ticket, $user, 'Ik pak hem op.');
+
+    // Nobody wrote in, so there is nobody to write back to. A mail here would
+    // go to whoever the fixture happens to have in it.
+    Mail::assertNothingSent();
+});
+
+it('does not mail a customer his own words back to him', function () {
+    [$user, , , $settings] = inboundMailFixture();
+
+    postJson(route('mail.inbound', $settings->inbound_token), postmarkDelivery())->assertOk();
+
+    Mail::fake();
+
+    // A second delivery on the same ticket: a comment with no member behind it,
+    // and answering it would be a loop with the customer's own sentence in it.
+    postJson(route('mail.inbound', $settings->inbound_token), postmarkDelivery([
+        'Subject' => 'Re: De printer doet het niet',
+        'TextBody' => 'Nog steeds kapot.',
+        'MessageID' => 'def-456@example.test',
+    ]))->assertOk();
+
+    Mail::assertNothingSent();
 });

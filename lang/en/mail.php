@@ -10,6 +10,12 @@ return [
         'no_subject' => 'Message without a subject',
     ],
 
+    'ticket_reply' => [
+        'subject' => 'Re: [#:number] :title',
+        'signed' => ':name — :workspace',
+        'footer' => 'Just reply to this mail; your answer lands on ticket #:number.',
+    ],
+
     'closing' => 'Regards,',
 
     'format' => [
