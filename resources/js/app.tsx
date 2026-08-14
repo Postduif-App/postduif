@@ -1,6 +1,7 @@
 import { createInertiaApp, router } from '@inertiajs/react';
 import { configureEcho, echo, echoIsConfigured } from '@laravel/echo-react';
 import type { PropsWithChildren } from 'react';
+import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -217,6 +218,14 @@ if (import.meta.hot?.data.mounted !== true) {
                 <TooltipProvider delayDuration={0}>
                     {app}
                     <Toaster />
+                    {/*
+                        Here rather than in a layout, because there is no screen
+                        an impersonated session may look ordinary on — including
+                        the ones that bring no shell at all, like a contract or a
+                        form. It draws nothing at all when nobody is
+                        impersonating anybody.
+                    */}
+                    <ImpersonationBanner />
                 </TooltipProvider>
             );
         },

@@ -31,6 +31,20 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('app/settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('app/settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    /*
+     * Terug naar jezelf. In this group rather than beside the route that starts
+     * it, because "auth" is the only thing it may ask for: the member being
+     * impersonated can be a guest, can be unverified, can belong to no
+     * workspace this session knows about — and a way back that any of those
+     * could refuse is a way back that strands somebody in another person's
+     * account.
+     *
+     * Not under /settings/workspace for the same reason. The bar offering it
+     * hangs over every screen in the application.
+     */
+    Route::delete('app/impersonation', [ImpersonationController::class, 'destroy'])
+        ->name('impersonation.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -272,10 +286,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.members.index');
     Route::patch('app/settings/workspace/members/{user}', [WorkspaceMemberController::class, 'update'])
         ->name('workspace.members.update');
+    /*
+     * Apart from the role endpoint above: what somebody is called and what they
+     * may do are separate decisions, and one form that could change both would
+     * make a mistake in either of them cost the other.
+     */
+    Route::patch('app/settings/workspace/members/{user}/handle', [WorkspaceMemberController::class, 'updateHandle'])
+        ->name('workspace.members.handle.update');
     Route::put('app/settings/workspace/members/{user}/channels', [WorkspaceMemberController::class, 'updateChannels'])
         ->name('workspace.members.channels.update');
     Route::delete('app/settings/workspace/members/{user}', [WorkspaceMemberController::class, 'destroy'])
         ->name('workspace.members.destroy');
+    /*
+     * Inloggen als iemand anders. Beside the member routes because the
+     * ledenlijst is the only place it can be started from, and in its own
+     * controller because the way back is not a settings screen at all — see
+     * ImpersonationController.
+     */
+    Route::post('app/settings/workspace/members/{user}/impersonate', [ImpersonationController::class, 'store'])
+        ->name('workspace.members.impersonate');
 
     /*
      * Read-only, and on purpose: what a channel is called and who is in it is

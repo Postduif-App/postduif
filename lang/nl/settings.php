@@ -441,6 +441,14 @@ return [
         'role_of' => 'Rol van :name',
         'actions_for' => 'Acties voor :name',
         'manage_channels' => 'Kanalen beheren',
+        'change_handle' => 'Handle wijzigen',
+        'impersonate' => 'Inloggen als :name',
+        // Bewust een vraag met een waarschuwing eronder en niet alleen een
+        // knop: dit is de enige actie op dit scherm die je in andermans
+        // privéberichten zet, en dat hoort niet per ongeluk te kunnen.
+        'impersonate_question' => 'Inloggen als :name?',
+        'impersonate_explanation' => 'Je ziet de workspace precies zoals :name hem ziet, inclusief privékanalen en DM\'s. Alles wat je verstuurt staat op zijn of haar naam en is niet als jouw bericht te herkennen. :name krijgt hier geen melding van. Bovenin blijft staan dat je meekijkt; daar stop je er ook weer mee.',
+        'impersonate_confirm' => 'Inloggen als dit lid',
         'remove' => 'Uit de workspace verwijderen',
         'none_found' => 'Niemand gevonden.',
         'remove_question' => ':name uit de workspace verwijderen?',

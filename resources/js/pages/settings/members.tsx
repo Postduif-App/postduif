@@ -2,11 +2,13 @@ import { Head, router } from '@inertiajs/react';
 import {
     ArrowDown,
     ArrowUp,
+    AtSign,
     Hash,
     MoreHorizontal,
     Search,
     UserMinus,
     UserPlus,
+    VenetianMask,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -15,6 +17,7 @@ import { InvitePeopleDialog } from '@/components/chat/invite-people-dialog';
 import { AvailabilityDot, MemberStatus } from '@/components/chat/member-status';
 import { GuestChannelsDialog } from '@/components/guest-channels-dialog';
 import type { ChannelOption } from '@/components/guest-channels-dialog';
+import { MemberHandleDialog } from '@/components/member-handle-dialog';
 import { SettingsSection } from '@/components/settings-section';
 import {
     AlertDialog,
@@ -47,6 +50,7 @@ import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import {
     destroy as removeMember,
+    impersonate as impersonateMember,
     update as updateRole,
 } from '@/routes/workspace/members';
 import type { Availability } from '@/types/auth';
@@ -76,8 +80,12 @@ interface WorkspaceMember {
     /** Guests only: the channels they were let into. Null for everyone else. */
     channelIds: number[] | null;
     canChangeRole: boolean;
+    /** Renaming somebody reaches outside this workspace — see the dialog. */
+    canChangeHandle: boolean;
     canRemove: boolean;
     canManageChannels: boolean;
+    /** Its own right, and never true for yourself — see WorkspacePolicy. */
+    canImpersonate: boolean;
 }
 
 interface MembersProps {
@@ -203,11 +211,15 @@ function MemberRow({
     roleOptions,
     onRemove,
     onEditChannels,
+    onEditHandle,
+    onImpersonate,
 }: {
     member: WorkspaceMember;
     roleOptions: Option[];
     onRemove: (member: WorkspaceMember) => void;
     onEditChannels: (member: WorkspaceMember) => void;
+    onEditHandle: (member: WorkspaceMember) => void;
+    onImpersonate: (member: WorkspaceMember) => void;
 }) {
     const getInitials = useInitials();
     const { t } = useTranslate();
@@ -360,7 +372,10 @@ function MemberRow({
                         action nobody may take is left out entirely — the same
                         abilities the server checks, asked once here.
                     */}
-                    {(member.canManageChannels || member.canRemove) && (
+                    {(member.canManageChannels ||
+                        member.canChangeHandle ||
+                        member.canImpersonate ||
+                        member.canRemove) && (
                         <DropdownMenu>
                             <DropdownMenuTrigger
                                 aria-label={t('settings.members.actions_for', {
@@ -384,6 +399,31 @@ function MemberRow({
                                             )}
                                         </DropdownMenuItem>
                                     )}
+                                {member.canChangeHandle && (
+                                    <DropdownMenuItem
+                                        onSelect={() => onEditHandle(member)}
+                                    >
+                                        <AtSign className="size-4" />
+                                        {t('settings.members.change_handle')}
+                                    </DropdownMenuItem>
+                                )}
+                                {/*
+                                    Under the two ordinary actions and above
+                                    the destructive one, which is where it
+                                    belongs on both counts: it is not a change
+                                    to this member's row, and it is not
+                                    something you undo by clicking again.
+                                */}
+                                {member.canImpersonate && (
+                                    <DropdownMenuItem
+                                        onSelect={() => onImpersonate(member)}
+                                    >
+                                        <VenetianMask className="size-4" />
+                                        {t('settings.members.impersonate', {
+                                            name: member.name,
+                                        })}
+                                    </DropdownMenuItem>
+                                )}
                                 {member.canRemove && (
                                     <DropdownMenuItem
                                         variant="destructive"
@@ -417,6 +457,10 @@ export default function WorkspaceMembers({
         useState<WorkspaceMember | null>(null);
     const { t } = useTranslate();
     const [editingChannelsOf, setEditingChannelsOf] =
+        useState<WorkspaceMember | null>(null);
+    const [editingHandleOf, setEditingHandleOf] =
+        useState<WorkspaceMember | null>(null);
+    const [pendingImpersonation, setPendingImpersonation] =
         useState<WorkspaceMember | null>(null);
     const [inviting, setInviting] = useState(false);
 
@@ -577,6 +621,8 @@ export default function WorkspaceMembers({
                                     roleOptions={roleOptions}
                                     onRemove={setPendingRemoval}
                                     onEditChannels={setEditingChannelsOf}
+                                    onEditHandle={setEditingHandleOf}
+                                    onImpersonate={setPendingImpersonation}
                                 />
                             ))}
                             {visible.length === 0 && (
@@ -630,6 +676,77 @@ export default function WorkspaceMembers({
                     }
                 }}
             />
+
+            <MemberHandleDialog
+                member={editingHandleOf}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        setEditingHandleOf(null);
+                    }
+                }}
+            />
+
+            {/*
+                Asked before it happens, unlike every other action on this page.
+                The rest change a row and say so in a flash message; this one
+                puts you inside somebody's private messages, where a misclick is
+                not something an undo can take back — and where whatever you type
+                next goes out under their name.
+            */}
+            <AlertDialog
+                open={pendingImpersonation !== null}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        setPendingImpersonation(null);
+                    }
+                }}
+            >
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t('settings.members.impersonate_question', {
+                                name: pendingImpersonation?.name ?? '',
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t('settings.members.impersonate_explanation', {
+                                name: pendingImpersonation?.name ?? '',
+                            })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t('settings.actions.cancel')}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                const member = pendingImpersonation;
+
+                                if (member) {
+                                    /*
+                                        A full load rather than an Inertia visit,
+                                        for the reason the bar's stop button
+                                        does it: what comes back belongs to
+                                        somebody else, and every prop and socket
+                                        subscription this page is holding is the
+                                        impersonator's.
+                                    */
+                                    router.post(
+                                        impersonateMember.url(member.id),
+                                        {},
+                                        {
+                                            onSuccess: () =>
+                                                window.location.reload(),
+                                        },
+                                    );
+                                }
+                            }}
+                        >
+                            {t('settings.members.impersonate_confirm')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog
                 open={pendingRemoval !== null}

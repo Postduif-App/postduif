@@ -9,6 +9,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleLocale;
 use App\Http\Middleware\RedirectToInstallation;
+use App\Http\Middleware\RefuseWhileImpersonating;
 use App\Http\Middleware\RequireApiScope;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -105,6 +106,15 @@ return Application::configure(basePath: dirname(__DIR__))
              */
             RedirectToInstallation::class,
             EnsureAccountIsNotSuspended::class,
+            /*
+             * After the suspension check and for the same reason it is late in
+             * the stack: it needs a session and a signed-in member before it
+             * can say anything. What it refuses is the handful of screens that
+             * would let somebody leave a key behind in an account they are only
+             * visiting — see the middleware for the list and why it is matched
+             * on paths.
+             */
+            RefuseWhileImpersonating::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
     })

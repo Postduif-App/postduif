@@ -30,6 +30,58 @@ enum WorkspaceAbility: string
     case CreateForms = 'create-forms';
 
     /**
+     * Deciding who belongs here, and in what capacity.
+     *
+     * The ledenlijst in the workspace settings and everything that can be done
+     * from it: changing somebody's role, setting which channels a guest sits
+     * in, and showing somebody the door.
+     *
+     * Carved out of ManageWorkspace rather than left inside it, because the two
+     * are about different things. Managing the workspace is about the place —
+     * its name, its roles, its look. This is about the people in it, and
+     * removing somebody takes them out of every channel they were in at once.
+     * A workspace that wants an office manager who arranges who comes and goes,
+     * without handing them the settings, could not say that before.
+     *
+     * It stops short of inviting, which is InviteMembers and stays its own
+     * right: bringing somebody in and putting somebody out are not the same
+     * decision, and plenty of workspaces want the first spread wider than the
+     * second.
+     *
+     * Holding this is necessary but not sufficient for any particular person.
+     * Nobody may act on a role that stands above their own or holds a right
+     * they lack — see Role::isUnder — so this widens *who* may administer
+     * members, never *whom* they may reach.
+     */
+    case ManageMembers = 'manage-members';
+
+    /**
+     * Looking at the workspace through somebody else's eyes.
+     *
+     * The heaviest right in this catalogue, and the only one that is not about
+     * what you may do but about who you may be. While it is running there is no
+     * difference between the two of you: every screen, every private channel,
+     * every DM and every draft of that person is open, and anything written is
+     * written under their name with no mark on it anywhere.
+     *
+     * It exists because the alternative is worse. Somebody says "ik zie mijn
+     * kanaal niet" and the only honest answer without this is "stuur je
+     * wachtwoord even" — which is what people then actually do.
+     *
+     * Off for every seeded role but the owner, for the reason SeeHours is: it
+     * is handed out on purpose or not at all. Notably not with ManageMembers,
+     * although this is reached from the ledenlijst: arranging who comes and
+     * goes is about their standing, and this is about their inbox.
+     *
+     * It never reaches further than the holder does. Nobody may step into a
+     * role that stands above their own — the same Role::isUnder that guards
+     * changing somebody's role — so this widens who may look, never what the
+     * looking is worth. See WorkspacePolicy::impersonate for the rest of the
+     * fence, and RefuseWhileImpersonating for what stays shut once you are in.
+     */
+    case ImpersonateMembers = 'impersonate-members';
+
+    /**
      * Handing a form to the world.
      *
      * Its own right rather than part of the one above, because the two differ
@@ -130,6 +182,8 @@ enum WorkspaceAbility: string
             self::BroadcastMention => __('enums.workspace-ability.label.BroadcastMention'),
             self::ManageWorkflows => __('enums.workspace-ability.label.ManageWorkflows'),
             self::CreateForms => __('enums.workspace-ability.label.CreateForms'),
+            self::ManageMembers => __('enums.workspace-ability.label.ManageMembers'),
+            self::ImpersonateMembers => __('enums.workspace-ability.label.ImpersonateMembers'),
             self::SeeHours => __('enums.workspace-ability.label.SeeHours'),
             self::ManageFeatures => __('enums.workspace-ability.label.ManageFeatures'),
             self::DeleteBotMessages => __('enums.workspace-ability.label.DeleteBotMessages'),
@@ -157,6 +211,8 @@ enum WorkspaceAbility: string
             self::BroadcastMention => __('enums.workspace-ability.description.BroadcastMention'),
             self::ManageWorkflows => __('enums.workspace-ability.description.ManageWorkflows'),
             self::CreateForms => __('enums.workspace-ability.description.CreateForms'),
+            self::ManageMembers => __('enums.workspace-ability.description.ManageMembers'),
+            self::ImpersonateMembers => __('enums.workspace-ability.description.ImpersonateMembers'),
             self::SeeHours => __('enums.workspace-ability.description.SeeHours'),
             self::ManageFeatures => __('enums.workspace-ability.description.ManageFeatures'),
             self::DeleteBotMessages => __('enums.workspace-ability.description.DeleteBotMessages'),

@@ -82,6 +82,23 @@ class WorkspacePolicy
     }
 
     /**
+     * Whether this member may administer who belongs here.
+     *
+     * The ledenlijst and everything reachable from it. Its own right rather
+     * than manage(), which is what it used to be: deciding who is in the
+     * workspace is about people, and running the workspace is about the place.
+     * See WorkspaceAbility::ManageMembers.
+     *
+     * This is the screen's question. Whether a particular person may be touched
+     * is updateMemberRole()'s, and it stays stricter — holding this never
+     * reaches a role standing above your own.
+     */
+    public function manageMembers(User $user, Workspace $workspace): bool
+    {
+        return $workspace->allows($user, WorkspaceAbility::ManageMembers);
+    }
+
+    /**
      * Whether this member may open a new channel here.
      *
      * One question now where there were two. Who may open a channel used to be
@@ -331,7 +348,7 @@ class WorkspacePolicy
      */
     public function updateMemberRole(User $user, Workspace $workspace, User $target): bool
     {
-        if (! $this->manage($user, $workspace)) {
+        if (! $this->manageMembers($user, $workspace)) {
             return false;
         }
 
@@ -343,6 +360,26 @@ class WorkspacePolicy
         }
 
         return $targetRole->isUnder($ownRole);
+    }
+
+    /**
+     * Whether this member may change somebody's handle.
+     *
+     * The same reach as changing their role, and asked separately so the
+     * screen can offer one without the other later. A handle is what people
+     * type to reach somebody, so a wrong one — a typo made at sign-up, a name
+     * that changed — is a person who quietly stops being mentionable, and until
+     * now nobody in the workspace could put that right.
+     *
+     * Worth knowing what it touches: a handle belongs to the account rather
+     * than to the membership, so this changes how that person is addressed in
+     * every workspace they are in. Old messages keep the text that was typed at
+     * the time and stop lighting up; the notifications those mentions already
+     * sent are rows against a user id and stay correct.
+     */
+    public function updateMemberHandle(User $user, Workspace $workspace, User $target): bool
+    {
+        return $this->updateMemberRole($user, $workspace, $target);
     }
 
     /**
@@ -372,11 +409,68 @@ class WorkspacePolicy
      */
     public function manageGuestChannels(User $user, Workspace $workspace, User $target): bool
     {
-        if (! $this->manage($user, $workspace)) {
+        if (! $this->manageMembers($user, $workspace)) {
             return false;
         }
 
         return $workspace->isExternal($target);
+    }
+
+    /**
+     * Whether this member may sign in as somebody else here.
+     *
+     * The fence around the heaviest right in the catalogue, and it is built out
+     * of the same pieces as changing somebody's role — deliberately, because
+     * "wie kan ik bereiken" should have one answer on this screen. What differs
+     * is which right opens it: ManageMembers arranges who belongs here,
+     * ImpersonateMembers reads their inbox, and no workspace should have to
+     * hand out the second to get the first.
+     *
+     * Four refusals, each closing something the reach rule alone would not:
+     *
+     * Yourself, because there is nothing to step into and an impersonation of
+     * yourself is a session that cannot be ended cleanly.
+     *
+     * Somebody who is not a member here, because this right is a workspace's to
+     * hand out and its reach stops at its own edge. Without this, an id from
+     * another workspace would name a real user and the role comparison below
+     * would have nothing to compare.
+     *
+     * Somebody suspended, because a suspended account is one the platform has
+     * closed the door on — see EnsureAccountIsNotSuspended, which would throw
+     * the impersonator straight back out at the login screen and take their own
+     * session with it.
+     *
+     * And a platform moderator, unless you are one yourself. Their account is
+     * not only a membership here: it opens the admin panel over every workspace
+     * on the installation, which is a door no workspace hands out to itself.
+     */
+    public function impersonate(User $user, Workspace $workspace, User $target): bool
+    {
+        if ($user->is($target) || ! $workspace->hasMember($target)) {
+            return false;
+        }
+
+        if (! $workspace->allows($user, WorkspaceAbility::ImpersonateMembers)) {
+            return false;
+        }
+
+        if ($target->isSuspended()) {
+            return false;
+        }
+
+        if ($target->isAdmin() && ! $user->isAdmin()) {
+            return false;
+        }
+
+        $targetRole = $workspace->roleFor($target);
+        $ownRole = $workspace->roleFor($user);
+
+        if ($targetRole === null || $ownRole === null) {
+            return false;
+        }
+
+        return $targetRole->isUnder($ownRole);
     }
 
     /**

@@ -195,6 +195,16 @@ return [
 
     'member' => [
         'last_owner' => 'Er moet altijd minstens één eigenaar zijn. Wijs eerst iemand anders aan.',
+
+        /*
+         * Vier zinnen in plaats van één "ongeldig formaat": een handle wordt
+         * op vier manieren afgekeurd en welke van de vier het was, is precies
+         * wat iemand nodig heeft om het te herstellen.
+         */
+        'handle_shape' => 'Een handle bestaat uit letters, cijfers, streepjes en liggende streepjes, eventueel met punten ertussen — bijvoorbeeld fenna.jansen.',
+        'handle_long' => 'Een handle is hoogstens 30 tekens lang.',
+        'handle_taken' => 'Deze handle is al van iemand anders.',
+        'handle_reserved' => 'Deze handle is gereserveerd: @here en @everyone spreken een hele groep aan.',
     ],
 
     'notifications' => [
