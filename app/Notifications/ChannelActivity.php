@@ -7,8 +7,11 @@ use App\Actions\Mail\ResolveWorkspaceMailer;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\Channels\PushoverChannel;
+use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Contracts\SendsPushover;
+use App\Notifications\Contracts\SendsWebPush;
 use App\Notifications\Messages\PushoverMessage;
+use App\Notifications\Messages\WebPushMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -28,7 +31,7 @@ use Illuminate\Support\Collection;
  *
  * @phpstan-import-type MissedChannel from FindMissedActivity as Summary
  */
-class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
+class ChannelActivity extends Notification implements SendsPushover, SendsWebPush, ShouldQueue
 {
     use Queueable;
 
@@ -51,6 +54,7 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
         return array_values(array_filter([
             $notifiable->notify_via_mail ? 'mail' : null,
             $notifiable->wantsPushover() ? PushoverChannel::class : null,
+            $notifiable->wantsWebPush() ? WebPushChannel::class : null,
         ]));
     }
 
@@ -92,6 +96,41 @@ class ChannelActivity extends Notification implements SendsPushover, ShouldQueue
             body: $lines,
             url: route('chat.index', $this->workspace),
             urlTitle: __('notifications.activity.open_in_app'),
+        );
+    }
+
+    /**
+     * The same summary as a bubble in the browser's own tray.
+     *
+     * The tag is the whole reason this is worth writing separately from
+     * toPushover(). It is the class docblock's rule — one notification for
+     * everything somebody missed rather than one per message — carried into a
+     * place where the sending side cannot enforce it: a quarter-hourly schedule
+     * that finds new messages three runs in a row hands the browser three
+     * bubbles, and a tray with three stale counts of the same workspace in it is
+     * the pile people switch notifications off over. Under one tag per
+     * workspace, the newest count replaces the previous one instead. Quietly,
+     * because renotify stays off: the member was already told.
+     *
+     * Per workspace rather than per member or per channel: one tray belongs to
+     * one person anyway, and per channel would be the buzz-per-channel this
+     * notification exists to avoid.
+     */
+    public function toWebPush(User $notifiable): WebPushMessage
+    {
+        return new WebPushMessage(
+            title: $this->subject(),
+            /*
+             * The channel names and their counts, and nothing of what was said.
+             * The payload is decrypted by a push service outside the EU; the
+             * messages themselves stay behind the click, on our own domain,
+             * behind a login.
+             */
+            body: $this->channels
+                ->map(fn (array $channel): string => $channel['label'].' — '.$this->countsFor($channel))
+                ->join("\n"),
+            url: route('chat.index', $this->workspace),
+            tag: 'workspace-activity-'.$this->workspace->id,
         );
     }
 

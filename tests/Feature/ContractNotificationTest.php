@@ -14,7 +14,9 @@ use App\Models\Contract;
 use App\Models\ContractSigner;
 use App\Models\InboxItem;
 use App\Models\Message;
+use App\Models\PushSubscription;
 use App\Models\User;
+use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\ContractProgress;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -319,6 +321,48 @@ it('respects somebody who has switched their notifications off', function () {
      */
     expect(Message::query()->where('channel_id', $channel->id)->count())->toBe(1)
         ->and(InboxItem::query()->where('user_id', $author->id)->count())->toBe(1);
+});
+
+it('tells an author who left only their browser switched on', function () {
+    Notification::fake();
+    Queue::fake();
+
+    [$contract, $author] = contractWithNotifications();
+
+    $author->forceFill([
+        'notify_via_mail' => false,
+        'pushover_user_key' => null,
+        'notify_via_push' => true,
+    ])->save();
+    PushSubscription::factory()->for($author)->create();
+
+    $first = ContractSigner::factory()->create(['contract_id' => $contract->id, 'name' => 'Anna de Vries']);
+    ContractSigner::factory()->inPosition(1)->create(['contract_id' => $contract->id]);
+
+    post(route('contracts.sign.complete', $first->token))->assertSessionHasNoErrors();
+
+    Notification::assertSentTo(
+        $author,
+        ContractProgress::class,
+        function (ContractProgress $notification, array $channels) use ($author, $contract): bool {
+            expect($channels)->toBe([WebPushChannel::class]);
+
+            $message = $notification->toWebPush($author->fresh());
+
+            /*
+             * Tagged per contract rather than per workspace: two contracts
+             * running at once are two things to act on, and letting one hide
+             * the other would lose news. The click goes to the contract's own
+             * page, not to the signed link — the payload is decrypted by a push
+             * service we do not run.
+             */
+            expect($message->tag)->toBe('contract-'.$contract->id)
+                ->and($message->url)->toBe(route('chat.contracts.show', [$contract->workspace, $contract]))
+                ->and($message->renotify)->toBeTrue();
+
+            return true;
+        },
+    );
 });
 
 it('keeps quiet when the author has left', function () {

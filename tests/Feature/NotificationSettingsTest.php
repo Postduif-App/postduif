@@ -94,6 +94,64 @@ it('clears the pushover key when the field is sent empty', function () {
     expect($user->refresh()->pushover_user_key)->toBeNull();
 });
 
+it('saves browser notifications and reads them back', function () {
+    $user = User::factory()->create();
+
+    actingAs($user)
+        ->patch(route('notifications.update'), [
+            'notify_after_minutes' => 60,
+            'via_push' => true,
+        ])
+        ->assertRedirect(route('notifications.edit'))
+        ->assertSessionHasNoErrors();
+
+    // Wanting them is not the same as being reachable: wantsWebPush() also
+    // needs a browser to have subscribed, which no form can do for you.
+    expect($user->refresh()->notify_via_push)->toBeTrue()
+        ->and($user->wantsWebPush())->toBeFalse();
+
+    actingAs($user)
+        ->get(route('notifications.edit'))
+        ->assertInertia(fn ($page) => $page->where('preferences.viaPush', true));
+});
+
+it('switches browser notifications off when the field is not sent', function () {
+    $user = User::factory()->create(['notify_via_push' => true]);
+
+    actingAs($user)
+        ->patch(route('notifications.update'), ['via_mail' => true])
+        ->assertRedirect();
+
+    expect($user->refresh()->notify_via_push)->toBeFalse();
+});
+
+it('lists the browsers that are subscribed, in words', function () {
+    $user = User::factory()->create();
+
+    $user->pushSubscriptions()->create([
+        'endpoint' => 'https://push.example.test/abc',
+        'public_key' => 'p256dh',
+        'auth_token' => 'auth',
+        'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/128.0',
+    ]);
+
+    actingAs($user)
+        ->get(route('notifications.edit'))
+        ->assertInertia(fn ($page) => $page
+            ->has('devices', 1)
+            ->where('devices.0.name', 'Firefox op macOS')
+            ->where('devices.0.endpoint', 'https://push.example.test/abc')
+            ->where('devices.0.lastUsedAt', null));
+});
+
+it('says browser notifications are unavailable without a vapid pair', function () {
+    config()->set('services.webpush.public_key', null);
+
+    actingAs(User::factory()->create())
+        ->get(route('notifications.edit'))
+        ->assertInertia(fn ($page) => $page->where('pushAvailable', false));
+});
+
 it('says pushover is unavailable when the install has no token', function () {
     config()->set('services.pushover.token', null);
 

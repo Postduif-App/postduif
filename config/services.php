@@ -37,6 +37,22 @@ return [
         'token' => env('PUSHOVER_TOKEN'),
     ],
 
+    /**
+     * The identity this installation pushes under, straight to the browser's own
+     * push service — no Google or Apple account in between, only the keys below.
+     *
+     * The public key travels to the browser at subscription time and is public by
+     * design; the private one signs every push and stays here. The subject is
+     * required by RFC 8292: a mailto: or https: address a push service can use to
+     * reach whoever runs this server. Empty keys switch pushes off entirely.
+     * Generate a pair with `php artisan webpush:vapid`.
+     */
+    'webpush' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject' => env('VAPID_SUBJECT'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

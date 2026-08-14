@@ -42,4 +42,9 @@ return [
     'invitation' => [
         'subject' => ':inviter is inviting you to :workspace',
     ],
+
+    'test_push' => [
+        'title' => 'Postduif',
+        'body' => 'If you can see this, browser notifications work on this device.',
+    ],
 ];

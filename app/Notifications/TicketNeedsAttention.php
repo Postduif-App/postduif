@@ -7,8 +7,11 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\Channels\PushoverChannel;
+use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Contracts\SendsPushover;
+use App\Notifications\Contracts\SendsWebPush;
 use App\Notifications\Messages\PushoverMessage;
+use App\Notifications\Messages\WebPushMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,7 +28,7 @@ use Illuminate\Support\Collection;
  *
  * @phpstan-type Row array{number: int, title: string, reason: string, channel: string}
  */
-class TicketNeedsAttention extends Notification implements SendsPushover, ShouldQueue
+class TicketNeedsAttention extends Notification implements SendsPushover, SendsWebPush, ShouldQueue
 {
     use Queueable;
 
@@ -50,6 +53,7 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
         return array_values(array_filter([
             $notifiable->notify_via_mail ? 'mail' : null,
             $notifiable->wantsPushover() ? PushoverChannel::class : null,
+            $notifiable->wantsWebPush() ? WebPushChannel::class : null,
         ]));
     }
 
@@ -94,6 +98,48 @@ class TicketNeedsAttention extends Notification implements SendsPushover, Should
                     $this->reason($ticket),
                 ))
                 ->join("\n"),
+        );
+    }
+
+    /**
+     * The same reminder as a bubble in the browser's own tray.
+     *
+     * Tagged per workspace, which is the class docblock's rule — one
+     * notification per person for everything they are behind on rather than one
+     * per ticket — held up on the one side that cannot enforce it. The reminder
+     * runs on a schedule, so a ticket that stays stale produces a second and a
+     * third summary; without a tag those pile up in the tray as stale copies of
+     * each other, and a tray somebody has to clear out is a tray they mute. The
+     * newer summary replaces the older one, and quietly: renotify stays off,
+     * because nothing new happened, the list simply grew.
+     */
+    public function toWebPush(User $notifiable): WebPushMessage
+    {
+        $first = $this->tickets->first();
+
+        return new WebPushMessage(
+            title: $this->subject(),
+            /*
+             * Numbers, titles and why each one is in the list — the same
+             * shortness toPushover() needs. Nothing of the conversation in the
+             * ticket, which stays behind the click on our own domain: the
+             * payload is decrypted by a push service we do not run.
+             */
+            body: $this->tickets
+                ->map(fn (Ticket $ticket): string => sprintf(
+                    '#%d %s — %s',
+                    $ticket->number,
+                    $ticket->title,
+                    $this->reason($ticket),
+                ))
+                ->join("\n"),
+            url: route('chat.show', [
+                $first->channel->workspace,
+                $first->channel,
+                'view' => 'tickets',
+                'ticket' => $first->number,
+            ]),
+            tag: 'workspace-tickets-'.$this->workspace->id,
         );
     }
 

@@ -4,8 +4,10 @@ use App\Actions\Tickets\FindStaleTickets;
 use App\Enums\Availability;
 use App\Enums\SystemRole;
 use App\Enums\TicketStatus;
+use App\Models\PushSubscription;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\TicketNeedsAttention;
 use Illuminate\Support\Facades\Notification;
 
@@ -100,6 +102,44 @@ it('says nothing twice within the cooldown', function () {
 
     artisan('tickets:notify-stale')->assertSuccessful();
     Notification::assertSentToTimes($member, TicketNeedsAttention::class, 1);
+});
+
+it('nags a member who left only their browser switched on', function () {
+    [$member, , , $channel] = ticketFixture();
+    $member->forceFill(['notify_via_mail' => false, 'notify_via_push' => true])->save();
+    PushSubscription::factory()->for($member)->create();
+
+    $ticket = Ticket::factory()->overdue()->create(['channel_id' => $channel->id]);
+
+    artisan('tickets:notify-stale')->assertSuccessful();
+
+    /*
+     * A browser counts as somewhere for the reminder to arrive. Without that,
+     * somebody who turned their mail off and their browser on would be judged
+     * unreachable and never nagged about anything again.
+     */
+    Notification::assertSentTo(
+        $member,
+        TicketNeedsAttention::class,
+        function (TicketNeedsAttention $notification, array $channels) use ($member, $ticket, $channel): bool {
+            expect($channels)->toBe([WebPushChannel::class]);
+
+            $message = $notification->toWebPush($member);
+
+            // One bubble per workspace, replaced by the next run rather than
+            // stacked beside it.
+            expect($message->tag)->toBe('workspace-tickets-'.$channel->workspace_id)
+                ->and($message->url)->toBe(route('chat.show', [
+                    $channel->workspace,
+                    $channel,
+                    'view' => 'tickets',
+                    'ticket' => $ticket->number,
+                ]))
+                ->and($message->body)->toContain('#'.$ticket->number);
+
+            return true;
+        },
+    );
 });
 
 it('respects do not disturb', function () {

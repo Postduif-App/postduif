@@ -36,9 +36,13 @@ class NotifyAbsentMembers extends Command
             // FindMissedActivity refuses these anyway; leaving them out of the
             // query means not doing the work to find that out per member.
             ->whereNot('availability', Availability::DoNotDisturb->value)
+            // Somewhere for it to arrive. The three switches wantsAbsenceNotifications()
+            // asks about, so that a member who kept only their browser turned on
+            // is not filtered out here and then never asked about at all.
             ->where(fn ($query) => $query
                 ->where('notify_via_mail', true)
-                ->orWhere('notify_via_pushover', true))
+                ->orWhere('notify_via_pushover', true)
+                ->orWhere('notify_via_push', true))
             ->chunkById(100, function (Collection $users) use ($findMissedActivity, &$notified) {
                 foreach ($users as $user) {
                     $notified += $this->notify($user, $findMissedActivity);

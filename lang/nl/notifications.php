@@ -56,4 +56,9 @@ return [
     'invitation' => [
         'subject' => ':inviter nodigt je uit voor :workspace',
     ],
+
+    'test_push' => [
+        'title' => 'Postduif',
+        'body' => 'Als je dit ziet, werken browsermeldingen op dit apparaat.',
+    ],
 ];

@@ -9,10 +9,12 @@ use App\Enums\SystemRole;
 use App\Models\Channel;
 use App\Models\InboxItem;
 use App\Models\Message;
+use App\Models\PushSubscription;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Notifications\ChannelActivity;
+use App\Notifications\Channels\WebPushChannel;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -87,6 +89,60 @@ it('tells an absent member what they missed', function () {
             && $notification->channels->first()['channelId'] === $channel->id
             && $notification->channels->first()['unread'] === 2
             && $notification->channels->first()['label'] === '#klantproject';
+    });
+});
+
+it('tells a member who left only their browser switched on', function () {
+    [$member, $colleague, $workspace, $channel] = absentMember([
+        'notify_via_mail' => false,
+        'notify_via_push' => true,
+    ]);
+    PushSubscription::factory()->for($member)->create();
+
+    saySomething($channel, $colleague);
+    lastLookedAt($channel, $member, '3 hours');
+
+    artisan('chat:notify-absent')->assertSuccessful();
+
+    /*
+     * The half that is easy to get wrong: the command narrows to members who
+     * have somewhere for a summary to arrive, and a browser is such a place.
+     * Somebody who turned their mail off and their browser on used to fall out
+     * of that query and never hear anything again.
+     */
+    Notification::assertSentTo(
+        $member,
+        ChannelActivity::class,
+        fn (ChannelActivity $notification, array $channels): bool => $channels === [WebPushChannel::class]
+            && $notification->workspace->is($workspace),
+    );
+});
+
+it('gives the browser one bubble per workspace, pointing at the workspace', function () {
+    [$member, $colleague, $workspace, $channel] = absentMember([
+        'notify_via_mail' => false,
+        'notify_via_push' => true,
+    ]);
+    PushSubscription::factory()->for($member)->create();
+
+    saySomething($channel, $colleague);
+    lastLookedAt($channel, $member, '3 hours');
+
+    artisan('chat:notify-absent')->assertSuccessful();
+
+    Notification::assertSentTo($member, ChannelActivity::class, function (ChannelActivity $notification) use ($member, $workspace): bool {
+        $message = $notification->toWebPush($member);
+
+        // The tag is what keeps a quarter-hourly schedule from stacking three
+        // stale counts of the same workspace in one tray.
+        expect($message->tag)->toBe('workspace-activity-'.$workspace->id)
+            ->and($message->url)->toBe(route('chat.index', $workspace))
+            ->and($message->body)->toContain('#klantproject')
+            // Nothing of what was said: the payload is decrypted by a push
+            // service we do not run.
+            ->and($message->body)->not->toContain('Hoi');
+
+        return true;
     });
 });
 

@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\AvatarController;
 use App\Http\Controllers\Settings\ContractWebhookController;
 use App\Http\Controllers\Settings\CustomEmojiController;
 use App\Http\Controllers\Settings\NotificationController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\PushSubscriptionController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StatusController;
 use App\Http\Controllers\Settings\StatusRuleController;
@@ -89,6 +91,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('notifications.edit');
     Route::patch('app/settings/notifications', [NotificationController::class, 'update'])
         ->name('notifications.update');
+
+    /*
+     * Called by the service worker registration rather than by the settings
+     * form, so these answer with a bare status code instead of a page.
+     */
+    Route::post('app/settings/notifications/push', [PushSubscriptionController::class, 'store'])
+        ->name('push-subscriptions.store');
+    Route::delete('app/settings/notifications/push', [PushSubscriptionController::class, 'destroy'])
+        ->name('push-subscriptions.destroy');
+
+    /*
+     * Rate limited because it is the one route here that makes somebody else's
+     * hardware buzz on demand, and it answers with what the push services
+     * actually accepted.
+     */
+    Route::post('app/settings/notifications/push/test', [PushSubscriptionController::class, 'test'])
+        ->middleware('throttle:10,1')
+        ->name('push-subscriptions.test');
 
     Route::get('app/settings/workspace', [WorkspaceController::class, 'edit'])->name('workspace.edit');
     Route::patch('app/settings/workspace', [WorkspaceController::class, 'update'])->name('workspace.update');

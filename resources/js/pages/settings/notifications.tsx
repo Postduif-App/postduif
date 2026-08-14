@@ -3,6 +3,8 @@ import { useState } from 'react';
 
 import { ChoiceText } from '@/components/choice-text';
 import InputError from '@/components/input-error';
+import type { PushDevice } from '@/components/push-devices';
+import { PushDevices } from '@/components/push-devices';
 import { SettingsSection } from '@/components/settings-section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,11 +41,15 @@ interface NotificationsProps {
         notifyAfterMinutes: number | null;
         viaMail: boolean;
         viaPushover: boolean;
+        viaPush: boolean;
         /** The key itself never leaves the server; this is all the form knows. */
         hasPushoverKey: boolean;
     };
     thresholds: Threshold[];
+    devices: PushDevice[];
     pushoverAvailable: boolean;
+    /** Whether this installation has a VAPID pair to sign pushes with at all. */
+    pushAvailable: boolean;
 }
 
 /** The value the select uses for "never" — a select cannot hold null. */
@@ -52,7 +58,9 @@ const OFF = 'off';
 export default function Notifications({
     preferences,
     thresholds,
+    devices,
     pushoverAvailable,
+    pushAvailable,
 }: NotificationsProps) {
     const [after, setAfter] = useState(
         preferences.notifyAfterMinutes === null
@@ -61,6 +69,7 @@ export default function Notifications({
     );
     const [viaMail, setViaMail] = useState(preferences.viaMail);
     const [viaPushover, setViaPushover] = useState(preferences.viaPushover);
+    const [viaPush, setViaPush] = useState(preferences.viaPush);
     const [editingKey, setEditingKey] = useState(!preferences.hasPushoverKey);
     const { t } = useTranslate();
 
@@ -176,6 +185,42 @@ export default function Notifications({
                                     <input
                                         type="checkbox"
                                         className="mt-0.5"
+                                        checked={viaPush}
+                                        disabled={!pushAvailable}
+                                        onChange={(event) =>
+                                            setViaPush(event.target.checked)
+                                        }
+                                    />
+                                    <ChoiceText
+                                        title={t('settings.notifications.push')}
+                                        hint={
+                                            pushAvailable
+                                                ? t(
+                                                      'settings.notifications.push_hint',
+                                                  )
+                                                : t(
+                                                      'settings.notifications.push_missing',
+                                                  )
+                                        }
+                                    />
+                                </label>
+
+                                {/*
+                                    The permission and the devices sit under the
+                                    choice, the way the Pushover key does: this
+                                    is the browser's own answer rather than a
+                                    preference, and it has nothing to say to
+                                    somebody who does not want browser
+                                    notifications at all.
+                                */}
+                                {viaPush && pushAvailable && (
+                                    <PushDevices devices={devices} />
+                                )}
+
+                                <label className={CHOICE_ROW}>
+                                    <input
+                                        type="checkbox"
+                                        className="mt-0.5"
                                         checked={viaPushover}
                                         disabled={!pushoverAvailable}
                                         onChange={(event) =>
@@ -264,6 +309,11 @@ export default function Notifications({
                                 type="hidden"
                                 name="via_pushover"
                                 value={viaPushover ? 1 : 0}
+                            />
+                            <input
+                                type="hidden"
+                                name="via_push"
+                                value={viaPush ? 1 : 0}
                             />
 
                             <div className="flex justify-start pt-2">

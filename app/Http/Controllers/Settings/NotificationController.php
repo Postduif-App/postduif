@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\PushSubscription;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -36,11 +37,21 @@ class NotificationController extends Controller
                 'notifyAfterMinutes' => $user->notify_after_minutes,
                 'viaMail' => $user->notify_via_mail,
                 'viaPushover' => $user->notify_via_pushover,
+                'viaPush' => $user->notify_via_push,
                 // The key itself never travels back to the browser — it is a
                 // credential. Whether one is set is all the form needs to know
                 // to show "ingesteld" rather than an empty box.
                 'hasPushoverKey' => filled($user->pushover_user_key),
             ],
+            // The browsers that agreed to be interrupted. The endpoint travels
+            // with them because it is the only handle the delete route takes,
+            // and it is this member's own — it identifies a browser to a push
+            // service, not a person to anybody else.
+            'devices' => $user->pushSubscriptions()->get()->map(fn (PushSubscription $subscription): array => [
+                'endpoint' => $subscription->endpoint,
+                'name' => $this->deviceName($subscription->user_agent),
+                'lastUsedAt' => $subscription->last_used_at?->diffForHumans(),
+            ])->values()->all(),
             'thresholds' => array_map(
                 fn (int $minutes): array => ['value' => $minutes, 'label' => $this->label($minutes)],
                 self::THRESHOLDS,
@@ -49,6 +60,11 @@ class NotificationController extends Controller
             // one the option is offered as unavailable rather than as something
             // that would silently never arrive.
             'pushoverAvailable' => filled(config('services.pushover.token')),
+            // Without a VAPID pair nothing can be signed, so no browser can be
+            // subscribed at all. Said out loud rather than offering a button
+            // that would fail on the first click.
+            'pushAvailable' => filled(config('services.webpush.public_key'))
+                && filled(config('services.webpush.private_key')),
         ]);
     }
 
@@ -58,6 +74,7 @@ class NotificationController extends Controller
             'notify_after_minutes' => ['nullable', Rule::in(self::THRESHOLDS)],
             'via_mail' => ['boolean'],
             'via_pushover' => ['boolean'],
+            'via_push' => ['boolean'],
             'pushover_user_key' => ['nullable', 'string', 'max:255'],
         ], [
             'notify_after_minutes.in' => __('requests.notifications.invalid_window'),
@@ -70,6 +87,7 @@ class NotificationController extends Controller
         $user->notify_after_minutes = $validated['notify_after_minutes'] ?? null;
         $user->notify_via_mail = $validated['via_mail'] ?? false;
         $user->notify_via_pushover = $validated['via_pushover'] ?? false;
+        $user->notify_via_push = $validated['via_push'] ?? false;
 
         // An absent field leaves the key alone: the form cannot show it, so it
         // cannot send it back, and treating "not sent" as "cleared" would wipe
@@ -86,6 +104,64 @@ class NotificationController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('flashes.settings.notifications_saved')]);
 
         return to_route('notifications.edit');
+    }
+
+    /**
+     * A browser string in words somebody recognises.
+     *
+     * "Chrome op macOS" rather than the eighty characters of version numbers a
+     * browser actually sends, because this list exists to be pointed at: the
+     * only question it answers is which of these devices is the one in front of
+     * you. Deliberately shallow — no version, no engine — and anything it
+     * cannot place keeps its raw string rather than being called "Onbekend",
+     * which would make two unknown browsers indistinguishable.
+     */
+    private function deviceName(?string $userAgent): string
+    {
+        if (blank($userAgent)) {
+            return __('settings.notifications.device_unknown');
+        }
+
+        $browser = $this->firstMatch($userAgent, [
+            '/Edg|Edge/' => 'Edge',
+            '/OPR|Opera|OPiOS/' => 'Opera',
+            '/Firefox|FxiOS/' => 'Firefox',
+            '/Chrome|CriOS/' => 'Chrome',
+            '/Safari/' => 'Safari',
+        ]);
+
+        $platform = $this->firstMatch($userAgent, [
+            '/iPhone/' => 'iPhone',
+            '/iPad/' => 'iPad',
+            '/Android/' => 'Android',
+            '/Macintosh|Mac OS X/' => 'macOS',
+            '/Windows/' => 'Windows',
+            '/Linux/' => 'Linux',
+        ]);
+
+        return match (true) {
+            $browser !== null && $platform !== null => __('settings.notifications.device_on', [
+                'browser' => $browser,
+                'platform' => $platform,
+            ]),
+            $browser !== null => $browser,
+            $platform !== null => $platform,
+            default => $userAgent,
+        };
+    }
+
+    /**
+     * @param  array<string, string>  $patterns
+     */
+    private function firstMatch(string $subject, array $patterns): ?string
+    {
+        foreach ($patterns as $pattern => $name) {
+            if (preg_match($pattern, $subject) === 1) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     private function label(int $minutes): string

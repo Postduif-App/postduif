@@ -149,6 +149,6 @@ class NotifyStaleTickets extends Command
     {
         return $user->suspended_at === null
             && $user->availability !== Availability::DoNotDisturb
-            && ($user->notify_via_mail || $user->wantsPushover());
+            && ($user->notify_via_mail || $user->wantsPushover() || $user->wantsWebPush());
     }
 }

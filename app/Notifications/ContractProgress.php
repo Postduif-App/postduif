@@ -8,8 +8,11 @@ use App\Models\Contract;
 use App\Models\ContractSigner;
 use App\Models\User;
 use App\Notifications\Channels\PushoverChannel;
+use App\Notifications\Channels\WebPushChannel;
 use App\Notifications\Contracts\SendsPushover;
+use App\Notifications\Contracts\SendsWebPush;
 use App\Notifications\Messages\PushoverMessage;
+use App\Notifications\Messages\WebPushMessage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -28,7 +31,7 @@ use Illuminate\Notifications\Notification;
  * So the kind is carried explicitly and every line on the way out branches on
  * it. See ContractProgressKind.
  */
-class ContractProgress extends Notification implements SendsPushover, ShouldQueue
+class ContractProgress extends Notification implements SendsPushover, SendsWebPush, ShouldQueue
 {
     use Queueable;
 
@@ -61,6 +64,7 @@ class ContractProgress extends Notification implements SendsPushover, ShouldQueu
         return array_values(array_filter([
             $notifiable->notify_via_mail ? 'mail' : null,
             $notifiable->wantsPushover() ? PushoverChannel::class : null,
+            $notifiable->wantsWebPush() ? WebPushChannel::class : null,
         ]));
     }
 
@@ -108,6 +112,41 @@ class ContractProgress extends Notification implements SendsPushover, ShouldQueu
             title: $this->subject(),
             body: $this->sentence(),
             url: $this->downloadUrl,
+        );
+    }
+
+    /**
+     * The same news as a bubble in the browser's own tray.
+     *
+     * Tagged per contract, for the reason ChannelActivity's docblock gives for
+     * sending one summary instead of one notification per message: a contract
+     * with four signers produces four pieces of news over a week, and four
+     * bubbles about the same document is the pile people switch notifications
+     * off over. Under one tag the newest state of this contract replaces the
+     * previous one — which is also the honest thing to show, because "nog twee
+     * te gaan" stops being true the moment the third person signs. Per contract
+     * and not per workspace: two contracts running at once are two separate
+     * things to act on, and letting one hide the other would lose news.
+     *
+     * Renotify is deliberately on. Unlike a growing unread count, every one of
+     * these is a new event somebody has to act on — a refusal most of all — and
+     * a bubble that silently swaps itself out is one nobody sees.
+     *
+     * The click goes to the contract's own page rather than to the download.
+     * That URL is a signed link with a lifetime, and this payload is decrypted
+     * and stored by a push service outside the EU; the contract's own address
+     * decides per reader where it takes them, behind a login, on our domain.
+     */
+    public function toWebPush(User $notifiable): WebPushMessage
+    {
+        return new WebPushMessage(
+            title: $this->subject(),
+            // The one sentence, and not the decline reason: somebody's grounds
+            // for refusing are the last thing to hand a push service.
+            body: $this->sentence(),
+            url: route('chat.contracts.show', [$this->contract->workspace, $this->contract]),
+            tag: 'contract-'.$this->contract->id,
+            renotify: true,
         );
     }
 

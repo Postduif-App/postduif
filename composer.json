@@ -23,6 +23,7 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "lettermint/lettermint-laravel": "^2.2",
+        "minishlink/web-push": "^8.0",
         "predis/predis": "^3.5",
         "setasign/fpdi": "^2.6",
         "spatie/laravel-medialibrary": "^11.23",

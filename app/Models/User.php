@@ -12,6 +12,7 @@ use Filament\Panel;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -45,6 +46,7 @@ use Laravel\Passport\HasApiTokens;
  * @property int|null $notify_after_minutes
  * @property bool $notify_via_mail
  * @property bool $notify_via_pushover
+ * @property bool $notify_via_push
  * @property string|null $pushover_user_key
  * @property string $password
  * @property string|null $two_factor_secret
@@ -128,6 +130,9 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
         'availability' => Availability::Available->value,
         'recent_statuses' => '[]',
         'clock_sets_status' => false,
+        // Off until a browser has actually been asked and said yes, which
+        // cannot have happened to an account that was made a moment ago.
+        'notify_via_push' => false,
     ];
 
     /**
@@ -149,6 +154,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
             'clock_sets_status' => 'boolean',
             'notify_via_mail' => 'boolean',
             'notify_via_pushover' => 'boolean',
+            'notify_via_push' => 'boolean',
             // A credential for somebody's own device. Encrypted rather than
             // hashed: unlike a password it has to be sent onwards to Pushover,
             // so it must be readable — just not by reading the table.
@@ -217,7 +223,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
             return false;
         }
 
-        return $this->notify_via_mail || $this->wantsPushover();
+        return $this->notify_via_mail || $this->wantsPushover() || $this->wantsWebPush();
     }
 
     /**
@@ -228,6 +234,46 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
     public function wantsPushover(): bool
     {
         return $this->notify_via_pushover && filled($this->pushover_user_key);
+    }
+
+    /**
+     * Whether the browser itself may interrupt this member.
+     *
+     * Both halves, for the same reason Pushover needs a key: the flag is the
+     * wish and a subscription is the only thing that can carry it out. Somebody
+     * who allowed notifications on a laptop they have since wiped has the flag
+     * on and nowhere for a push to land, and asking only the flag would have
+     * the sender build a message for nobody.
+     *
+     * Deliberately not scoped to a workspace. Which workspaces are worth being
+     * interrupted about is a separate question, answered where a notification
+     * is sent; this one is only whether the member wants pushes at all.
+     */
+    public function wantsWebPush(): bool
+    {
+        return $this->notify_via_push && $this->pushSubscriptions()->exists();
+    }
+
+    /**
+     * Where a web push for this member should go.
+     *
+     * Named the way Laravel looks it up: routeNotificationFor{Channel}. Hands
+     * back every browser rather than one, because that is what the channel has
+     * to send to — a member reading Postduif on a phone and a laptop has two,
+     * and telling only one of them is telling half of them.
+     *
+     * Empty when pushes are switched off, so the channel has nothing to send to
+     * rather than having to ask about the preference itself.
+     *
+     * @return EloquentCollection<int, PushSubscription>
+     */
+    public function routeNotificationForWebPush(): EloquentCollection
+    {
+        if (! $this->notify_via_push) {
+            return new EloquentCollection;
+        }
+
+        return $this->pushSubscriptions()->get();
     }
 
     /**
@@ -387,6 +433,19 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    /**
+     * The browsers this member has agreed to be interrupted on.
+     *
+     * Newest first, because the settings screen lists them and the one somebody
+     * has just allowed is the one they are looking for.
+     *
+     * @return HasMany<PushSubscription, $this>
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class)->latest('id');
     }
 
     /**
