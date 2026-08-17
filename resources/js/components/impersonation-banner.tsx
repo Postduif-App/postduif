@@ -17,8 +17,9 @@ import type { Auth } from '@/types/auth';
  * under their name with nothing to mark it.
  *
  * Rendered around the whole application rather than per layout, because there
- * is no screen this may be missing from. It sits in `withApp` beside the
- * tooltips and the toasts — see app.tsx.
+ * is no screen this may be missing from. It sits in the outermost of Inertia's
+ * nested layouts — see AppChrome in app.tsx — and not beside the app in
+ * `withApp`, which is outside the page context this reads its props from.
  *
  * Fixed at the bottom rather than the top, unlike the connection banner. The
  * top is where the chat puts a channel's name and its actions, and a bar that

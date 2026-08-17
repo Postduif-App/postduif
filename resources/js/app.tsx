@@ -73,6 +73,153 @@ function WideAuthLayout({ children }: PropsWithChildren) {
     return <AuthLayout wide>{children}</AuthLayout>;
 }
 
+/**
+ * What belongs on every screen, whatever shell that screen asked for.
+ *
+ * A layout rather than something beside the app in `withApp`, which is where
+ * the banner started and where it could not work: `withApp` is handed the
+ * finished `<App>` element and renders it as a child, so anything put next to
+ * it sits *outside* the page context that `App` provides — and `usePage()`
+ * throws there rather than returning nothing. The toaster survives that spot
+ * only because it reads router events instead of props.
+ *
+ * As the outermost of Inertia's nested layouts this renders inside that
+ * context, on top of whatever the page resolves to below, including the pages
+ * that resolve to no shell at all.
+ */
+function AppChrome({ children }: PropsWithChildren) {
+    return (
+        <>
+            {children}
+            {/*
+                Here rather than in a single layout, because there is no screen
+                an impersonated session may look ordinary on — including the
+                ones that bring no shell at all, like a contract or a form. It
+                draws nothing when nobody is impersonating anybody.
+            */}
+            <ImpersonationBanner />
+        </>
+    );
+}
+
+/** The shell a page asks for by name, or null for the ones that bring their own. */
+function pageLayout(name: string) {
+    switch (true) {
+        case name === 'welcome':
+            return null;
+        /*
+         * Setting up a platform that has nothing in it yet. No shell at
+         * all: the auth card is built for somebody arriving at an
+         * application that exists, and this screen has to explain what is
+         * about to exist beside the form that makes it. It brings its own
+         * two halves — see pages/install/welcome.
+         */
+        case name === 'install/welcome':
+            return null;
+        // The public site brings its own shell. Its own rather than a
+        // variation on the app's: the two have different jobs, and sharing
+        // one would make every change to the app's chrome a change to the
+        // marketing site.
+        case name.startsWith('marketing/'):
+            return MarketingLayout;
+        /*
+         * The chat page owns the full viewport and brings its own chrome,
+         * so its shell adds no frame at all — only the banner that warns
+         * every chat screen at once when the socket they all live on is
+         * gone.
+         */
+        case name.startsWith('chat/'):
+            return ChatLayout;
+        case name.startsWith('auth/'):
+            return AuthLayout;
+        // Belonging to no workspace yet. The auth shell rather than the
+        // chat one: there is no sidebar to draw, because there is nothing
+        // yet to put in it.
+        case name.startsWith('workspaces/'):
+            return AuthLayout;
+        // A download link is followed by somebody who may have no account
+        // here at all, which is exactly who the auth shell is built for:
+        // one card, no navigation, nothing to sign in to.
+        case name.startsWith('transfers/'):
+            return AuthLayout;
+        /*
+         * Signing a contract: no shell at all, not even the one-card one.
+         *
+         * Whoever follows this link came from an email to do one thing,
+         * often on a telephone, and often without an account here — so a
+         * sidebar offering them a dashboard is both useless and slightly
+         * alarming beside a document they are being asked to sign. The
+         * page owns the whole viewport and brings its own two bars.
+         *
+         * It landed on the app shell by falling through to the default,
+         * which cost it more than the sidebar: that shell clips its
+         * overflow, and a sticky bar inside something that does cannot
+         * stick.
+         */
+        case name.startsWith('contracts/'):
+            return null;
+        /*
+         * The requester reading what came in. Wider than the rest of this
+         * shell, because a decrypted key wrapped over four lines in a
+         * 384px card is unusable — the same exception the member list gets
+         * in settings.
+         */
+        case name === 'secrets/answers':
+            return WideAuthLayout;
+        // Answering a request for secrets is a single form for one person,
+        // often a guest who never opens the chat. The same one-card shell
+        // the download page uses, for the same reason.
+        case name.startsWith('secrets/'):
+            return AuthLayout;
+        /*
+         * Filling in a form, through either door. The public one is
+         * followed by somebody with no account at all — the same case the
+         * download page is built for — and the member's page is the same
+         * screen with a name attached, so it gets the same shell rather
+         * than a second one that would have to be kept in step.
+         */
+        case name.startsWith('forms/'):
+            return AuthLayout;
+        /*
+         * The two settings pages that manage a table rather than a form, so
+         * they get the room a table needs: the member list, and the channel
+         * table whose counts and typed-in topics do not fit a reading
+         * column either. Every other settings page stays at reading width.
+         */
+        case name === 'settings/members':
+        case name === 'settings/workspace-channels':
+            return WideSettingsLayout;
+        /*
+         * The roles screen, since it became a list beside an editor. Two
+         * columns in a reading width leave the editor about 400px, which
+         * is not enough for a right and its explanation on one line —
+         * every row wrapped to three and the catalogue read as a wall.
+         */
+        case name === 'settings/workspace-roles':
+            return WideSettingsLayout;
+        /*
+         * The workflow builder and its run history, for the same reason as
+         * the member list: a canvas with a panel beside it is not a thing
+         * that fits a reading column, and a run's context is JSON that has
+         * to be readable rather than pretty.
+         *
+         * The builder is the one that needs it most — it draws lanes inside
+         * forks, and every level of nesting eats into the width the blocks
+         * have left.
+         */
+        case name === 'settings/workflows':
+        case name === 'settings/workflow-edit':
+        case name === 'settings/workflow-runs':
+            return WideSettingsLayout;
+        // Settings bring their own full-height shell, in the same idiom as
+        // the chat: no second application frame around it.
+        case name.startsWith('settings/'):
+            return SettingsLayout;
+        default:
+            return AppLayout;
+    }
+}
+
 /*
  * Mounted once per document, even when this module runs twice.
  *
@@ -96,136 +243,27 @@ if (import.meta.hot?.data.mounted !== true) {
 
     createInertiaApp({
         title: (title) => (title ? `${title} - ${appName}` : appName),
+        /*
+         * Nested layouts, outermost first: the chrome every screen needs goes
+         * around whatever shell the page asked for — and around the page
+         * itself on the screens that asked for no shell at all.
+         */
         layout: (name) => {
-            switch (true) {
-                case name === 'welcome':
-                    return null;
-                /*
-                 * Setting up a platform that has nothing in it yet. No shell at
-                 * all: the auth card is built for somebody arriving at an
-                 * application that exists, and this screen has to explain what is
-                 * about to exist beside the form that makes it. It brings its own
-                 * two halves — see pages/install/welcome.
-                 */
-                case name === 'install/welcome':
-                    return null;
-                // The public site brings its own shell. Its own rather than a
-                // variation on the app's: the two have different jobs, and sharing
-                // one would make every change to the app's chrome a change to the
-                // marketing site.
-                case name.startsWith('marketing/'):
-                    return MarketingLayout;
-                /*
-                 * The chat page owns the full viewport and brings its own chrome,
-                 * so its shell adds no frame at all — only the banner that warns
-                 * every chat screen at once when the socket they all live on is
-                 * gone.
-                 */
-                case name.startsWith('chat/'):
-                    return ChatLayout;
-                case name.startsWith('auth/'):
-                    return AuthLayout;
-                // Belonging to no workspace yet. The auth shell rather than the
-                // chat one: there is no sidebar to draw, because there is nothing
-                // yet to put in it.
-                case name.startsWith('workspaces/'):
-                    return AuthLayout;
-                // A download link is followed by somebody who may have no account
-                // here at all, which is exactly who the auth shell is built for:
-                // one card, no navigation, nothing to sign in to.
-                case name.startsWith('transfers/'):
-                    return AuthLayout;
-                /*
-                 * Signing a contract: no shell at all, not even the one-card one.
-                 *
-                 * Whoever follows this link came from an email to do one thing,
-                 * often on a telephone, and often without an account here — so a
-                 * sidebar offering them a dashboard is both useless and slightly
-                 * alarming beside a document they are being asked to sign. The
-                 * page owns the whole viewport and brings its own two bars.
-                 *
-                 * It landed on the app shell by falling through to the default,
-                 * which cost it more than the sidebar: that shell clips its
-                 * overflow, and a sticky bar inside something that does cannot
-                 * stick.
-                 */
-                case name.startsWith('contracts/'):
-                    return null;
-                /*
-                 * The requester reading what came in. Wider than the rest of this
-                 * shell, because a decrypted key wrapped over four lines in a
-                 * 384px card is unusable — the same exception the member list gets
-                 * in settings.
-                 */
-                case name === 'secrets/answers':
-                    return WideAuthLayout;
-                // Answering a request for secrets is a single form for one person,
-                // often a guest who never opens the chat. The same one-card shell
-                // the download page uses, for the same reason.
-                case name.startsWith('secrets/'):
-                    return AuthLayout;
-                /*
-                 * Filling in a form, through either door. The public one is
-                 * followed by somebody with no account at all — the same case the
-                 * download page is built for — and the member's page is the same
-                 * screen with a name attached, so it gets the same shell rather
-                 * than a second one that would have to be kept in step.
-                 */
-                case name.startsWith('forms/'):
-                    return AuthLayout;
-                /*
-                 * The two settings pages that manage a table rather than a form, so
-                 * they get the room a table needs: the member list, and the channel
-                 * table whose counts and typed-in topics do not fit a reading
-                 * column either. Every other settings page stays at reading width.
-                 */
-                case name === 'settings/members':
-                case name === 'settings/workspace-channels':
-                    return WideSettingsLayout;
-                /*
-                 * The roles screen, since it became a list beside an editor. Two
-                 * columns in a reading width leave the editor about 400px, which
-                 * is not enough for a right and its explanation on one line —
-                 * every row wrapped to three and the catalogue read as a wall.
-                 */
-                case name === 'settings/workspace-roles':
-                    return WideSettingsLayout;
-                /*
-                 * The workflow builder and its run history, for the same reason as
-                 * the member list: a canvas with a panel beside it is not a thing
-                 * that fits a reading column, and a run's context is JSON that has
-                 * to be readable rather than pretty.
-                 *
-                 * The builder is the one that needs it most — it draws lanes inside
-                 * forks, and every level of nesting eats into the width the blocks
-                 * have left.
-                 */
-                case name === 'settings/workflows':
-                case name === 'settings/workflow-edit':
-                case name === 'settings/workflow-runs':
-                    return WideSettingsLayout;
-                // Settings bring their own full-height shell, in the same idiom as
-                // the chat: no second application frame around it.
-                case name.startsWith('settings/'):
-                    return SettingsLayout;
-                default:
-                    return AppLayout;
-            }
+            const layout = pageLayout(name);
+
+            return layout ? [AppChrome, layout] : AppChrome;
         },
         strictMode: true,
+        /*
+         * Only what needs no page props may live here: this wraps Inertia's own
+         * component rather than sitting inside it, so `usePage()` has nothing to
+         * read from. The toaster manages because it listens to router events.
+         */
         withApp(app) {
             return (
                 <TooltipProvider delayDuration={0}>
                     {app}
                     <Toaster />
-                    {/*
-                        Here rather than in a layout, because there is no screen
-                        an impersonated session may look ordinary on — including
-                        the ones that bring no shell at all, like a contract or a
-                        form. It draws nothing at all when nobody is
-                        impersonating anybody.
-                    */}
-                    <ImpersonationBanner />
                 </TooltipProvider>
             );
         },
