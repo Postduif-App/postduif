@@ -194,6 +194,16 @@ return [
 
     'member' => [
         'last_owner' => 'There has to be at least one owner. Point somebody else at it first.',
+
+        /*
+         * Four sentences rather than one "invalid format": a handle is refused
+         * in four different ways, and which of the four it was is exactly what
+         * somebody needs to put it right.
+         */
+        'handle_shape' => 'A handle is letters, digits, dashes and underscores, optionally with dots between the parts — fenna.jansen, for instance.',
+        'handle_long' => 'A handle is at most 30 characters long.',
+        'handle_taken' => 'Somebody else already has this handle.',
+        'handle_reserved' => 'This handle is reserved: @here and @everyone address a whole group.',
     ],
 
     'notifications' => [

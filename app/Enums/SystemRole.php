@@ -142,6 +142,31 @@ enum SystemRole: string implements HasLabel
              */
             WorkspaceAbility::BroadcastMention => $this->canManageWorkspace(),
 
+            /*
+             * With the people who run the workspace, which is where it sat
+             * before it was a right of its own: administering the ledenlijst
+             * used to follow from ManageWorkspace, and seeding it anywhere else
+             * would take something away from an administrator on the day this
+             * shipped. What the split buys is the other direction — a role that
+             * arranges who comes and goes without being handed the settings.
+             */
+            WorkspaceAbility::ManageMembers => $this->canManageWorkspace(),
+
+            /*
+             * Nobody below the owner, and of everything withheld here this is
+             * the one that would be most tempting to hand to an administrator:
+             * they already open the ledenlijst, and this sits in the same menu.
+             *
+             * It is withheld anyway, because it is not a wider version of
+             * managing members but a different thing altogether. Changing
+             * somebody's role touches their standing and leaves a flash message
+             * behind; stepping into their account opens their DMs, their
+             * privékanalen and their concepten, and nothing on any screen says
+             * it happened. That is a decision about a person's privacy, and it
+             * should be made by name rather than arrive with a job title.
+             */
+            WorkspaceAbility::ImpersonateMembers => false,
+
             WorkspaceAbility::SeeMembers => $this->canSeeChannelMembers(),
             WorkspaceAbility::CreateChannels => $this->canCreateChannels(),
             WorkspaceAbility::SendTransfers => $this->canSendTransfers(),

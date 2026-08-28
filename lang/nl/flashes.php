@@ -143,8 +143,19 @@ return [
          * geplakt, en aan elkaar geplakte tekst is in een taal met een andere
          * woordvolgorde niet meer te maken.
          */
+        'handle_changed' => ':name heet voortaan @:handle.',
         'role_changed' => '{0}:name is nu :role.|{1}:name is nu :role. Eén openbaar kanaal is daarbij losgekoppeld.|[2,*]:name is nu :role. :count openbare kanalen zijn daarbij losgekoppeld.',
         'removed' => ':name is uit de workspace verwijderd.',
+    ],
+
+    /*
+     * Meekijken als iemand anders. Beide zinnen noemen de naam, want dat is
+     * precies het feit dat je kwijt kunt raken: het scherm ziet er verder uit
+     * als altijd.
+     */
+    'impersonation' => [
+        'started' => 'Je bent nu ingelogd als :name.',
+        'stopped' => 'Je bent weer jezelf. Je keek mee als :name.',
     ],
 
     'settings' => [

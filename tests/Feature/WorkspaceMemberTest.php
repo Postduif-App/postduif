@@ -406,3 +406,165 @@ it('offers no invite button to somebody who may not invite', function () {
         ->get(route('workspace.members.index'))
         ->assertInertia(fn ($page) => $page->where('canInvite', false));
 });
+
+/**
+ * The point of splitting "leden beheren" off from managing the workspace: a
+ * role can be trusted with who belongs here without being handed the settings.
+ */
+it('lets a role that only manages members do exactly that', function () {
+    [, , $member, $workspace] = workspaceWithThreeRoles();
+
+    $admin = $workspace->roles()->whereKey(roleId($workspace, SystemRole::Admin))->first();
+
+    // The administrator's rights minus the one that reaches every other, which
+    // leaves the members right standing on its own.
+    $role = $workspace->roles()->create([
+        'key' => 'officemanager',
+        'name' => 'Officemanager',
+        'position' => $admin->position,
+        'abilities' => array_values(array_diff(
+            $admin->abilities,
+            [WorkspaceAbility::ManageWorkspace->value],
+        )),
+    ]);
+
+    $officeManager = User::factory()->create();
+    $workspace->members()->attach($officeManager->id, [
+        'workspace_role_id' => $role->id,
+        'joined_at' => now(),
+    ]);
+
+    expect($officeManager->can('manage', $workspace))->toBeFalse();
+
+    actingAs($officeManager)->get(route('workspace.members.index'))->assertOk();
+
+    actingAs($officeManager)
+        ->delete(route('workspace.members.destroy', $member))
+        ->assertRedirect();
+
+    expect($workspace->fresh()->hasMember($member))->toBeFalse();
+});
+
+/**
+ * And the other direction, which is what makes it a right rather than a label:
+ * running the workspace no longer carries the ledenlijst by itself.
+ */
+it('refuses the ledenlijst to somebody whose role lost the members right', function () {
+    [, $admin, $member, $workspace] = workspaceWithThreeRoles();
+
+    $role = $workspace->roles()->whereKey(roleId($workspace, SystemRole::Admin))->first();
+    $role->forceFill([
+        'abilities' => array_values(array_diff(
+            $role->abilities,
+            [WorkspaceAbility::ManageMembers->value],
+        )),
+    ])->save();
+
+    actingAs($admin)->get(route('workspace.members.index'))->assertForbidden();
+
+    actingAs($admin)
+        ->delete(route('workspace.members.destroy', $member))
+        ->assertForbidden();
+
+    expect($workspace->fresh()->hasMember($member))->toBeTrue();
+});
+
+it('gives a member a different handle', function () {
+    [$owner, , $member] = workspaceWithThreeRoles();
+
+    actingAs($owner)
+        ->patch(route('workspace.members.handle.update', $member), ['username' => 'fenna.jansen'])
+        ->assertRedirect();
+
+    expect($member->fresh()->username)->toBe('fenna.jansen');
+});
+
+/**
+ * Handles are stored and looked up in lowercase — see RecordMentions — so a
+ * capital is something to fix rather than something to refuse.
+ */
+it('stores a typed handle in lowercase', function () {
+    [$owner, , $member] = workspaceWithThreeRoles();
+
+    actingAs($owner)
+        ->patch(route('workspace.members.handle.update', $member), ['username' => '  Fenna.Jansen '])
+        ->assertRedirect();
+
+    expect($member->fresh()->username)->toBe('fenna.jansen');
+});
+
+it('refuses a handle somebody else already has', function () {
+    [$owner, $admin, $member] = workspaceWithThreeRoles();
+
+    actingAs($owner)
+        ->patch(route('workspace.members.handle.update', $member), ['username' => $admin->username])
+        ->assertSessionHasErrors('username');
+
+    expect($member->fresh()->username)->not->toBe($admin->username);
+});
+
+it('refuses a handle that addresses a whole group', function () {
+    [$owner, , $member] = workspaceWithThreeRoles();
+    $before = $member->username;
+
+    actingAs($owner)
+        ->patch(route('workspace.members.handle.update', $member), ['username' => 'everyone'])
+        ->assertSessionHasErrors('username');
+
+    expect($member->fresh()->username)->toBe($before);
+});
+
+/**
+ * The shape is not decoration: RecordMentions looks for exactly this after an
+ * "@", so a handle outside it is one nobody can mention.
+ */
+it('refuses a handle nobody could mention', function (string $handle) {
+    [$owner, , $member] = workspaceWithThreeRoles();
+    $before = $member->username;
+
+    actingAs($owner)
+        ->patch(route('workspace.members.handle.update', $member), ['username' => $handle])
+        ->assertSessionHasErrors('username');
+
+    expect($member->fresh()->username)->toBe($before);
+})->with([
+    'een spatie' => 'fenna jansen',
+    'leestekens' => 'fenna!',
+    'begint met een punt' => '.fenna',
+    'eindigt op een punt' => 'fenna.',
+    'te lang' => 'fenna.jansen.van.den.berg.uit.eerbeek',
+]);
+
+it('refuses a handle change from a plain member', function () {
+    [$owner, , $member] = workspaceWithThreeRoles();
+    $before = $owner->username;
+
+    actingAs($member)
+        ->patch(route('workspace.members.handle.update', $owner), ['username' => 'iets.anders'])
+        ->assertForbidden();
+
+    expect($owner->fresh()->username)->toBe($before);
+});
+
+/** An admin may not reach the owner's row here either. */
+it('never lets an admin rename the owner', function () {
+    [$owner, $admin] = workspaceWithThreeRoles();
+    $before = $owner->username;
+
+    actingAs($admin)
+        ->patch(route('workspace.members.handle.update', $owner), ['username' => 'iets.anders'])
+        ->assertForbidden();
+
+    expect($owner->fresh()->username)->toBe($before);
+});
+
+it('tells the page which rows may be renamed', function () {
+    [, $admin] = workspaceWithThreeRoles();
+
+    actingAs($admin)
+        ->get(route('workspace.members.index'))
+        ->assertInertia(fn ($page) => $page
+            // The owner sorts first and stands above an administrator.
+            ->where('members.0.canChangeHandle', false)
+            ->where('members.1.canChangeHandle', true));
+});

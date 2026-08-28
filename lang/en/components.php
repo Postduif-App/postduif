@@ -36,6 +36,17 @@ return [
         'empty' => 'There are no channels to add this guest to yet.',
     ],
 
+    'member_handle' => [
+        'title' => ":name's handle",
+        'description' => 'What colleagues type to address :name in a message.',
+        'label' => 'Handle',
+        'hint' => 'Letters, digits, dashes and dots. At most 30 characters.',
+        // What does not move along with it, which is the part that surprises
+        // people: the old text stays in the messages that already carry it.
+        'warning' => 'Messages that already say @:handle keep that text and stop lighting up. Notifications already sent stay correct.',
+        'save' => 'Change handle',
+    ],
+
     'passkeys' => [
         'title' => 'Passkeys',
         'description' => 'Your passkeys, for signing in without a password',

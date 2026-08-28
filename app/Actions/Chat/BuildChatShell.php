@@ -243,6 +243,10 @@ class BuildChatShell
             // quietly notify nobody.
             'canBroadcastMention' => $user->can('broadcastMention', $workspace),
             'canManage' => $user->can('manage', $workspace),
+            // Whether the workspace menu offers the ledenlijst. Apart from
+            // canManage since administering members became its own right: the
+            // settings link and the member link no longer answer one question.
+            'canManageMembers' => $user->can('manageMembers', $workspace),
             'canInvite' => $user->can('invite', $workspace),
 
             /*

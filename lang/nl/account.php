@@ -14,6 +14,20 @@
  */
 
 return [
+    /*
+     * Meekijken als iemand anders. Bovenaan dit bestand omdat het als enige
+     * hier over elk scherm in de applicatie heen getekend wordt en niet op een
+     * eigen instellingenpagina staat.
+     */
+    'impersonation' => [
+        'banner' => 'Je bent ingelogd als :name',
+        'aside' => 'Eigenlijk :name',
+        'stop' => 'Terug naar mezelf',
+        // Wat de dichte deuren antwoorden. Zegt welke deur en waarom, want een
+        // kale 403 op het beveiligingsscherm leest als een storing.
+        'refused' => 'Dit kan niet zolang je als iemand anders bent ingelogd. Stop daar eerst mee en probeer het als jezelf opnieuw.',
+    ],
+
     'delete' => [
         'title' => 'Account verwijderen',
         'description' => 'Je account en alles wat eraan hangt',

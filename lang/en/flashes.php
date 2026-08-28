@@ -140,8 +140,14 @@ return [
          * glued on, and glued-together text cannot be built in a language with
          * a different word order.
          */
+        'handle_changed' => ':name is now @:handle.',
         'role_changed' => '{0}:name is now :role.|{1}:name is now :role. One public channel was unlinked in the process.|[2,*]:name is now :role. :count public channels were unlinked in the process.',
         'removed' => ':name has been removed from the workspace.',
+    ],
+
+    'impersonation' => [
+        'started' => 'You are now signed in as :name.',
+        'stopped' => 'You are yourself again. You were looking along as :name.',
     ],
 
     'settings' => [

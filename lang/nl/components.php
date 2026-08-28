@@ -54,6 +54,17 @@ return [
         'empty' => 'Er zijn nog geen kanalen om deze gast aan te koppelen.',
     ],
 
+    'member_handle' => [
+        'title' => 'Handle van :name',
+        'description' => 'Waarmee collega\'s :name aanspreken in een bericht.',
+        'label' => 'Handle',
+        'hint' => 'Letters, cijfers, streepjes en punten. Hoogstens 30 tekens.',
+        // Wat er niet meeverhuist, en dat is precies wat mensen verrast: de
+        // oude tekst blijft in oude berichten staan.
+        'warning' => 'Berichten waarin @:handle al staat, blijven die tekst houden en lichten niet meer op. Meldingen die eerder verstuurd zijn, blijven kloppen.',
+        'save' => 'Handle wijzigen',
+    ],
+
     'passkeys' => [
         'title' => 'Passkeys',
         'description' => 'Je passkeys, om zonder wachtwoord in te loggen',
