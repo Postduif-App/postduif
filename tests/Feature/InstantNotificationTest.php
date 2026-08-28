@@ -141,3 +141,26 @@ it('changes the channel override through the endpoint', function () {
 
     expect($channel->members()->find($reader->id)->pivot->instant_notifications)->toBeNull();
 });
+
+/**
+ * A missing translation key does not throw — __() just echoes the key back —
+ * so a push notification with an untranslated subject or body slips through
+ * every test above, which only checks that a notification was sent, not what
+ * it says. This renders the actual content, in both locales this application
+ * ships, and would have caught notifications.instant.* going missing.
+ */
+it('renders a translated subject and body, not a raw translation key', function (string $locale) {
+    app()->setLocale($locale);
+
+    $workspace = Workspace::factory()->create();
+    $channel = Channel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'algemeen']);
+    $reader = User::factory()->create();
+
+    $notification = new NewChannelMessage($workspace, $channel, 'Anna', mentioned: false);
+
+    $push = $notification->toWebPush($reader);
+
+    expect($push->title)->not->toContain('notifications.instant')
+        ->and($push->body)->not->toContain('notifications.instant')
+        ->and($push->body)->toContain('Anna');
+})->with(['nl', 'en']);

@@ -57,6 +57,12 @@ return [
         'subject' => ':inviter nodigt je uit voor :workspace',
     ],
 
+    'instant' => [
+        'subject_mention' => 'Genoemd in :channel',
+        'subject_message' => 'Nieuw bericht in :channel',
+        'body' => ':author stuurde een bericht',
+    ],
+
     'test_push' => [
         'title' => 'Postduif',
         'body' => 'Als je dit ziet, werken browsermeldingen op dit apparaat.',

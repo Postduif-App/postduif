@@ -43,6 +43,12 @@ return [
         'subject' => ':inviter is inviting you to :workspace',
     ],
 
+    'instant' => [
+        'subject_mention' => 'Mentioned in :channel',
+        'subject_message' => 'New message in :channel',
+        'body' => ':author sent a message',
+    ],
+
     'test_push' => [
         'title' => 'Postduif',
         'body' => 'If you can see this, browser notifications work on this device.',
