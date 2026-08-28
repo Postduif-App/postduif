@@ -49,9 +49,18 @@ return [
                  * `wsPath`, and this one — the HTTP API we publish through —
                  * with the `path` the Pusher SDK prepends to its base URL.
                  * Leave it empty and events go to a route that answers 404.
+                 *
+                 * The trailing slash is not decorative: the Pusher SDK feeds
+                 * this straight into Guzzle as `base_uri`, and RFC 3986's
+                 * merge rule drops the last path segment of a base that does
+                 * not end in `/` before appending the relative request path.
+                 * Without it, "/reverb" + "apps/{id}/events" resolves to
+                 * "/apps/{id}/events" — "reverb" vanishes and the request
+                 * lands back on this application's own 404 page instead of
+                 * nginx's `/reverb/` proxy.
                  */
                 'path' => filled(env('REVERB_SERVER_PATH'))
-                    ? '/'.trim((string) env('REVERB_SERVER_PATH'), '/')
+                    ? '/'.trim((string) env('REVERB_SERVER_PATH'), '/').'/'
                     : '',
             ],
             'client_options' => [
