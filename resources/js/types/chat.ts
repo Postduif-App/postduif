@@ -31,8 +31,6 @@ export interface ChatWorkspace {
     /** Whether this member may use @here and @everyone. */
     canBroadcastMention: boolean;
     canManage: boolean;
-    /** Whether this member may open the ledenlijst in the workspace settings. */
-    canManageMembers: boolean;
     /** Whether this member may bring people in, as a member or as a guest. */
     canInvite: boolean;
     /**

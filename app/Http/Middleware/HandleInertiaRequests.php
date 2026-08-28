@@ -8,7 +8,6 @@ use App\Enums\PlatformEdition;
 use App\Enums\WorkspaceAbility;
 use App\Enums\WorkspaceFont;
 use App\Features\Contracts as ContractsFeature;
-use App\Support\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Lang;
@@ -67,29 +66,6 @@ class HandleInertiaRequests extends Middleware
         return $lines;
     }
 
-    /**
-     * The member behind an impersonated session, as the bar needs them.
-     *
-     * A name and nothing else. The impersonator's own record has no business
-     * travelling to a browser that is currently signed in as somebody else —
-     * what the bar has to say is "je bent eigenlijk Sebastiaan", and that is
-     * one string.
-     *
-     * @return array{name: string}|null
-     */
-    private function impersonator(): ?array
-    {
-        $impersonation = app(Impersonation::class);
-
-        if (! $impersonation->isActive()) {
-            return null;
-        }
-
-        $impersonator = $impersonation->impersonator();
-
-        return $impersonator === null ? null : ['name' => $impersonator->name];
-    }
-
     public function share(Request $request): array
     {
         /*
@@ -135,20 +111,6 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 /*
-                 * Who is really sitting there, when it is not the person above.
-                 *
-                 * Shared rather than left to a page, because the bar it draws
-                 * has to be on every screen at once: an impersonated session
-                 * looks exactly like an ordinary one, and the one thing that
-                 * must never happen is somebody forgetting they are somebody
-                 * else and writing a message as them.
-                 *
-                 * Null in the ordinary case, which is also what keeps this
-                 * free: it is a session lookup and no query at all until an
-                 * impersonation is actually running.
-                 */
-                'impersonator' => $this->impersonator(),
-                /*
                  * Beside the user rather than appended to it: an appended
                  * attribute rides along on every serialisation of a user,
                  * including the admin panel's lists, and this is only ever
@@ -167,14 +129,6 @@ class HandleInertiaRequests extends Middleware
                 // refuses to open.
                 'canManageWorkspace' => $role?->allows(WorkspaceAbility::ManageWorkspace) ?? false,
                 'canInviteToWorkspace' => $role?->allows(WorkspaceAbility::InviteMembers) ?? false,
-                /*
-                 * Whether the ledenlijst is theirs to open. Its own flag beside
-                 * the two above and for the same reason they are separate: a
-                 * role may arrange who comes and goes without running the
-                 * workspace, and one that invites people is not thereby allowed
-                 * to show them the door.
-                 */
-                'canManageMembers' => $role?->allows(WorkspaceAbility::ManageMembers) ?? false,
                 /*
                  * Whether the features screen is theirs to open. Its own flag
                  * rather than folded into canManageWorkspace, because it is the

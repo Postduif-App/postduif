@@ -36,12 +36,6 @@ export type Auth = {
     /** The signed-in member's own face, or null when they set none. */
     avatarUrl: string | null;
     /**
-     * Who is really sitting there, when `user` above is somebody they stepped
-     * into. Null in every ordinary session, which is what the bar over the
-     * application checks — see impersonation-banner.
-     */
-    impersonator: { name: string } | null;
-    /**
      * The workspace the settings screens act on, and the way back to the chat.
      * Null for somebody who belongs to none yet.
      */
@@ -50,13 +44,6 @@ export type Auth = {
     canManageWorkspace: boolean;
     /** Whether they may bring people in, which is a separate screen. */
     canInviteToWorkspace: boolean;
-    /**
-     * Whether they may open the ledenlijst: change somebody's role, set a
-     * guest's channels, remove somebody. Separate from both flags above —
-     * arranging who belongs here is not the same as running the place, nor the
-     * same as inviting.
-     */
-    canManageMembers: boolean;
     /**
      * Whether they may switch parts of the product on and off. The one
      * workspace screen managing the place does not come with: it is seeded to

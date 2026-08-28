@@ -117,6 +117,10 @@ export default function SettingsLayout({
                       href: editWorkspaceMailTexts(),
                   },
                   {
+                      title: t('settings.nav.members'),
+                      href: workspaceMembers(),
+                  },
+                  {
                       title: t('settings.nav.channels'),
                       href: workspaceChannels(),
                   },
@@ -160,21 +164,6 @@ export default function SettingsLayout({
                   {
                       title: t('settings.nav.features'),
                       href: editWorkspaceFeatures(),
-                  },
-              ]
-            : []),
-        /*
-         * Outside the block as well, and for the reason the two below it are:
-         * arranging who belongs here is its own right, so a workspace can hand
-         * the ledenlijst to somebody who does not run the place. Whoever does
-         * run it holds the right anyway, so the link stays where it was for
-         * them.
-         */
-        ...(auth.canManageMembers
-            ? [
-                  {
-                      title: t('settings.nav.members'),
-                      href: workspaceMembers(),
                   },
               ]
             : []),

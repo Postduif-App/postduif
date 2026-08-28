@@ -344,7 +344,6 @@ function WorkspaceMenu({
     if (
         !workspace.canInvite &&
         !workspace.canManage &&
-        !workspace.canManageMembers &&
         elsewhere.length === 0
     ) {
         return compact ? (
@@ -396,26 +395,21 @@ function WorkspaceMenu({
                         {t('sidebar.workspace.invite')}
                     </DropdownMenuItem>
                 )}
-                {/*
-                    Two questions where there was one: administering the members
-                    is its own right now, so a role can have the ledenlijst
-                    without the settings screen behind it.
-                */}
-                {workspace.canManageMembers && (
-                    <DropdownMenuItem asChild>
-                        <Link href={workspaceMembers()}>
-                            <Users className="mr-2 size-4" />
-                            {t('sidebar.workspace.members')}
-                        </Link>
-                    </DropdownMenuItem>
-                )}
                 {workspace.canManage && (
-                    <DropdownMenuItem asChild>
-                        <Link href={workspaceSettings()}>
-                            <Settings className="mr-2 size-4" />
-                            {t('sidebar.workspace.settings')}
-                        </Link>
-                    </DropdownMenuItem>
+                    <>
+                        <DropdownMenuItem asChild>
+                            <Link href={workspaceMembers()}>
+                                <Users className="mr-2 size-4" />
+                                {t('sidebar.workspace.members')}
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                            <Link href={workspaceSettings()}>
+                                <Settings className="mr-2 size-4" />
+                                {t('sidebar.workspace.settings')}
+                            </Link>
+                        </DropdownMenuItem>
+                    </>
                 )}
 
                 {/*
@@ -427,9 +421,7 @@ function WorkspaceMenu({
                 */}
                 {elsewhere.length > 0 && (
                     <>
-                        {(workspace.canInvite ||
-                            workspace.canManage ||
-                            workspace.canManageMembers) && (
+                        {(workspace.canInvite || workspace.canManage) && (
                             <DropdownMenuSeparator />
                         )}
                         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

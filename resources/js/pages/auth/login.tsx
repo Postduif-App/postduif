@@ -108,40 +108,57 @@ export default function Login({
                                 />
                             </div>
 
-                            <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">
-                                        {t('auth_screens.fields.password')}
-                                    </Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                        >
-                                            {t(
-                                                'auth_screens.login.forgot_password',
-                                            )}
-                                        </TextLink>
-                                    )}
+                            {/*
+                                Grid-placed rather than the label/link row
+                                that used to sit above the input: that put
+                                the forgot-password link before the password
+                                field in document order, so tabbing out of
+                                email landed on the link instead of the
+                                field it's meant to help you into. The link
+                                now comes after the input in the markup and
+                                is only pulled back up next to the label
+                                visually, via its grid position — which,
+                                unlike a positive tabIndex, doesn't change
+                                where it falls in the tab order.
+                            */}
+                            <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-2">
+                                <Label
+                                    htmlFor="password"
+                                    className="col-start-1 row-start-1"
+                                >
+                                    {t('auth_screens.fields.password')}
+                                </Label>
+                                <div className="col-span-2 row-start-2">
+                                    <PasswordInput
+                                        id="password"
+                                        name="password"
+                                        required
+                                        autoComplete="current-password"
+                                        placeholder={t(
+                                            'auth_screens.fields.password',
+                                        )}
+                                        aria-invalid={Boolean(errors.password)}
+                                        aria-describedby={
+                                            errors.password
+                                                ? 'password-error'
+                                                : undefined
+                                        }
+                                    />
                                 </div>
-                                <PasswordInput
-                                    id="password"
-                                    name="password"
-                                    required
-                                    autoComplete="current-password"
-                                    placeholder={t(
-                                        'auth_screens.fields.password',
-                                    )}
-                                    aria-invalid={Boolean(errors.password)}
-                                    aria-describedby={
-                                        errors.password
-                                            ? 'password-error'
-                                            : undefined
-                                    }
-                                />
+                                {canResetPassword && (
+                                    <TextLink
+                                        href={request()}
+                                        className="col-start-2 row-start-1 justify-self-end text-sm"
+                                    >
+                                        {t(
+                                            'auth_screens.login.forgot_password',
+                                        )}
+                                    </TextLink>
+                                )}
                                 <InputError
                                     id="password-error"
                                     message={errors.password}
+                                    className="col-span-2 row-start-3"
                                 />
                             </div>
 

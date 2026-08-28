@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Settings;
 use App\Actions\Workspace\RemoveWorkspaceMember;
 use App\Actions\Workspace\RestrictGuestChannelAccess;
 use App\Actions\Workspace\SyncGuestChannels;
-use App\Concerns\ProfileValidationRules;
 use App\Concerns\ResolvesCurrentWorkspace;
 use App\Enums\ChannelType;
 use App\Enums\WorkspaceAbility;
@@ -24,7 +23,6 @@ use Inertia\Response;
 
 class WorkspaceMemberController extends Controller
 {
-    use ProfileValidationRules;
     use ResolvesCurrentWorkspace;
 
     /**
@@ -32,13 +30,7 @@ class WorkspaceMemberController extends Controller
      */
     public function index(Request $request): Response
     {
-        /*
-         * The gate for this whole screen, and the reason every method here
-         * names it: the trait authorises "manage" unless told otherwise, which
-         * is what administering the ledenlijst used to be. It is its own right
-         * now — see WorkspaceAbility::ManageMembers.
-         */
-        $workspace = $this->currentWorkspace($request, 'manageMembers');
+        $workspace = $this->currentWorkspace($request);
         $viewer = $request->user();
 
         $guestChannelIds = $this->guestChannelIds($workspace);
@@ -128,17 +120,8 @@ class WorkspaceMemberController extends Controller
                     // about owners and about editing your own row live in one
                     // place, and the interface only renders the answer.
                     'canChangeRole' => $viewer->can('updateMemberRole', [$workspace, $member]),
-                    'canChangeHandle' => $viewer->can('updateMemberHandle', [$workspace, $member]),
                     'canRemove' => $viewer->can('removeMember', [$workspace, $member]),
                     'canManageChannels' => $viewer->can('manageGuestChannels', [$workspace, $member]),
-                    /*
-                     * Its own question rather than a consequence of any of the
-                     * three above: stepping into somebody's account is a right
-                     * of its own, and a workspace may well have somebody who
-                     * arranges roles without ever being allowed to read a
-                     * colleague's messages. See WorkspaceAbility for the split.
-                     */
-                    'canImpersonate' => $viewer->can('impersonate', [$workspace, $member]),
                 ])
                 /*
                  * Sorted by standing rather than alphabetically: whoever runs
@@ -169,7 +152,7 @@ class WorkspaceMemberController extends Controller
         User $user,
         RestrictGuestChannelAccess $restrictChannelAccess,
     ): RedirectResponse {
-        $workspace = $this->currentWorkspace($request, 'manageMembers');
+        $workspace = $this->currentWorkspace($request);
 
         $this->authorize('updateMemberRole', [$workspace, $user]);
 
@@ -218,60 +201,12 @@ class WorkspaceMemberController extends Controller
         ]));
     }
 
-    /**
-     * Give somebody a different handle.
-     *
-     * Its own route rather than a second field on update(), for the reason the
-     * guest channels are: a role dropdown that could also rename somebody would
-     * make one careless save do two things.
-     *
-     * A handle belongs to the account, not to this membership — see
-     * WorkspacePolicy::updateMemberHandle for what that means for the messages
-     * that already name the old one.
-     */
-    public function updateHandle(Request $request, User $user): RedirectResponse
-    {
-        $workspace = $this->currentWorkspace($request, 'manageMembers');
-
-        $this->authorize('updateMemberHandle', [$workspace, $user]);
-
-        /*
-         * Lowercased before the rules see it rather than refused for a capital.
-         * Handles are stored and looked up in lowercase — see
-         * RecordMentions::normalise — so "Fenna" and "fenna" were never two
-         * handles, and telling somebody so with a validation error would be a
-         * rule about their typing rather than about the handle.
-         */
-        $request->merge([
-            'username' => mb_strtolower(trim((string) $request->input('username'))),
-        ]);
-
-        /*
-         * Its own sentence per rule, because "the username format is invalid"
-         * is Laravel's default here and leaves somebody guessing at which of
-         * the four things they got wrong.
-         */
-        $validated = $request->validate(['username' => $this->handleRules($user->id)], [
-            'username.regex' => __('requests.member.handle_shape'),
-            'username.max' => __('requests.member.handle_long'),
-            'username.unique' => __('requests.member.handle_taken'),
-            'username.not_in' => __('requests.member.handle_reserved'),
-        ]);
-
-        $user->update(['username' => $validated['username']]);
-
-        return back()->with('status', __('flashes.member.handle_changed', [
-            'name' => $user->name,
-            'handle' => $validated['username'],
-        ]));
-    }
-
     public function destroy(
         Request $request,
         User $user,
         RemoveWorkspaceMember $removeMember,
     ): RedirectResponse {
-        $workspace = $this->currentWorkspace($request, 'manageMembers');
+        $workspace = $this->currentWorkspace($request);
 
         $this->authorize('removeMember', [$workspace, $user]);
 
@@ -293,7 +228,7 @@ class WorkspaceMemberController extends Controller
         User $user,
         SyncGuestChannels $syncGuestChannels,
     ): RedirectResponse {
-        $workspace = $this->currentWorkspace($request, 'manageMembers');
+        $workspace = $this->currentWorkspace($request);
 
         $this->authorize('manageGuestChannels', [$workspace, $user]);
 

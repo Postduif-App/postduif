@@ -1,20 +1,6 @@
 <?php
 
 return [
-    /*
-     * Being somebody else for a while. First in this file because it is the one
-     * thing here that is drawn over every screen in the application rather than
-     * on a settings page of its own.
-     */
-    'impersonation' => [
-        'banner' => 'You are signed in as :name',
-        'aside' => 'Really :name',
-        'stop' => 'Back to myself',
-        // What the doors that stay shut answer with. Says which door and why,
-        // because "403" on the security page reads as a bug.
-        'refused' => 'This cannot be done while you are signed in as somebody else. Stop first, and try again as yourself.',
-    ],
-
     'delete' => [
         'title' => 'Delete account',
         'description' => 'Your account and everything attached to it',
