@@ -346,6 +346,13 @@ export interface ScheduledHuddle {
 
 export interface ActiveChannel extends ChannelSummary {
     /**
+     * This member's own override for instant push on this channel: true or
+     * false when they set it here, null when they never touched it and the
+     * account-wide default in the notification settings decides instead.
+     * Meaningless while `mutedUntil` is set — a mute wins over either.
+     */
+    instantNotifications: boolean | null;
+    /**
      * How the conversation is drawn. Not the same question as `type`, which
      * says who may see the channel — a feed can be private.
      */

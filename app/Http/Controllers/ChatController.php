@@ -202,6 +202,11 @@ class ChatController extends Controller
                 // Their own decision and nobody else's, so it travels with the
                 // channel rather than with its settings.
                 'mutedUntil' => $this->mutedUntil($channel, $user),
+                // This member's own override for instant push on this
+                // channel — null when they never touched it, which is the
+                // browser's cue to say "volgt je accountinstelling".
+                'instantNotifications' => $channel->loadMissing('members')
+                    ->membershipFor($user)?->instant_notifications,
                 'isFavorite' => $channel->loadMissing('members')
                     ->membershipFor($user)?->favorited_at !== null,
                 'postingPolicy' => $channel->posting_policy->value,

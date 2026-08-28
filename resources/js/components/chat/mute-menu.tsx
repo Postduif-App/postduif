@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, Check, Zap } from 'lucide-react';
 
 import {
     DropdownMenu,
@@ -17,7 +17,7 @@ import {
 import { useFormats } from '@/hooks/use-formats';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
-import { mute, unmute } from '@/routes/chat/channels';
+import { instantNotifications, mute, unmute } from '@/routes/chat/channels';
 import type { ActiveChannel, ChatWorkspace } from '@/types/chat';
 import type { TranslationKey } from '@/types/translations';
 
@@ -55,17 +55,31 @@ export function MuteMenu({
     const formats = useFormats();
     const { t } = useTranslate();
     const muted = channel.mutedUntil !== null;
+    // Meaningless while muted — a mute wins over it either way — so only read
+    // once we know the channel is not quiet.
+    const instantActive = !muted && channel.instantNotifications === true;
     const target = { workspace: workspace.slug, channel: channel.id };
 
-    const label = !muted
-        ? t('chat_ui.mute.action')
-        : channel.mutedUntil === 'forever'
-          ? t('chat_ui.mute.until_forever')
-          : t('chat_ui.mute.until', {
-                moment: formats.dayTime.format(
-                    new Date(channel.mutedUntil as string),
-                ),
-            });
+    const label = muted
+        ? channel.mutedUntil === 'forever'
+            ? t('chat_ui.mute.until_forever')
+            : t('chat_ui.mute.until', {
+                  moment: formats.dayTime.format(
+                      new Date(channel.mutedUntil as string),
+                  ),
+              })
+        : instantActive
+          ? t('chat_ui.mute.instant_active')
+          : t('chat_ui.mute.action');
+
+    const setInstant = (value: boolean | null) =>
+        router.put(
+            instantNotifications.url(target),
+            // Absent rather than null: the endpoint reads a missing field as
+            // "follow the account default".
+            value === null ? {} : { instant: value },
+            { preserveScroll: true },
+        );
 
     return (
         <DropdownMenu>
@@ -77,13 +91,19 @@ export function MuteMenu({
                             aria-label={label}
                             className={cn(
                                 'rounded-md border p-1.5 transition-colors hover:bg-muted hover:text-foreground',
-                                muted
-                                    ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
-                                    : 'text-muted-foreground',
+                                muted &&
+                                    'border-amber-500/40 text-amber-600 dark:text-amber-400',
+                                instantActive &&
+                                    'border-sky-500/40 text-sky-600 dark:text-sky-400',
+                                !muted &&
+                                    !instantActive &&
+                                    'text-muted-foreground',
                             )}
                         >
                             {muted ? (
                                 <BellOff className="size-3.5" />
+                            ) : instantActive ? (
+                                <Zap className="size-3.5" />
                             ) : (
                                 <Bell className="size-3.5" />
                             )}
@@ -114,6 +134,32 @@ export function MuteMenu({
                     </>
                 ) : (
                     <>
+                        <DropdownMenuLabel className="font-normal text-muted-foreground">
+                            {t('chat_ui.mute.instant_heading')}
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onSelect={() => setInstant(true)}
+                        >
+                            {channel.instantNotifications === true ? (
+                                <Check className="size-4" />
+                            ) : (
+                                <span className="size-4" />
+                            )}
+                            {t('chat_ui.mute.instant_all')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onSelect={() => setInstant(null)}
+                        >
+                            {channel.instantNotifications === null ? (
+                                <Check className="size-4" />
+                            ) : (
+                                <span className="size-4" />
+                            )}
+                            {t('chat_ui.mute.instant_default')}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuLabel className="font-normal text-muted-foreground">
                             {t('chat_ui.mute.heading')}
                         </DropdownMenuLabel>

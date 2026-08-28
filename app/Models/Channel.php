@@ -77,7 +77,7 @@ class Channel extends Model
     {
         return $this->belongsToMany(User::class)
             ->using(ChannelMembership::class)
-            ->withPivot(['last_read_message_id', 'last_read_at', 'last_notified_message_id', 'muted_at', 'muted_until', 'favorited_at', 'joined_at', 'hidden_at', 'hidden_message_id'])
+            ->withPivot(['last_read_message_id', 'last_read_at', 'last_notified_message_id', 'muted_at', 'muted_until', 'instant_notifications', 'favorited_at', 'joined_at', 'hidden_at', 'hidden_message_id'])
             ->withTimestamps();
     }
 

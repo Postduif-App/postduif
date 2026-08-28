@@ -38,6 +38,7 @@ class NotificationController extends Controller
                 'viaMail' => $user->notify_via_mail,
                 'viaPushover' => $user->notify_via_pushover,
                 'viaPush' => $user->notify_via_push,
+                'instantlyByDefault' => $user->notify_instantly_by_default,
                 // The key itself never travels back to the browser — it is a
                 // credential. Whether one is set is all the form needs to know
                 // to show "ingesteld" rather than an empty box.
@@ -75,6 +76,7 @@ class NotificationController extends Controller
             'via_mail' => ['boolean'],
             'via_pushover' => ['boolean'],
             'via_push' => ['boolean'],
+            'instantly_by_default' => ['boolean'],
             'pushover_user_key' => ['nullable', 'string', 'max:255'],
         ], [
             'notify_after_minutes.in' => __('requests.notifications.invalid_window'),
@@ -88,6 +90,7 @@ class NotificationController extends Controller
         $user->notify_via_mail = $validated['via_mail'] ?? false;
         $user->notify_via_pushover = $validated['via_pushover'] ?? false;
         $user->notify_via_push = $validated['via_push'] ?? false;
+        $user->notify_instantly_by_default = $validated['instantly_by_default'] ?? false;
 
         // An absent field leaves the key alone: the form cannot show it, so it
         // cannot send it back, and treating "not sent" as "cleared" would wipe

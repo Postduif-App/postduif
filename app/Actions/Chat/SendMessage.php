@@ -20,6 +20,7 @@ class SendMessage
         private readonly RecordThreadInbox $recordThreadInbox,
         private readonly MarkChannelRead $markChannelRead,
         private readonly QueueLinkPreviews $queueLinkPreviews,
+        private readonly NotifyInstantSubscribers $notifyInstantSubscribers,
     ) {}
 
     /**
@@ -222,7 +223,7 @@ class SendMessage
                 $this->markChannelRead->handle($channel, $member, $message->id);
             }
 
-            $this->notifyMembers($channel, $member, $parentId !== null, $mentioned);
+            $this->notifyMembers($channel, $message, $member, $parentId !== null, $mentioned);
 
             $message->load(['author', 'quoted.author']);
 
@@ -255,21 +256,32 @@ class SendMessage
      */
     private function notifyMembers(
         Channel $channel,
+        Message $message,
         ?User $member,
         bool $isReply,
         Collection $mentioned,
     ): void {
+        // Fetched whole rather than plucked, unlike before: the instant push
+        // below has to read each recipient's mute and notification pivot,
+        // which an id alone cannot answer.
         $recipients = $channel->members()
             ->when($member, fn ($members) => $members->whereKeyNot($member->id))
-            ->pluck('users.id');
+            ->get();
 
-        foreach ($recipients as $userId) {
+        foreach ($recipients as $user) {
             ChannelActivity::dispatch(
-                $userId,
+                $user->id,
                 $channel->id,
                 $isReply,
-                $mentioned->contains($userId),
+                $mentioned->contains($user->id),
             );
         }
+
+        $this->notifyInstantSubscribers->handle(
+            $channel,
+            $member !== null ? $member->name : ($message->bot_name ?? ''),
+            $recipients,
+            $mentioned,
+        );
     }
 }

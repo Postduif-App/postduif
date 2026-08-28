@@ -96,6 +96,8 @@ return [
         'duration_hours' => ':count hours',
         'duration_day' => 'a day',
         'summary_hint' => 'You get one summary per workspace, with only the channels where something happened.',
+        'instant_by_default' => 'Notify me right away for every message',
+        'instant_by_default_hint' => 'Instead of waiting for the summary above. Applies to every channel, unless you set that channel differently with the bell in the conversation.',
         'where' => 'Where do you want to hear it?',
         'mail' => 'Email',
         'mail_hint' => 'To the address on your account.',

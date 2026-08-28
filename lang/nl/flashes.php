@@ -19,6 +19,7 @@ return [
         'unmuted' => 'Meldingen voor dit kanaal staan weer aan.',
         'muted' => 'Meldingen voor dit kanaal staan uit.',
         'muted_until' => 'Meldingen voor dit kanaal staan uit tot :time.',
+        'notifications_updated' => 'Instelling voor meldingen bij dit kanaal opgeslagen.',
         'forwarded' => 'Doorgestuurd naar #:name.',
         'archived' => '#:name is gearchiveerd.',
         'reopened' => '#:name is weer open.',

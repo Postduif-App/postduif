@@ -75,6 +75,10 @@ return [
         'until_forever' => 'Gedempt totdat je het weer aanzet',
         'unmute' => 'Meldingen weer aanzetten',
         'heading' => 'Dit kanaal stil houden',
+        'instant_active' => 'Meteen een melding voor alles',
+        'instant_heading' => 'Meldingen voor dit kanaal',
+        'instant_all' => 'Alles, meteen',
+        'instant_default' => 'Standaard (na afwezigheid)',
 
         /*
          * How long quiet lasts, said in the way somebody decides it. Keyed by

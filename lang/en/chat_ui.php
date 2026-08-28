@@ -66,6 +66,10 @@ return [
         'until_forever' => 'Muted until you switch it back on',
         'unmute' => 'Switch notifications back on',
         'heading' => 'Keep this channel quiet',
+        'instant_active' => 'Notified right away for everything',
+        'instant_heading' => 'Notifications for this channel',
+        'instant_all' => 'Everything, right away',
+        'instant_default' => 'Default (after being away)',
 
         'duration' => [
             'hour' => 'An hour',

@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $last_notified_message_id
  * @property Carbon|null $muted_at
  * @property Carbon|null $muted_until
+ * @property bool|null $instant_notifications
  * @property Carbon|null $favorited_at
  * @property Carbon|null $joined_at
  * @property Carbon|null $hidden_at
@@ -43,6 +44,20 @@ class ChannelMembership extends Pivot
         return $this->muted_until === null || $this->muted_until->isFuture();
     }
 
+    /**
+     * Whether this member should be pushed the moment something happens here,
+     * rather than waiting for the away summary.
+     *
+     * The column is a member's own override for this one channel; null means
+     * they never touched it, and the account-wide default speaks instead. A
+     * mute always wins over either — see the caller, which checks isMuted()
+     * before this.
+     */
+    public function wantsInstantNotifications(User $user): bool
+    {
+        return $this->instant_notifications ?? $user->notify_instantly_by_default;
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -50,6 +65,7 @@ class ChannelMembership extends Pivot
             'last_read_at' => 'datetime',
             'muted_at' => 'datetime',
             'muted_until' => 'datetime',
+            'instant_notifications' => 'boolean',
             'favorited_at' => 'datetime',
             'joined_at' => 'datetime',
             'hidden_at' => 'datetime',

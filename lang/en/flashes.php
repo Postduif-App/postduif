@@ -19,6 +19,7 @@ return [
         'unmuted' => 'Notifications for this channel are back on.',
         'muted' => 'Notifications for this channel are off.',
         'muted_until' => 'Notifications for this channel are off until :time.',
+        'notifications_updated' => 'Notification setting for this channel saved.',
         'forwarded' => 'Forwarded to #:name.',
         'archived' => '#:name has been archived.',
         'reopened' => '#:name is open again.',

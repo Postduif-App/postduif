@@ -7,6 +7,7 @@ use App\Http\Controllers\BroadcastMessageController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\ChannelFavoriteController;
 use App\Http\Controllers\ChannelFormController;
+use App\Http\Controllers\ChannelInstantNotificationController;
 use App\Http\Controllers\ChannelLinkController;
 use App\Http\Controllers\ChannelLinkWorkflowController;
 use App\Http\Controllers\ChannelMemberController;
@@ -666,6 +667,13 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
 
             Route::post('c/{channel}/mute', [ChannelMuteController::class, 'store'])->name('channels.mute');
             Route::delete('c/{channel}/mute', [ChannelMuteController::class, 'destroy'])->name('channels.unmute');
+
+            /*
+             * Whether this channel pushes right away for this member — the
+             * opposite of muting it, and stored on the same membership row.
+             */
+            Route::put('c/{channel}/instant-notifications', [ChannelInstantNotificationController::class, 'update'])
+                ->name('channels.instant-notifications');
             Route::get('c/{channel}/members', [ChannelMemberController::class, 'index'])->name('channels.members.index');
             Route::post('c/{channel}/members', [ChannelMemberController::class, 'store'])->name('channels.members.store');
             Route::delete('c/{channel}/members', [ChannelMemberController::class, 'destroy'])->name('channels.members.destroy');

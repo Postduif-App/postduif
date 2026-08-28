@@ -42,6 +42,8 @@ interface NotificationsProps {
         viaMail: boolean;
         viaPushover: boolean;
         viaPush: boolean;
+        /** The account-wide default for channels nobody has set by hand. */
+        instantlyByDefault: boolean;
         /** The key itself never leaves the server; this is all the form knows. */
         hasPushoverKey: boolean;
     };
@@ -70,6 +72,9 @@ export default function Notifications({
     const [viaMail, setViaMail] = useState(preferences.viaMail);
     const [viaPushover, setViaPushover] = useState(preferences.viaPushover);
     const [viaPush, setViaPush] = useState(preferences.viaPush);
+    const [instantlyByDefault, setInstantlyByDefault] = useState(
+        preferences.instantlyByDefault,
+    );
     const [editingKey, setEditingKey] = useState(!preferences.hasPushoverKey);
     const { t } = useTranslate();
 
@@ -144,6 +149,39 @@ export default function Notifications({
                                     message={errors.notify_after_minutes}
                                 />
                             </div>
+
+                            {/*
+                                Its own row rather than inside the fieldset
+                                below: that one dims with the threshold above,
+                                but this is the alternative to waiting for the
+                                threshold at all, so it has to stay usable
+                                whatever "after" is set to.
+                            */}
+                            <label className={CHOICE_ROW}>
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5"
+                                    checked={instantlyByDefault}
+                                    onChange={(event) =>
+                                        setInstantlyByDefault(
+                                            event.target.checked,
+                                        )
+                                    }
+                                />
+                                <ChoiceText
+                                    title={t(
+                                        'settings.notifications.instant_by_default',
+                                    )}
+                                    hint={t(
+                                        'settings.notifications.instant_by_default_hint',
+                                    )}
+                                />
+                            </label>
+                            <input
+                                type="hidden"
+                                name="instantly_by_default"
+                                value={instantlyByDefault ? 1 : 0}
+                            />
 
                             {/*
                                 Dimmed as a whole while nothing is being sent,

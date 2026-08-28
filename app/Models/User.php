@@ -47,6 +47,7 @@ use Laravel\Passport\HasApiTokens;
  * @property bool $notify_via_mail
  * @property bool $notify_via_pushover
  * @property bool $notify_via_push
+ * @property bool $notify_instantly_by_default
  * @property string|null $pushover_user_key
  * @property string $password
  * @property string|null $two_factor_secret
@@ -155,6 +156,7 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
             'notify_via_mail' => 'boolean',
             'notify_via_pushover' => 'boolean',
             'notify_via_push' => 'boolean',
+            'notify_instantly_by_default' => 'boolean',
             // A credential for somebody's own device. Encrypted rather than
             // hashed: unlike a password it has to be sent onwards to Pushover,
             // so it must be readable — just not by reading the table.
@@ -224,6 +226,24 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference,
         }
 
         return $this->notify_via_mail || $this->wantsPushover() || $this->wantsWebPush();
+    }
+
+    /**
+     * Whether this member can be pushed the moment something happens, setting
+     * aside whether any particular channel asked for it.
+     *
+     * Mail is deliberately left out: an instant notification fires once per
+     * message, and a mailbox that buzzed on every line in a busy channel is
+     * exactly what the away summary exists to avoid instead. Only the two
+     * direct-to-device channels are instant — mail stays on the schedule.
+     */
+    public function wantsInstantPush(): bool
+    {
+        if (! $this->availability->allowsNotifications()) {
+            return false;
+        }
+
+        return $this->wantsPushover() || $this->wantsWebPush();
     }
 
     /**

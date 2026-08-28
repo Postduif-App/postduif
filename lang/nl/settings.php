@@ -105,6 +105,8 @@ return [
         'duration_hours' => ':count uur',
         'duration_day' => 'een dag',
         'summary_hint' => 'Je krijgt één samenvatting per workspace, met alleen de kanalen waar iets gebeurd is.',
+        'instant_by_default' => 'Stuur meteen een melding voor elk bericht',
+        'instant_by_default_hint' => 'In plaats van te wachten op de samenvatting hierboven. Geldt voor elk kanaal, tenzij je dat kanaal zelf anders instelt via het belletje in het gesprek.',
         'where' => 'Waar wil je het horen?',
         'mail' => 'E-mail',
         'mail_hint' => 'Naar het adres van je account.',
