@@ -1023,7 +1023,15 @@ export function ChannelSidebar({
 
             {inSheet && <WorkspaceToolLinks {...tools} />}
 
-            <ScrollArea className="flex-1 px-2 pb-4">
+            {/*
+                min-h-0 alongside flex-1: without it this scroll area's
+                height tracks its content instead of the column's available
+                space, so a long enough channel list grows past the aside's
+                h-full box rather than scrolling inside it — taking the user
+                menu footer below it out of the viewport. Same shape of bug
+                as WorkspaceRail's tool list.
+            */}
+            <ScrollArea className="min-h-0 flex-1 px-2 pb-4">
                 {favorites.length > 0 && (
                     <>
                         <SectionHeading>
