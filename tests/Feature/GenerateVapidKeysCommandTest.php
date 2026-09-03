@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Artisan;
 
 /**
@@ -61,22 +60,31 @@ test('it leaves the environment file untouched', function () {
 })->skip(fn () => ! file_exists(base_path('.env')), 'Geen .env in deze omgeving.');
 
 /*
- * Written through Env's own repository rather than putenv(), and restoring what
- * was there rather than clearing it. env() reads $_ENV before the process
- * environment, so on a machine whose .env actually holds a VAPID pair — which
- * is every machine where the feature has been set up — putenv() would be
- * silently outvoted and the test would assert against the developer's real
- * keys.
+ * Written to putenv(), $_ENV and $_SERVER together, and restoring what was
+ * there rather than clearing it. env() reads $_SERVER before $_ENV and the
+ * process environment, so setting fewer than all three leaves the door open
+ * to whichever of them a machine's own boot already populated winning over
+ * the override — which is exactly what happens to every worker under the
+ * parallel test runner: they inherit .env's real VAPID pair from the
+ * orchestrator process that loaded it before forking them, and a partial
+ * override would silently assert against that borrowed value instead of the
+ * one this test sets.
  */
 test('the configuration reads the environment', function () {
-    $repository = Env::getRepository();
-
     $restore = collect(['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'])
-        ->mapWithKeys(fn (string $key): array => [$key => $repository->get($key)]);
+        ->mapWithKeys(fn (string $key): array => [$key => $_SERVER[$key] ?? null]);
 
-    $repository->set('VAPID_PUBLIC_KEY', 'public-half');
-    $repository->set('VAPID_PRIVATE_KEY', 'private-half');
-    $repository->set('VAPID_SUBJECT', 'mailto:beheerder@example.test');
+    $override = [
+        'VAPID_PUBLIC_KEY' => 'public-half',
+        'VAPID_PRIVATE_KEY' => 'private-half',
+        'VAPID_SUBJECT' => 'mailto:beheerder@example.test',
+    ];
+
+    foreach ($override as $key => $value) {
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+    }
 
     try {
         $services = require config_path('services.php');
@@ -87,8 +95,15 @@ test('the configuration reads the environment', function () {
             'subject' => 'mailto:beheerder@example.test',
         ]);
     } finally {
-        $restore->each(fn (?string $value, string $key) => $value === null
-            ? $repository->clear($key)
-            : $repository->set($key, $value));
+        $restore->each(function (?string $value, string $key) {
+            if ($value === null) {
+                putenv($key);
+                unset($_ENV[$key], $_SERVER[$key]);
+            } else {
+                putenv("{$key}={$value}");
+                $_ENV[$key] = $value;
+                $_SERVER[$key] = $value;
+            }
+        });
     }
 });

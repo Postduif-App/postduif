@@ -8,8 +8,8 @@ use GuzzleHttp\Psr7\Response;
  * The button that proves web push works, which is the one part of the feature
  * that cannot be proven any other way from the server side.
  *
- * Uses fakePushService() from WebPushNotificationTest, but carries its own key
- * pairs: the library encrypts against them for real, and the factory's random
+ * Uses the shared fakePushService() from tests/Pest.php, but carries its own
+ * key pairs: the library encrypts against them for real, and the factory's random
  * strings are the right shape without being points on the P-256 curve, which
  * openssl rejects — and the channel swallows that, so the failure would show up
  * here as a quiet zero rather than as an error.

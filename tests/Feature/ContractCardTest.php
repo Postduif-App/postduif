@@ -60,7 +60,7 @@ function messageWithContractLink(array $state = []): array
 
 it('draws the contract and how far it has got', function () {
     [$message, $contract, , $workspace] = messageWithContractLink([
-        'expires_at' => '2026-09-01 12:00:00',
+        'expires_at' => now()->addDays(14),
     ]);
 
     ContractSigner::factory()->signed()->create(['contract_id' => $contract->id]);

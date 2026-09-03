@@ -23,26 +23,6 @@ beforeEach(function () {
 });
 
 /**
- * Answer every push request with the given responses, in order.
- *
- * The library builds its own Guzzle client, so the seam is the client options
- * it passes through: a mock handler there keeps the RFC 8291 encryption in the
- * test — that is the part worth exercising — without a real request leaving the
- * machine.
- *
- * @param  array<int, Response>  $responses
- */
-function fakePushService(array $responses): void
-{
-    app()->bind(WebPush::class, fn ($app, array $parameters): WebPush => new WebPush(
-        $parameters['auth'] ?? [],
-        [],
-        30,
-        ['handler' => HandlerStack::create(new MockHandler($responses))],
-    ));
-}
-
-/**
  * Real browser keys, in pairs, because the library encrypts against them for
  * real — the factory's random strings are the right shape but not a point on the
  * P-256 curve, and openssl says so.

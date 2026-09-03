@@ -31,6 +31,9 @@ use App\Models\Workflow;
 use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\Workspace;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\Request as ClientRequest;
@@ -40,6 +43,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
+use Minishlink\WebPush\WebPush;
 use Tests\TestCase;
 
 /*
@@ -761,6 +765,32 @@ function freshHttpClient(): void
     app()->forgetInstance(HttpFactory::class);
 
     Http::clearResolvedInstances();
+}
+
+/**
+ * Answer every push request with the given responses, in order.
+ *
+ * The library builds its own Guzzle client, so the seam is the client options
+ * it passes through: a mock handler there keeps the RFC 8291 encryption in the
+ * test — that is the part worth exercising — without a real request leaving the
+ * machine.
+ *
+ * Lives here rather than in the test file that first needed it, because Pest's
+ * parallel runner splits test files across worker processes — a plain function
+ * declared in one test file is only defined in whichever process happens to
+ * load that file, so another test relying on it would fail at random depending
+ * on how the split fell. Everything in this file is loaded by every worker.
+ *
+ * @param  array<int, Response>  $responses
+ */
+function fakePushService(array $responses): void
+{
+    app()->bind(WebPush::class, fn ($app, array $parameters): WebPush => new WebPush(
+        $parameters['auth'] ?? [],
+        [],
+        30,
+        ['handler' => HandlerStack::create(new MockHandler($responses))],
+    ));
 }
 
 /**
