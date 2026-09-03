@@ -74,7 +74,7 @@ class Impersonation
             return null;
         }
 
-        $impersonator = User::query()->find($id);
+        $impersonator = User::query()->whereKey($id)->first();
 
         if ($impersonator === null || $impersonator->isSuspended()) {
             return null;
@@ -102,6 +102,6 @@ class Impersonation
     {
         $id = $this->session->get(self::SESSION_KEY);
 
-        return $id === null ? null : User::query()->find($id);
+        return $id === null ? null : User::query()->whereKey($id)->first();
     }
 }

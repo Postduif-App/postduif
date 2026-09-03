@@ -71,8 +71,17 @@ jobs:
       # Installed rather than assumed: the runner image happens to carry it
       # today, and a green suite that quietly depends on that is exactly the
       # kind of thing that goes red on an image update nobody here chose.
+      #
+      # Cached rather than apt-get'd straight from the mirror: the .deb files
+      # are a few MB, but the runner's Azure mirror has been seen serving them
+      # at ~35 kB/s, turning a trivial install into most of the job's runtime.
+      # This action downloads once per (runner image, package list) and
+      # restores + dpkg-installs from the GitHub Actions cache after that.
       - name: Install Ghostscript
-        run: sudo apt-get install -y --no-install-recommends ghostscript
+        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
+        with:
+          packages: ghostscript
+          version: 1.0
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

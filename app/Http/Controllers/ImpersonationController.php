@@ -122,7 +122,7 @@ class ImpersonationController extends Controller
             : route('chat.home');
 
         return redirect()->to($back)->with('status', __('flashes.impersonation.stopped', [
-            'name' => $impersonated?->name ?? '',
+            'name' => $impersonated->name,
         ]));
     }
 }
