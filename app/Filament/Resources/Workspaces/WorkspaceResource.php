@@ -7,6 +7,7 @@ use App\Filament\Resources\Workspaces\Pages\EditWorkspace;
 use App\Filament\Resources\Workspaces\Pages\EditWorkspaceFeatures;
 use App\Filament\Resources\Workspaces\Pages\ListWorkspaces;
 use App\Filament\Resources\Workspaces\Pages\ViewWorkspace;
+use App\Filament\Resources\Workspaces\RelationManagers\BacklogConnectionsRelationManager;
 use App\Filament\Resources\Workspaces\RelationManagers\ChannelsRelationManager;
 use App\Filament\Resources\Workspaces\RelationManagers\MembersRelationManager;
 use App\Filament\Resources\Workspaces\Schemas\WorkspaceForm;
@@ -65,6 +66,7 @@ class WorkspaceResource extends Resource
         return [
             MembersRelationManager::class,
             ChannelsRelationManager::class,
+            BacklogConnectionsRelationManager::class,
         ];
     }
 
