@@ -46,8 +46,11 @@ class SyncTicketToBacklogJob implements ShouldQueue
 
     public const ACTION_COMMENT = 'comment';
 
+    public const ACTION_PRIORITY = 'priority';
+
     /**
-     * @param  string  $action  One of self::ACTION_STATUS, self::ACTION_COMMENT.
+     * @param  string  $action  One of self::ACTION_STATUS, self::ACTION_COMMENT,
+     *                          self::ACTION_PRIORITY.
      * @param  int|null  $commentId  Set only for ACTION_COMMENT.
      */
     public function __construct(
@@ -97,9 +100,11 @@ class SyncTicketToBacklogJob implements ShouldQueue
         }
 
         try {
-            $response = $this->action === self::ACTION_COMMENT
-                ? $this->postComment($token, $baseUrl, $ticket)
-                : $this->patchStatus($token, $baseUrl, $ticket);
+            $response = match ($this->action) {
+                self::ACTION_COMMENT => $this->postComment($token, $baseUrl, $ticket),
+                self::ACTION_PRIORITY => $this->patchPriority($token, $baseUrl, $ticket),
+                default => $this->patchStatus($token, $baseUrl, $ticket),
+            };
         } catch (ConnectionException $exception) {
             $connection->recordFailure();
 
@@ -131,6 +136,17 @@ class SyncTicketToBacklogJob implements ShouldQueue
             ->withoutRedirecting()
             ->patch("{$baseUrl}/api/v1/issues/{$ticket->external_id}", [
                 'status' => BacklogIssueMapper::toBacklogCategory($ticket->status),
+            ]);
+    }
+
+    private function patchPriority(string $token, string $baseUrl, Ticket $ticket): Response
+    {
+        return Http::withToken($token)
+            ->timeout(self::TIMEOUT)
+            ->connectTimeout(self::CONNECT_TIMEOUT)
+            ->withoutRedirecting()
+            ->patch("{$baseUrl}/api/v1/issues/{$ticket->external_id}", [
+                'priority' => BacklogIssueMapper::toBacklogPriority($ticket->priority),
             ]);
     }
 

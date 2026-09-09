@@ -1,11 +1,14 @@
 <?php
 
+use App\Actions\Tickets\UpdateTicket;
+use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Jobs\SyncTicketToBacklogJob;
 use App\Models\BacklogConnection;
 use App\Models\Channel;
 use App\Models\Ticket;
 use Illuminate\Http\Client\Request as ClientRequest;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 
 use function Pest\Laravel\postJson;
@@ -156,6 +159,69 @@ it('PATCHes the mapped issue with a bearer token when a linked ticket changes st
     });
 
     expect($connection->fresh()->consecutive_failures)->toBe(0);
+});
+
+it('PATCHes the mapped issue with a Backlog priority when a linked ticket changes priority', function () {
+    Http::fake([
+        '*/api/v1/issues/*' => Http::response(['id' => 'ISS-1'], 200),
+    ]);
+
+    $channel = Channel::factory()->create();
+
+    $connection = BacklogConnection::factory()->create([
+        'workspace_id' => $channel->workspace_id,
+        'channel_id' => $channel->id,
+        'backlog_url' => 'https://93.184.216.34',
+        'access_token' => 'a-cached-token',
+        'access_token_expires_at' => now()->addHour(),
+    ]);
+
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $channel->workspace_id,
+        'external_source' => 'backlog',
+        'external_id' => 'ISS-1',
+    ]);
+    $ticket->forceFill(['priority' => TicketPriority::Urgent])->save();
+
+    SyncTicketToBacklogJob::dispatchSync($ticket->id, SyncTicketToBacklogJob::ACTION_PRIORITY);
+
+    Http::assertSent(fn (ClientRequest $request) => $request->url() === 'https://93.184.216.34/api/v1/issues/ISS-1'
+        && $request->method() === 'PATCH'
+        && $request['priority'] === 1);
+
+    expect($connection->fresh()->consecutive_failures)->toBe(0);
+});
+
+it('queues an outbound priority sync when a mirrored ticket changes priority', function () {
+    Bus::fake();
+
+    $channel = Channel::factory()->create();
+    $ticket = Ticket::factory()->create([
+        'channel_id' => $channel->id,
+        'workspace_id' => $channel->workspace_id,
+        'external_source' => 'backlog',
+        'external_id' => 'ISS-1',
+        'priority' => TicketPriority::Normal,
+    ]);
+
+    app(UpdateTicket::class)->priority($ticket, TicketPriority::Urgent);
+
+    Bus::assertDispatched(
+        SyncTicketToBacklogJob::class,
+        fn (SyncTicketToBacklogJob $job) => $job->ticketId === $ticket->id
+            && $job->action === SyncTicketToBacklogJob::ACTION_PRIORITY,
+    );
+});
+
+it('does not queue a sync for a priority change on a ticket that never mirrored Backlog', function () {
+    Bus::fake();
+
+    $ticket = Ticket::factory()->create(['priority' => TicketPriority::Normal]);
+
+    app(UpdateTicket::class)->priority($ticket, TicketPriority::Urgent);
+
+    Bus::assertNotDispatched(SyncTicketToBacklogJob::class);
 });
 
 it('does nothing when the ticket has no linked Backlog issue', function () {
