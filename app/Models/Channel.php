@@ -173,6 +173,12 @@ class Channel extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    /** @return HasMany<BacklogConnection, $this> */
+    public function backlogConnections(): HasMany
+    {
+        return $this->hasMany(BacklogConnection::class);
+    }
+
     /**
      * The channel's documents, most recently worked on first.
      *

@@ -393,6 +393,12 @@ class Workspace extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    /** @return HasMany<BacklogConnection, $this> */
+    public function backlogConnections(): HasMany
+    {
+        return $this->hasMany(BacklogConnection::class);
+    }
+
     /** @return HasMany<Document, $this> */
     public function documents(): HasMany
     {
