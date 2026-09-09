@@ -41,10 +41,13 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $first_responded_at
  * @property Carbon|null $reminded_at
  * @property Carbon|null $closed_at
+ * @property string|null $external_source
+ * @property string|null $external_id
+ * @property string|null $external_url
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['workspace_id', 'channel_id', 'number', 'title', 'body', 'status', 'priority', 'opened_by', 'sender_email', 'sender_name', 'mail_message_id', 'assigned_to', 'source_message_id', 'due_at'])]
+#[Fillable(['workspace_id', 'channel_id', 'number', 'title', 'body', 'status', 'priority', 'opened_by', 'sender_email', 'sender_name', 'mail_message_id', 'assigned_to', 'source_message_id', 'due_at', 'external_source', 'external_id', 'external_url'])]
 class Ticket extends Model
 {
     /** @use HasFactory<TicketFactory> */
@@ -186,6 +189,28 @@ class Ticket extends Model
     public function isOpen(): bool
     {
         return $this->status->isOpen();
+    }
+
+    /**
+     * Whether this ticket is the mirror of something in an outside system,
+     * rather than one that started life here.
+     */
+    public function isExternal(): bool
+    {
+        return $this->external_source !== null && $this->external_id !== null;
+    }
+
+    /**
+     * The ticket that already mirrors this external thing, if there is one.
+     *
+     * Used by inbound webhook processing to make a repeated delivery
+     * idempotent — see the unique index on (external_source, external_id).
+     *
+     * @param  Builder<$this>  $query
+     */
+    public function scopeMirroring(Builder $query, string $source, string $externalId): void
+    {
+        $query->where('external_source', $source)->where('external_id', $externalId);
     }
 
     /**
