@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Workspaces\RelationManagers;
 
 use App\Models\BacklogConnection;
+use App\Models\Channel;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -132,7 +133,11 @@ class BacklogConnectionsRelationManager extends RelationManager
             Select::make('channel_id')
                 ->label('Channel')
                 ->helperText('Waar gesynchroniseerde tickets terechtkomen.')
-                ->options(fn (): array => $this->workspace()->channels()->pluck('name', 'id')->all())
+                ->options(fn (): array => $this->workspace()->channels()
+                    ->get()
+                    ->filter(fn (Channel $channel): bool => $channel->hasTickets())
+                    ->pluck('name', 'id')
+                    ->all())
                 ->searchable()
                 ->required(),
 
