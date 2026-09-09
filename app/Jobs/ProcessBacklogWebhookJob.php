@@ -49,6 +49,18 @@ class ProcessBacklogWebhookJob implements ShouldQueue
     public const SOURCE = 'backlog';
 
     /**
+     * The address a Backlog-authored ticket or comment carries in the column a
+     * mail-authored one would put a real sender in.
+     *
+     * tickets_opened_by_member_or_email (and the same constraint on
+     * ticket_comments) requires exactly one of the member column and
+     * sender_email to be set — there is no third state for "nobody with an
+     * account, and not e-mail either". A fixed, recognisable address is truer
+     * to what actually happened than inventing an opened_by nobody chose.
+     */
+    private const SENDER_EMAIL = 'backlog@sync.postduif.internal';
+
+    /**
      * @param  array<string, mixed>  $payload  The delivery's JSON body,
      *                                         decoded — the IssueResource (or
      *                                         comment/project-update
@@ -136,6 +148,8 @@ class ProcessBacklogWebhookJob implements ShouldQueue
                     'title' => $title,
                     'body' => $body,
                     'priority' => $priority,
+                    'sender_email' => self::SENDER_EMAIL,
+                    'sender_name' => 'Backlog',
                     'external_source' => self::SOURCE,
                     'external_id' => $externalId,
                     'external_url' => is_string($url) ? $url : null,
@@ -227,6 +241,7 @@ class ProcessBacklogWebhookJob implements ShouldQueue
 
         TicketComment::create([
             'ticket_id' => $ticket->id,
+            'sender_email' => self::SENDER_EMAIL,
             'sender_name' => trim(($authorName ?? 'Backlog').' (via Backlog)'),
             'body' => $body,
         ]);
