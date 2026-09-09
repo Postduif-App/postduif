@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\ApiToken;
+use App\Models\BacklogConnection;
 use App\Models\Webhook;
 use App\Models\Workflow;
 use App\Support\Dns\DnsHostResolver;
@@ -484,6 +485,25 @@ class AppServiceProvider extends ServiceProvider
          */
         RateLimiter::for('contract-send', fn (Request $request) => Limit::perMinute(10)
             ->by(ApiToken::hashToken((string) $request->bearerToken()) ?: $request->ip()));
+
+        /*
+         * Backlog, on the same reasoning as the webhook limiter above: its own
+         * budget, so one workspace's connection cannot exhaust what every
+         * other workspace's deliveries share. Keyed by the connection id
+         * rather than a hash — unlike a Webhook token, the id in the path is
+         * not itself a secret, so there is nothing to protect by hashing it.
+         */
+        RateLimiter::for('backlog-webhook', function (Request $request) {
+            // The route parameter may already be a resolved BacklogConnection
+            // by the time this runs — SubstituteBindings sits ahead of
+            // route-specific middleware in the priority list — or still be
+            // the raw path segment. Either way, the id is what identifies it.
+            $connection = $request->route('connection');
+
+            return Limit::perMinute(60)->by(
+                $connection instanceof BacklogConnection ? (string) $connection->id : (string) $connection
+            );
+        });
     }
 
     /**

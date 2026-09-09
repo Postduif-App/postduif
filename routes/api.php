@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\ContractDocumentController;
 use App\Http\Controllers\Api\V1\ContractTemplateController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\StatusController;
+use App\Http\Controllers\BacklogWebhookController;
 use App\Http\Controllers\InboundMailController;
 use App\Http\Controllers\WebhookMessageController;
 use App\Http\Controllers\WorkflowWebhookController;
@@ -55,6 +56,16 @@ Route::post('/workflows/{token}', WorkflowWebhookController::class)
 Route::post('/mail/inbound/{token}', InboundMailController::class)
     ->middleware('throttle:inbound-mail')
     ->name('mail.inbound');
+
+/*
+ * Backlog telling us something happened to an issue. The connection id sits
+ * in the path — like the two webhooks above, it will end up in access logs —
+ * but unlike a Webhook token it is not itself the credential: the signature
+ * on every request is, which is why an id here costs nothing a secret does.
+ */
+Route::post('/webhooks/backlog/{connection}', BacklogWebhookController::class)
+    ->middleware('throttle:backlog-webhook')
+    ->name('webhooks.backlog.store');
 
 /*
  * The token API, versioned from the start because it is meant to be pointed at
