@@ -24,6 +24,12 @@ use App\Enums\TicketStatus;
  * |---------------|----------|------------|----------|------------|---------|
  * | Postduif      | Normal   | Urgent     | High     | Normal     | Low     |
  *
+ * The reverse direction (Postduif → Backlog, for the outbound sync in
+ * SyncTicketToBacklogJob) sends 3 (medium) for Normal rather than 0: there is
+ * no way back to "nobody has judged this yet" from a scale with no such case,
+ * and asserting that over something a person here may since have judged would
+ * be a stronger claim than this sync is entitled to make.
+ *
  * ## Status
  *
  * Backlog's workflow states are grouped into categories the way Linear's are —
@@ -92,6 +98,21 @@ class BacklogIssueMapper
             TicketStatus::InProgress, TicketStatus::Waiting => 'started',
             TicketStatus::Resolved => 'completed',
             TicketStatus::Closed => 'cancelled',
+        };
+    }
+
+    /**
+     * The Backlog priority a Postduif priority corresponds to, for telling
+     * Backlog about a priority change made on this side — see the class
+     * docblock for why Normal sends medium rather than none.
+     */
+    public static function toBacklogPriority(TicketPriority $priority): int
+    {
+        return match ($priority) {
+            TicketPriority::Urgent => 1,
+            TicketPriority::High => 2,
+            TicketPriority::Normal => 3,
+            TicketPriority::Low => 4,
         };
     }
 }

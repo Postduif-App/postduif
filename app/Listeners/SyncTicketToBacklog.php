@@ -27,10 +27,17 @@ class SyncTicketToBacklog
 {
     public function handleChanged(TicketChanged $event): void
     {
-        // A ticket cares about far more than its status, but status is the
-        // one field Backlog's issue has room for on this side of the sync —
-        // see BacklogIssueMapper::toBacklogCategory.
-        if ($event->type !== TicketEventType::StatusChanged) {
+        $action = match ($event->type) {
+            TicketEventType::StatusChanged => SyncTicketToBacklogJob::ACTION_STATUS,
+            TicketEventType::PriorityChanged => SyncTicketToBacklogJob::ACTION_PRIORITY,
+            // Everything else a ticket can do here has nowhere to land on the
+            // other side — an assignee and a due date are ours, not Backlog's
+            // issue's, and BacklogIssueMapper only ever spoke of status and
+            // priority in the first place.
+            default => null,
+        };
+
+        if ($action === null) {
             return;
         }
 
@@ -42,7 +49,7 @@ class SyncTicketToBacklog
             return;
         }
 
-        SyncTicketToBacklogJob::dispatch($event->ticketId, SyncTicketToBacklogJob::ACTION_STATUS);
+        SyncTicketToBacklogJob::dispatch($event->ticketId, $action);
     }
 
     public function handleCommented(TicketCommented $event): void
