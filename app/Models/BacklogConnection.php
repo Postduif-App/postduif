@@ -19,7 +19,11 @@ use Illuminate\Support\Facades\Http;
  * secret to check it against. Outbound: this server authenticates to Backlog's
  * `/api/v1` with `client_id`/`client_secret` (an OAuth2 client-credentials
  * grant) and caches what it gets back in `access_token`, so a PATCH or a
- * comment does not have to authenticate first.
+ * comment does not have to authenticate first. A third, optional direction —
+ * opening a new issue rather than syncing one this workspace already mirrors
+ * — needs one more thing to be known up front: `backlog_workspace_id`, since
+ * the route that creates an issue is a collection route and has no other way
+ * to learn which Backlog workspace it belongs to. See canCreateIssues().
  *
  * `consecutive_failures` and `isHealthy()` mirror the shape Backlog's own
  * webhook subscriptions use for the same problem the other way round: an
@@ -31,6 +35,7 @@ use Illuminate\Support\Facades\Http;
  * @property int $workspace_id
  * @property int $channel_id
  * @property string $backlog_url
+ * @property int|null $backlog_workspace_id
  * @property string $client_id
  * @property string|null $client_secret
  * @property string|null $access_token
@@ -42,7 +47,7 @@ use Illuminate\Support\Facades\Http;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['workspace_id', 'channel_id', 'backlog_url', 'client_id', 'events'])]
+#[Fillable(['workspace_id', 'channel_id', 'backlog_url', 'backlog_workspace_id', 'client_id', 'events'])]
 class BacklogConnection extends Model
 {
     /** @use HasFactory<BacklogConnectionFactory> */
@@ -132,6 +137,19 @@ class BacklogConnection extends Model
     public function wants(string $event): bool
     {
         return in_array($event, $this->events, true);
+    }
+
+    /**
+     * Whether this connection may open a new issue on Backlog.
+     *
+     * Every connection can sync a ticket it already mirrors — that only ever
+     * needs the issue's own id. Opening one is the one thing that needs to
+     * say which Backlog workspace first, which is why this is optional on
+     * the row rather than something every connection is assumed to have.
+     */
+    public function canCreateIssues(): bool
+    {
+        return $this->backlog_workspace_id !== null;
     }
 
     /**

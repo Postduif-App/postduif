@@ -3,6 +3,7 @@
 use App\Enums\ChannelTicketPolicy;
 use App\Filament\Resources\Workspaces\Pages\ViewWorkspace;
 use App\Filament\Resources\Workspaces\RelationManagers\BacklogConnectionsRelationManager;
+use App\Models\BacklogConnection;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Workspace;
@@ -38,4 +39,69 @@ test('the channel picker only offers channels that keep tickets', function () {
     expect($ticketed->hasTickets())->toBeTrue()
         ->and($untracked->hasTickets())->toBeFalse()
         ->and($dm->hasTickets())->toBeFalse();
+});
+
+test('creating a connection stores exactly the secrets the admin typed, not a self-generated pair', function () {
+    $workspace = Workspace::factory()->create();
+    $channel = Channel::factory()->for($workspace)
+        ->create(['ticket_policy' => ChannelTicketPolicy::Everyone]);
+
+    // These stand in for what Backlog itself printed — passport:client:postduif
+    // for the first, the webhook endpoint's one-time reveal for the second.
+    // Postduif has no authority to invent either: it did not compute them and
+    // is not the one who will check them.
+    Livewire::test(BacklogConnectionsRelationManager::class, [
+        'ownerRecord' => $workspace,
+        'pageClass' => ViewWorkspace::class,
+    ])
+        ->mountAction('create')
+        ->setActionData([
+            'backlog_url' => 'https://backlog.example.com',
+            'client_id' => 'postduif-client',
+            'client_secret' => 'pasted-client-secret-from-backlog',
+            'webhook_secret' => 'pasted-webhook-secret-from-backlog',
+            'channel_id' => $channel->id,
+            'events' => BacklogConnection::EVENTS,
+        ])
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    $connection = BacklogConnection::query()->where('workspace_id', $workspace->id)->sole();
+
+    expect($connection->client_secret)->toBe('pasted-client-secret-from-backlog')
+        ->and($connection->webhook_secret)->toBe('pasted-webhook-secret-from-backlog');
+});
+
+test('editing a connection with the secret fields left blank keeps the pasted secrets', function () {
+    // The channel picker only offers ticket-keeping channels (see the DM
+    // crash fix above); the factory's plain channel is not one, so it has to
+    // be pointed at one explicitly for the edit form's own Select to accept
+    // it back unchanged.
+    $channel = Channel::factory()->create(['ticket_policy' => ChannelTicketPolicy::Everyone]);
+    $connection = BacklogConnection::factory()->create(['channel_id' => $channel->id]);
+    $connection->forceFill([
+        'client_secret' => 'still-the-one-backlog-has',
+        'webhook_secret' => 'still-the-one-backlog-signs-with',
+    ])->save();
+
+    Livewire::test(BacklogConnectionsRelationManager::class, [
+        'ownerRecord' => $connection->workspace,
+        'pageClass' => ViewWorkspace::class,
+    ])
+        ->mountTableAction('edit', $connection)
+        ->setActionData([
+            'backlog_url' => $connection->backlog_url,
+            'client_id' => $connection->client_id,
+            'client_secret' => '',
+            'webhook_secret' => '',
+            'channel_id' => $connection->channel_id,
+            'events' => $connection->events,
+        ])
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors();
+
+    $connection->refresh();
+
+    expect($connection->client_secret)->toBe('still-the-one-backlog-has')
+        ->and($connection->webhook_secret)->toBe('still-the-one-backlog-signs-with');
 });

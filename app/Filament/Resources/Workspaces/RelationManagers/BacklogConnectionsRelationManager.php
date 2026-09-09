@@ -17,16 +17,19 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 /**
  * A workspace's arrangements with Backlog.
  *
- * The same shape as WebhooksRelationManager: create, look a secret up once,
- * rotate it, switch off, delete. Two secrets live on this record rather than
- * one — client_secret authenticates calls this server makes outward,
- * webhook_secret verifies what Backlog calls back with — so each gets its own
- * reveal-once modal rather than sharing WebhooksRelationManager's.
+ * Unlike WebhooksRelationManager, neither secret on this record is ours to
+ * mint. client_secret is Backlog's Passport client secret, printed once by
+ * `passport:client:postduif` on the Backlog side; webhook_secret is what
+ * Backlog's own WebhookEndpoint shows once when an admin creates it there
+ * (WebhookController::store, `$hidden`, never fillable — Backlog will not
+ * accept a secret we invent). Generating either of them here would produce a
+ * value the far end never agreed to sign or authenticate with, so both are
+ * plain fields an admin pastes in and can update, not a reveal-once modal we
+ * generate. Only the callback URL is genuinely ours to show.
  */
 class BacklogConnectionsRelationManager extends RelationManager
 {
@@ -37,13 +40,12 @@ class BacklogConnectionsRelationManager extends RelationManager
     protected static ?string $title = 'Backlog';
 
     /**
-     * Held only long enough to show it once, the same trade every secret on
-     * this page makes — see Webhook::regenerateToken.
+     * The callback URL, held only long enough to show it once after a
+     * connection is created — it needs the row's id, so it does not exist
+     * before then. Unlike the two secrets, this one is genuinely ours to
+     * mint and reveal; there is nothing wrong with looking it up again later,
+     * this is just a convenience so the admin does not have to.
      */
-    public ?string $freshClientSecret = null;
-
-    public ?string $freshWebhookSecret = null;
-
     public ?string $freshWebhookUrl = null;
 
     public function isReadOnly(): bool
@@ -88,15 +90,12 @@ class BacklogConnectionsRelationManager extends RelationManager
             ->defaultSort('id', 'desc')
             ->headerActions([
                 $this->createAction(),
-                $this->showClientSecretAction(),
-                $this->showWebhookSecretAction(),
+                $this->showWebhookUrlAction(),
             ])
             ->recordActions([
                 EditAction::make()
                     ->schema(fn (): array => $this->fields(editing: true)),
                 $this->testConnectionAction(),
-                $this->rotateClientSecretAction(),
-                $this->rotateWebhookSecretAction(),
                 $this->toggleActiveAction(),
                 DeleteAction::make()->label('Verwijderen'),
             ]);
@@ -115,20 +114,40 @@ class BacklogConnectionsRelationManager extends RelationManager
                 ->required()
                 ->maxLength(255),
 
+            TextInput::make('backlog_workspace_id')
+                ->label('Backlog workspace-id')
+                ->helperText('Alleen nodig om nieuwe issues te kunnen aanmaken vanuit een workflow-actie. Te vinden via GET /api/v1/me op Backlog, onder de toegankelijke workspaces. Leeg laten als deze connectie alleen bestaande issues synchroniseert.')
+                ->numeric()
+                ->integer()
+                ->required(false),
+
             TextInput::make('client_id')
                 ->label('Client ID')
-                ->helperText('Het OAuth client-credentials ID dat Backlog voor deze workspace heeft uitgegeven.')
+                ->helperText('Het OAuth client-credentials ID dat Backlog voor deze workspace heeft uitgegeven (php artisan passport:client:postduif).')
                 ->required()
                 ->maxLength(255),
 
-            ...($editing ? [] : [
-                TextInput::make('client_secret')
-                    ->label('Client secret')
-                    ->password()
-                    ->revealable()
-                    ->required()
-                    ->maxLength(255),
-            ]),
+            TextInput::make('client_secret')
+                ->label('Client secret')
+                ->helperText($editing
+                    ? 'Leeg laten om de huidige secret te behouden. Backlog kan geen bestaande client-secret opnieuw tonen — alleen invullen als de client op Backlog opnieuw is geprovisioneerd.'
+                    : 'Precies wat passport:client:postduif op Backlog heeft geprint. Postduif kan dit niet zelf verzinnen: Backlog beslist wat het accepteert.')
+                ->password()
+                ->revealable()
+                ->required(! $editing)
+                ->dehydrated(fn (?string $state): bool => filled($state))
+                ->maxLength(255),
+
+            TextInput::make('webhook_secret')
+                ->label('Webhook secret')
+                ->helperText($editing
+                    ? 'Leeg laten om de huidige secret te behouden. Alleen invullen als de webhook-endpoint op Backlog opnieuw is aangemaakt of het secret daar geroteerd is.'
+                    : 'Precies de secret die Backlog toont bij het aanmaken van de webhook-endpoint. Postduif kan dit niet zelf verzinnen: Backlog signeert ermee, dus alleen wat Backlog liet zien werkt hier.')
+                ->password()
+                ->revealable()
+                ->required(! $editing)
+                ->dehydrated(fn (?string $state): bool => filled($state))
+                ->maxLength(255),
 
             Select::make('channel_id')
                 ->label('Channel')
@@ -161,18 +180,21 @@ class BacklogConnectionsRelationManager extends RelationManager
                     'workspace_id' => $this->workspace()->id,
                     'channel_id' => $data['channel_id'],
                     'backlog_url' => $data['backlog_url'],
+                    'backlog_workspace_id' => $data['backlog_workspace_id'] ?: null,
                     'client_id' => $data['client_id'],
                     'events' => array_values(array_intersect(BacklogConnection::EVENTS, $data['events'])),
                 ]);
 
-                $connection->forceFill(['client_secret' => $data['client_secret']]);
-
-                $this->freshWebhookSecret = 'whs_'.Str::random(48);
-                $connection->forceFill(['webhook_secret' => $this->freshWebhookSecret]);
+                // Both required on create (see fields()), and both exactly
+                // what the admin pasted — neither is ours to generate. See
+                // the class docblock for why.
+                $connection->forceFill([
+                    'client_secret' => $data['client_secret'],
+                    'webhook_secret' => $data['webhook_secret'],
+                ]);
 
                 $connection->save();
 
-                $this->freshClientSecret = $data['client_secret'];
                 $this->freshWebhookUrl = route('webhooks.backlog.store', $connection);
 
                 return $connection;
@@ -182,7 +204,7 @@ class BacklogConnectionsRelationManager extends RelationManager
              * create modal is still closing — see WebhooksRelationManager's
              * createAction for the same trade.
              */
-            ->after(fn () => $this->js("\$wire.mountAction('showWebhookSecret')"));
+            ->after(fn () => $this->js("\$wire.mountAction('showWebhookUrl')"));
     }
 
     /**
@@ -235,77 +257,29 @@ class BacklogConnectionsRelationManager extends RelationManager
             });
     }
 
-    public function rotateClientSecretAction(): Action
+    /**
+     * The callback URL right after a connection is created.
+     *
+     * No secret in this one — see the class docblock for why there is
+     * nothing here for Postduif to generate or rotate any more. An admin who
+     * needs the URL again later reads it straight off the table instead;
+     * this is only a courtesy for the moment right after creating a row,
+     * when the modal that just closed is the natural place to hand it over.
+     */
+    public function showWebhookUrlAction(): Action
     {
-        return Action::make('rotateClientSecret')
-            ->label('Client secret vervangen')
-            ->icon('heroicon-m-key')
-            ->requiresConfirmation()
-            ->modalDescription('De huidige client secret werkt hierna niet meer bij Backlog.')
-            ->action(function (BacklogConnection $record): void {
-                $secret = 'bls_'.Str::random(48);
-
-                $record->forceFill(['client_secret' => $secret])->save();
-
-                $this->freshClientSecret = $secret;
-
-                $this->js("\$wire.mountAction('showClientSecret')");
-            });
-    }
-
-    public function rotateWebhookSecretAction(): Action
-    {
-        return Action::make('rotateWebhookSecret')
-            ->label('Webhook secret vervangen')
-            ->icon('heroicon-m-key')
-            ->requiresConfirmation()
-            ->modalDescription('Backlog moet met de nieuwe secret opnieuw worden geconfigureerd, anders worden zijn webhooks geweigerd.')
-            ->action(function (BacklogConnection $record): void {
-                $secret = 'whs_'.Str::random(48);
-
-                $record->forceFill(['webhook_secret' => $secret])->save();
-
-                $this->freshWebhookSecret = $secret;
-                $this->freshWebhookUrl = route('webhooks.backlog.store', $record);
-
-                $this->js("\$wire.mountAction('showWebhookSecret')");
-            });
-    }
-
-    public function showClientSecretAction(): Action
-    {
-        return Action::make('showClientSecret')
-            ->label('Client secret')
-            ->modalHeading('De nieuwe client secret')
+        return Action::make('showWebhookUrl')
+            ->label('Webhook-URL')
+            ->modalHeading('De webhook-URL voor Backlog')
             ->modalContent(fn () => view('filament.backlog-connection-secret', [
-                'label' => 'Client secret',
-                'value' => $this->freshClientSecret,
-                'help' => 'Bewaar deze; hij is hierna niet meer op te vragen.',
+                'label' => 'Webhook-URL',
+                'value' => $this->freshWebhookUrl,
+                'help' => 'Voer dit adres in bij het aanmaken van de webhook-endpoint op Backlog.',
             ]))
             ->modalSubmitActionLabel('Sluiten')
             ->modalCancelAction(false)
-            ->action(fn () => $this->freshClientSecret = null)
-            ->visible(fn (): bool => filled($this->freshClientSecret));
-    }
-
-    public function showWebhookSecretAction(): Action
-    {
-        return Action::make('showWebhookSecret')
-            ->label('Webhook secret')
-            ->modalHeading('De webhook-URL en het bijbehorende secret')
-            ->modalContent(fn () => view('filament.backlog-connection-secret', [
-                'label' => 'Webhook secret',
-                'value' => $this->freshWebhookSecret,
-                'url' => $this->freshWebhookUrl,
-                'help' => 'Voer beide in bij Backlog; het secret is hierna niet meer op te vragen.',
-            ]))
-            ->modalSubmitActionLabel('Sluiten')
-            ->modalCancelAction(false)
-            ->action(function (): void {
-                $this->freshWebhookSecret = null;
-                $this->freshWebhookUrl = null;
-            })
-            ->visible(fn (): bool => filled($this->freshWebhookSecret));
+            ->action(fn () => $this->freshWebhookUrl = null)
+            ->visible(fn (): bool => filled($this->freshWebhookUrl));
     }
 
     /**

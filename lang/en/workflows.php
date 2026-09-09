@@ -422,6 +422,26 @@ return [
             'label' => 'Comment on a ticket',
             'description' => "Puts a comment on the ticket, in the name of this workflow's owner.",
         ],
+        'create-backlog-issue' => [
+            'label' => 'Open an issue on Backlog',
+            'description' => 'Opens a new issue on Backlog out of a message, and keeps a ticket here in step with it.',
+            'connection' => [
+                'label' => 'Which connection',
+                'hint' => 'One of this workspace\'s arrangements with a Backlog installation.',
+            ],
+            'team' => [
+                'label' => 'Backlog team',
+                'hint' => 'The key of the team the issue is filed under, e.g. ENG.',
+            ],
+            'title' => [
+                'label' => 'Title',
+                'hint' => "Leave empty to use the message's own text.",
+            ],
+            'description_field' => [
+                'label' => 'Description',
+                'hint' => "Leave empty to use the message's own text.",
+            ],
+        ],
         'send-contract-from-template' => [
             'label' => 'Send a contract from a template',
             'description' => 'Makes a contract out of a template and sends it to one person. Your side of the template is already signed.',
@@ -774,6 +794,12 @@ return [
         'http_unreachable' => 'Nothing came back. The address took too long or cannot be reached.',
         'delay_too_short' => 'Waiting takes at least a minute.',
         'delay_too_long' => 'Waiting longer than four weeks is not possible.',
+        'backlog_no_workspace' => 'This connection has no Backlog workspace-id set, so it cannot open an issue there.',
+        'backlog_no_team' => 'No Backlog team was given.',
+        'empty_issue_title' => 'Nothing was left to title the issue after.',
+        'backlog_unreachable' => 'Backlog could not be reached, or refused the credentials.',
+        'backlog_unknown_team' => 'Backlog has no team called ":team".',
+        'backlog_refused' => 'Backlog refused opening the issue (status :status).',
     ],
 
     'webhook' => [
@@ -973,6 +999,11 @@ return [
             'stale_reason' => 'Why it was left sitting',
             'id' => 'The ticket',
             'number' => 'The number of the ticket',
+        ],
+        'backlog_issue' => [
+            'id' => 'The Backlog issue',
+            'identifier' => 'The issue identifier, e.g. ENG-123',
+            'url' => 'Link to the issue on Backlog',
         ],
         'channel' => [
             'topic' => 'The topic of the channel',

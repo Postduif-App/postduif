@@ -294,6 +294,7 @@ return [
             'Document' => 'document',
             'Poll' => 'poll',
             'ChannelShare' => 'gedeeld kanaal',
+            'BacklogConnection' => 'Backlog-connectie',
         ],
     ],
     'workflow-run-status' => [
