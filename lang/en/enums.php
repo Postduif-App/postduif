@@ -280,6 +280,7 @@ return [
             'Document' => 'document',
             'Poll' => 'poll',
             'ChannelShare' => 'shared channel',
+            'BacklogConnection' => 'Backlog connection',
         ],
     ],
     'workflow-run-status' => [

@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Models\BacklogConnection;
 use App\Models\Channel;
 use App\Models\ChannelShare;
 use App\Models\Contract;
@@ -69,6 +70,16 @@ enum WorkflowRecordType: string
     case ChannelShare = 'share';
 
     /**
+     * One of this workspace's arrangements with a Backlog installation.
+     *
+     * Admin-managed rather than something everybody in the workspace has a
+     * reason to see — the same boundary BacklogConnectionsRelationManager
+     * already draws — so this is the one case whose view() leans on
+     * isAdmin() alone instead of a channel or a workspace-membership check.
+     */
+    case BacklogConnection = 'backlog-connection';
+
+    /**
      * How many the picker offers.
      *
      * A workspace has hundreds of tickets and a dropdown is not a search, so
@@ -87,6 +98,7 @@ enum WorkflowRecordType: string
             self::Document => __('enums.workflow-record-type.label.Document'),
             self::Poll => __('enums.workflow-record-type.label.Poll'),
             self::ChannelShare => __('enums.workflow-record-type.label.ChannelShare'),
+            self::BacklogConnection => __('enums.workflow-record-type.label.BacklogConnection'),
         };
     }
 
@@ -176,6 +188,11 @@ enum WorkflowRecordType: string
                     ->where('workspace_id', $workspace->id)
                     ->orWhereHas('channel', fn (Builder $channel) => $channel
                         ->where('workspace_id', $workspace->id)))
+                ->whereKey($id)
+                ->first(),
+
+            self::BacklogConnection => BacklogConnection::query()
+                ->where('workspace_id', $workspace->id)
                 ->whereKey($id)
                 ->first(),
         };
@@ -280,6 +297,27 @@ enum WorkflowRecordType: string
                 ->get()
                 ->mapWithKeys(fn (ChannelShare $share): array => [
                     (string) $share->getKey() => "#{$share->channel?->name} ↔ {$share->workspace?->name}",
+                ])
+                ->all(),
+
+            /*
+             * Only the ones that can actually open an issue — see
+             * BacklogConnection::canCreateIssues(). Offering one that cannot
+             * would be offering a choice the action can only fail on, and
+             * "waarom staat hij hier dan" is a worse answer than not
+             * listing it.
+             */
+            self::BacklogConnection => BacklogConnection::query()
+                ->where('workspace_id', $workspace->id)
+                ->whereNotNull('backlog_workspace_id')
+                ->with('channel:id,name')
+                ->latest('id')
+                ->limit(self::MAX_OPTIONS)
+                ->get()
+                ->mapWithKeys(fn (BacklogConnection $connection): array => [
+                    (string) $connection->getKey() => $connection->backlog_url.($connection->channel?->name !== null
+                        ? " (#{$connection->channel->name})"
+                        : ''),
                 ])
                 ->all(),
         };

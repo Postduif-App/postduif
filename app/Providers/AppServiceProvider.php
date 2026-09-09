@@ -22,6 +22,7 @@ use App\Workflows\Actions\CancelContract;
 use App\Workflows\Actions\ClockOut;
 use App\Workflows\Actions\ClosePoll;
 use App\Workflows\Actions\CommentOnTicket;
+use App\Workflows\Actions\CreateBacklogIssueAction;
 use App\Workflows\Actions\CreateChannel;
 use App\Workflows\Actions\CreateDocument;
 use App\Workflows\Actions\CreateInviteLink;
@@ -259,6 +260,7 @@ class AppServiceProvider extends ServiceProvider
                 UpdateTicket::class,
                 AssignTicket::class,
                 CommentOnTicket::class,
+                CreateBacklogIssueAction::class,
                 CreateDocument::class,
                 AppendToDocument::class,
                 CreatePoll::class,

@@ -114,6 +114,13 @@ class BacklogConnectionsRelationManager extends RelationManager
                 ->required()
                 ->maxLength(255),
 
+            TextInput::make('backlog_workspace_id')
+                ->label('Backlog workspace-id')
+                ->helperText('Alleen nodig om nieuwe issues te kunnen aanmaken vanuit een workflow-actie. Te vinden via GET /api/v1/me op Backlog, onder de toegankelijke workspaces. Leeg laten als deze connectie alleen bestaande issues synchroniseert.')
+                ->numeric()
+                ->integer()
+                ->required(false),
+
             TextInput::make('client_id')
                 ->label('Client ID')
                 ->helperText('Het OAuth client-credentials ID dat Backlog voor deze workspace heeft uitgegeven (php artisan passport:client:postduif).')
@@ -173,6 +180,7 @@ class BacklogConnectionsRelationManager extends RelationManager
                     'workspace_id' => $this->workspace()->id,
                     'channel_id' => $data['channel_id'],
                     'backlog_url' => $data['backlog_url'],
+                    'backlog_workspace_id' => $data['backlog_workspace_id'] ?: null,
                     'client_id' => $data['client_id'],
                     'events' => array_values(array_intersect(BacklogConnection::EVENTS, $data['events'])),
                 ]);

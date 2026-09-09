@@ -439,6 +439,26 @@ return [
             'label' => 'Op een ticket reageren',
             'description' => 'Zet een reactie op het ticket, op naam van de eigenaar van deze workflow.',
         ],
+        'create-backlog-issue' => [
+            'label' => 'Issue aanmaken op Backlog',
+            'description' => 'Maakt een nieuw issue op Backlog vanuit een bericht, en houdt hier een ticket ermee gelijk op.',
+            'connection' => [
+                'label' => 'Welke connectie',
+                'hint' => 'Een van de arrangementen van deze workspace met een Backlog-installatie.',
+            ],
+            'team' => [
+                'label' => 'Backlog-team',
+                'hint' => 'De key van het team waar het issue onder valt, bijvoorbeeld ENG.',
+            ],
+            'title' => [
+                'label' => 'Titel',
+                'hint' => 'Leeg laten om de tekst van het bericht zelf te gebruiken.',
+            ],
+            'description_field' => [
+                'label' => 'Omschrijving',
+                'hint' => 'Leeg laten om de tekst van het bericht zelf te gebruiken.',
+            ],
+        ],
         'send-contract-from-template' => [
             'label' => 'Contract versturen uit een sjabloon',
             'description' => 'Maakt een contract uit een sjabloon en stuurt het naar één persoon. Het sjabloon is al door jouw kant getekend.',
@@ -796,6 +816,12 @@ return [
         'http_unreachable' => 'Er kwam geen antwoord. Het adres deed er te lang over of is niet bereikbaar.',
         'delay_too_short' => 'Wachten doe je minstens een minuut.',
         'delay_too_long' => 'Langer dan vier weken wachten kan niet.',
+        'backlog_no_workspace' => 'Deze connectie heeft geen Backlog workspace-id, dus kan er geen issue op aangemaakt worden.',
+        'backlog_no_team' => 'Er is geen Backlog-team opgegeven.',
+        'empty_issue_title' => 'Er is niets overgebleven om het issue naar te noemen.',
+        'backlog_unreachable' => 'Backlog was niet te bereiken, of weigerde de gegevens.',
+        'backlog_unknown_team' => 'Backlog kent geen team met de naam ":team".',
+        'backlog_refused' => 'Backlog weigerde het issue aan te maken (status :status).',
     ],
 
     'webhook' => [
@@ -1003,6 +1029,11 @@ return [
             'stale_reason' => 'Waarom het bleef liggen',
             'id' => 'Het ticket',
             'number' => 'Het nummer van het ticket',
+        ],
+        'backlog_issue' => [
+            'id' => 'Het Backlog-issue',
+            'identifier' => 'De issue-identifier, bijvoorbeeld ENG-123',
+            'url' => 'Link naar het issue op Backlog',
         ],
         'channel' => [
             'topic' => 'Het onderwerp van het kanaal',

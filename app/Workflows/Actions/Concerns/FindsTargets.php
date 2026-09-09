@@ -3,6 +3,7 @@
 namespace App\Workflows\Actions\Concerns;
 
 use App\Enums\WorkflowRecordType;
+use App\Models\BacklogConnection;
 use App\Models\Channel;
 use App\Models\Contract;
 use App\Models\Document;
@@ -223,6 +224,26 @@ trait FindsTargets
         }
 
         return $document;
+    }
+
+    /**
+     * The Backlog connection a step names.
+     *
+     * No trigger fallback, unlike the others here — nothing fires a workflow
+     * because of a BacklogConnection, so an empty field has nothing sensible
+     * to default to and record() already says so with the right sentence.
+     */
+    protected function backlogConnection(WorkflowStepContext $context, string $key = 'connection_id'): BacklogConnection
+    {
+        $connection = $this->record($context, WorkflowRecordType::BacklogConnection, $key);
+
+        if (! $connection instanceof BacklogConnection) {
+            throw new RuntimeException(__('workflows.errors.record_not_found', [
+                'what' => WorkflowRecordType::BacklogConnection->label(),
+            ]));
+        }
+
+        return $connection;
     }
 
     /** The poll a step names, or the one the trigger was about. */
