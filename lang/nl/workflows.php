@@ -1012,6 +1012,7 @@ return [
             'is_overdue' => 'Of de einddatum voorbij is',
             'has_assignee' => 'Of er iemand op staat',
             'answered' => 'Of er al iemand gereageerd heeft',
+            'is_external' => 'Of het ticket een issue uit een externe tracker spiegelt',
             'assignee_id' => 'Wie het ticket heeft',
             'assignee_name' => 'De naam van wie het ticket heeft',
             'reporter_id' => 'Wie het ticket aanmaakte',

@@ -982,6 +982,7 @@ return [
             'is_overdue' => 'Whether the deadline has passed',
             'has_assignee' => 'Whether somebody has it',
             'answered' => 'Whether anybody has replied yet',
+            'is_external' => 'Whether the ticket mirrors an issue in an external tracker',
             'assignee_id' => 'Who has the ticket',
             'assignee_name' => 'The name of whoever has it',
             'reporter_id' => 'Who opened the ticket',

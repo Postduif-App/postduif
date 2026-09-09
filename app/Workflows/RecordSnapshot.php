@@ -82,6 +82,12 @@ final class RecordSnapshot
                 // Whether anybody has answered the person who raised it, which
                 // is the number a customer channel is actually judged on.
                 'answered' => $ticket->first_responded_at !== null,
+                // Whether this ticket mirrors an issue in an external tracker
+                // (Backlog today — see Ticket::isExternal()) rather than
+                // having been opened here. A workflow written for the customer
+                // board is often meant to skip a ticket that is already being
+                // tracked somewhere else.
+                'is_external' => $ticket->isExternal(),
             ],
             'assignee' => ['id' => $ticket->assigned_to, 'name' => $ticket->assignee?->name],
             'reporter' => ['id' => $ticket->opened_by, 'name' => $ticket->openedByName()],
@@ -257,6 +263,7 @@ final class RecordSnapshot
                 'ticket.is_overdue' => __('workflows.provides.ticket.is_overdue'),
                 'ticket.has_assignee' => __('workflows.provides.ticket.has_assignee'),
                 'ticket.answered' => __('workflows.provides.ticket.answered'),
+                'ticket.is_external' => __('workflows.provides.ticket.is_external'),
                 'assignee.id' => __('workflows.provides.ticket.assignee_id'),
                 'assignee.name' => __('workflows.provides.ticket.assignee_name'),
                 'reporter.id' => __('workflows.provides.ticket.reporter_id'),
@@ -324,6 +331,15 @@ final class RecordSnapshot
              * be empty in every run.
              */
             WorkflowRecordType::ChannelShare => [],
+
+            /*
+             * Nothing, for the same reason as ChannelShare just above: a
+             * BacklogConnection is a picker CreateBacklogIssueAction reads
+             * configuration off, never a record a step is pointed at to read
+             * back — there is no Read step for it and of() has no arm for it
+             * either.
+             */
+            WorkflowRecordType::BacklogConnection => [],
         };
     }
 }
