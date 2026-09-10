@@ -105,3 +105,38 @@ test('editing a connection with the secret fields left blank keeps the pasted se
     expect($connection->client_secret)->toBe('still-the-one-backlog-has')
         ->and($connection->webhook_secret)->toBe('still-the-one-backlog-signs-with');
 });
+
+test('editing a connection with a new secret actually persists it', function () {
+    // Regression: neither secret is in BacklogConnection's Fillable list (on
+    // purpose — see the class docblock), which the plain EditAction the
+    // create-path never had to rely on. Without a custom ->using(), a typed
+    // secret reached update() and Eloquent silently dropped it as a
+    // non-fillable key — the form said saved, the database never changed.
+    $channel = Channel::factory()->create(['ticket_policy' => ChannelTicketPolicy::Everyone]);
+    $connection = BacklogConnection::factory()->create(['channel_id' => $channel->id]);
+    $connection->forceFill([
+        'client_secret' => 'the-old-client-secret',
+        'webhook_secret' => 'the-old-webhook-secret',
+    ])->save();
+
+    Livewire::test(BacklogConnectionsRelationManager::class, [
+        'ownerRecord' => $connection->workspace,
+        'pageClass' => ViewWorkspace::class,
+    ])
+        ->mountTableAction('edit', $connection)
+        ->setActionData([
+            'backlog_url' => $connection->backlog_url,
+            'client_id' => $connection->client_id,
+            'client_secret' => 'a-freshly-rotated-client-secret',
+            'webhook_secret' => 'a-freshly-rotated-webhook-secret',
+            'channel_id' => $connection->channel_id,
+            'events' => $connection->events,
+        ])
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors();
+
+    $connection->refresh();
+
+    expect($connection->client_secret)->toBe('a-freshly-rotated-client-secret')
+        ->and($connection->webhook_secret)->toBe('a-freshly-rotated-webhook-secret');
+});

@@ -94,7 +94,26 @@ class BacklogConnectionsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
-                    ->schema(fn (): array => $this->fields(editing: true)),
+                    ->schema(fn (): array => $this->fields(editing: true))
+                    ->using(function (BacklogConnection $record, array $data): BacklogConnection {
+                        /*
+                         * Neither secret is in the model's Fillable list — on
+                         * purpose, the same reason createAction() never went
+                         * through mass assignment for them either. The plain
+                         * update() below would silently drop whichever of
+                         * these two showed up in $data: Eloquent discards a
+                         * non-fillable key rather than refusing it, so a typed
+                         * secret would look saved and never actually be.
+                         */
+                        $secrets = array_intersect_key($data, array_flip(['client_secret', 'webhook_secret']));
+                        $record->update(array_diff_key($data, $secrets));
+
+                        if ($secrets !== []) {
+                            $record->forceFill($secrets)->save();
+                        }
+
+                        return $record;
+                    }),
                 $this->testConnectionAction(),
                 $this->toggleActiveAction(),
                 DeleteAction::make()->label('Verwijderen'),
