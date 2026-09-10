@@ -10,6 +10,7 @@ use App\Models\Ticket;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 use function Pest\Laravel\postJson;
 
@@ -76,6 +77,31 @@ it('rejects an inbound webhook with a signature that does not match', function (
     ])->assertStatus(401);
 
     expect(Ticket::query()->count())->toBe(0);
+});
+
+/**
+ * A bare 401 says nothing about which check failed, and a beheerder staring
+ * at one from outside the app has no way to tell "wrong secret" from "clock
+ * skew" from "endpoint points at the wrong connection" without this.
+ */
+it('logs why a delivery was rejected, without the secret or the signature', function () {
+    Log::spy();
+
+    [$connection, $secret] = backlogConnectionWithSecret();
+    [$payload, , $timestamp] = signedIssuePayload($secret);
+
+    postJson(route('webhooks.backlog.store', $connection), $payload, [
+        'X-Backlog-Signature' => 'sha256=not-the-right-hash',
+        'X-Backlog-Delivery-Timestamp' => $timestamp,
+        'X-Backlog-Event' => 'issue.created',
+    ])->assertStatus(401);
+
+    Log::shouldHaveReceived('warning')->once()->withArgs(
+        fn (string $message, array $context) => $message === 'Backlog webhook delivery rejected'
+            && $context['connection_id'] === $connection->id
+            && str_contains($context['reason'], 'does not match')
+            && ! str_contains(json_encode($context), $secret)
+    );
 });
 
 it('rejects an inbound webhook whose timestamp has fallen outside the replay window', function () {
