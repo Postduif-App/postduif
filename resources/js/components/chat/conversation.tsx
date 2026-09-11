@@ -51,6 +51,7 @@ import { useHuddle } from '@/hooks/use-huddle';
 import { useTicketActivity } from '@/hooks/use-ticket-activity';
 import { useTranslate } from '@/hooks/use-translate';
 import { fromLocalInput } from '@/lib/local-datetime';
+import { lastEditableMessage } from '@/lib/message-editing';
 import { ulid } from '@/lib/ulid';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
@@ -302,6 +303,13 @@ export function Conversation({
      * not survive a refresh either.
      */
     const [quoting, setQuoting] = useState<ChatMessage | null>(null);
+
+    /**
+     * The message open for editing in the conversation, held here rather than
+     * in the list because the composer opens one too: the arrow key on an
+     * empty field reopens what you last said, the way it does elsewhere.
+     */
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const [drafted, setDrafted] = useState<Record<string, MessageReaction[]>>(
         {},
@@ -1540,6 +1548,8 @@ export function Conversation({
                                         : undefined
                                 }
                                 onEdit={edit}
+                                editingId={editingId}
+                                onEditingChange={setEditingId}
                                 onOpenThread={openThread}
                                 onQuote={
                                     channel.canPost ? setQuoting : undefined
@@ -1721,6 +1731,25 @@ export function Conversation({
                         quoting={quoting}
                         onCancelQuote={() => setQuoting(null)}
                         onTyping={notifyTyping}
+                        /*
+                            Only in the list layout: the feed draws its own rows
+                            and keeps its own editors, so an arrow here would
+                            open something nobody can see.
+                        */
+                        onEditLast={
+                            channel.layout === 'feed'
+                                ? undefined
+                                : () => {
+                                      const last = lastEditableMessage(
+                                          rootMessages,
+                                          currentUser.id,
+                                      );
+
+                                      if (last) {
+                                          setEditingId(last.id);
+                                      }
+                                  }
+                        }
                     />
                 ) : (
                     /*

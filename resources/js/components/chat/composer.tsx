@@ -37,6 +37,7 @@ import type { ActiveTrigger } from '@/lib/composer-triggers';
 import { FRAGMENT, triggerAt } from '@/lib/composer-triggers';
 import { EMOJI_GROUPS } from '@/lib/emoji';
 import { readableSize } from '@/lib/file-size';
+import { opensLastMessage } from '@/lib/message-editing';
 import { cn } from '@/lib/utils';
 import type {
     ChannelMember,
@@ -115,6 +116,15 @@ interface ComposerProps {
     onCancelQuote?: () => void;
     /** Called on every keystroke; the hook decides how often to actually emit. */
     onTyping?: () => void;
+    /**
+     * Open the last message this member sent here for editing — what the arrow
+     * key asks for on an empty field.
+     *
+     * The composer only reports the keystroke; which message that is, and what
+     * opening it looks like, belongs where the conversation is rendered. Absent
+     * where there is nothing to reopen: a ticket comment is not a message.
+     */
+    onEditLast?: () => void;
 }
 
 const MAX_ROWS_HEIGHT = 200;
@@ -311,6 +321,7 @@ export function Composer({
     quoting,
     onCancelQuote,
     onTyping,
+    onEditLast,
 }: ComposerProps) {
     const { t } = useTranslate();
     const formats = useFormats();
@@ -997,6 +1008,28 @@ export function Composer({
 
                                 return;
                             }
+                        }
+
+                        /*
+                         * The arrow reopens what you last said here, the way
+                         * it does in every chat app somebody comes from.
+                         *
+                         * Below the suggestion list on purpose: while that is
+                         * open the arrow is how you walk it, and the block
+                         * above returns before ever reaching this.
+                         */
+                        if (
+                            onEditLast &&
+                            opensLastMessage(event, {
+                                body,
+                                files,
+                                quoting: Boolean(quoting),
+                            })
+                        ) {
+                            event.preventDefault();
+                            onEditLast();
+
+                            return;
                         }
 
                         /*

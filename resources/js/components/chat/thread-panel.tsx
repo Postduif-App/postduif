@@ -1,9 +1,11 @@
 import { X } from 'lucide-react';
+import { useState } from 'react';
 
 import { Composer } from '@/components/chat/composer';
 import { MessageList } from '@/components/chat/message-list';
 import { Button } from '@/components/ui/button';
 import { useTranslate } from '@/hooks/use-translate';
+import { lastEditableMessage } from '@/lib/message-editing';
 import type {
     ActiveChannel,
     ChannelSummary,
@@ -45,6 +47,16 @@ export function ThreadPanel({
     const { t } = useTranslate();
 
     /*
+     * The panel's own, and separate from the conversation's: the two lists
+     * never show the same message, so an editor open in one has nothing to say
+     * about the other.
+     */
+    const [editingId, setEditingId] = useState<string | null>(null);
+
+    // The parent counts as part of the thread here, exactly as the list shows it.
+    const thread = [parent, ...replies];
+
+    /*
      * Beside the conversation on a wide screen; over it on one too narrow to
      * hold both. Anchored at the rail rather than at the edge, so the way back
      * to the channel list stays reachable while a panel is open.
@@ -79,7 +91,7 @@ export function ThreadPanel({
                 identically in both panes rather than drifting apart.
             */}
             <MessageList
-                messages={[parent, ...replies]}
+                messages={thread}
                 workspace={workspace}
                 channelId={channel.id}
                 members={channel.members}
@@ -91,6 +103,8 @@ export function ThreadPanel({
                 onReact={onReact}
                 onDelete={onDelete}
                 onEdit={onEdit}
+                editingId={editingId}
+                onEditingChange={setEditingId}
             />
 
             <Composer
@@ -120,6 +134,25 @@ export function ThreadPanel({
                 draftKey={`${workspace.slug}:${channel.id}:thread:${parent.id}`}
                 onSend={onReply}
                 onTyping={onTyping}
+                /*
+                    The arrow reopens your last message in this thread, which
+                    may well be the message the thread hangs off — you started
+                    it, so it is yours to correct.
+                */
+                onEditLast={
+                    onEdit === undefined
+                        ? undefined
+                        : () => {
+                              const last = lastEditableMessage(
+                                  thread,
+                                  currentUserId,
+                              );
+
+                              if (last) {
+                                  setEditingId(last.id);
+                              }
+                          }
+                }
             />
         </aside>
     );

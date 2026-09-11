@@ -59,6 +59,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { useTranslate } from '@/hooks/use-translate';
 import { isCelebration } from '@/lib/confetti';
 import { isEmojiOnly } from '@/lib/emoji-only';
+import { canEditMessage } from '@/lib/message-editing';
 import { cn } from '@/lib/utils';
 import { show } from '@/routes/chat';
 import { show as memberProfile } from '@/routes/chat/members';
@@ -433,9 +434,15 @@ function MessageRow({
     onForward,
     active,
     onActivate,
+    editing,
+    onEditingChange,
 }: {
     message: ChatMessage;
     grouped: boolean;
+    /** Whether this row is the one currently being rewritten. */
+    editing: boolean;
+    /** Open this message for editing, or hand null to close whatever is open. */
+    onEditingChange: (id: string | null) => void;
     /** Whether this is the message a touch reader tapped, and so the one
      *  showing its actions. Always false where a pointer can hover. */
     active: boolean;
@@ -486,7 +493,6 @@ function MessageRow({
 
     const getInitials = useInitials();
     const [confirming, setConfirming] = useState(false);
-    const [editing, setEditing] = useState(false);
     const [hovered, setHovered] = useState(false);
 
     /*
@@ -542,11 +548,7 @@ function MessageRow({
     // The same rule as deleting, with one exception the server also makes: a bot
     // message has no author to speak for, so nobody may put words in its mouth.
     const canEdit =
-        onEdit !== undefined &&
-        !deleted &&
-        !message.pending &&
-        !message.author.isBot &&
-        message.author.id === currentUserId;
+        onEdit !== undefined && canEditMessage(message, currentUserId);
 
     /**
      * Dezelfde acties als in de knoppenbalk, maar op de toets waar de muis nu
@@ -559,7 +561,7 @@ function MessageRow({
     useHoverShortcuts(hovered && !editing, {
         r: onQuote && answerable ? () => onQuote(message) : undefined,
         t: onOpenThread && answerable ? () => onOpenThread(message) : undefined,
-        e: canEdit ? () => setEditing(true) : undefined,
+        e: canEdit ? () => onEditingChange(message.id) : undefined,
         d: canDelete ? () => setConfirming(true) : undefined,
     });
 
@@ -762,9 +764,9 @@ function MessageRow({
                 ) : editing ? (
                     <MessageEditor
                         body={message.body}
-                        onCancel={() => setEditing(false)}
+                        onCancel={() => onEditingChange(null)}
                         onSave={(body) => {
-                            setEditing(false);
+                            onEditingChange(null);
 
                             // Saving the same text is not an edit: it would only
                             // stamp "(bewerkt)" on a message nobody changed.
@@ -1051,7 +1053,7 @@ function MessageRow({
                     {canEdit && (
                         <button
                             type="button"
-                            onClick={() => setEditing(true)}
+                            onClick={() => onEditingChange(message.id)}
                             title={t('messages.actions.edit_key')}
                             aria-label={t('messages.actions.edit')}
                             className={messageToolbarButton()}
@@ -1140,6 +1142,8 @@ export function MessageList({
     onRemind,
     onToggleBookmark,
     onForward,
+    editingId,
+    onEditingChange,
 }: {
     messages: ChatMessage[];
     workspace: ChatWorkspace;
@@ -1179,6 +1183,16 @@ export function MessageList({
     onPromote?: (message: ChatMessage) => void;
     /** Pinning and unpinning. Omitted for anyone who may not manage the channel. */
     onPin?: (message: ChatMessage) => void;
+    /**
+     * Which message is open for editing, for a caller that has to be able to
+     * open one itself — the arrow key in the composer below this list.
+     *
+     * Optional, and the list keeps its own when it is left out: a pane where
+     * nothing but the pencil opens an editor has no reason to hold this state
+     * for the list.
+     */
+    editingId?: string | null;
+    onEditingChange?: (id: string | null) => void;
 }) {
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -1201,6 +1215,62 @@ export function MessageList({
      * narrow is most of the conversation covered.
      */
     const [active, setActive] = useState<string | null>(null);
+
+    /**
+     * The message being rewritten, held here rather than by each row so that
+     * opening a second editor closes the first — and so that the composer
+     * below can open one at all, which is the whole point of the arrow key.
+     *
+     * The caller may own it instead; see the props above.
+     */
+    const [ownEditing, setOwnEditing] = useState<string | null>(null);
+    const editing = editingId === undefined ? ownEditing : editingId;
+    const setEditing = onEditingChange ?? setOwnEditing;
+
+    /**
+     * Where the focus was when the editor opened, so it can be handed back when
+     * it closes.
+     *
+     * Escape has to land you back in the message field you pressed the arrow
+     * in; without this it lands on the body, and the next thing typed goes
+     * nowhere. The pencil gets the same treatment, which is what a button that
+     * opens something is supposed to do anyway.
+     */
+    const focusedBefore = useRef<HTMLElement | null>(null);
+
+    /**
+     * Bring the message being rewritten into view, and hand the focus back on
+     * the way out.
+     *
+     * Scrolling only matters for the one the composer opened: pressing the
+     * arrow after scrolling up the conversation would otherwise put an editor
+     * somewhere off screen, and the field you were typing in would simply go
+     * empty. 'nearest' so a row already in view is left exactly where it
+     * stands.
+     */
+    useEffect(() => {
+        if (editing === null) {
+            const previous = focusedBefore.current;
+            focusedBefore.current = null;
+
+            // Not when the row itself has gone: a message deleted from under an
+            // open editor leaves an element no longer in the page.
+            if (previous?.isConnected) {
+                previous.focus();
+            }
+
+            return;
+        }
+
+        focusedBefore.current =
+            document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+
+        document
+            .getElementById(`message-${editing}`)
+            ?.scrollIntoView({ block: 'nearest' });
+    }, [editing]);
 
     /**
      * Touching anything outside the picked message puts its bar away.
@@ -1365,6 +1435,8 @@ export function MessageList({
                                 onPin={onPin}
                                 active={active === message.id}
                                 onActivate={setActive}
+                                editing={editing === message.id}
+                                onEditingChange={setEditing}
                             />
                         </div>
                     );
