@@ -1,9 +1,22 @@
 import { useEcho } from '@laravel/echo-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import { playNotificationSound } from '@/lib/notification-sound';
 
 interface InboxPayload {
     workspaceId: number;
     unread: number;
+}
+
+/**
+ * Whether a number arriving over the socket is news worth hearing.
+ *
+ * Only upwards. The count falls as rows are read — on this screen or on a phone
+ * somewhere else — and a chime for something going away would be a lie about
+ * what happened.
+ */
+export function inboxRose(held: number, incoming: number): boolean {
+    return incoming > held;
 }
 
 /**
@@ -35,6 +48,20 @@ export function useInboxActivity(
         setState({ fromServer: unreadFromServer, unread: unreadFromServer });
     }
 
+    /*
+     * What the last chime decision was measured against.
+     *
+     * A ref rather than the state above, because the sound is decided in an
+     * event handler and the state there is whatever the render that installed
+     * the handler closed over. Kept in step from an effect, so nothing is
+     * written during render.
+     */
+    const heard = useRef(state.unread);
+
+    useEffect(() => {
+        heard.current = state.unread;
+    }, [state.unread]);
+
     useEcho<InboxPayload>(
         `App.Models.User.${currentUserId}`,
         '.inbox.updated',
@@ -42,6 +69,19 @@ export function useInboxActivity(
             // One socket carries every workspace this member belongs to, and
             // the badge on screen speaks for one of them.
             if (payload.workspaceId === workspaceId) {
+                /*
+                 * The socket is the only path that rings. A page load arrives
+                 * with a count too, and that count is usually not zero — so
+                 * chiming on "the number changed" would sound on every
+                 * navigation through a workspace with anything waiting in it,
+                 * which is noise about nothing new.
+                 */
+                if (inboxRose(heard.current, payload.unread)) {
+                    playNotificationSound();
+                }
+
+                heard.current = payload.unread;
+
                 setState((current) => ({ ...current, unread: payload.unread }));
             }
         },
