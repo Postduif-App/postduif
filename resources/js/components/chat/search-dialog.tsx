@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import {
     AtSign,
     BarChart3,
+    ExternalLink,
     FileText,
     Hash,
     KeyRound,
@@ -360,6 +361,26 @@ export function SearchDialog({
             (trimmed === '' ||
                 command.label.toLowerCase().includes(trimmed.toLowerCase())),
     );
+    /*
+     * The workspace's own buttons.
+     *
+     * Matched on the label alone, the same words somebody sees — and
+     * deliberately not on the URL behind them. Somebody typing "portaal" means
+     * the button called Portaal; a query that also swept the addresses would
+     * turn every https:// in the list into a match for "http".
+     *
+     * Unlike the actions above, these are shown when nothing is typed yet: they
+     * are places to go rather than things that fire, so an accidental Enter
+     * costs a new tab rather than a dialog nobody asked for.
+     */
+    const shortcuts = completing
+        ? []
+        : workspace.links.filter(
+              (link) =>
+                  trimmed === '' ||
+                  link.label.toLowerCase().includes(trimmed.toLowerCase()),
+          );
+
     // Derived rather than stored: an empty query has no results by definition,
     // so there is nothing to synchronise back into state.
     const results = trimmed === '' ? [] : hits;
@@ -585,6 +606,45 @@ export function SearchDialog({
                             >
                                 <command.icon className="size-3.5 text-muted-foreground" />
                                 {command.label}
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
+
+                {shortcuts.length > 0 && (
+                    <CommandGroup heading={t('search.headings.shortcuts')}>
+                        {shortcuts.map((link) => (
+                            <CommandItem
+                                key={`shortcut-${link.id}`}
+                                value={`shortcut-${link.id}`}
+                                onSelect={() => {
+                                    onOpenChange(false);
+                                    /*
+                                        window.open rather than an anchor,
+                                        because cmdk owns the row and gives it
+                                        no href to middle-click anyway. noopener
+                                        by name, since the string form is what
+                                        decides whether the new tab gets a
+                                        handle on this one.
+                                    */
+                                    window.open(
+                                        link.url,
+                                        '_blank',
+                                        'noopener,noreferrer',
+                                    );
+                                }}
+                            >
+                                {link.emoji ? (
+                                    <span
+                                        aria-hidden
+                                        className="w-3.5 text-center text-sm leading-4"
+                                    >
+                                        {link.emoji}
+                                    </span>
+                                ) : (
+                                    <ExternalLink className="size-3.5 text-muted-foreground" />
+                                )}
+                                <span className="truncate">{link.label}</span>
                             </CommandItem>
                         ))}
                     </CommandGroup>

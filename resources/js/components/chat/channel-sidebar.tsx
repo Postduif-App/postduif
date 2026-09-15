@@ -5,6 +5,7 @@ import {
     BellOff,
     Building2,
     ChevronDown,
+    ExternalLink,
     Hash,
     Headphones,
     Lock,
@@ -341,10 +342,22 @@ function WorkspaceMenu({
 
     const elsewhere = workspaces.filter((option) => !option.isCurrent);
 
+    /*
+        Whether there is anything in here at all.
+
+        The workspace's own buttons count, and they have to: a guest has none of
+        the three rights and usually no second workspace, so without this the
+        menu would collapse to a dead badge for exactly the reader the buttons
+        were put there for.
+    */
+    const hasOwnEntries =
+        workspace.canInvite ||
+        workspace.canManage ||
+        workspace.canManageMembers;
+
     if (
-        !workspace.canInvite &&
-        !workspace.canManage &&
-        !workspace.canManageMembers &&
+        !hasOwnEntries &&
+        workspace.links.length === 0 &&
         elsewhere.length === 0
     ) {
         return compact ? (
@@ -425,11 +438,51 @@ function WorkspaceMenu({
                     above, and a row that lands you where you are is a row that
                     reads as broken.
                 */}
+                {/*
+                    The workspace's own buttons, between what you may do here
+                    and the way out to another workspace. They belong to this
+                    workspace, so they sit above the line that leaves it.
+
+                    An anchor rather than an Inertia Link: this address is
+                    somewhere else entirely, and a client-side visit to it would
+                    be a page the router cannot render. noreferrer beside
+                    noopener for the same reason as the channel bar — the target
+                    gets no handle on this window and no hint of which workspace
+                    sent the visitor.
+                */}
+                {workspace.links.length > 0 && (
+                    <>
+                        {hasOwnEntries && <DropdownMenuSeparator />}
+                        {workspace.links.map((link) => (
+                            <DropdownMenuItem key={link.id} asChild>
+                                <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={link.url}
+                                >
+                                    {link.emoji ? (
+                                        <span
+                                            aria-hidden
+                                            className="mr-2 w-4 shrink-0 text-center text-sm leading-4"
+                                        >
+                                            {link.emoji}
+                                        </span>
+                                    ) : (
+                                        <ExternalLink className="mr-2 size-4 shrink-0" />
+                                    )}
+                                    <span className="truncate">
+                                        {link.label}
+                                    </span>
+                                </a>
+                            </DropdownMenuItem>
+                        ))}
+                    </>
+                )}
+
                 {elsewhere.length > 0 && (
                     <>
-                        {(workspace.canInvite ||
-                            workspace.canManage ||
-                            workspace.canManageMembers) && (
+                        {(hasOwnEntries || workspace.links.length > 0) && (
                             <DropdownMenuSeparator />
                         )}
                         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

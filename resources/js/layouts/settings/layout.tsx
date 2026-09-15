@@ -28,6 +28,7 @@ import { index as contractWebhooks } from '@/routes/workspace/contract-webhooks'
 import { index as workspaceEmoji } from '@/routes/workspace/emoji';
 import { edit as editWorkspaceFeatures } from '@/routes/workspace/features';
 import { index as workspaceInvitations } from '@/routes/workspace/invitations';
+import { index as workspaceLinks } from '@/routes/workspace/links';
 import { edit as editWorkspaceMail } from '@/routes/workspace/mail';
 import { edit as editWorkspaceMailTexts } from '@/routes/workspace/mail-texts';
 import { index as workspaceMembers } from '@/routes/workspace/members';
@@ -103,6 +104,10 @@ export default function SettingsLayout({
                   {
                       title: t('settings.nav.emoji'),
                       href: workspaceEmoji(),
+                  },
+                  {
+                      title: t('settings.nav.links'),
+                      href: workspaceLinks(),
                   },
                   {
                       title: t('settings.nav.theme'),

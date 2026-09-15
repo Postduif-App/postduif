@@ -41,6 +41,7 @@ return [
         'features' => 'Features',
         'roles' => 'Roles',
         'emoji' => 'Emoji',
+        'links' => 'Shortcuts',
         'theme' => 'Theme',
         'mail' => 'Email',
         'mail_texts' => 'Mail texts',

@@ -66,6 +66,13 @@ return [
         'workflow_unknown' => 'Kies een workflow die op de knop-trigger staat.',
     ],
 
+    'workspace_link' => [
+        'label_required' => 'Geef de knop een naam.',
+        'url_required' => 'Geef een adres op.',
+        'url_scheme' => 'Dit moet een adres zijn dat met http:// of https:// begint.',
+        'role_unknown' => 'Kies een rol die in deze workspace bestaat.',
+    ],
+
     'channel_tags' => [
         // Twenty is written out rather than filled in: the ceiling is in the
         // rule itself, and the sentence is about what a label is for.

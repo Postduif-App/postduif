@@ -252,6 +252,21 @@ class Workspace extends Model
     }
 
     /**
+     * The workspace's own buttons, in the order the menu draws them.
+     *
+     * Ordered here rather than at each place that reads them — the menu, the
+     * search palette and the beheer screen — because a list of buttons that
+     * comes back differently per screen is one nobody can point at. The same
+     * reason customEmoji above orders by name.
+     *
+     * @return HasMany<WorkspaceLink, $this>
+     */
+    public function links(): HasMany
+    {
+        return $this->hasMany(WorkspaceLink::class)->inOrder();
+    }
+
+    /**
      * The questionnaires this workspace has written.
      *
      * On the workspace rather than on a channel, unlike a poll: the same form

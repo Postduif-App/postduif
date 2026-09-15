@@ -66,6 +66,13 @@ return [
         'workflow_unknown' => 'Pick a workflow that runs on the button trigger.',
     ],
 
+    'workspace_link' => [
+        'label_required' => 'Give the button a name.',
+        'url_required' => 'Enter an address.',
+        'url_scheme' => 'This has to be an address starting with http:// or https://.',
+        'role_unknown' => 'Pick a role that exists in this workspace.',
+    ],
+
     'channel_tags' => [
         // Twenty is written out rather than filled in: the ceiling is in the
         // rule itself, and the sentence is about what a label is for.

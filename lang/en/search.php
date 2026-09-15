@@ -18,6 +18,7 @@ return [
         'searching_in' => 'Searching in',
         'quick' => 'Straight to',
         'jump' => 'Jump to',
+        'shortcuts' => 'Shortcuts',
         'actions' => 'Actions',
     ],
 

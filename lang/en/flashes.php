@@ -182,6 +182,12 @@ return [
         'removed' => ':name has been removed.',
     ],
 
+    'workspace_link' => [
+        'added' => ':label is in the menu now.',
+        'saved' => ':label has been updated.',
+        'removed' => ':label has been removed.',
+    ],
+
     'timeclock' => [
         'clocked_in' => 'You are clocked in.',
         'clocked_out' => 'Clocked out after :duration.',

@@ -17,6 +17,7 @@ use App\Http\Controllers\Settings\WorkspaceChannelController;
 use App\Http\Controllers\Settings\WorkspaceController;
 use App\Http\Controllers\Settings\WorkspaceFeatureController;
 use App\Http\Controllers\Settings\WorkspaceInvitationController;
+use App\Http\Controllers\Settings\WorkspaceLinkController;
 use App\Http\Controllers\Settings\WorkspaceMailController;
 use App\Http\Controllers\Settings\WorkspaceMailTemplateController;
 use App\Http\Controllers\Settings\WorkspaceMemberController;
@@ -169,6 +170,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.emoji.store');
     Route::delete('app/settings/workspace/emoji/{customEmoji}', [CustomEmojiController::class, 'destroy'])
         ->name('workspace.emoji.destroy');
+
+    /*
+     * The workspace's own buttons, and who they are drawn for. Its own screen
+     * for the same reason the emoji above has one: a list that grows, where
+     * every row carries a handful of settings of its own.
+     *
+     * Ordering is its own route rather than a field on the update, because it
+     * is the one change that is about the list instead of about a link — see
+     * WorkspaceLinkController::reorder.
+     */
+    Route::get('app/settings/workspace/links', [WorkspaceLinkController::class, 'index'])
+        ->name('workspace.links.index');
+    Route::post('app/settings/workspace/links', [WorkspaceLinkController::class, 'store'])
+        ->name('workspace.links.store');
+    Route::put('app/settings/workspace/links/order', [WorkspaceLinkController::class, 'reorder'])
+        ->name('workspace.links.reorder');
+    Route::patch('app/settings/workspace/links/{workspaceLink}', [WorkspaceLinkController::class, 'update'])
+        ->name('workspace.links.update');
+    Route::delete('app/settings/workspace/links/{workspaceLink}', [WorkspaceLinkController::class, 'destroy'])
+        ->name('workspace.links.destroy');
 
     Route::get('app/settings/workspace/theme', [WorkspaceThemeController::class, 'edit'])
         ->name('workspace.theme.edit');

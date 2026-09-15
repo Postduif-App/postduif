@@ -18,6 +18,7 @@ use App\Models\ScheduledBroadcast;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLink;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -394,6 +395,35 @@ class BuildChatShell
              * Small enough to send whole — a name and a URL each, capped at two
              * hundred by the screen that makes them.
              */
+            /*
+             * The workspace's own buttons, already filtered down to the ones
+             * this reader is allowed to see.
+             *
+             * Filtered here rather than by handing the browser the roles and
+             * letting it work it out — the same rule as board and timeclock
+             * above, and for the sharpest version of the reason: the whole
+             * point of this setting is that some links are not for the guests,
+             * and a role sent to the browser to be interpreted is a role that
+             * can be read out of the page source.
+             *
+             * roleFor remembers its answer for the length of the request, so
+             * asking it once here rather than once per link is only tidiness;
+             * loading the roles alongside the links is what actually keeps this
+             * to two queries.
+             */
+            'links' => $workspace->links()->with('roles:id')->get()
+                ->filter(fn (WorkspaceLink $link): bool => $link->isVisibleTo(
+                    $workspace->roleFor($user),
+                ))
+                ->map(fn (WorkspaceLink $link): array => [
+                    'id' => $link->id,
+                    'label' => $link->label,
+                    'url' => $link->url,
+                    'emoji' => $link->emoji,
+                ])
+                ->values()
+                ->all(),
+
             'customEmoji' => $workspace->customEmoji()->get()
                 ->map(fn (CustomEmoji $emoji): array => [
                     'name' => $emoji->name,

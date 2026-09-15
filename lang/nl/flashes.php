@@ -190,6 +190,12 @@ return [
         'removed' => ':name is weggehaald.',
     ],
 
+    'workspace_link' => [
+        'added' => ':label staat nu in het menu.',
+        'saved' => ':label is aangepast.',
+        'removed' => ':label is weggehaald.',
+    ],
+
     'timeclock' => [
         'clocked_in' => 'Je staat ingeklokt.',
         'clocked_out' => 'Uitgeklokt na :duration.',

@@ -27,6 +27,7 @@ return [
         'searching_in' => 'Zoeken in',
         'quick' => 'Snel naar',
         'jump' => 'Springen naar',
+        'shortcuts' => 'Snelkoppelingen',
         'actions' => 'Acties',
     ],
 

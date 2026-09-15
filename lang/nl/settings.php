@@ -50,6 +50,7 @@ return [
         'features' => 'Onderdelen',
         'roles' => 'Rollen',
         'emoji' => 'Emoji',
+        'links' => 'Snelkoppelingen',
         'theme' => 'Thema',
         'mail' => 'E-mail',
         'mail_texts' => 'Mailteksten',

@@ -22,6 +22,22 @@ export interface ScheduledBroadcast {
     channels: string[];
 }
 
+/**
+ * A button the workspace made for itself: a label, a web address, and an emoji
+ * to tell it apart in a list of them.
+ *
+ * Always a link out, never something that happens here — the bar above a
+ * conversation is where a button may start a workflow, because a workflow
+ * started there has a channel and a message to read.
+ */
+export interface WorkspaceLink {
+    id: number;
+    label: string;
+    url: string;
+    /** The picture on the row, or null — then an arrow stands in. */
+    emoji: string | null;
+}
+
 export interface ChatWorkspace {
     id: number;
     name: string;
@@ -107,6 +123,13 @@ export interface ChatWorkspace {
      * browser never sees the two halves separately.
      */
     board: boolean;
+    /**
+     * The workspace's own buttons, already cut down to the ones this reader is
+     * allowed to see — see BuildChatShell. The roles that decide it never reach
+     * the browser, which is the point: a role sent here to be interpreted is a
+     * role that can be read out of the page source.
+     */
+    links: WorkspaceLink[];
     uploads: {
         /** Kilobytes, straight from the workspace's own setting. */
         maxKb: number;
