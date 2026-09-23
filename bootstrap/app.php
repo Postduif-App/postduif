@@ -26,6 +26,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+         * TLS ends at the load balancer and the request reaches the container
+         * over plain HTTP with X-Forwarded-Proto: https. Without trusting that
+         * header every generated URL, redirect and mail link comes out as
+         * http:// — and a browser on an https page refuses to open the
+         * websocket those URLs point at.
+         *
+         * Everything, because only the load balancer can reach the container:
+         * there is no untrusted hop for a client to forge these from. Behind
+         * nginx on a single box '127.0.0.1' is the narrower equivalent. Locally
+         * nothing sends these headers, so this changes nothing there.
+         */
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'member_panel_state', 'locale']);
 
         /*

@@ -549,23 +549,20 @@ being convenient, with the bucket kept private for the same reason.
 #### Behind the load balancer
 
 TLS ends at Ploi Cloud's load balancer and the request reaches the application
-over plain HTTP with `X-Forwarded-Proto: https`. Nothing in `bootstrap/app.php`
-trusts that header yet, because neither Docker nor Valet needs it, so this is a
-change you make before the first deploy:
+over plain HTTP with `X-Forwarded-Proto: https`. `bootstrap/app.php` trusts that
+header:
 
 ```php
-->withMiddleware(function (Middleware $middleware): void {
-    // Only the load balancer can reach the container, so there is no untrusted
-    // hop for a client to forge these from.
-    $middleware->trustProxies(at: '*');
-
-    // ...
-})
+$middleware->trustProxies(at: '*');
 ```
 
 Without it every generated URL, redirect and mail link comes out as `http://` —
 and a browser on an https page refuses to open the websocket those URLs point
-at. On Ploi the same applies with `at: '127.0.0.1'`, since nginx is on the box.
+at. Everything is trusted because only the load balancer can reach the
+container, so there is no untrusted hop for a client to forge these from. Behind
+nginx on a single box — a plain Ploi server — `at: '127.0.0.1'` is the narrower
+equivalent. Neither Docker nor Valet sends these headers, so locally the line
+changes nothing.
 
 ### When it does not work
 
