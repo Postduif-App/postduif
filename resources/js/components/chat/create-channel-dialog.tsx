@@ -1,4 +1,4 @@
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import { Globe, Lock, MessageSquare, Newspaper } from 'lucide-react';
 import { useState } from 'react';
 
@@ -14,17 +14,31 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    setCreateChannelSection,
+    useCreateChannelSection,
+} from '@/hooks/use-create-channel-section';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
 import { store } from '@/routes/chat/channels';
-import type { ChannelType, ChatWorkspace } from '@/types/chat';
+import type { ChannelSection, ChannelType, ChatWorkspace } from '@/types/chat';
 
 interface CreateChannelDialogProps {
     workspace: ChatWorkspace;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
+
+/** Radix refuses an empty item value, so "no group" needs a name of its own. */
+const NO_SECTION = 'none';
 
 /** The one line lookup, so the option lists below can be built with it. */
 type Translate = ReturnType<typeof useTranslate>['t'];
@@ -87,6 +101,22 @@ export function CreateChannelDialog({
     const [type, setType] = useState<'public' | 'private'>('public');
     const [layout, setLayout] = useState<'chat' | 'feed'>('chat');
 
+    /*
+     * Your own groups, from the page rather than a prop: every screen that
+     * mounts this dialog already receives them for the sidebar beside it.
+     */
+    const { sections = [] } = usePage<{ sections?: ChannelSection[] }>().props;
+
+    /*
+     * A group picked from a heading in the sidebar arrives here already set.
+     * One that has since been deleted counts as none, rather than sending an id
+     * the server would refuse.
+     */
+    const pickedSection = useCreateChannelSection();
+    const sectionId = sections.some((section) => section.id === pickedSection)
+        ? pickedSection
+        : null;
+
     const visibility = visibilityChoices(t);
     const layouts = layoutChoices(t);
 
@@ -97,18 +127,22 @@ export function CreateChannelDialog({
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
 
-    return (
-        <Dialog
-            open={open}
-            onOpenChange={(next) => {
-                if (!next) {
-                    setName('');
-                    setType('public');
-                }
+    /*
+     * Every way out goes through here — cancel, saving, Escape — so a group
+     * picked for this channel is not still picked for the next one.
+     */
+    const changeOpen = (next: boolean) => {
+        if (!next) {
+            setName('');
+            setType('public');
+            setCreateChannelSection(null);
+        }
 
-                onOpenChange(next);
-            }}
-        >
+        onOpenChange(next);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={changeOpen}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{t('channels.create.title')}</DialogTitle>
@@ -119,13 +153,18 @@ export function CreateChannelDialog({
 
                 <Form
                     {...store.form(workspace.slug)}
-                    onSuccess={() => onOpenChange(false)}
+                    onSuccess={() => changeOpen(false)}
                     className="grid gap-5"
                 >
                     {({ processing, errors }) => (
                         <>
                             <input type="hidden" name="type" value={type} />
                             <input type="hidden" name="layout" value={layout} />
+                            <input
+                                type="hidden"
+                                name="section_id"
+                                value={sectionId ?? ''}
+                            />
 
                             <div className="grid gap-2">
                                 <Label htmlFor="channel-name">
@@ -230,6 +269,61 @@ export function CreateChannelDialog({
                                 <InputError message={errors.layout} />
                             </fieldset>
 
+                            {/*
+                                Only when there is something to pick: a
+                                dropdown holding nothing but "Geen groep" asks
+                                a question with one answer.
+                            */}
+                            {sections.length > 0 && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="channel-section">
+                                        {t('channels.create.section')}{' '}
+                                        <span className="font-normal text-muted-foreground">
+                                            {t(
+                                                'channels.fields.topic_optional',
+                                            )}
+                                        </span>
+                                    </Label>
+                                    <Select
+                                        value={
+                                            sectionId === null
+                                                ? NO_SECTION
+                                                : String(sectionId)
+                                        }
+                                        onValueChange={(value) =>
+                                            setCreateChannelSection(
+                                                value === NO_SECTION
+                                                    ? null
+                                                    : Number(value),
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger id="channel-section">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={NO_SECTION}>
+                                                {t(
+                                                    'channels.create.section_none',
+                                                )}
+                                            </SelectItem>
+                                            {sections.map((section) => (
+                                                <SelectItem
+                                                    key={section.id}
+                                                    value={String(section.id)}
+                                                >
+                                                    {section.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        {t('channels.create.section_hint')}
+                                    </p>
+                                    <InputError message={errors.section_id} />
+                                </div>
+                            )}
+
                             <div className="grid gap-2">
                                 <Label htmlFor="channel-topic">
                                     {t('channels.fields.topic')}{' '}
@@ -252,7 +346,7 @@ export function CreateChannelDialog({
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    onClick={() => onOpenChange(false)}
+                                    onClick={() => changeOpen(false)}
                                 >
                                     {t('channels.actions.cancel')}
                                 </Button>

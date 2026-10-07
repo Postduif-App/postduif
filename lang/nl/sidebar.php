@@ -78,6 +78,7 @@ return [
         'rename_named' => 'Groep ":name" hernoemen',
         'name_field' => 'Groepsnaam',
         'empty' => 'Nog geen kanalen in deze groep.',
+        'add_channel_named' => 'Kanaal aanmaken in ":name"',
     ],
 
     'thread' => [

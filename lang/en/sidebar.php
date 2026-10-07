@@ -68,6 +68,7 @@ return [
         'rename_named' => 'Rename group ":name"',
         'name_field' => 'Group name',
         'empty' => 'No channels in this group yet.',
+        'add_channel_named' => 'Make a channel in ":name"',
     ],
 
     'thread' => [

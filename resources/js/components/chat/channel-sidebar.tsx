@@ -55,6 +55,7 @@ import {
     useChannelMenuOpen,
 } from '@/hooks/use-channel-menu';
 import { useCollapsedSection } from '@/hooks/use-collapsed-section';
+import { setCreateChannelSection } from '@/hooks/use-create-channel-section';
 import { useInboxActivity } from '@/hooks/use-inbox-activity';
 import { useTranslate } from '@/hooks/use-translate';
 import { cn } from '@/lib/utils';
@@ -537,9 +538,12 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function SectionHeadingRow({
     workspaceSlug,
     section,
+    onCreateChannel,
 }: {
     workspaceSlug: string;
     section: ChannelSectionRow;
+    /** Absent for whoever may not make channels: no button to offer them. */
+    onCreateChannel?: () => void;
 }) {
     const { t } = useTranslate();
 
@@ -627,6 +631,26 @@ function SectionHeadingRow({
             >
                 <Pencil className="size-3" />
             </button>
+            {onCreateChannel && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        // Picked before opening, so the dialog's first render
+                        // already shows this group rather than flicking to it.
+                        setCreateChannelSection(section.id);
+                        onCreateChannel();
+                    }}
+                    className="mt-3 shrink-0 rounded p-0.5 opacity-0 transition-opacity group-hover/section:opacity-60 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-none"
+                    aria-label={t('sidebar.section.add_channel_named', {
+                        name: section.name,
+                    })}
+                    title={t('sidebar.section.add_channel_named', {
+                        name: section.name,
+                    })}
+                >
+                    <Plus className="size-3" />
+                </button>
+            )}
         </div>
     );
 }
@@ -1162,6 +1186,11 @@ export function ChannelSidebar({
                             <SectionHeadingRow
                                 workspaceSlug={workspace.slug}
                                 section={section}
+                                onCreateChannel={
+                                    workspace.canCreateChannel
+                                        ? onCreateChannel
+                                        : undefined
+                                }
                             />
                             <div className="space-y-0.5">
                                 {rows.map((channel) => (

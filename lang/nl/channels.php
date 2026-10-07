@@ -61,6 +61,10 @@ return [
         'name_placeholder' => 'bijv. marketing',
         'slug_hint' => 'Kleine letters en streepjes.',
         'slug_preview' => 'Wordt #:slug',
+        // A group in the creator's own sidebar; nobody else sees where it went.
+        'section' => 'Groep',
+        'section_none' => 'Geen groep',
+        'section_hint' => 'Alleen jij ziet in welke groep dit kanaal staat.',
     ],
 
     'settings' => [

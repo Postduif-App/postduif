@@ -50,6 +50,9 @@ return [
         'name_placeholder' => 'e.g. marketing',
         'slug_hint' => 'Lowercase letters and dashes.',
         'slug_preview' => 'Becomes #:slug',
+        'section' => 'Group',
+        'section_none' => 'No group',
+        'section_hint' => 'Only you see which group this channel is in.',
     ],
 
     'settings' => [
