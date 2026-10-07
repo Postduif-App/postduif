@@ -37,6 +37,15 @@ enum InboxItemType: string
     case ContractProgress = 'contract-progress';
 
     /**
+     * Somebody outside sent files in through an upload link you put out.
+     *
+     * Its own case rather than folded into ContractProgress, although both are
+     * news from outside about something you sent: a filter on "Contract" that
+     * turned up a customer's paperwork would be answering a different question.
+     */
+    case UploadReceived = 'upload-received';
+
+    /**
      * You asked to be reminded of something, and the moment has come.
      *
      * The only kind nobody else set off. Every other case here is somebody
@@ -54,6 +63,7 @@ enum InboxItemType: string
             self::ThreadReply => __('enums.inbox-item-type.label.ThreadReply'),
             self::PollVote => __('enums.inbox-item-type.label.PollVote'),
             self::ContractProgress => __('enums.inbox-item-type.label.ContractProgress'),
+            self::UploadReceived => __('enums.inbox-item-type.label.UploadReceived'),
             self::Reminder => __('enums.inbox-item-type.label.Reminder'),
         };
     }

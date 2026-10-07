@@ -196,4 +196,10 @@ return [
         'adjusted' => 'The stretch has been adjusted.',
         'removed' => 'The stretch has been removed.',
     ],
+
+    'upload_link' => [
+        'created' => 'Upload link ready. You will find it in the list.',
+        'withdrawn' => 'Upload link closed.',
+        'received' => 'Thank you, your files have been sent.',
+    ],
 ];

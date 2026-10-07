@@ -67,4 +67,10 @@ return [
         'title' => 'Postduif',
         'body' => 'Als je dit ziet, werken browsermeldingen op dit apparaat.',
     ],
+
+    'upload_link' => [
+        'subject' => 'Er is iets binnengekomen via ‘:title’',
+        'body' => '{1}:name heeft 1 bestand aangeleverd via je uploadlink ‘:title’.|[2,*]:name heeft :count bestanden aangeleverd via je uploadlink ‘:title’.',
+        'open' => 'Bekijken',
+    ],
 ];

@@ -207,6 +207,10 @@ return [
                 'hint' => 'The name of the role the link hands out. Leave empty for any link.',
             ],
         ],
+        'upload-link-submitted' => [
+            'label' => 'When files come in through an upload link',
+            'description' => 'Runs as soon as somebody sends files through an upload link. Only that it happened, from whom and how much. Never what is inside.',
+        ],
         'transfer-downloaded' => [
             'label' => 'When a transfer is collected',
             'description' => 'Runs the moment somebody downloads files you sent. Only that it happened — never what was in it.',
@@ -874,6 +878,19 @@ return [
             'uses' => 'How often the link was used',
             'uses_left' => 'How often the link can still be used',
             'expires_at' => 'Until when the link works',
+        ],
+        'upload_link' => [
+            'id' => 'The upload link',
+            'title' => 'What the upload link is for',
+            'uploads' => 'How often something was sent in',
+            'expires_at' => 'Until when the link is open',
+            'submission_id' => 'The submission',
+            'files' => 'How many files came in',
+            'size' => 'How large the submission is, in bytes',
+            'uploader_name' => 'The name the sender gave',
+            'uploader_email' => 'The address the sender gave',
+            'owner_id' => 'Who put the link out',
+            'owner_name' => 'The name of who put the link out',
         ],
         'transfer' => [
             'id' => 'The transfer',

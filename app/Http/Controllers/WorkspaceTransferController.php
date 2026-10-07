@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Chat\BuildChatShell;
 use App\Actions\Transfers\PresentTransfers;
+use App\Actions\UploadLinks\PresentUploadLinks;
 use App\Enums\TransferAudience;
 use App\Features\Transfers;
 use App\Models\Workspace;
@@ -29,6 +30,7 @@ class WorkspaceTransferController extends Controller
     public function __construct(
         private readonly BuildChatShell $buildChatShell,
         private readonly PresentTransfers $presentTransfers,
+        private readonly PresentUploadLinks $presentUploadLinks,
     ) {}
 
     public function index(Request $request, Workspace $workspace): Response
@@ -65,6 +67,10 @@ class WorkspaceTransferController extends Controller
             // Without it a beheerder sees a mixed list with no clue why.
             'seesEveryone' => $isManager,
             'transfers' => $this->presentTransfers->handle($workspace, $isManager ? null : $user->id),
+
+            // The other direction on the same screen: links somebody outside
+            // can send files in through, with the same who-sees-what split.
+            'uploadLinks' => $this->presentUploadLinks->handle($workspace, $isManager ? null : $user->id),
         ]);
     }
 }

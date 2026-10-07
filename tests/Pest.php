@@ -26,6 +26,7 @@ use App\Models\Role;
 use App\Models\SecretRequest;
 use App\Models\SecretRequestKey;
 use App\Models\Transfer;
+use App\Models\UploadLink;
 use App\Models\User;
 use App\Models\Workflow;
 use App\Models\WorkflowRun;
@@ -289,6 +290,33 @@ function waitingTransfer(array $state = [], int $files = 1): array
     }
 
     return [$transfer->refresh(), $workspace, $sender];
+}
+
+/**
+ * An upload link somebody put out, waiting for a customer to send files in.
+ *
+ * The owner is a real member of a workspace with transfers switched on, for the
+ * reason waitingTransfer() gives: both are checked when the link is followed.
+ *
+ * @return array{0: UploadLink, 1: Workspace, 2: User}
+ */
+function openUploadLink(array $state = []): array
+{
+    Storage::fake('local');
+
+    $owner = User::factory()->create(['name' => 'Sanne']);
+    $workspace = workspaceWithMember($owner);
+
+    Feature::for($workspace)->activate(Transfers::class);
+
+    $link = UploadLink::factory()->create([
+        'workspace_id' => $workspace->id,
+        'created_by' => $owner->id,
+        'title' => 'Jaarstukken 2025',
+        ...$state,
+    ]);
+
+    return [$link, $workspace, $owner];
 }
 
 /**

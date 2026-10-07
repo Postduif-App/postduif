@@ -142,6 +142,10 @@ function pageLayout(name: string) {
         // one card, no navigation, nothing to sign in to.
         case name.startsWith('transfers/'):
             return AuthLayout;
+        // The same visitor the other way round: somebody with no account,
+        // here to send files in rather than fetch them.
+        case name.startsWith('upload-links/'):
+            return AuthLayout;
         /*
          * Signing a contract: no shell at all, not even the one-card one.
          *

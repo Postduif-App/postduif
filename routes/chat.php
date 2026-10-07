@@ -52,6 +52,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TimeclockController;
 use App\Http\Controllers\TimeEntryController;
 use App\Http\Controllers\TransferController;
+use App\Http\Controllers\UploadLinkController;
 use App\Http\Controllers\WorkspaceBookmarkController;
 use App\Http\Controllers\WorkspaceFormAnswerController;
 use App\Http\Controllers\WorkspaceFormController;
@@ -124,6 +125,20 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function () {
                 // different acts with different consequences.
                 Route::delete('transfers/{transfer}/recipients/{recipient}', [TransferController::class, 'destroyRecipient'])
                     ->name('transfers.recipients.destroy');
+
+                /*
+                 * The same thing turned around: a link somebody outside can
+                 * send files in through. Fetching what came in lives here too,
+                 * behind the login, and never on the public half.
+                 */
+                Route::post('upload-links', [UploadLinkController::class, 'store'])
+                    ->name('upload-links.store');
+                Route::delete('upload-links/{uploadLink}', [UploadLinkController::class, 'destroy'])
+                    ->name('upload-links.destroy');
+                Route::get('upload-links/{uploadLink}/files/{media}', [UploadLinkController::class, 'download'])
+                    ->name('upload-links.files.download');
+                Route::get('upload-links/{uploadLink}/submissions/{submission}/zip', [UploadLinkController::class, 'downloadSubmission'])
+                    ->name('upload-links.submissions.download');
             });
 
             /*

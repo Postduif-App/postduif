@@ -117,6 +117,7 @@ return [
             'ThreadReply' => 'Thread',
             'PollVote' => 'Poll',
             'ContractProgress' => 'Contract',
+            'UploadReceived' => 'Files received',
             'Reminder' => 'Reminder',
         ],
     ],

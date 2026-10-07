@@ -98,4 +98,14 @@ return [
         'repository' => 'Repository',
         'documentation' => 'Documentation',
     ],
+
+    'upload_link_card' => [
+        'kind' => 'Send files',
+        'open_until' => 'open until :date',
+        'uploads_left' => '{0}no submissions left|{1}1 submission left|[2,*]:count submissions left',
+        'expired' => 'expired',
+        'revoked' => 'closed',
+        'exhausted' => 'full',
+        'locked' => 'Password protected',
+    ],
 ];

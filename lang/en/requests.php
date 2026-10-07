@@ -216,4 +216,10 @@ return [
     'notifications' => [
         'invalid_window' => 'Choose one of the offered windows.',
     ],
+
+    'upload_link' => [
+        'files_required' => 'Choose at least one file to send.',
+        'too_large_together' => 'Nothing more fits through this link. Please contact whoever sent it to you.',
+        'closed' => 'This link no longer accepts files.',
+    ],
 ];

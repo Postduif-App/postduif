@@ -217,4 +217,10 @@ return [
     'notifications' => [
         'invalid_window' => 'Kies een van de aangeboden termijnen.',
     ],
+
+    'upload_link' => [
+        'files_required' => 'Kies minstens één bestand om te versturen.',
+        'too_large_together' => 'Er past niet meer bij via deze link. Neem contact op met wie je de link stuurde.',
+        'closed' => 'Deze link neemt geen bestanden meer aan.',
+    ],
 ];

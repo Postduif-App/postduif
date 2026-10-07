@@ -204,4 +204,10 @@ return [
         'adjusted' => 'De periode is bijgesteld.',
         'removed' => 'De periode is verwijderd.',
     ],
+
+    'upload_link' => [
+        'created' => 'Uploadlink klaargezet. De link staat in de lijst.',
+        'withdrawn' => 'Uploadlink gesloten.',
+        'received' => 'Bedankt, je bestanden zijn verstuurd.',
+    ],
 ];

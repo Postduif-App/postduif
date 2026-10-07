@@ -219,6 +219,10 @@ return [
                 'hint' => 'De naam van de rol die de link uitdeelt. Leeg laten betekent: elke link.',
             ],
         ],
+        'upload-link-submitted' => [
+            'label' => 'Als er bestanden binnenkomen via een uploadlink',
+            'description' => 'Loopt zodra iemand bestanden instuurt via een uploadlink. Alleen dát het gebeurde, van wie en hoeveel. Nooit wat erin zit.',
+        ],
         'transfer-downloaded' => [
             'label' => 'Als een verzending opgehaald wordt',
             'description' => 'Loopt zodra iemand bestanden downloadt die je verstuurd hebt. Alleen dát het gebeurde — nooit wat erin zat.',
@@ -904,6 +908,19 @@ return [
             'uses' => 'Hoe vaak de link gebruikt is',
             'uses_left' => 'Hoe vaak de link nog kan',
             'expires_at' => 'Tot wanneer de link werkt',
+        ],
+        'upload_link' => [
+            'id' => 'De uploadlink',
+            'title' => 'Waar de uploadlink voor is',
+            'uploads' => 'Hoe vaak er iets is ingestuurd',
+            'expires_at' => 'Tot wanneer de link open is',
+            'submission_id' => 'De inzending',
+            'files' => 'Hoeveel bestanden er binnenkwamen',
+            'size' => 'Hoe groot de inzending is, in bytes',
+            'uploader_name' => 'De naam die de afzender opgaf',
+            'uploader_email' => 'Het adres dat de afzender opgaf',
+            'owner_id' => 'Wie de link klaarzette',
+            'owner_name' => 'De naam van wie de link klaarzette',
         ],
         'transfer' => [
             'id' => 'De verzending',

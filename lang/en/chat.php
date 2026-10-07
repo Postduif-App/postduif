@@ -27,4 +27,8 @@ return [
     'broadcast_posted' => '{1}Posted in 1 channel.|[2,*]Posted in :count channels.',
     'broadcast_scheduled' => '{1}Scheduled for 1 channel.|[2,*]Scheduled for :count channels.',
     'broadcast_withdrawn' => 'Broadcast withdrawn.',
+
+    'upload_link' => [
+        'received' => '{1}:name sent in 1 file through ‘:title’.|[2,*]:name sent in :count files through ‘:title’.',
+    ],
 ];

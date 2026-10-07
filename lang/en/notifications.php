@@ -53,4 +53,10 @@ return [
         'title' => 'Postduif',
         'body' => 'If you can see this, browser notifications work on this device.',
     ],
+
+    'upload_link' => [
+        'subject' => 'Something came in through ‘:title’',
+        'body' => '{1}:name sent in 1 file through your upload link ‘:title’.|[2,*]:name sent in :count files through your upload link ‘:title’.',
+        'open' => 'View',
+    ],
 ];

@@ -131,6 +131,7 @@ return [
             'ThreadReply' => 'Thread',
             'PollVote' => 'Poll',
             'ContractProgress' => 'Contract',
+            'UploadReceived' => 'Bestanden ontvangen',
             'Reminder' => 'Herinnering',
         ],
     ],

@@ -31,4 +31,6 @@ return [
     'role_abilities_others_synced' => '{0}No other system roles changed.|{1}1 other system role updated.|[2,*]:count other system roles updated.',
     'role_abilities_owners_pending' => '{0}No owner role would change.|{1}1 owner role would be updated.|[2,*]:count owner roles would be updated.',
     'role_abilities_others_pending' => '{0}No other system roles would change.|{1}1 other system role would be updated.|[2,*]:count other system roles would be updated.',
+
+    'upload_links_pruned' => '{1}1 upload link cleared.|[2,*]:count upload links cleared.',
 ];

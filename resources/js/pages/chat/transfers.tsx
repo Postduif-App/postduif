@@ -11,6 +11,8 @@ import { NewDirectMessageDialog } from '@/components/chat/new-direct-message-dia
 import { SearchDialog } from '@/components/chat/search-dialog';
 import type { TransferManagerProps } from '@/components/transfers/transfer-manager';
 import { TransferManager } from '@/components/transfers/transfer-manager';
+import type { UploadLinkRow } from '@/components/transfers/upload-link-manager';
+import { UploadLinkManager } from '@/components/transfers/upload-link-manager';
 import { UserMenu } from '@/components/user-menu-content';
 import { useCommandPaletteShortcut } from '@/hooks/use-command-palette-shortcut';
 import { useSessionGuard } from '@/hooks/use-session-guard';
@@ -49,6 +51,8 @@ interface TransfersPageProps {
     /** True for a beheerder, who sees the whole workspace's rather than theirs. */
     seesEveryone: boolean;
     transfers: TransferManagerProps['transfers'];
+    /** Links somebody outside can send files in through, and what came in. */
+    uploadLinks: UploadLinkRow[];
 }
 
 /**
@@ -76,6 +80,7 @@ export default function WorkspaceTransfers({
     audienceOptions,
     seesEveryone,
     transfers,
+    uploadLinks,
 }: TransfersPageProps) {
     const { t } = useTranslate();
 
@@ -131,7 +136,7 @@ export default function WorkspaceTransfers({
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    <div className="mx-auto max-w-3xl">
+                    <div className="mx-auto max-w-3xl space-y-10">
                         <TransferManager
                             workspaceName={workspace.name}
                             workspaceSlug={workspace.slug}
@@ -141,6 +146,21 @@ export default function WorkspaceTransfers({
                             audienceOptions={audienceOptions}
                             seesEveryone={seesEveryone}
                             transfers={transfers}
+                        />
+                        <UploadLinkManager
+                            workspaceName={workspace.name}
+                            workspaceSlug={workspace.slug}
+                            canCreate={canSend}
+                            maxTransferKb={maxTransferKb}
+                            maxTransferDays={maxTransferDays}
+                            notifyChannels={channels
+                                .filter((channel) => channel.isMember)
+                                .map((channel) => ({
+                                    id: channel.id,
+                                    label: channel.label,
+                                }))}
+                            seesEveryone={seesEveryone}
+                            uploadLinks={uploadLinks}
                         />
                     </div>
                 </div>

@@ -36,4 +36,8 @@ return [
     'broadcast_posted' => '{1}Bericht geplaatst in 1 kanaal.|[2,*]Bericht geplaatst in :count kanalen.',
     'broadcast_scheduled' => '{1}Ingepland voor 1 kanaal.|[2,*]Ingepland voor :count kanalen.',
     'broadcast_withdrawn' => 'Rondzending ingetrokken.',
+
+    'upload_link' => [
+        'received' => '{1}:name heeft 1 bestand aangeleverd via ‘:title’.|[2,*]:name heeft :count bestanden aangeleverd via ‘:title’.',
+    ],
 ];

@@ -121,4 +121,14 @@ return [
         'repository' => 'Repository',
         'documentation' => 'Documentatie',
     ],
+
+    'upload_link_card' => [
+        'kind' => 'Bestanden aanleveren',
+        'open_until' => 'open tot :date',
+        'uploads_left' => '{0}geen inzendingen meer|{1}nog 1 inzending|[2,*]nog :count inzendingen',
+        'expired' => 'verlopen',
+        'revoked' => 'gesloten',
+        'exhausted' => 'vol',
+        'locked' => 'Met wachtwoord',
+    ],
 ];

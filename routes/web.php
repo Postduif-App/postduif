@@ -12,6 +12,7 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MarketingController;
 use App\Http\Controllers\PublicFormController;
 use App\Http\Controllers\PublicTransferController;
+use App\Http\Controllers\PublicUploadLinkController;
 use App\Http\Controllers\SecretAnswerController;
 use App\Http\Controllers\SecretFillController;
 use App\Http\Controllers\SentSecretRevealController;
@@ -132,6 +133,28 @@ Route::prefix('transfers/{token}')
             ->name('transfers.download-all');
         Route::get('files/{media}', [PublicTransferController::class, 'download'])
             ->name('transfers.download');
+    });
+
+/**
+ * Room somebody put aside for you to send files in. The transfer turned around,
+ * outside auth for the same reason: the person following it is usually a
+ * customer with no account.
+ *
+ * The POST is throttled hardest of the three. It writes a stranger's bytes to
+ * our disk, and nobody legitimately sends in their paperwork ten times a
+ * minute.
+ */
+Route::prefix('aanleveren/{token}')
+    ->group(function () {
+        Route::get('/', [PublicUploadLinkController::class, 'show'])
+            ->middleware('throttle:60,1')
+            ->name('upload-links.show');
+        Route::post('/', [PublicUploadLinkController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('upload-links.submit');
+        Route::post('openen', [PublicUploadLinkController::class, 'unlock'])
+            ->middleware('throttle:6,1')
+            ->name('upload-links.unlock');
     });
 
 /**

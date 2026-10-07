@@ -39,4 +39,6 @@ return [
     'role_abilities_others_synced' => '{0}Geen overige systeemrollen aangepast.|{1}1 overige systeemrol bijgewerkt.|[2,*]:count overige systeemrollen bijgewerkt.',
     'role_abilities_owners_pending' => '{0}Geen eigenaarsrol zou veranderen.|{1}1 eigenaarsrol zou bijgewerkt worden.|[2,*]:count eigenaarsrollen zouden bijgewerkt worden.',
     'role_abilities_others_pending' => '{0}Geen overige systeemrollen zouden veranderen.|{1}1 overige systeemrol zou bijgewerkt worden.|[2,*]:count overige systeemrollen zouden bijgewerkt worden.',
+
+    'upload_links_pruned' => '{1}1 uploadlink opgeruimd.|[2,*]:count uploadlinks opgeruimd.',
 ];
