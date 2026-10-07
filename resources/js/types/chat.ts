@@ -655,6 +655,11 @@ export interface ChatMessage {
      */
     transferCard: MessageTransferCard | null;
     /**
+     * What a link to one of our own upload links is for, or null when the
+     * message holds no such link. Never anything about what came in.
+     */
+    uploadLinkCard: MessageUploadLinkCard | null;
+    /**
      * What a link to one of our own secret requests is asking for, or null when
      * the message holds no such link.
      */
@@ -685,6 +690,21 @@ export interface MessageTransferCard {
     state: 'usable' | 'expired' | 'revoked' | 'exhausted';
     /** Whether the recipient will be asked for a password. */
     isLocked: boolean;
+    url: string;
+}
+
+/**
+ * An upload link somebody shared in a conversation: room for files to come
+ * in, the transfer turned around.
+ */
+export interface MessageUploadLinkCard {
+    title: string;
+    expiresAt: string;
+    state: 'usable' | 'expired' | 'revoked' | 'exhausted';
+    /** Whether the sender will be asked for a password. */
+    isLocked: boolean;
+    /** How many more submissions it takes, or null for no ceiling. */
+    uploadsLeft: number | null;
     url: string;
 }
 

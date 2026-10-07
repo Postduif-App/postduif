@@ -34,6 +34,7 @@ import { ReminderMenu } from '@/components/chat/reminder-menu';
 import { SecretCard } from '@/components/chat/secret-card';
 import { SentSecretCard } from '@/components/chat/sent-secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
+import { UploadLinkCard } from '@/components/chat/upload-link-card';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -814,6 +815,10 @@ function MessageRow({
 
                 {!deleted && message.transferCard && (
                     <TransferCard card={message.transferCard} />
+                )}
+
+                {!deleted && message.uploadLinkCard && (
+                    <UploadLinkCard card={message.uploadLinkCard} />
                 )}
 
                 {!deleted && message.secretCard && (

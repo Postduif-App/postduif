@@ -534,6 +534,7 @@ export function Conversation({
                 // Filled in by the server echo: the card is a database lookup,
                 // and the browser has not made the transfer row yet.
                 transferCard: null,
+                uploadLinkCard: null,
                 secretCard: null,
                 contractCard: null,
                 pollCard: null,

@@ -22,6 +22,7 @@ import { PollCard } from '@/components/chat/poll-card';
 import { ReactionPicker } from '@/components/chat/reaction-picker';
 import { SecretCard } from '@/components/chat/secret-card';
 import { TransferCard } from '@/components/chat/transfer-card';
+import { UploadLinkCard } from '@/components/chat/upload-link-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCoarsePointer } from '@/hooks/use-coarse-pointer';
 import { useFormats } from '@/hooks/use-formats';
@@ -335,6 +336,10 @@ function FeedItem({
 
             {message.transferCard && (
                 <TransferCard card={message.transferCard} />
+            )}
+
+            {message.uploadLinkCard && (
+                <UploadLinkCard card={message.uploadLinkCard} />
             )}
 
             {message.secretCard && <SecretCard card={message.secretCard} />}

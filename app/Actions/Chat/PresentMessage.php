@@ -13,6 +13,7 @@ use App\Models\PollVote;
 use App\Models\SecretRequest;
 use App\Models\SentSecret;
 use App\Models\Transfer;
+use App\Models\UploadLink;
 use App\Models\Workspace;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -88,6 +89,13 @@ class PresentMessage
      * @var array<string, Transfer|null>
      */
     private array $transfers = [];
+
+    /**
+     * Upload links already looked up, keyed by token, for the same reason.
+     *
+     * @var array<string, UploadLink|null>
+     */
+    private array $uploadLinks = [];
 
     /**
      * Secrets already fetched, keyed by id — the same reason the lists above
@@ -166,6 +174,9 @@ class PresentMessage
             // one is what somebody else's page said about itself, this one is
             // our own database.
             'transferCard' => $deleted ? null : $this->transferCard($message),
+            // The same for a link somebody outside can send files in through:
+            // what it is for, and whether it still takes anything.
+            'uploadLinkCard' => $deleted ? null : $this->uploadLinkCard($message),
             // The same idea for a request for secrets: a bare link to a form
             // says nothing about what is being asked or whether anybody still
             // needs to answer it.
@@ -640,6 +651,58 @@ class PresentMessage
             'isLocked' => $transfer->isLocked(),
             'url' => route('transfers.show', $transfer->token),
         ];
+    }
+
+    /**
+     * What a link to one of our own upload links is for.
+     *
+     * The transfer card turned around, and built the same way: nothing is
+     * fetched, and only a link from this workspace gets a card — a pasted link
+     * from elsewhere must not carry another workspace's title in here.
+     *
+     * Never anything about what came in. The card is broadcast to everybody in
+     * the channel, often with the customer reading along; who sent what is for
+     * the owner's own list.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function uploadLinkCard(Message $message): ?array
+    {
+        $token = $this->uploadLinkTokenIn($message->body);
+
+        if ($token === null) {
+            return null;
+        }
+
+        $link = $this->uploadLinks[$token] ??= UploadLink::query()
+            ->where('token', $token)
+            ->first();
+
+        if ($link === null || $link->workspace_id !== $message->workspace_id) {
+            return null;
+        }
+
+        return [
+            'title' => $link->title,
+            'expiresAt' => $link->expires_at,
+            'state' => $link->state(),
+            'isLocked' => $link->isLocked(),
+            'uploadsLeft' => $link->max_uploads === null
+                ? null
+                : max(0, $link->max_uploads - $link->uploads),
+            'url' => route('upload-links.show', $link->token),
+        ];
+    }
+
+    /** The token of the first link in this body to one of our upload links. */
+    private function uploadLinkTokenIn(string $body): ?string
+    {
+        $prefix = route('upload-links.show', '__TOKEN__');
+        [$before] = explode('__TOKEN__', $prefix, 2);
+
+        $pattern = '/'.preg_quote($before, '/').'([A-Za-z0-9]{64})\b/';
+
+        return preg_match($pattern, $body, $matches) === 1 ? $matches[1] : null;
     }
 
     /**
