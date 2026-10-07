@@ -51,6 +51,16 @@ class StoreChannelRequest extends FormRequest
             // Optional: a caller that says nothing gets an ordinary
             // conversation, which is what almost every channel is.
             'layout' => ['sometimes', new Enum(ChannelLayout::class)],
+            // One of the creator's own groups. Scoped to them rather than
+            // checked afterwards, so a colleague's section id simply does not
+            // exist as far as this request is concerned.
+            'section_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('channel_sections', 'id')
+                    ->where('user_id', $this->user()->id)
+                    ->where('workspace_id', $workspace->id),
+            ],
         ];
     }
 

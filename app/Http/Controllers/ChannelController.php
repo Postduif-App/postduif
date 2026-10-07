@@ -12,6 +12,7 @@ use App\Events\ChannelMemberJoined;
 use App\Http\Requests\StoreChannelRequest;
 use App\Http\Requests\UpdateChannelRequest;
 use App\Models\Channel;
+use App\Models\ChannelSection;
 use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,9 @@ class ChannelController extends Controller
             type: ChannelType::from($request->string('type')->value()),
             topic: $request->string('topic')->trim()->value() ?: null,
             layout: ChannelLayout::from($request->string('layout', ChannelLayout::Chat->value)->value()),
+            section: $request->filled('section_id')
+                ? ChannelSection::findOrFail($request->integer('section_id'))
+                : null,
         );
 
         return redirect()->route('chat.show', [$workspace, $channel]);
