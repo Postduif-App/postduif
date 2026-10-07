@@ -5,19 +5,23 @@ namespace App\Listeners;
 use App\Actions\Workflows\StartMatchingWorkflows;
 use App\Events\SecretRequestAnswered;
 use App\Events\TransferDownloaded;
+use App\Events\UploadLinkSubmitted;
 use App\Models\SecretRequest;
 use App\Models\Transfer;
 use App\Models\TransferRecipient;
+use App\Models\UploadLinkSubmission;
 use App\Models\User;
 use App\Models\Workflow;
 use App\Workflows\Triggers\SecretRequestAnsweredTrigger;
 use App\Workflows\Triggers\TransferDownloadedTrigger;
+use App\Workflows\Triggers\UploadLinkSubmittedTrigger;
 
 /**
  * Set off the workflows that were waiting for something to be handed over.
  *
- * Two features in one listener because they are the same shape of thing: a
- * sender who is waiting to hear that the other side collected what was sent.
+ * Three features in one listener because they are the same shape of thing:
+ * somebody waiting to hear that the other side collected what was sent, or
+ * handed over what was asked for.
  * Neither payload carries any of what was sent — see both events, where that is
  * the point rather than an omission.
  */
@@ -49,6 +53,39 @@ class StartHandoverWorkflows
                 'sender' => ['id' => $transfer->created_by, 'name' => $transfer->sender?->name],
                 'recipient' => ['id' => $recipient?->id, 'email' => $recipient?->email],
                 'user' => ['id' => $user?->id, 'name' => $user?->name],
+            ],
+        );
+    }
+
+    public function handleUploadLinkSubmitted(UploadLinkSubmitted $event): void
+    {
+        $submission = UploadLinkSubmission::query()
+            ->with(['media', 'uploadLink.workspace', 'uploadLink.owner'])
+            ->find($event->submissionId);
+
+        if ($submission === null) {
+            return;
+        }
+
+        $link = $submission->uploadLink;
+
+        $this->startWorkflows->handle(
+            $link->workspace,
+            UploadLinkSubmittedTrigger::class,
+            fn (Workflow $workflow): array => [
+                'upload_link' => [
+                    'id' => $link->id,
+                    'title' => $link->title,
+                    'uploads' => $link->uploads,
+                    'expires_at' => $link->expires_at->toIso8601String(),
+                ],
+                'submission' => [
+                    'id' => $submission->id,
+                    'files' => $submission->files()->count(),
+                    'size' => $submission->size(),
+                ],
+                'uploader' => ['name' => $submission->name, 'email' => $submission->email],
+                'owner' => ['id' => $link->created_by, 'name' => $link->owner?->name],
             ],
         );
     }

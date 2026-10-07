@@ -109,6 +109,7 @@ it('offers every trigger the application was built with', function () {
         'channel-share-answered',
         'channel-share-revoked',
         'transfer-downloaded',
+        'upload-link-submitted',
         'secret-request-answered',
         'link',
         'slash-command',

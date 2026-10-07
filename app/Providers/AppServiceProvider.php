@@ -88,6 +88,7 @@ use App\Workflows\Triggers\TicketCreatedTrigger;
 use App\Workflows\Triggers\TicketStaleTrigger;
 use App\Workflows\Triggers\TimeclockTrigger;
 use App\Workflows\Triggers\TransferDownloadedTrigger;
+use App\Workflows\Triggers\UploadLinkSubmittedTrigger;
 use App\Workflows\Triggers\WebhookTrigger;
 use App\Workflows\WorkflowRegistry;
 use Carbon\CarbonImmutable;
@@ -231,6 +232,7 @@ class AppServiceProvider extends ServiceProvider
                 ChannelShareAnsweredTrigger::class,
                 ChannelShareRevokedTrigger::class,
                 TransferDownloadedTrigger::class,
+                UploadLinkSubmittedTrigger::class,
                 SecretRequestAnsweredTrigger::class,
                 LinkTrigger::class,
                 /*

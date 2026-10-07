@@ -23,6 +23,8 @@ use App\Models\WorkflowRun;
 use App\Models\WorkflowStep;
 use App\Models\Workspace;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
@@ -285,4 +287,31 @@ it('stays out of a workspace that switched the feature off', function () {
 
     expect($run->status)->toBe(WorkflowRunStatus::Failed)
         ->and(BoardPost::query()->count())->toBe(0);
+});
+
+it('sets off the workflows waiting for files, without saying what is in them', function () {
+    Notification::fake();
+    [$link, $workspace, $owner] = openUploadLink();
+    Feature::for($workspace)->activate(WorkflowsFeature::class);
+    $channel = channelWithMember($workspace, $owner);
+
+    $workflow = handoverWorkflow($workspace, $owner, 'upload-link-submitted');
+    WorkflowStep::factory()->for($workflow)->at(0)->doing('get-channel-info', [
+        'channel_id' => $channel->id,
+    ])->create();
+
+    $this->post(route('upload-links.submit', $link->token), [
+        'files' => [UploadedFile::fake()->create('balans.pdf', 40)],
+        'name' => 'Anna de Vries',
+        'email' => 'anna@klant.nl',
+    ])->assertRedirect();
+
+    $run = handoverRun($workflow);
+
+    expect(data_get($run->context, 'trigger.upload_link.title'))->toBe('Jaarstukken 2025')
+        ->and(data_get($run->context, 'trigger.upload_link.uploads'))->toBe(1)
+        ->and(data_get($run->context, 'trigger.submission.files'))->toBe(1)
+        ->and(data_get($run->context, 'trigger.uploader.name'))->toBe('Anna de Vries')
+        ->and(data_get($run->context, 'trigger.uploader.email'))->toBe('anna@klant.nl')
+        ->and(data_get($run->context, 'trigger.owner.name'))->toBe('Sanne');
 });
